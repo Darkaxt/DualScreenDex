@@ -2,6 +2,7 @@ package com.enrpau.dualscreendex.parser.cli
 
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.catalog.AbilityMechanic
+import com.enrpau.dualscreendex.parser.catalog.CatalogTextProjection
 import com.enrpau.dualscreendex.parser.catalog.AbilityMechanicConditionKind
 import com.enrpau.dualscreendex.parser.catalog.AbilityMechanicKind
 import com.enrpau.dualscreendex.parser.catalog.MoveCategory
@@ -9,6 +10,7 @@ import com.enrpau.dualscreendex.parser.catalog.MoveAcquisitionMethod
 import com.enrpau.dualscreendex.parser.catalog.LocalMap
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoi
 import com.enrpau.dualscreendex.parser.catalog.LocalMapScenePlacement
+import com.enrpau.dualscreendex.parser.catalog.defaultTextProjection
 import com.enrpau.dualscreendex.parser.model.ParseResult
 import com.enrpau.dualscreendex.parser.model.CapabilityEvidence
 import com.enrpau.dualscreendex.parser.model.CapabilityReviewStatus
@@ -240,6 +242,7 @@ data class CatalogSamples(
 ) {
     companion object {
         fun from(catalog: ParsedCatalog, limit: Int = 3): CatalogSamples {
+            val text = catalog.defaultTextProjection()
             val speciesRecords = catalog.navigableSpecies().sortedBy { it.id }
             val moves = catalog.movesById.values.filter { it.id > 0 }.sortedBy { it.id }
             val types = catalog.typesById.values.sortedBy { it.id }
@@ -309,7 +312,7 @@ data class CatalogSamples(
                 val sprite = species.sprite.value?.let {
                     "${it.width}x${it.height}#${it.argb.contentHashCode().toUInt().toString(16).uppercase()}"
                 } ?: "-"
-                return "id=${species.id}; dex=${species.dexNumber.value ?: "-"}; name=${species.name.value ?: "-"}; " +
+                return "id=${species.id}; dex=${species.dexNumber.value ?: "-"}; name=${text.speciesName(species.id) ?: "-"}; " +
                     "types=${species.typeIds.value.orEmpty()}; stats=$stats; sprite=$sprite"
             }
             fun acquisitionSamples(method: MoveAcquisitionMethod): List<String> = speciesRecords.asSequence()
@@ -325,7 +328,7 @@ data class CatalogSamples(
             return CatalogSamples(
                 species = speciesRecords.take(limit).map(::formatSpecies),
                 moves = moves.take(limit).map { move ->
-                    "id=${move.id}; name=${move.name.value ?: "-"}; type=${move.typeId.value ?: "-"}; " +
+                    "id=${move.id}; name=${text.moveName(move.id) ?: "-"}; type=${move.typeId.value ?: "-"}; " +
                         "category=${move.category.value ?: "-"}; power=${move.power.value ?: "-"}; " +
                         "accuracy=${move.accuracy.value ?: "-"}; pp=${move.pp.value ?: "-"}; " +
                         "priority=${move.priority.value ?: "-"}; effect=${move.effectId.value ?: "-"}"
@@ -334,7 +337,7 @@ data class CatalogSamples(
                     val colors = type.presentation.value?.let {
                         "${it.foregroundArgb.toUInt().toString(16)}/${it.backgroundArgb.toUInt().toString(16)}/${it.borderArgb.toUInt().toString(16)}"
                     } ?: "-"
-                    "id=${type.id}; name=${type.name.value ?: "-"}; colors=$colors"
+                    "id=${type.id}; name=${text.typeName(type.id) ?: "-"}; colors=$colors"
                 },
                 typeChart = catalog.typeChart.take(limit).map {
                     "attack=${it.attackingTypeId}; defend=${it.defendingTypeId}; multiplier=${it.multiplierPercent}%"
@@ -351,7 +354,7 @@ data class CatalogSamples(
                 }.take(limit).toList(),
                 abilities = abilities.take(limit).map { ability ->
                     val mechanics = ability.mechanics.value.orEmpty().joinToString(",") { "${it.label}=${it.value}" }
-                    "id=${ability.id}; name=${ability.name.value ?: "-"}; mechanics=${mechanics.ifBlank { "-" }}"
+                    "id=${ability.id}; name=${text.abilityName(ability.id) ?: "-"}; mechanics=${mechanics.ifBlank { "-" }}"
                 },
                 encounters = catalog.encounterAreas.asSequence().flatMap { area ->
                     area.slots.asSequence().map { slot ->
@@ -363,7 +366,7 @@ data class CatalogSamples(
                     val sprite = ball.sprite.value?.let {
                         "${it.width}x${it.height}#${it.argb.contentHashCode().toUInt().toString(16).uppercase()}"
                     } ?: "-"
-                    "id=${ball.id}; name=${ball.name.value ?: "-"}; sprite=$sprite"
+                    "id=${ball.id}; name=${text.itemName(ball.id) ?: "-"}; sprite=$sprite"
                 },
                 referenceErrors = referenceErrors,
                 speciesByDex = speciesRecords
@@ -450,18 +453,19 @@ data class CatalogMetrics(
 ) {
     companion object {
         fun from(catalog: ParsedCatalog): CatalogMetrics {
+            val text = catalog.defaultTextProjection()
             val species = catalog.navigableSpecies()
             val moves = catalog.movesById.values.filter { it.id > 0 }
             val acquisitions = species.flatMap { it.moveAcquisitions.value.orEmpty() }
             val abilities = catalog.abilitiesById.values.filter { ability ->
-                ability.id > 0 && ability.name.value?.isNotBlank() == true
+                ability.id > 0 && !text.abilityName(ability.id).isNullOrBlank()
             }
             return CatalogMetrics(
                 species = species.size,
-                namedSpecies = species.count { it.name.status == CapabilityStatus.AVAILABLE },
+                namedSpecies = species.count { text.speciesName(it.id) != null },
                 speciesWithStats = species.count { it.baseStats.status == CapabilityStatus.AVAILABLE },
                 speciesWithSprites = species.count { it.sprite.status == CapabilityStatus.AVAILABLE },
-                speciesWithDescriptions = species.count { it.description.status == CapabilityStatus.AVAILABLE },
+                speciesWithDescriptions = species.count { text.speciesDescription(it.id) != null },
                 evolutionEdges = species.sumOf { it.evolutionEdges.value?.size ?: 0 },
                 learnsetEntries = species.sumOf { it.learnset.value?.size ?: 0 },
                 learnsetRulesets = catalog.learnsetRulesets.size,
@@ -472,14 +476,14 @@ data class CatalogMetrics(
                         move.accuracy.status == CapabilityStatus.AVAILABLE &&
                         move.pp.status == CapabilityStatus.AVAILABLE
                 },
-                movesWithDescriptions = moves.count { it.effectText.status == CapabilityStatus.AVAILABLE },
+                movesWithDescriptions = moves.count { text.moveDescription(it.id) != null },
                 eggMoveLinks = acquisitions.count { it.method == MoveAcquisitionMethod.EGG },
                 machineMoveLinks = acquisitions.count { it.method == MoveAcquisitionMethod.MACHINE },
                 tutorMoveLinks = acquisitions.count { it.method == MoveAcquisitionMethod.TUTOR },
                 types = catalog.typesById.size,
                 typeMatchups = catalog.typeChart.size,
                 abilities = abilities.size,
-                abilitiesWithDescriptions = abilities.count { it.description.status == CapabilityStatus.AVAILABLE },
+                abilitiesWithDescriptions = abilities.count { text.abilityDescription(it.id) != null },
                 abilitiesWithMechanics = abilities.count { it.mechanics.status == CapabilityStatus.AVAILABLE },
                 captureBalls = catalog.captureBallsById.values.count { it.sprite.status == CapabilityStatus.AVAILABLE },
                 encounterAreas = catalog.encounterAreas.size,
@@ -508,28 +512,32 @@ data class CatalogMetrics(
                 provenTypedAbilityModifiers = abilities.sumOf { ability ->
                     ability.mechanics.value.orEmpty().count(::isProvenTypedModifier)
                 },
-                areaGuide = areaGuideMetrics(catalog),
+                areaGuide = areaGuideMetrics(catalog, text),
             )
         }
 
-        private fun areaGuideMetrics(catalog: ParsedCatalog): AreaGuideCatalogMetrics {
+        private fun areaGuideMetrics(
+            catalog: ParsedCatalog,
+            text: CatalogTextProjection,
+        ): AreaGuideCatalogMetrics {
             val names = buildMap {
                 catalog.encounterAreas.forEach { area ->
-                    playerFacingText(area.name.value, null)?.let { putIfAbsent(area.id / 10, it) }
+                    playerFacingText(text.encounterAreaName(area.id), null)?.let { putIfAbsent(area.id / 10, it) }
                 }
                 catalog.worldMaps.regions.forEach { region ->
                     region.locations.forEach { location ->
-                        playerFacingText(location.displayName, null)?.let { name ->
+                        playerFacingText(text.worldLocationName(region.key, location.key), null)?.let { name ->
                             location.baseAreaIds.forEach { put(it, name) }
                         }
                     }
                 }
                 catalog.localMaps.maps.forEach { map ->
-                    playerFacingText(map.displayName, null)?.let { put(map.baseAreaId, it) }
+                    playerFacingText(text.localMapName(map.key), null)?.let { put(map.baseAreaId, it) }
                 }
-                catalog.runtimeMetadata.areaNamesByBaseId.forEach { (baseAreaId, name) ->
-                    playerFacingText(name, null)?.let { put(baseAreaId, it) }
-                }
+                (catalog.runtimeMetadata.areaBaseIds + catalog.runtimeMetadata.areaNamesByBaseId.keys)
+                    .forEach { baseAreaId ->
+                        playerFacingText(text.areaName(baseAreaId), null)?.let { put(baseAreaId, it) }
+                    }
             }
             val areaIds = buildSet {
                 addAll(catalog.encounterAreas.map { it.id / 10 })
@@ -537,6 +545,7 @@ data class CatalogMetrics(
                     region.locations.forEach { addAll(it.baseAreaIds) }
                 }
                 addAll(catalog.localMaps.maps.map(LocalMap::baseAreaId))
+                addAll(catalog.runtimeMetadata.areaBaseIds)
                 addAll(catalog.runtimeMetadata.areaNamesByBaseId.keys)
             }
             val mapsByKey = catalog.localMaps.maps.associateBy(LocalMap::key)
@@ -558,11 +567,10 @@ data class CatalogMetrics(
             val encounterSlots = catalog.encounterAreas.flatMap { it.slots }
             val poiRecordsWithContent = catalog.localMaps.pois.count { poi ->
                 val areaName = names[poi.baseAreaId]
-                playerFacingText(poi.displayName, areaName) != null ||
-                    poi.displayNamesByTrainerGender.values.any { playerFacingText(it, areaName) != null } ||
+                playerFacingText(text.poiDisplayName(poi.key), areaName) != null ||
                     poi.service != null ||
                     poi.item?.itemId != null ||
-                    playerFacingText(poi.item?.displayName, areaName) != null
+                    playerFacingText(text.poiItemName(poi.key, poi.item?.itemId), areaName) != null
             }
             return AreaGuideCatalogMetrics(
                 areaIdentities = areaIds.size,
@@ -571,7 +579,7 @@ data class CatalogMetrics(
                 resolvedExitRecords = exits.count { (source, destination) -> source in names && destination in names },
                 encounterSpeciesRecords = encounterSlots.size,
                 namedEncounterSpeciesRecords = encounterSlots.count { slot ->
-                    catalog.speciesById[slot.speciesId]?.name?.value?.let { playerFacingText(it, null) } != null
+                    text.speciesName(slot.speciesId)?.let { playerFacingText(it, null) } != null
                 },
                 encounterWindowGroups = catalog.encounterAreas.size,
                 resolvedEncounterWindowGroups = catalog.encounterAreas.count { it.windows.isNotEmpty() },

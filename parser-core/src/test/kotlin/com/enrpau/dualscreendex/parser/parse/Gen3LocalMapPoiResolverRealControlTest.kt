@@ -3,6 +3,7 @@ package com.enrpau.dualscreendex.parser.parse
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiKind
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiOrganicVisibility
+import com.enrpau.dualscreendex.parser.catalog.defaultTextProjection
 import com.enrpau.dualscreendex.parser.io.RomImage
 import java.nio.file.Files
 import java.nio.file.Path
@@ -34,8 +35,9 @@ class Gen3LocalMapPoiResolverRealControlTest {
 
     @Test
     fun `official Emerald merges Littleroot signs with their named destinations`() {
-        val pois = parse("DUALDEX_OFFICIAL_EMERALD_ROM", EMERALD_SHA)
-            .localMaps.pois.filter { it.baseAreaId == 0x0009 }
+        val catalog = parse("DUALDEX_OFFICIAL_EMERALD_ROM", EMERALD_SHA)
+        val text = catalog.defaultTextProjection()
+        val pois = catalog.localMaps.pois.filter { it.baseAreaId == 0x0009 }
 
         assertEquals(4, pois.size)
         assertEquals(emptyList<LocalMapPoiKind>(), pois.filter { it.kind != LocalMapPoiKind.PLACE }.map { it.kind })
@@ -50,7 +52,7 @@ class Gen3LocalMapPoiResolverRealControlTest {
                 "PROF. BIRCH'S HOUSE",
                 "PROF. BIRCH'S POKéMON LAB",
             ),
-            pois.mapNotNullTo(mutableSetOf()) { it.displayName },
+            pois.mapNotNullTo(mutableSetOf()) { text.poiDisplayName(it.key) },
         )
         assertTrue(pois.all { it.organicVisibility == LocalMapPoiOrganicVisibility.ENTRANCE_PROXIMITY })
         assertTrue(pois.none { "/warp/" in it.key })
@@ -58,25 +60,35 @@ class Gen3LocalMapPoiResolverRealControlTest {
 
     @Test
     fun `Modern Emerald preserves both gender-conditioned Littleroot house sign contents`() {
-        val pois = parse("DUALDEX_MODERN_EMERALD_ROM", MODERN_EMERALD_SHA)
-            .localMaps.pois.filter { it.baseAreaId == 0x0009 }
+        val catalog = parse("DUALDEX_MODERN_EMERALD_ROM", MODERN_EMERALD_SHA)
+        val text = catalog.defaultTextProjection()
+        val pois = catalog.localMaps.pois.filter { it.baseAreaId == 0x0009 }
 
+        val firstHouse = pois.single { it.tileX == 7 && it.tileY == 8 }
         assertEquals(
-            mapOf(0 to "{PLAYER}'s House", 1 to "Prof. Birch's House"),
-            pois.single { it.tileX == 7 && it.tileY == 8 }.displayNamesByTrainerGender,
+            mapOf(
+                0 to "{PLAYER}'s House",
+                1 to "Prof. Birch's House",
+            ),
+            mapOf(
+                0 to text.poiDisplayName(firstHouse.key, 0),
+                1 to text.poiDisplayName(firstHouse.key, 1),
+            ),
         )
+        assertEquals("{PLAYER}'s House", text.poiDisplayName(firstHouse.key))
+
+        val secondHouse = pois.single { it.tileX == 12 && it.tileY == 8 }
         assertEquals(
-            "{PLAYER}'s House",
-            pois.single { it.tileX == 7 && it.tileY == 8 }.displayName,
+            mapOf(
+                0 to "Prof. Birch's House",
+                1 to "{PLAYER}'s House",
+            ),
+            mapOf(
+                0 to text.poiDisplayName(secondHouse.key, 0),
+                1 to text.poiDisplayName(secondHouse.key, 1),
+            ),
         )
-        assertEquals(
-            mapOf(0 to "Prof. Birch's House", 1 to "{PLAYER}'s House"),
-            pois.single { it.tileX == 12 && it.tileY == 8 }.displayNamesByTrainerGender,
-        )
-        assertEquals(
-            "Prof. Birch's House",
-            pois.single { it.tileX == 12 && it.tileY == 8 }.displayName,
-        )
+        assertEquals("Prof. Birch's House", text.poiDisplayName(secondHouse.key))
     }
 
     @Test

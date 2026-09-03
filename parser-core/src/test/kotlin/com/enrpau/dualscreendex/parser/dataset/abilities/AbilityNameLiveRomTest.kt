@@ -4,6 +4,7 @@ import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.catalog.AbilityRecord
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
+import com.enrpau.dualscreendex.parser.catalog.defaultTextProjection
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.family.validatedDirectAbilityIds
 import com.enrpau.dualscreendex.parser.io.RomImage
@@ -15,6 +16,7 @@ import java.nio.file.Path
 import java.security.MessageDigest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
@@ -126,13 +128,14 @@ class AbilityNameLiveRomTest {
             "semantic=${finalTyped.table.count} reasons=${capability.reasons}")
         assertEquals("semantic phase must preserve the validated direct-ID domain", 208L, finalTyped.table.count)
         val catalog = requireNotNull(parsed.catalog)
+        val text = catalog.defaultTextProjection()
         assertTrue(78 !in catalog.abilitiesById)
         assertEquals(listOf(19), catalog.speciesById.getValue(693).abilityIds.value)
         assertTrue(catalog.speciesById.values.none { 78 in it.abilityIds.value.orEmpty() })
-        assertEquals("Slush Rush", catalog.abilitiesById.getValue(203).name.value)
-        assertEquals("Galvanize", catalog.abilitiesById.getValue(207).name.value)
+        assertEquals("Slush Rush", text.abilityName(203))
+        assertEquals("Galvanize", text.abilityName(207))
         assertEquals(0, missingAbilityReferences(catalog))
-        println("CRYSTAL_ABILITY_SHA256 ${abilityNameSha256(catalog.abilitiesById.values)}")
+        println("CRYSTAL_ABILITY_SHA256 ${abilityNameSha256(catalog, catalog.abilitiesById.values)}")
     }
 
     @Test fun modernRetainsItsSelectedAbilityCatalog() {
@@ -191,6 +194,7 @@ class AbilityNameLiveRomTest {
                     parsed.analysis.capabilities.single { it.capability == RomCapability.ABILITIES },
             )
             val catalog = requireNotNull(parsed.catalog)
+            val text = catalog.defaultTextProjection()
 
             assertEquals(case.expectedRoot, selected.offset)
             assertEquals(13, selected.recordSize)
@@ -204,7 +208,7 @@ class AbilityNameLiveRomTest {
             )
             assertTrue(case.expectedReferencedIds.all { it in catalog.abilitiesById })
             case.expectedUnresolvedNameIds.forEach { abilityId ->
-                assertEquals(CapabilityStatus.NOT_FOUND, catalog.abilitiesById.getValue(abilityId).name.status)
+                assertNull(text.abilityName(abilityId))
             }
             case.expectedSuppressedIds.forEach { abilityId ->
                 assertTrue(abilityId !in catalog.abilitiesById)
@@ -295,12 +299,18 @@ class AbilityNameLiveRomTest {
         assertEquals(expectedPhysicalCount.toLong(), typed.table.count)
         assertEquals(expectedAbilityCount, catalog.abilitiesById.keys.count { it > 0 })
         assertEquals((1..expectedAbilityCount).toSet(), catalog.abilitiesById.keys.filter { it > 0 }.toSet())
-        assertEquals(expectedNameSha256, abilityNameSha256(catalog.abilitiesById.values.filter { it.id > 0 }))
+        assertEquals(
+            expectedNameSha256,
+            abilityNameSha256(catalog, catalog.abilitiesById.values.filter { it.id > 0 }),
+        )
         val capability = parsed.analysis.capabilities.single { it.capability == RomCapability.ABILITIES }
         assertEquals(CapabilityStatus.AVAILABLE, capability.status)
         assertTrue(capability.compatible)
         assertEquals(0, missingAbilityReferences(catalog))
-        println("ABILITY_NAME_PARITY root=0x${expectedRoot.toString(16)} count=$expectedAbilityCount sha256=${abilityNameSha256(catalog.abilitiesById.values.filter { it.id > 0 })}")
+        println(
+            "ABILITY_NAME_PARITY root=0x${expectedRoot.toString(16)} count=$expectedAbilityCount " +
+                "sha256=${abilityNameSha256(catalog, catalog.abilitiesById.values.filter { it.id > 0 })}",
+        )
         return Parsed(catalog)
     }
 
@@ -328,7 +338,7 @@ class AbilityNameLiveRomTest {
         assertEquals(case.expectedDecodedIds, catalog.abilitiesById.keys.filter { it > 0 }.toSet())
         assertEquals(
             case.expectedNameSha256,
-            abilityNameSha256(catalog.abilitiesById.values.filter { it.id > 0 }),
+            abilityNameSha256(catalog, catalog.abilitiesById.values.filter { it.id > 0 }),
         )
         val capability = parsed.analysis.capabilities.single { it.capability == RomCapability.ABILITIES }
         assertTrue(capability.compatible)
@@ -355,9 +365,10 @@ class AbilityNameLiveRomTest {
         species.abilityIds.value.orEmpty().count { it !in catalog.abilitiesById }
     }
 
-    private fun abilityNameSha256(abilities: Collection<AbilityRecord>): String {
+    private fun abilityNameSha256(catalog: ParsedCatalog, abilities: Collection<AbilityRecord>): String {
+        val text = catalog.defaultTextProjection()
         val payload = abilities.sortedBy(AbilityRecord::id).joinToString("\n") { ability ->
-            "${ability.id}|${ability.name.value}"
+            "${ability.id}|${text.abilityName(ability.id)}"
         }
         return MessageDigest.getInstance("SHA-256").digest(payload.toByteArray()).joinToString("") { byte ->
             "%02x".format(byte.toInt() and 0xFF)

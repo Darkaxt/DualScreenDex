@@ -29,7 +29,11 @@ import com.enrpau.dualscreendex.parser.catalog.AbilityMechanicCondition
 import com.enrpau.dualscreendex.parser.catalog.AbilityMechanicConditionKind
 import com.enrpau.dualscreendex.parser.catalog.AbilityMechanicKind
 import com.enrpau.dualscreendex.parser.catalog.AbilityRecord
+import com.enrpau.dualscreendex.parser.catalog.CatalogLanguageOverlay
+import com.enrpau.dualscreendex.parser.catalog.CatalogLocalization
 import com.enrpau.dualscreendex.parser.catalog.CatalogRuntimeMetadata
+import com.enrpau.dualscreendex.parser.catalog.LocalizedCapabilityState
+import com.enrpau.dualscreendex.parser.catalog.LocalizedTextCapability
 import com.enrpau.dualscreendex.parser.catalog.CatalogTheme
 import com.enrpau.dualscreendex.parser.catalog.CatalogThemeAssetClass
 import com.enrpau.dualscreendex.parser.catalog.CatalogThemeMethod
@@ -59,6 +63,11 @@ import com.enrpau.dualscreendex.parser.catalog.WorldMapCatalog
 import com.enrpau.dualscreendex.parser.catalog.WorldMapCell
 import com.enrpau.dualscreendex.parser.catalog.WorldMapLocation
 import com.enrpau.dualscreendex.parser.catalog.WorldMapRegion
+import com.enrpau.dualscreendex.parser.language.LanguageResolutionStatus
+import com.enrpau.dualscreendex.parser.language.LanguageTag
+import com.enrpau.dualscreendex.parser.language.LocalizedTableLayout
+import com.enrpau.dualscreendex.parser.language.RomLanguageManifest
+import com.enrpau.dualscreendex.parser.language.RomLanguageProjection
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.CapabilityEvidence
@@ -1343,6 +1352,95 @@ class ApiViewBuilderTest {
         assertEquals(catalog.romSha256, androidState.catalogHash)
         assertTrue(androidState.mapperAvailable)
         assertFalse(desktopState.mapperAvailable)
+    }
+
+    @Test
+    fun bootstrapPublishesTheExactDefaultOverlayAndBoundedLanguageSummary() {
+        val languages = listOf(LanguageTag.ENGLISH, LanguageTag.FRENCH)
+        val manifest = RomLanguageManifest(
+            defaultLanguage = LanguageTag.ENGLISH,
+            projections = languages.map { language ->
+                RomLanguageProjection(
+                    language = language,
+                    codecId = "fixture-${language.value}",
+                    codecVersion = 1,
+                    localizedTables = LocalizedTableLayout(),
+                    evidence = emptyList(),
+                    status = LanguageResolutionStatus.RESOLVED,
+                )
+            },
+            status = LanguageResolutionStatus.RESOLVED,
+        )
+        fun overlay(language: LanguageTag, version: Long, id: Int, name: String) = CatalogLanguageOverlay(
+            language = language,
+            overlayVersion = version,
+            localizedCapabilities = LocalizedTextCapability.entries.associateWith { capability ->
+                val expected = when (capability) {
+                    LocalizedTextCapability.SPECIES_NAMES,
+                    LocalizedTextCapability.SPECIES_DESCRIPTIONS,
+                    -> 2
+                    else -> 0
+                }
+                when {
+                    capability == LocalizedTextCapability.SPECIES_NAMES -> LocalizedCapabilityState(
+                        status = CapabilityStatus.PARTIAL,
+                        confidence = 1.0,
+                        coveredRecords = 1,
+                        expectedRecords = expected,
+                    )
+                    expected > 0 -> LocalizedCapabilityState.notFound("fixture missing", expected)
+                    else -> LocalizedCapabilityState.unavailable(
+                        CapabilityStatus.NOT_APPLICABLE,
+                        expectedRecords = 0,
+                        confidence = 1.0,
+                    )
+                }
+            },
+            speciesNames = mapOf(id to CatalogField.available(name)),
+        )
+        val catalog = ParsedCatalog(
+            romSha256 = "a".repeat(64),
+            romCrc32 = "1234ABCD",
+            family = EngineFamily.RED_BLUE,
+            platform = Platform.GB,
+            speciesById = (1..2).associateWith { id ->
+                com.enrpau.dualscreendex.parser.catalog.SpeciesRecord(
+                    id = id,
+                    dexNumber = CatalogField.available(id),
+                    name = CatalogField.notFound("localized"),
+                    typeIds = CatalogField.available(emptyList()),
+                    baseStats = CatalogField.notFound("fixture"),
+                    sprite = CatalogField.notFound("fixture"),
+                )
+            },
+            localization = CatalogLocalization(
+                manifest,
+                mapOf(
+                    LanguageTag.ENGLISH to overlay(LanguageTag.ENGLISH, 7, 1, "Bulbasaur"),
+                    LanguageTag.FRENCH to overlay(LanguageTag.FRENCH, 8, 2, "Herbizarre"),
+                ),
+            ),
+        )
+
+        val bootstrap = ApiViewBuilder.bootstrap(
+            catalog,
+            ApiViewBuilder.state(AppSnapshot(), catalog),
+        )
+
+        assertEquals(listOf("Bulbasaur", "#2"), bootstrap.catalog!!.species.map { it.name })
+        val language = requireNotNull(bootstrap.language)
+        assertEquals("RESOLVED", language.manifestStatus)
+        assertEquals("en", language.defaultLanguage)
+        assertEquals("en", language.activeLanguage)
+        assertEquals("ROM_DEFAULT", language.authority)
+        assertEquals(7L, language.activeOverlayVersion)
+        assertEquals(listOf("en", "fr"), language.projections.map { it.language })
+        assertEquals(
+            "PARTIAL",
+            language.projections.first().localizedCapabilities.getValue("SPECIES_NAMES").status,
+        )
+        assertEquals(1, language.projections.first().localizedCapabilities.getValue("SPECIES_NAMES").coveredRecords)
+        assertEquals(2, language.projections.first().localizedCapabilities.getValue("SPECIES_NAMES").expectedRecords)
     }
 
     private fun identityOnlyTrainerCard(name: String, gender: Int) = TrainerCardState(

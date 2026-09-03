@@ -22,13 +22,14 @@ class AbilityMechanicsMaterializerLiveRomTest {
         ).load()
 
         val catalog = CatalogMaterializer.materialize(loaded.rom, loaded.parse, loaded.layout)
+        val text = catalog.defaultTextProjection()
 
         assertEquals(0x67F958, GbaPublishedHeaderResolver.resolve(loaded.rom).abilityDescriptions)
-        val descriptions = catalog.capabilities.getValue(RomCapability.ABILITY_DESCRIPTIONS)
+        val descriptions = text.localizedCapabilities.getValue(LocalizedTextCapability.ABILITY_DESCRIPTIONS)
         assertEquals(CapabilityStatus.AVAILABLE, descriptions.status)
-        assertEquals(81, descriptions.count)
-        assertEquals("Helps repel wild Pokémon.", catalog.abilitiesById.getValue(1).description.value)
-        assertEquals("Normal moves become Fairy.", catalog.abilitiesById.getValue(81).description.value)
+        assertEquals(81, descriptions.coveredRecords)
+        assertEquals("Helps repel wild Pokémon.", text.abilityDescription(1))
+        assertEquals("Normal moves become Fairy.", text.abilityDescription(81))
 
         val capability = catalog.capabilities.getValue(RomCapability.ABILITY_MECHANICS)
         assertEquals(CapabilityStatus.AVAILABLE, capability.status)

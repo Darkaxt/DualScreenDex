@@ -2,10 +2,12 @@ package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
+import com.enrpau.dualscreendex.parser.catalog.CatalogTextProjection
 import com.enrpau.dualscreendex.parser.catalog.EncounterMaterializer
 import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiKind
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiOrganicVisibility
+import com.enrpau.dualscreendex.parser.catalog.defaultTextProjection
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.language.defaultTextCodec
@@ -74,10 +76,11 @@ class Gen1LocalMapResolverRealControlTest {
         assertEquals(SelectionStatus.SELECTED, attempt.analysis.status)
         val catalog = requireNotNull(attempt.catalog).getOrThrow()
         val localMaps = catalog.localMaps
+        val text = catalog.defaultTextProjection()
 
         assertEquals(control.mapCount, localMaps.maps.size)
         assertEquals(control.mapCount, localMaps.assets.size)
-        assertTrue(localMaps.maps.all { !it.displayName.isNullOrBlank() })
+        assertTrue(localMaps.maps.all { !text.localMapName(it.key).isNullOrBlank() })
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.LOCAL_MAP).status)
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.WORLD_MAP).status)
         assertEquals(setOf(0), catalog.trainerAssets.overworldAssetKeys.keys)
@@ -91,17 +94,22 @@ class Gen1LocalMapResolverRealControlTest {
         }
         assertTrue(connectionFailures.joinToString("\n"), connectionFailures.isEmpty())
         assertScenes(localMaps)
-        assertPois(localMaps, control.forestHiddenCollectionFlags)
-        control.maps.forEach { expected -> assertMap(localMaps, expected) }
+        assertPois(localMaps, text, control.forestHiddenCollectionFlags)
+        control.maps.forEach { expected -> assertMap(localMaps, text, expected) }
     }
 
-    private fun assertPois(catalog: LocalMapCatalog, forestHiddenCollectionFlags: Pair<Int, Int>) {
+    private fun assertPois(
+        catalog: LocalMapCatalog,
+        text: CatalogTextProjection,
+        forestHiddenCollectionFlags: Pair<Int, Int>,
+    ) {
         val palletTown = catalog.pois.filter { it.baseAreaId == 0x00 }
         assertEquals(4, palletTown.size)
         assertEquals(setOf(0x25, 0x27, 0x28), palletTown.mapNotNullTo(mutableSetOf()) { it.destinationBaseAreaId })
         assertTrue(palletTown.all { it.kind == LocalMapPoiKind.PLACE })
         assertTrue(palletTown.all { it.organicVisibility == LocalMapPoiOrganicVisibility.ENTRANCE_PROXIMITY })
-        assertEquals("PALLET TOWN", palletTown.single { it.tileX == 7 && it.tileY == 9 }.displayName)
+        val palletEntrance = palletTown.single { it.tileX == 7 && it.tileY == 9 }
+        assertEquals("PALLET TOWN", text.poiDisplayName(palletEntrance.key))
 
         val forest = catalog.pois.filter { it.baseAreaId == 0x33 }
         val potion = forest.single { it.tileX == 12 && it.tileY == 29 }
@@ -156,9 +164,13 @@ class Gen1LocalMapResolverRealControlTest {
         }
     }
 
-    private fun assertMap(catalog: LocalMapCatalog, expected: ExpectedMap) {
+    private fun assertMap(
+        catalog: LocalMapCatalog,
+        text: CatalogTextProjection,
+        expected: ExpectedMap,
+    ) {
         val map = catalog.maps.single { it.baseAreaId == expected.baseAreaId }
-        assertEquals(expected.displayName, map.displayName)
+        assertEquals(expected.displayName, text.localMapName(map.key))
         assertEquals(expected.gridWidth, map.gridWidth)
         assertEquals(expected.gridHeight, map.gridHeight)
         assertEquals(expected.gridWidth * 16, map.pixelWidth)

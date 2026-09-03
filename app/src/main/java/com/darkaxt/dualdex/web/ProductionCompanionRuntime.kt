@@ -790,7 +790,7 @@ class ProductionCompanionRuntime(
     @Synchronized
     fun bootstrap(): BootstrapView {
         val snapshot = gateway.bootstrap()
-        return BootstrapView(catalog?.let(ApiViewBuilder::catalog), stateView(snapshot))
+        return ApiViewBuilder.bootstrap(catalog, stateView(snapshot))
     }
 
     @Synchronized

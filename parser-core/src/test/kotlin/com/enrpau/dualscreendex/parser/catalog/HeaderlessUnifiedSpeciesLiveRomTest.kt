@@ -101,17 +101,21 @@ class HeaderlessUnifiedSpeciesLiveRomTest {
         val catalog = CatalogParser.parse(rom).catalog
         assertNotNull(catalog)
         requireNotNull(catalog)
+        val text = catalog.defaultTextProjection()
         assertEquals(1_522, catalog.speciesById.size)
         assertTrue(catalog.speciesById.containsKey(1))
         assertTrue(catalog.speciesById.containsKey(0x5F3))
         assertFalse(catalog.speciesById.containsKey(0x59B))
         assertFalse(catalog.speciesById.containsKey(0x5F4))
-        assertEquals("Bulbasaur", catalog.speciesById.getValue(1).name.value)
+        assertEquals("Bulbasaur", text.speciesName(1))
         assertEquals(45, catalog.speciesById.getValue(1).baseStats.value?.hp)
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.SPRITES).status)
-        assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.POKEDEX_DESCRIPTIONS).status)
+        assertEquals(
+            CapabilityStatus.AVAILABLE,
+            text.localizedCapabilities.getValue(LocalizedTextCapability.SPECIES_DESCRIPTIONS).status,
+        )
         val bulbasaur = catalog.speciesById.getValue(1)
-        assertTrue(bulbasaur.description.value?.contains("Bulbasaur can be seen napping") == true)
+        assertTrue(text.speciesDescription(1)?.contains("Bulbasaur can be seen napping") == true)
         assertEquals(7, bulbasaur.height.value)
         assertEquals(69, bulbasaur.weight.value)
         assertEquals(64, bulbasaur.sprite.value?.width)
@@ -119,8 +123,8 @@ class HeaderlessUnifiedSpeciesLiveRomTest {
         assertTrue(bulbasaur.sprite.value?.argb?.any { it != 0 } == true)
         assertEquals(listOf(65, 34), bulbasaur.abilityIds.value)
         assertEquals(310, catalog.abilitiesById.size)
-        assertEquals("Overgrow", catalog.abilitiesById.getValue(65).name.value)
-        assertEquals("Ups Grass moves in a pinch.", catalog.abilitiesById.getValue(65).description.value)
+        assertEquals("Overgrow", text.abilityName(65))
+        assertEquals("Ups Grass moves in a pinch.", text.abilityDescription(65))
         assertTrue(
             catalog.abilitiesById.getValue(65).mechanics.value.orEmpty().any {
                 it.kind == AbilityMechanicKind.AI_RATING && it.value == "5"
@@ -132,7 +136,10 @@ class HeaderlessUnifiedSpeciesLiveRomTest {
             },
         )
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.ABILITIES).status)
-        assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.ABILITY_DESCRIPTIONS).status)
+        assertEquals(
+            CapabilityStatus.AVAILABLE,
+            text.localizedCapabilities.getValue(LocalizedTextCapability.ABILITY_DESCRIPTIONS).status,
+        )
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.ABILITY_MECHANICS).status)
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.BALL_CATALOG).status)
         assertEquals(28, catalog.captureBallsById.size)
@@ -195,12 +202,13 @@ class HeaderlessUnifiedSpeciesLiveRomTest {
         assertFalse(catalog.typesById.containsKey(0))
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.MOVE_CATALOG).status)
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.MOVE_DETAILS).status)
-        val moveDescriptionCapability = catalog.capabilities.getValue(RomCapability.MOVE_DESCRIPTIONS)
+        val moveDescriptionCapability =
+            text.localizedCapabilities.getValue(LocalizedTextCapability.MOVE_DESCRIPTIONS)
         assertEquals(CapabilityStatus.PARTIAL, moveDescriptionCapability.status)
         assertEquals(842, moveDescriptionCapability.coveredRecords)
         assertEquals(847, moveDescriptionCapability.expectedRecords)
         assertEquals(847, catalog.movesById.size)
-        assertEquals("Pound", catalog.movesById.getValue(1).name.value)
+        assertEquals("Pound", text.moveName(1))
         assertEquals(1, catalog.movesById.getValue(1).typeId.value)
         assertEquals(MoveCategory.PHYSICAL, catalog.movesById.getValue(1).category.value)
         assertEquals(40, catalog.movesById.getValue(1).power.value)
@@ -208,8 +216,8 @@ class HeaderlessUnifiedSpeciesLiveRomTest {
         assertEquals(35, catalog.movesById.getValue(1).pp.value)
         assertEquals(0, catalog.movesById.getValue(1).priority.value)
         assertEquals(1, catalog.movesById.getValue(1).effectId.value)
-        assertEquals("Pounds the foe with forelegs or tail.", catalog.movesById.getValue(1).effectText.value)
-        assertEquals("Malignant Chain", catalog.movesById.getValue(847).name.value)
+        assertEquals("Pounds the foe with forelegs or tail.", text.moveDescription(1))
+        assertEquals("Malignant Chain", text.moveName(847))
 
         val second = CatalogParser.parse(RomImage(Files.readAllBytes(path)))
         val secondRows = requireNotNull(second.layout?.resolvedDatasets?.learnsets?.primary)
@@ -274,10 +282,14 @@ class HeaderlessUnifiedSpeciesLiveRomTest {
         assertEquals(null, layout.headerlessUnifiedSpecies?.abilities?.abilityDescriptionPointerOffset)
         assertEquals(24, layout.headerlessUnifiedSpecies?.abilities?.abilityRatingOffset)
         val catalog = requireNotNull(result.catalog)
+        val text = catalog.defaultTextProjection()
         assertEquals(listOf(65, 34), catalog.speciesById.getValue(1).abilityIds.value)
-        assertEquals("Overgrow", catalog.abilitiesById.getValue(65).name.value)
+        assertEquals("Overgrow", text.abilityName(65))
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.ABILITIES).status)
-        assertEquals(CapabilityStatus.NOT_FOUND, catalog.capabilities.getValue(RomCapability.ABILITY_DESCRIPTIONS).status)
+        assertEquals(
+            CapabilityStatus.NOT_FOUND,
+            text.localizedCapabilities.getValue(LocalizedTextCapability.ABILITY_DESCRIPTIONS).status,
+        )
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.ABILITY_MECHANICS).status)
     }
 

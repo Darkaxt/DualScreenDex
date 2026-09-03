@@ -19,8 +19,11 @@ import com.enrpau.dualscreendex.companion.battle.SemanticProof
 import com.enrpau.dualscreendex.companion.model.KnowledgeMode
 import com.enrpau.dualscreendex.parser.catalog.AbilityMechanicConditionKind
 import com.enrpau.dualscreendex.parser.catalog.AbilityMechanicKind
+import com.enrpau.dualscreendex.parser.catalog.CatalogTextProjection
 import com.enrpau.dualscreendex.parser.catalog.MoveCategory
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
+import com.enrpau.dualscreendex.parser.catalog.TypeSemanticRole
+import com.enrpau.dualscreendex.parser.catalog.defaultTextProjection
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.RomCapability
 
@@ -56,6 +59,7 @@ internal object DamageForecastAssembler {
             unknowns += "A held item may change the damage."
         }
 
+        val text = catalog.defaultTextProjection()
         val modifiers = mutableListOf<ProvenDamageModifier>()
         if (typeId in attacker.typeIds) {
             modifiers += ProvenDamageModifier(
@@ -66,13 +70,15 @@ internal object DamageForecastAssembler {
                 "Same-type attack bonus",
             )
         }
-        addAttackerAbilityModifier(attacker, typeId, category, catalog, modifiers, unknowns)
+        addAttackerAbilityModifier(attacker, typeId, category, catalog, text, modifiers, unknowns)
         protectTargetAbility(target, typeId, catalog, knowledgeMode, unknowns)
 
         val bounded = mutableListOf<BoundedDamageModifier>()
-        val typeName = catalog.typesById[typeId]?.name?.value?.uppercase()
-        if (typeName == "FIRE" || typeName == "WATER") {
-            bounded += BoundedDamageModifier(
+        val moveTypeRole = catalog.typesById[typeId]?.semanticRole?.value
+        when (moveTypeRole) {
+            TypeSemanticRole.FIRE,
+            TypeSemanticRole.WATER,
+            -> bounded += BoundedDamageModifier(
                 kind = AppliedDamageCondition.WEATHER,
                 minimumNumerator = 1,
                 maximumNumerator = 3,
@@ -80,6 +86,8 @@ internal object DamageForecastAssembler {
                 proof = SemanticProof.SOURCE_VALIDATED,
                 playerExplanation = "Weather may change this range.",
             )
+            null -> unknowns += "Weather interaction for this move's type is unresolved."
+            else -> Unit
         }
         if (status(attacker.status) == ForecastStatus.BURNED && category == ForecastMoveCategory.PHYSICAL) {
             unknowns += "Burn may change this move's damage."
@@ -124,6 +132,7 @@ internal object DamageForecastAssembler {
         moveTypeId: Int,
         category: ForecastMoveCategory,
         catalog: ParsedCatalog,
+        text: CatalogTextProjection,
         modifiers: MutableList<ProvenDamageModifier>,
         unknowns: MutableList<String>,
     ) {
@@ -162,7 +171,7 @@ internal object DamageForecastAssembler {
                     mechanic.numerator,
                     mechanic.denominator,
                     SemanticProof.STRUCTURAL,
-                    "${ability.name.value ?: "Ability"} is active",
+                    "${text.abilityName(abilityId) ?: "Ability"} is active",
                     DamageModifierStage.ATTACK_STAT,
                 )
             }

@@ -28,6 +28,7 @@ class NatureCatalogMaterializationLiveRomTest {
 
         val parsed = CatalogParser.parse(rom)
         val catalog = requireNotNull(parsed.catalog)
+        val text = catalog.defaultTextProjection()
         val moveNames = parsed.layout?.tables?.moveNames
         val controls = moveNames?.let { table ->
             (1..3).map { index ->
@@ -54,8 +55,8 @@ class NatureCatalogMaterializationLiveRomTest {
         assertTrue(
             "language=${catalog.languageManifest.status}; diagnostics=${catalog.languageManifest.diagnostics}; " +
                 "moveNames=$moveNames; controls=$controls; " +
-                "natureNames=${catalog.naturesById.values.map { it.name }.take(3)}",
-            catalog.naturesById.values.all { !it.name.isNullOrBlank() },
+                "natureNames=${catalog.naturesById.keys.map(text::natureName).take(3)}",
+            catalog.naturesById.keys.all { !text.natureName(it).isNullOrBlank() },
         )
         assertTrue(catalog.naturesById.values.all { it.flavorModifiers != null })
         assertTrue(catalog.naturesById.values.any { it.raisedStat != null && it.loweredStat != null })

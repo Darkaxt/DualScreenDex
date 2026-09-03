@@ -2,7 +2,6 @@ package com.enrpau.dualscreendex.parser.catalog
 
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
-import com.enrpau.dualscreendex.parser.model.RomCapability
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.Assert.assertEquals
@@ -35,13 +34,14 @@ class AbilityDescriptionMaterializerLiveRomTest {
             assertEquals(control.sha256, rom.sha256)
 
             val catalog = requireNotNull(CatalogParser.parse(rom).catalog)
-            val evidence = catalog.capabilities.getValue(RomCapability.ABILITY_DESCRIPTIONS)
+            val text = catalog.defaultTextProjection()
+            val evidence = text.localizedCapabilities.getValue(LocalizedTextCapability.ABILITY_DESCRIPTIONS)
             assertEquals(CapabilityStatus.AVAILABLE, evidence.status)
             assertEquals(control.descriptionCount, evidence.coveredRecords)
             assertEquals(control.descriptionCount, evidence.expectedRecords)
             assertEquals(
                 control.descriptionCount,
-                catalog.abilitiesById.values.count { it.description.value != null },
+                catalog.abilitiesById.keys.count { text.abilityDescription(it) != null },
             )
         }
     }

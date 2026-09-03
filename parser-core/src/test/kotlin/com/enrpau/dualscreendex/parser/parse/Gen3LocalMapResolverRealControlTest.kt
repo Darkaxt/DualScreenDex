@@ -2,11 +2,13 @@ package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
+import com.enrpau.dualscreendex.parser.catalog.CatalogTextProjection
 import com.enrpau.dualscreendex.parser.catalog.EncounterMaterializer
 import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
 import com.enrpau.dualscreendex.parser.catalog.LocalMapScenePlacement
 import com.enrpau.dualscreendex.parser.catalog.MapTimeOfDay
 import com.enrpau.dualscreendex.parser.catalog.TimedLocalMapRasterRenderer
+import com.enrpau.dualscreendex.parser.catalog.defaultTextProjection
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.language.defaultTextCodec
@@ -47,8 +49,14 @@ class Gen3LocalMapResolverRealControlTest {
 
     @Test
     fun modernEmeraldRetainsPrimaryAndSecondaryTilesetLocalMaps() {
-        val localMaps = assertControl(controls[5])
-        assertTrue(localMaps.maps.any { it.baseAreaId == 0x0009 && it.displayName == "Littleroot Town" })
+        val result = assertControl(controls[5])
+        val localMaps = result.localMaps
+        assertTrue(
+            localMaps.maps.any {
+                it.baseAreaId == 0x0009 &&
+                    result.text.localMapName(it.key) == "Littleroot Town"
+            },
+        )
         assertTrue(localMaps.timedAssets.isNotEmpty())
         assertTrue(localMaps.assets.isNotEmpty())
         val route102Key = localMaps.maps.single { it.baseAreaId == 0x0011 }.imageAssetKey
@@ -96,7 +104,7 @@ class Gen3LocalMapResolverRealControlTest {
         )
     }
 
-    private fun assertControl(control: Control): LocalMapCatalog {
+    private fun assertControl(control: Control): ParsedLocalMaps {
         val attempt = CatalogParser.parseCatching(realRom(control))
         assertEquals(SelectionStatus.SELECTED, attempt.analysis.status)
         val catalog = requireNotNull(attempt.catalog).getOrThrow()
@@ -124,7 +132,7 @@ class Gen3LocalMapResolverRealControlTest {
         control.maps.forEach { expected ->
             assertMap(localMaps, expected)
         }
-        return localMaps
+        return ParsedLocalMaps(localMaps, catalog.defaultTextProjection())
     }
 
     private fun assertMap(catalog: LocalMapCatalog, expected: ExpectedMap) {
@@ -162,6 +170,11 @@ class Gen3LocalMapResolverRealControlTest {
             assertEquals(control.romSha256, it.sha256)
         }
     }
+
+    private data class ParsedLocalMaps(
+        val localMaps: LocalMapCatalog,
+        val text: CatalogTextProjection,
+    )
 
     private data class Control(
         val environmentVariable: String,

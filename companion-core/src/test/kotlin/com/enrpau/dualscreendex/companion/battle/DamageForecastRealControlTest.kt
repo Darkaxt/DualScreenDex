@@ -4,6 +4,7 @@ import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.MoveCategory
 import com.enrpau.dualscreendex.parser.catalog.MoveRecord
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
+import com.enrpau.dualscreendex.parser.catalog.defaultTextProjection
 import com.enrpau.dualscreendex.parser.io.RomSourceLoader
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -38,8 +39,13 @@ class DamageForecastRealControlTest {
         )
 
         controls.forEach { control ->
-            val tackle = parse(control.path()).movesById.getValue(33)
-            assertEquals("${control.id} Tackle", "TACKLE", tackle.name.value?.uppercase())
+            val catalog = parse(control.path())
+            val tackle = catalog.movesById.getValue(33)
+            assertEquals(
+                "${control.id} Tackle",
+                "TACKLE",
+                catalog.defaultTextProjection().moveName(tackle.id)?.uppercase(),
+            )
             assertEquals("${control.id} Tackle power", 35, tackle.power.value)
             assertEquals("${control.id} Tackle type", 0, tackle.typeId.value)
             assertEquals("${control.id} Tackle category", MoveCategory.PHYSICAL, tackle.category.value)

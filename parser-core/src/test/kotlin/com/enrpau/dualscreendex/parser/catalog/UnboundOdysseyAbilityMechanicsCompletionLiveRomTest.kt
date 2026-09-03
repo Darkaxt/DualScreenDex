@@ -6,6 +6,7 @@ import com.enrpau.dualscreendex.parser.model.RomCapability
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 
@@ -32,7 +33,7 @@ class UnboundOdysseyAbilityMechanicsCompletionLiveRomTest {
     }
 
     @Test
-    fun `Odyssey publishes the complete documented ability behavior domain`() {
+    fun `Odyssey publishes the complete localized ability description domain`() {
         val first = parse(
             "D:/Temp/PokemonHacks/corpus/expanded/roms/0123-5e7ce46db2ce/Odyssey (v4.1.1).gba",
             "44c7e3eafab19c39df7c39d54bafb78a1d9caf7c371244b6f5efb12cfd98d0d0",
@@ -42,22 +43,53 @@ class UnboundOdysseyAbilityMechanicsCompletionLiveRomTest {
             "44c7e3eafab19c39df7c39d54bafb78a1d9caf7c371244b6f5efb12cfd98d0d0",
         )
 
-        assertCompleteBehavior(first, 129)
-        assertCompleteParser(first)
+        assertCompleteDescriptions(first, 129)
+        assertCompleteParser(
+            first,
+            expectedNonAvailableShared = mapOf(
+                RomCapability.ABILITY_MECHANICS to CapabilityStatus.PARTIAL,
+            ),
+        )
         assertDeterministic(first, second)
-        assertEquals("Boosts team accuracy by 10%.", first.behavior(163))
-        assertEquals("KOing a foe ups highest stat.", first.behavior(234))
-        assertEquals("Normal moves become Aether.", first.behavior(235))
+        assertEquals("Boosts team accuracy by 10%.", first.description(163))
+        assertEquals("KOing a foe ups highest stat.", first.description(234))
+        assertEquals("Normal moves become Aether.", first.description(235))
         assertEquals("Boosts punching moves.", first.behavior(90))
     }
 
-    private fun assertCompleteParser(catalog: ParsedCatalog) {
-        assertEquals(RomCapability.entries.toSet(), catalog.capabilities.keys)
+    private fun assertCompleteParser(
+        catalog: ParsedCatalog,
+        expectedNonAvailableShared: Map<RomCapability, CapabilityStatus> = emptyMap(),
+    ) {
+        val localizedCapabilities = setOf(
+            RomCapability.SPECIES_NAMES,
+            RomCapability.POKEDEX_DESCRIPTIONS,
+            RomCapability.MOVE_DESCRIPTIONS,
+            RomCapability.ABILITY_DESCRIPTIONS,
+        )
+        assertEquals(RomCapability.entries.toSet() - localizedCapabilities, catalog.capabilities.keys)
         assertEquals(
-            emptyMap<RomCapability, CapabilityStatus>(),
+            expectedNonAvailableShared,
             catalog.capabilities.mapValues { (_, evidence) -> evidence.status }
                 .filterValues { it != CapabilityStatus.AVAILABLE },
         )
+        val overlay = requireNotNull(catalog.defaultLocalizedText())
+        setOf(
+            LocalizedTextCapability.SPECIES_NAMES,
+            LocalizedTextCapability.SPECIES_DESCRIPTIONS,
+            LocalizedTextCapability.MOVE_NAMES,
+            LocalizedTextCapability.MOVE_DESCRIPTIONS,
+            LocalizedTextCapability.ABILITY_NAMES,
+            LocalizedTextCapability.ABILITY_DESCRIPTIONS,
+        ).forEach { capability ->
+            val state = overlay.localizedCapabilities.getValue(capability)
+            assertTrue(
+                capability.name,
+                state.status == CapabilityStatus.AVAILABLE || state.status == CapabilityStatus.PARTIAL,
+            )
+            assertTrue(capability.name, state.coveredRecords > 0)
+            assertTrue(capability.name, state.expectedRecords >= state.coveredRecords)
+        }
     }
 
     private fun assertDeterministic(first: ParsedCatalog, second: ParsedCatalog) {
@@ -68,18 +100,16 @@ class UnboundOdysseyAbilityMechanicsCompletionLiveRomTest {
         )
     }
 
-    private fun assertCompleteBehavior(catalog: ParsedCatalog, expected: Int) {
-        val capability = catalog.capabilities.getValue(RomCapability.ABILITY_MECHANICS)
+    private fun assertCompleteDescriptions(catalog: ParsedCatalog, expected: Int) {
+        val overlay = requireNotNull(catalog.defaultLocalizedText())
+        val capability = overlay.localizedCapabilities.getValue(
+            LocalizedTextCapability.ABILITY_DESCRIPTIONS,
+        )
         assertEquals(CapabilityStatus.AVAILABLE, capability.status)
         assertEquals(expected, capability.coveredRecords)
         assertEquals(expected, capability.expectedRecords)
         assertEquals(expected, catalog.abilitiesById.size)
-        assertEquals(
-            expected,
-            catalog.abilitiesById.values.count { ability ->
-                ability.mechanics.value.orEmpty().any { it.kind == AbilityMechanicKind.BEHAVIOR }
-            },
-        )
+        assertEquals(catalog.abilitiesById.keys, overlay.abilityDescriptions.keys)
     }
 
     private fun assertCompleteRatings(catalog: ParsedCatalog, expected: Int) {
@@ -100,6 +130,9 @@ class UnboundOdysseyAbilityMechanicsCompletionLiveRomTest {
         ?.single { it.kind == AbilityMechanicKind.AI_RATING }
         ?.value
         .orEmpty()
+
+    private fun ParsedCatalog.description(id: Int): String =
+        defaultTextProjection().abilityDescription(id).orEmpty()
 
     private fun ParsedCatalog.behavior(id: Int): String = abilitiesById.getValue(id).mechanics.value
         ?.single { it.kind == AbilityMechanicKind.BEHAVIOR }

@@ -2,12 +2,14 @@ package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
+import com.enrpau.dualscreendex.parser.catalog.CatalogTextProjection
 import com.enrpau.dualscreendex.parser.catalog.EncounterArea
 import com.enrpau.dualscreendex.parser.catalog.EncounterMaterializer
 import com.enrpau.dualscreendex.parser.catalog.EncounterMethods
 import com.enrpau.dualscreendex.parser.catalog.Gen2CompiledEncounterResolver
 import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
 import com.enrpau.dualscreendex.parser.catalog.WorldMapCatalog
+import com.enrpau.dualscreendex.parser.catalog.defaultTextProjection
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
@@ -100,7 +102,13 @@ class Gen2WorldMapHackRealControlTest {
             integratedCatalog.capabilities.getValue(RomCapability.WORLD_MAP).status,
         )
         assertEquals(ORANGE_RASTER_SHA, sha256(integratedCatalog.worldMaps.assets.getValue(region.imageAssetKey)))
-        assertEquals(ORANGE_NAMED_LOCATION_SHA, namedLocationFingerprint(integratedCatalog.worldMaps))
+        assertEquals(
+            ORANGE_NAMED_LOCATION_SHA,
+            namedLocationFingerprint(
+                integratedCatalog.worldMaps,
+                integratedCatalog.defaultTextProjection(),
+            ),
+        )
     }
 
     @Test fun peridotRetainsCompiledEncounterSupportButFailsClosedAtLandmarkJoin() {
@@ -388,11 +396,19 @@ class Gen2WorldMapHackRealControlTest {
         return sha256(canonical.toByteArray())
     }
 
-    private fun namedLocationFingerprint(catalog: WorldMapCatalog): String {
+    private fun namedLocationFingerprint(
+        catalog: WorldMapCatalog,
+        text: CatalogTextProjection? = null,
+    ): String {
         val canonical = catalog.regions.flatMap { region ->
             region.locations.map { location ->
                 val cells = location.geometry.joinToString(",") { "${it.x}:${it.y}:${it.width}:${it.height}" }
-                "${region.key}:${location.key}:${location.displayName}:" +
+                val displayName = if (text == null) {
+                    location.displayName
+                } else {
+                    text.worldLocationName(region.key, location.key)
+                }
+                "${region.key}:${location.key}:$displayName:" +
                     "${location.baseAreaIds.sorted().joinToString(",")}:$cells"
             }
         }.joinToString(";")

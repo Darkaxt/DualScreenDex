@@ -30,6 +30,7 @@ class ModernEmeraldEncounterLiveRomTest {
         assertEquals(20, capability.recordSize)
         assertEquals(231, catalog.encounterAreas.size)
         assertEquals(133, catalog.encounterAreas.map { it.id / 10 }.distinct().size)
+        val text = catalog.defaultTextProjection()
         val capableAreas = catalog.encounterAreas.filter { area ->
             area.slots.any { slot ->
                 slot.speciesId == 290 && 2 in slot.minimumLevel..slot.maximumLevel
@@ -37,7 +38,7 @@ class ModernEmeraldEncounterLiveRomTest {
         }
         assertEquals(listOf(161), capableAreas.map { it.id })
         assertEquals(listOf(16), capableAreas.map { it.id / 10 })
-        assertTrue(requireNotNull(capableAreas.single().name.value).startsWith("Map ").not())
+        assertTrue(requireNotNull(text.encounterAreaName(capableAreas.single().id)).startsWith("Map ").not())
         assertTrue(requireNotNull(catalog.runtimeMetadata.gen3SaveBlock1PointerAddress) in 0x02000000L..0x03FFFFFFL)
         assertEquals(
             CatalogGen3RuntimeMemoryLayout(
@@ -99,7 +100,7 @@ class ModernEmeraldEncounterLiveRomTest {
             ),
             catalog.runtimeMetadata.gen3RuntimeMemoryLayout,
         )
-        assertEquals("Oldale Town", catalog.runtimeMetadata.areaNamesByBaseId[0x0202])
+        assertEquals("Oldale Town", text.areaName(0x0202))
         assertTrue(capability.reasons.single().contains("headers=272"))
         assertTrue(capability.reasons.single().contains("references=11"))
         assertTrue(capability.reasons.single().contains("candidates="))

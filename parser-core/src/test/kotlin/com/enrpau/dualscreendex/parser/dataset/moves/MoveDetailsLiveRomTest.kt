@@ -2,6 +2,7 @@ package com.enrpau.dualscreendex.parser.dataset.moves
 
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.MoveRecord
+import com.enrpau.dualscreendex.parser.catalog.defaultTextProjection
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.RomCapability
@@ -68,6 +69,7 @@ class MoveDetailsLiveRomTest {
         assertEquals(TableRecordFormat.WIDENED_RETAIL_MOVE_16, selected.format)
 
         val catalog = requireNotNull(parsed.catalog)
+        val text = catalog.defaultTextProjection()
         assertFalse(catalog.movesById.containsKey(0))
         val typed = requireNotNull(layout.resolvedDatasets.moveDetails)
         assertEquals(MoveDetailsAbi.WIDENED_RETAIL_16, typed.table.abi)
@@ -79,7 +81,7 @@ class MoveDetailsLiveRomTest {
         assertFalse(catalog.movesById.containsKey(0))
         assertFalse(catalog.movesById.containsKey(1189))
         assertEquals((1..1188).toSet(), catalog.movesById.keys)
-        assertTrue(catalog.movesById.values.all { it.name.value?.any(Char::isLetterOrDigit) == true })
+        assertTrue(catalog.movesById.keys.all { text.moveName(it)?.any(Char::isLetterOrDigit) == true })
         val pound = catalog.movesById.getValue(1)
         assertEquals(0, pound.typeId.value)
         assertEquals(com.enrpau.dualscreendex.parser.catalog.MoveCategory.PHYSICAL, pound.category.value)
@@ -137,6 +139,7 @@ class MoveDetailsLiveRomTest {
         )
         val layout = requireNotNull(parsed.layout)
         val catalog = requireNotNull(parsed.catalog)
+        val text = catalog.defaultTextProjection()
         assertNull(layout.tables.moveData)
         assertNull(layout.resolvedDatasets.moveDetails)
         val capability = parsed.analysis.capabilities.single { it.capability == RomCapability.MOVE_DETAILS }
@@ -150,7 +153,7 @@ class MoveDetailsLiveRomTest {
         assertFalse(capability.reasons.any { it.contains("typed", ignoreCase = true) })
         assertEquals(719, catalog.movesById.size)
         assertFalse(catalog.movesById.containsKey(0))
-        assertEquals("Tearful Look", catalog.movesById.getValue(715).name.value)
+        assertEquals("Tearful Look", text.moveName(715))
         catalog.movesById.values.forEach { move ->
             listOf(move.typeId, move.category, move.power, move.accuracy, move.pp, move.priority, move.effectId)
                 .forEach { assertEquals(CapabilityStatus.NOT_FOUND, it.status) }

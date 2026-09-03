@@ -557,9 +557,9 @@ object RecordMaterializers {
         val textAvailable = layout.defaultTextCodec() != null
         return ids.sorted().associateWith { id ->
             TypeRecord(
-                id,
-                if (textAvailable) {
-                    CatalogField.available(TypeMappings.name(layout.generation, id))
+                id = id,
+                name = if (textAvailable) {
+                    CatalogField.available(TypeMappings.fallbackName(layout.generation, id))
                 } else {
                     CatalogField.notFound(TEXT_CODEC_UNAVAILABLE_REASON)
                 },

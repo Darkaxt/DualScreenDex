@@ -884,7 +884,9 @@ class RecordMaterializersTest {
         val types = RecordMaterializers.types(layout, species, listOf(TypeMatchup(18, 10, 200)))
 
         assertEquals("FIRE", types.getValue(10).name.value)
+        assertNull(types.getValue(10).semanticRole.value)
         assertEquals("TYPE 18", types.getValue(18).name.value)
+        assertNull(types.getValue(18).semanticRole.value)
         assertEquals(18, types.getValue(18).id)
     }
 

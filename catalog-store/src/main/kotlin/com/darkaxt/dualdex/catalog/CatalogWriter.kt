@@ -51,7 +51,14 @@ data class CatalogWriteProgress(
     init {
         require(completedUnits in 0..totalUnits) { "catalog progress must remain within its total" }
         require(!complete || completedUnits == totalUnits) { "complete catalog progress must reach its total" }
-        require(CatalogSchema.requiredSections.containsAll(changedSections)) { "catalog progress names an unknown section" }
+        require(changedSections.size <= CatalogSchema.maximumCatalogSections) {
+            "catalog progress names too many sections"
+        }
+        changedSections.filterNot(CatalogSchema.requiredSections::contains).forEach { sectionName ->
+            require(CatalogSectionPlan.parseOverlaySectionName(sectionName) != null) {
+                "catalog progress names an unknown section"
+            }
+        }
     }
 
     companion object {
@@ -89,11 +96,24 @@ class CatalogWriter(
         cancellation.throwIfCancellationRequested()
         require(catalog.romSha256.matches(Regex("[0-9a-fA-F]{64}"))) { "catalog SHA-256 is invalid" }
         require(catalog.romCrc32.matches(Regex("[0-9a-fA-F]{8}"))) { "catalog CRC32 is invalid" }
+        val plan = CatalogSectionPlan.from(catalog.localization)
+        val sectionsToWrite = when {
+            progress.complete || progress.changedSections == CatalogSchema.requiredSections -> plan.sections
+            progress.changedSections.isEmpty() -> emptySet()
+            else -> progress.changedSections + plan.overlaySections + "language_manifest"
+        }
         val now = clock()
         CatalogMigration.prepare(database)
         cancellation.throwIfCancellationRequested()
         database.transaction(cancellation) {
             cancellation.throwIfCancellationRequested()
+            val obsoleteSections = database.query("SELECT name FROM catalog_sections") { row ->
+                requireNotNull(row.string("name"))
+            }.filterNot(plan.sections::contains)
+            obsoleteSections.forEach { name ->
+                database.execute("DELETE FROM catalog_section_chunks WHERE section_name = ?", listOf(name))
+                database.execute("DELETE FROM catalog_sections WHERE name = ?", listOf(name))
+            }
             database.execute(
                 """
                 INSERT OR REPLACE INTO catalog_metadata (
@@ -121,7 +141,9 @@ class CatalogWriter(
                     now,
                 ),
             )
-            progress.changedSections.forEach { name ->
+            val writeBudget = CatalogWriteBudget()
+            val inflatedSections = linkedSetOf<String>()
+            sectionsToWrite.forEach { name ->
                 cancellation.throwIfCancellationRequested()
                 val previousDigestLength = database.query(
                     "SELECT length(payload) AS payload_length FROM catalog_sections WHERE name = ?",
@@ -136,9 +158,15 @@ class CatalogWriter(
                             SHA_256_BYTES,
                         )
                     }
+                var inflatedBytesClaimed = false
                 val candidateDigest = previousDigest
                     ?.takeIf { it.size == SHA_256_BYTES }
-                    ?.let { codec.encodedDigest(catalog, name, cancellation) }
+                    ?.let {
+                        inflatedBytesClaimed = true
+                        codec.encodedDigest(catalog, name, cancellation) { bytes ->
+                            writeBudget.claimInflated(name, bytes)
+                        }.also { inflatedSections += name }
+                    }
                 if (candidateDigest != null && previousDigest.contentEquals(candidateDigest)) {
                     database.execute(
                         "UPDATE catalog_sections SET committed_phase = ?, written_at_epoch_ms = ? WHERE name = ?",
@@ -150,7 +178,21 @@ class CatalogWriter(
                     "DELETE FROM catalog_section_chunks WHERE section_name = ?",
                     listOf(name),
                 )
-                val output = CatalogChunkOutputStream(CatalogSchema.sectionChunkBytes) { index, chunk ->
+                val languageOverlay = CatalogSectionPlan.parseOverlaySectionName(name) != null
+                val output = CatalogChunkOutputStream(
+                    maximumBytes = CatalogSchema.sectionChunkBytes,
+                    maximumChunks = if (languageOverlay) {
+                        CatalogSchema.maximumLanguageOverlayChunks
+                    } else {
+                        CatalogSchema.maximumSectionChunks
+                    },
+                    maximumEncodedBytes = if (languageOverlay) {
+                        CatalogSchema.maximumLanguageOverlayEncodedBytes
+                    } else {
+                        CatalogSchema.maximumSectionEncodedBytes
+                    },
+                    onEncodedBytes = { bytes -> writeBudget.claim(name, bytes) },
+                ) { index, chunk ->
                     cancellation.throwIfCancellationRequested()
                     database.execute(
                         """
@@ -161,7 +203,19 @@ class CatalogWriter(
                     )
                     cancellation.throwIfCancellationRequested()
                 }
-                val writtenDigest = codec.writeSectionAndDigest(catalog, name, output, cancellation)
+                val onInflatedBytes: (Int) -> Unit = if (inflatedBytesClaimed) {
+                    {}
+                } else {
+                    { bytes -> writeBudget.claimInflated(name, bytes) }
+                }
+                val writtenDigest = codec.writeSectionAndDigest(
+                    catalog,
+                    name,
+                    output,
+                    cancellation,
+                    onInflatedBytes,
+                )
+                inflatedSections += name
                 cancellation.throwIfCancellationRequested()
                 database.execute(
                     """
@@ -172,14 +226,130 @@ class CatalogWriter(
                     listOf(name, writtenDigest, progress.phase, now),
                 )
             }
+            (plan.sections - inflatedSections).forEach { name ->
+                cancellation.throwIfCancellationRequested()
+                codec.encodedDigest(catalog, name, cancellation) { bytes ->
+                    writeBudget.claimInflated(name, bytes)
+                }
+            }
             cancellation.throwIfCancellationRequested()
             if (progress.complete) {
                 val committed = database.query("SELECT name FROM catalog_sections") { row ->
                     requireNotNull(row.string("name"))
                 }.toSet()
-                require(committed == CatalogSchema.requiredSections) { "complete catalog transaction has missing sections" }
+                require(committed == plan.sections) { "complete catalog transaction has missing or unknown sections" }
             }
+            validateChunkInventory(plan, requireComplete = progress.complete)
             cancellation.throwIfCancellationRequested()
+        }
+    }
+
+    private fun validateChunkInventory(plan: CatalogSectionPlan, requireComplete: Boolean) {
+        val aggregates = database.query(
+            """
+            SELECT section_name,
+                   COUNT(*) AS chunk_count,
+                   COALESCE(SUM(length(payload)), 0) AS payload_bytes,
+                   COALESCE(MAX(length(payload)), 0) AS maximum_payload_bytes
+            FROM catalog_section_chunks
+            GROUP BY section_name
+            LIMIT ?
+            """.trimIndent(),
+            listOf(CatalogSchema.maximumCatalogSections + 1),
+        ) { row ->
+            CatalogWriteChunkAggregate(
+                sectionName = requireNotNull(row.string("section_name")),
+                chunkCount = requireNotNull(row.long("chunk_count")),
+                payloadBytes = requireNotNull(row.long("payload_bytes")),
+                maximumPayloadBytes = requireNotNull(row.long("maximum_payload_bytes")),
+            )
+        }
+        require(aggregates.size <= CatalogSchema.maximumCatalogSections) {
+            "catalog contains chunk aggregates for too many sections"
+        }
+        val chunkSections = aggregates.mapTo(linkedSetOf(), CatalogWriteChunkAggregate::sectionName)
+        require(chunkSections.all(plan.sections::contains)) {
+            "catalog has unknown section chunks"
+        }
+        if (requireComplete) {
+            require(chunkSections == plan.sections) {
+                "complete catalog has missing section chunks"
+            }
+        }
+        var catalogBytes = 0L
+        var overlayBytes = 0L
+        aggregates.forEach { aggregate ->
+            val languageOverlay = plan.languageForOverlay(aggregate.sectionName) != null
+            val maximumChunks = if (languageOverlay) {
+                CatalogSchema.maximumLanguageOverlayChunks
+            } else {
+                CatalogSchema.maximumSectionChunks
+            }
+            val maximumBytes = if (languageOverlay) {
+                CatalogSchema.maximumLanguageOverlayEncodedBytes
+            } else {
+                CatalogSchema.maximumSectionEncodedBytes
+            }
+            require(aggregate.chunkCount in 1..maximumChunks.toLong()) {
+                "catalog section chunk limit exceeded: ${aggregate.sectionName}"
+            }
+            require(aggregate.maximumPayloadBytes in 1..CatalogSchema.sectionChunkBytes.toLong()) {
+                "catalog section chunk is oversized: ${aggregate.sectionName}"
+            }
+            require(aggregate.payloadBytes in aggregate.chunkCount..maximumBytes.toLong()) {
+                "catalog section encoded-byte limit exceeded: ${aggregate.sectionName}"
+            }
+            require(catalogBytes <= CatalogSchema.maximumCatalogEncodedBytes.toLong() - aggregate.payloadBytes) {
+                "catalog encoded-byte limit exceeded"
+            }
+            catalogBytes += aggregate.payloadBytes
+            if (languageOverlay) {
+                require(
+                    overlayBytes <= CatalogSchema.maximumLanguageOverlaysEncodedBytes.toLong() -
+                        aggregate.payloadBytes,
+                ) { "catalog language-overlay encoded-byte limit exceeded" }
+                overlayBytes += aggregate.payloadBytes
+            }
+        }
+    }
+}
+
+private data class CatalogWriteChunkAggregate(
+    val sectionName: String,
+    val chunkCount: Long,
+    val payloadBytes: Long,
+    val maximumPayloadBytes: Long,
+)
+
+internal class CatalogWriteBudget {
+    private var catalogBytes = 0L
+    private var overlayBytes = 0L
+    private var catalogInflatedBytes = 0L
+    private var overlayInflatedBytes = 0L
+
+    fun claim(sectionName: String, bytes: Int) {
+        require(bytes >= 0 && catalogBytes <= CatalogSchema.maximumCatalogEncodedBytes.toLong() - bytes) {
+            "catalog encoded-byte limit exceeded"
+        }
+        catalogBytes += bytes
+        if (CatalogSectionPlan.parseOverlaySectionName(sectionName) != null) {
+            require(
+                overlayBytes <= CatalogSchema.maximumLanguageOverlaysEncodedBytes.toLong() - bytes,
+            ) { "catalog language-overlay encoded-byte limit exceeded" }
+            overlayBytes += bytes
+        }
+    }
+
+    fun claimInflated(sectionName: String, bytes: Int) {
+        require(
+            bytes >= 0 && catalogInflatedBytes <= CatalogSchema.maximumCatalogInflatedBytes.toLong() - bytes,
+        ) { "catalog inflated-byte limit exceeded" }
+        catalogInflatedBytes += bytes
+        if (CatalogSectionPlan.parseOverlaySectionName(sectionName) != null) {
+            require(
+                overlayInflatedBytes <= CatalogSchema.maximumLanguageOverlaysInflatedBytes.toLong() - bytes,
+            ) { "catalog language-overlay inflated-byte limit exceeded" }
+            overlayInflatedBytes += bytes
         }
     }
 }
@@ -188,12 +358,40 @@ private fun CatalogSectionCodec.encodedDigest(
     catalog: ParsedCatalog,
     name: String,
     cancellation: ParserCancellationToken,
+    onInflatedBytes: (Int) -> Unit,
 ): ByteArray {
-    val sink = object : OutputStream() {
-        override fun write(value: Int) = Unit
-        override fun write(bytes: ByteArray, offset: Int, length: Int) = Unit
+    val maximumBytes = if (CatalogSectionPlan.parseOverlaySectionName(name) != null) {
+        CatalogSchema.maximumLanguageOverlayEncodedBytes
+    } else {
+        CatalogSchema.maximumSectionEncodedBytes
     }
-    return writeSectionAndDigest(catalog, name, sink, cancellation)
+    return writeSectionAndDigest(
+        catalog,
+        name,
+        BoundedDiscardingOutputStream(maximumBytes),
+        cancellation,
+        onInflatedBytes,
+    )
+}
+
+private class BoundedDiscardingOutputStream(private val maximumBytes: Int) : OutputStream() {
+    private var writtenBytes = 0L
+
+    override fun write(value: Int) = claim(1)
+
+    override fun write(bytes: ByteArray, offset: Int, length: Int) {
+        require(offset >= 0 && length >= 0 && offset <= bytes.size - length) {
+            "catalog digest source range is invalid"
+        }
+        claim(length)
+    }
+
+    private fun claim(bytes: Int) {
+        require(writtenBytes <= maximumBytes.toLong() - bytes) {
+            "catalog section encoded-byte limit exceeded"
+        }
+        writtenBytes += bytes
+    }
 }
 
 private fun CatalogSectionCodec.writeSectionAndDigest(
@@ -201,10 +399,13 @@ private fun CatalogSectionCodec.writeSectionAndDigest(
     name: String,
     output: OutputStream,
     cancellation: ParserCancellationToken,
+    onInflatedBytes: (Int) -> Unit,
 ): ByteArray {
     val digest = MessageDigest.getInstance("SHA-256")
     val cancellableOutput = CancellationCheckingOutputStream(output, cancellation)
-    DigestOutputStream(cancellableOutput, digest).use { encoded -> writeSection(catalog, name, encoded) }
+    DigestOutputStream(cancellableOutput, digest).use { encoded ->
+        writeSection(catalog, name, encoded, onInflatedBytes = onInflatedBytes)
+    }
     cancellation.throwIfCancellationRequested()
     return digest.digest()
 }
@@ -234,28 +435,36 @@ private class CancellationCheckingOutputStream(
 
 internal class CatalogChunkOutputStream(
     maximumBytes: Int,
+    private val maximumChunks: Int = CatalogSchema.maximumSectionChunks,
+    private val maximumEncodedBytes: Int = CatalogSchema.maximumSectionEncodedBytes,
+    private val onEncodedBytes: (Int) -> Unit = {},
     private val writeChunk: (Int, ByteArray) -> Unit,
 ) : OutputStream() {
     private var buffer = ByteArray(maximumBytes)
     private var position = 0
     private var chunkIndex = 0
+    private var encodedBytes = 0L
     private var closed = false
 
     init {
         require(maximumBytes > 0) { "catalog section chunk size must be positive" }
+        require(maximumChunks > 0) { "catalog section chunk limit must be positive" }
+        require(maximumEncodedBytes > 0) { "catalog section encoded-byte limit must be positive" }
     }
 
     override fun write(value: Int) {
         check(!closed) { "catalog chunk output is closed" }
+        claim(1)
         if (position == buffer.size) emitFullChunk()
         buffer[position++] = value.toByte()
     }
 
     override fun write(bytes: ByteArray, offset: Int, length: Int) {
         check(!closed) { "catalog chunk output is closed" }
-        require(offset >= 0 && length >= 0 && offset + length <= bytes.size) {
+        require(offset >= 0 && length >= 0 && offset <= bytes.size - length) {
             "catalog chunk source range is invalid"
         }
+        claim(length)
         var sourceOffset = offset
         var remaining = length
         while (remaining > 0) {
@@ -271,16 +480,29 @@ internal class CatalogChunkOutputStream(
     override fun close() {
         if (closed) return
         if (position > 0) {
-            writeChunk(chunkIndex++, buffer.copyOf(position))
+            emitChunk(buffer.copyOf(position))
             position = 0
         }
         closed = true
     }
 
     private fun emitFullChunk() {
-        writeChunk(chunkIndex++, buffer)
+        emitChunk(buffer)
         buffer = ByteArray(buffer.size)
         position = 0
+    }
+
+    private fun emitChunk(chunk: ByteArray) {
+        require(chunkIndex < maximumChunks) { "catalog section chunk limit exceeded" }
+        writeChunk(chunkIndex++, chunk)
+    }
+
+    private fun claim(bytes: Int) {
+        require(encodedBytes <= maximumEncodedBytes.toLong() - bytes) {
+            "catalog section encoded-byte limit exceeded"
+        }
+        onEncodedBytes(bytes)
+        encodedBytes += bytes
     }
 }
 

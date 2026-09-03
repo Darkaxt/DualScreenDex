@@ -2,6 +2,7 @@ package com.enrpau.dualscreendex.parser.dataset.descriptions
 
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.DescriptionRecord
+import com.enrpau.dualscreendex.parser.catalog.defaultTextProjection
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.RomImage
@@ -51,7 +52,9 @@ class DescriptionLiveRomTest {
 
         val parsed = CatalogParser.parse(rom)
         val layout = requireNotNull(parsed.layout)
-        val catalogSpecies = requireNotNull(parsed.catalog).speciesById.values
+        val catalog = requireNotNull(parsed.catalog)
+        val text = catalog.defaultTextProjection()
+        val catalogSpecies = catalog.speciesById.values
         val selected = requireNotNull(layout.tables.descriptions)
         assertEquals(0xCA6B70, selected.offset)
         assertEquals(386, selected.count)
@@ -79,10 +82,10 @@ class DescriptionLiveRomTest {
                 264, 265, 266, 267, 268, 269, 270, 271, 272, 273, 274, 275, 276, 408,
             ),
             navigableSpecies
-                .filter { it.description.value == null }
+                .filter { text.speciesDescription(it.id) == null }
                 .mapTo(linkedSetOf()) { it.id },
         )
-        assertEquals(383, navigableSpecies.count { it.description.value != null })
+        assertEquals(383, navigableSpecies.count { text.speciesDescription(it.id) != null })
         assertEquals(
             "d62c951fc4ddbf35f3a251ea9b26c4e1664c1ff2b957601db800d73ecbfedad7",
             descriptionSha256(typed),
@@ -142,6 +145,7 @@ class DescriptionLiveRomTest {
         val parsed = CatalogParser.parse(rom)
         val layout = requireNotNull(parsed.layout)
         val catalog = requireNotNull(parsed.catalog)
+        val text = catalog.defaultTextProjection()
         assertEquals(3, layout.generation)
         assertNull("expansion descriptions remain on their characterized path", layout.pokeemeraldExpansion)
         val selected = requireNotNull(layout.tables.descriptions)
@@ -156,7 +160,7 @@ class DescriptionLiveRomTest {
         assertEquals(expectedPayloadSha256, descriptionSha256(typed))
         catalog.speciesById.values.forEach { species ->
             val expected = species.dexNumber.value?.let(typed::get)
-            assertEquals(expected?.text, species.description.value)
+            assertEquals(expected?.text, text.speciesDescription(species.id))
             assertEquals(expected?.height, species.height.value)
             assertEquals(expected?.weight, species.weight.value)
         }

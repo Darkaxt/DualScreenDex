@@ -26,6 +26,7 @@ class AlteredEmeraldMoveReferenceLiveRomTest {
         val parsed = CatalogParser.parse(rom)
         assertNotNull(parsed.layout)
         val catalog = requireNotNull(parsed.catalog)
+        val text = catalog.defaultTextProjection()
         val move = catalog.movesById.getValue(729)
 
         assertEquals(CapabilityStatus.NOT_FOUND, move.name.status)
@@ -37,7 +38,7 @@ class AlteredEmeraldMoveReferenceLiveRomTest {
         assertEquals(8, move.pp.value)
         assertEquals(1, move.priority.value)
         assertEquals(24, move.effectId.value)
-        assertEquals("Strikes with a blinding gust that lowers Sp.Atk.", move.effectText.value)
+        assertEquals("Strikes with a blinding gust that lowers Sp.Atk.", text.moveDescription(move.id))
 
         assertEquals(761, catalog.movesById.size)
         assertEquals((1..761).toSet(), catalog.movesById.keys)

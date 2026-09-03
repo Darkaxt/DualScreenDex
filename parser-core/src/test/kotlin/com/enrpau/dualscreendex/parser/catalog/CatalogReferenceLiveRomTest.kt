@@ -40,10 +40,11 @@ class CatalogReferenceLiveRomTest {
             expectedSha256 = "fbbcbf32afd427afa5de45799923c414c21b77917004477f214c9f5cd87537b6",
         )
 
+        val text = catalog.defaultTextProjection()
         assertEquals(listOf(109, 203), catalog.speciesById.getValue(567).abilityIds.value)
         assertEquals(listOf(42, 207), catalog.speciesById.getValue(577).abilityIds.value)
-        assertEquals("Slush Rush", catalog.abilitiesById.getValue(203).name.value)
-        assertEquals("Galvanize", catalog.abilitiesById.getValue(207).name.value)
+        assertEquals("Slush Rush", text.abilityName(203))
+        assertEquals("Galvanize", text.abilityName(207))
     }
 
     @Test
@@ -53,8 +54,9 @@ class CatalogReferenceLiveRomTest {
             expectedSha256 = "7f4aa1aa68b1df783c3a44b38984640227a5eec22debffbf18db3713de2616bc",
         )
 
+        val text = catalog.defaultTextProjection()
         assertEquals(719, catalog.movesById.size)
-        assertEquals("Tearful Look", catalog.movesById.getValue(715).name.value)
+        assertEquals("Tearful Look", text.moveName(715))
         assertNull(catalog.movesById.getValue(715).typeId.value)
         assertEquals(0, catalog.speciesById.values.sumOf { species ->
             species.learnset.value.orEmpty().count { it.moveId !in catalog.movesById }
@@ -87,6 +89,7 @@ class CatalogReferenceLiveRomTest {
 
         val parsed = CatalogParser.parse(rom)
         val catalog = requireNotNull(parsed.catalog)
+        val text = catalog.defaultTextProjection()
         val referenced = catalog.speciesById.values.flatMap { species ->
             species.moveAcquisitions.value.orEmpty().map(MoveAcquisition::moveId)
         }.filter { it > 0 }.toSet()
@@ -95,7 +98,7 @@ class CatalogReferenceLiveRomTest {
 
         assertTrue(referenced.isNotEmpty())
         assertTrue(referenced.all(catalog.movesById::containsKey))
-        assertTrue(referenced.any { catalog.movesById.getValue(it).name.value == null })
+        assertTrue(referenced.any { text.moveName(it) == null })
         assertEquals(CapabilityStatus.NOT_FOUND, moveCatalog.status)
         assertFalse(moveCatalog.compatible)
         assertEquals(CapabilityStatus.AVAILABLE, moveDetails.status)

@@ -297,7 +297,10 @@ object CatalogMaterializer {
         } else {
             RecordMaterializers.typeChart(rom, layout)
         }
-        val baseTypes = TypePresentationMaterializer.apply(RecordMaterializers.types(layout, baseSpecies, chart, rawMoves))
+        val rawTypes = RecordMaterializers.types(layout, baseSpecies, chart, rawMoves)
+        val baseTypes = TypePresentationMaterializer.apply(rawTypes) { typeId ->
+            TypeMappings.presentationRole(layout.generation, typeId)
+        }
         val abilities = RecordMaterializers.abilities(rom, layout, cancellation)
         val natureResolution = if (layout.generation == 3) resolveNatures?.invoke(layout) else null
         val natures = (natureResolution as? NatureResolution.Resolved)?.catalog?.records
@@ -315,19 +318,28 @@ object CatalogMaterializer {
                 layout.generation,
             )
         }
-        val essentialCatalog = ParsedCatalog(
-            romSha256 = analysis.sha256,
-            family = layout.family,
-            platform = layout.platform,
-            romCrc32 = analysis.crc32,
+        val essentialText = CatalogLocalizedTextExtractor.extract(
+            manifest = layout.languageManifest,
             speciesById = baseSpecies,
             movesById = rawMoves,
             typesById = baseTypes,
             abilitiesById = abilities,
             naturesById = natures,
-            typeChart = chart,
             capabilities = initialCapabilities,
-            languageManifest = layout.languageManifest,
+        )
+        val essentialCatalog = ParsedCatalog(
+            romSha256 = analysis.sha256,
+            family = layout.family,
+            platform = layout.platform,
+            romCrc32 = analysis.crc32,
+            speciesById = essentialText.speciesById,
+            movesById = essentialText.movesById,
+            typesById = essentialText.typesById,
+            abilitiesById = essentialText.abilitiesById,
+            naturesById = essentialText.naturesById,
+            typeChart = chart,
+            capabilities = essentialText.capabilities,
+            localization = essentialText.localization,
         )
         publishProgress(CatalogMaterializationProgress(CatalogMaterializationPhase.ESSENTIAL, 1, 5, essentialCatalog))
 
@@ -390,9 +402,23 @@ object CatalogMaterializer {
             partialReason = "some Pokédex descriptions were malformed or unavailable",
             unavailableReason = "Pokédex descriptions were not materialized",
         )
-        val mediaCatalog = essentialCatalog.copy(
+        val mediaText = CatalogLocalizedTextExtractor.extract(
+            manifest = layout.languageManifest,
             speciesById = mediaSpecies,
+            movesById = rawMoves,
+            typesById = baseTypes,
+            abilitiesById = abilities,
+            naturesById = natures,
             capabilities = mediaCapabilities,
+        )
+        val mediaCatalog = essentialCatalog.copy(
+            speciesById = mediaText.speciesById,
+            movesById = mediaText.movesById,
+            typesById = mediaText.typesById,
+            abilitiesById = mediaText.abilitiesById,
+            naturesById = mediaText.naturesById,
+            capabilities = mediaText.capabilities,
+            localization = mediaText.localization,
         )
         publishProgress(CatalogMaterializationProgress(CatalogMaterializationPhase.SPECIES_MEDIA, 2, 5, mediaCatalog))
 
@@ -482,11 +508,27 @@ object CatalogMaterializer {
             partialReason = "some learnset rows were malformed or unavailable",
             unavailableReason = "learnsets were not materialized",
         )
-        val relationshipCatalog = mediaCatalog.copy(
+        val relationshipText = CatalogLocalizedTextExtractor.extract(
+            manifest = layout.languageManifest,
             speciesById = relationshipSpecies,
+            movesById = rawMoves,
+            typesById = baseTypes,
+            abilitiesById = abilities,
+            naturesById = natures,
             encounterAreas = encounters,
             runtimeMetadata = runtimeMetadata,
             capabilities = relationshipCapabilities,
+        )
+        val relationshipCatalog = mediaCatalog.copy(
+            speciesById = relationshipText.speciesById,
+            movesById = relationshipText.movesById,
+            typesById = relationshipText.typesById,
+            abilitiesById = relationshipText.abilitiesById,
+            naturesById = relationshipText.naturesById,
+            encounterAreas = relationshipText.encounterAreas,
+            runtimeMetadata = relationshipText.runtimeMetadata,
+            capabilities = relationshipText.capabilities,
+            localization = relationshipText.localization,
         )
         publishProgress(CatalogMaterializationProgress(CatalogMaterializationPhase.RELATIONSHIPS, 3, 5, relationshipCatalog))
 
@@ -855,26 +897,40 @@ object CatalogMaterializer {
         }.getOrElse { CatalogTheme.neutral() }
         cancellation.throwIfCancellationRequested()
         beginWork(CatalogWorkModule.CATALOG_STORAGE)
-        val catalog = ParsedCatalog(
-            romSha256 = analysis.sha256,
-            family = layout.family,
-            platform = layout.platform,
-            romCrc32 = analysis.crc32,
+        val finalText = CatalogLocalizedTextExtractor.extract(
+            manifest = layout.languageManifest,
             speciesById = species,
             movesById = moves,
             typesById = types,
             abilitiesById = enrichedAbilities,
             naturesById = natures,
-            typeChart = chart,
             encounterAreas = encounters,
             captureBallsById = balls,
-            learnsetRulesets = learnsetRulesets,
             runtimeMetadata = finalRuntimeMetadata,
             worldMaps = worldMaps,
-            trainerAssets = trainerAssets,
             localMaps = localMaps,
-            theme = theme,
             capabilities = capabilities,
+        )
+        val catalog = ParsedCatalog(
+            romSha256 = analysis.sha256,
+            family = layout.family,
+            platform = layout.platform,
+            romCrc32 = analysis.crc32,
+            speciesById = finalText.speciesById,
+            movesById = finalText.movesById,
+            typesById = finalText.typesById,
+            abilitiesById = finalText.abilitiesById,
+            naturesById = finalText.naturesById,
+            typeChart = chart,
+            encounterAreas = finalText.encounterAreas,
+            captureBallsById = finalText.captureBallsById,
+            learnsetRulesets = learnsetRulesets,
+            runtimeMetadata = finalText.runtimeMetadata,
+            worldMaps = finalText.worldMaps,
+            trainerAssets = trainerAssets,
+            localMaps = finalText.localMaps,
+            theme = theme,
+            capabilities = finalText.capabilities,
             diagnostics = buildList {
                 moveDescriptions?.let {
                     add(
@@ -912,7 +968,7 @@ object CatalogMaterializer {
                     )
                 }
             },
-            languageManifest = layout.languageManifest,
+            localization = finalText.localization,
         )
         publishProgress(CatalogMaterializationProgress(CatalogMaterializationPhase.EXTENDED, 4, 5, catalog))
         publishProgress(CatalogMaterializationProgress(CatalogMaterializationPhase.COMPLETE, 5, 5, catalog))

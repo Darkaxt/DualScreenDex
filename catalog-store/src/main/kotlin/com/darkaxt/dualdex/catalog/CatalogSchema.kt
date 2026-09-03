@@ -1,8 +1,8 @@
 package com.darkaxt.dualdex.catalog
 
 object CatalogSchema {
-    const val version = 1
-    const val parserSchemaVersion = 47
+    const val version = 2
+    const val parserSchemaVersion = 48
     const val sectionChunkBytes = 256 * 1024
 
     // The largest retained corpus database is 6.9 MiB; keep broad map-heavy headroom without unbounded decode.
@@ -12,7 +12,16 @@ object CatalogSchema {
     const val maximumSectionInflatedBytes = 128 * 1024 * 1024
     const val maximumCatalogInflatedBytes = 256 * 1024 * 1024
 
+    const val languageOverlayPrefix = "language_overlay:"
+    const val maximumLanguageOverlays = 16
+    const val maximumLanguageOverlayChunks = 32
+    const val maximumLanguageOverlayEncodedBytes = 8 * 1024 * 1024
+    const val maximumLanguageOverlaysEncodedBytes = 32 * 1024 * 1024
+    const val maximumLanguageOverlayInflatedBytes = 32 * 1024 * 1024
+    const val maximumLanguageOverlaysInflatedBytes = 128 * 1024 * 1024
+
     val requiredSections = linkedSetOf(
+        "language_manifest",
         "species",
         "moves",
         "types",
@@ -29,8 +38,9 @@ object CatalogSchema {
         "theme",
         "capabilities",
         "diagnostics",
-        "language_manifest",
     )
+
+    val maximumCatalogSections: Int = requiredSections.size + maximumLanguageOverlays
 
     val createStatements = listOf(
         """

@@ -30,6 +30,9 @@ import com.enrpau.dualscreendex.parser.catalog.CatalogGen3TrainerCardAbi
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.RuntimeMemoryEvidence
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
+import com.enrpau.dualscreendex.parser.catalog.CatalogLanguageOverlay
+import com.enrpau.dualscreendex.parser.catalog.CatalogLocalization
+import com.enrpau.dualscreendex.parser.catalog.CatalogPoiText
 import com.enrpau.dualscreendex.parser.catalog.EncounterArea
 import com.enrpau.dualscreendex.parser.catalog.EncounterSlot
 import com.enrpau.dualscreendex.parser.catalog.EncounterWindow
@@ -46,6 +49,8 @@ import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiItem
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiKind
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiOrganicVisibility
 import com.enrpau.dualscreendex.parser.catalog.LocalMapRasterCodec
+import com.enrpau.dualscreendex.parser.catalog.LocalizedCapabilityState
+import com.enrpau.dualscreendex.parser.catalog.LocalizedTextCapability
 import com.enrpau.dualscreendex.parser.catalog.LocalMapScene
 import com.enrpau.dualscreendex.parser.catalog.LocalMapScenePlacement
 import com.enrpau.dualscreendex.parser.catalog.MapLightingPalettes
@@ -64,7 +69,9 @@ import com.enrpau.dualscreendex.parser.catalog.SpeciesRecord
 import com.enrpau.dualscreendex.parser.catalog.TypeMatchup
 import com.enrpau.dualscreendex.parser.catalog.TypePresentation
 import com.enrpau.dualscreendex.parser.catalog.TypeRecord
+import com.enrpau.dualscreendex.parser.catalog.TypeSemanticRole
 import com.enrpau.dualscreendex.parser.catalog.TrainerAssetCatalog
+import com.enrpau.dualscreendex.parser.catalog.WorldLocationKey
 import com.enrpau.dualscreendex.parser.catalog.WorldMapCatalog
 import com.enrpau.dualscreendex.parser.catalog.WorldMapCell
 import com.enrpau.dualscreendex.parser.catalog.WorldMapLocation
@@ -177,6 +184,47 @@ class CatalogStoreTest {
     }
 
     @Test
+    fun `catalog chunk output enforces write-side chunk and encoded byte limits`() {
+        assertThrows(IllegalArgumentException::class.java) {
+            CatalogChunkOutputStream(
+                maximumBytes = 2,
+                maximumChunks = 4,
+                maximumEncodedBytes = 3,
+            ) { _, _ -> }.use { output -> output.write(byteArrayOf(1, 2, 3, 4)) }
+        }
+
+        assertThrows(IllegalArgumentException::class.java) {
+            CatalogChunkOutputStream(
+                maximumBytes = 2,
+                maximumChunks = 1,
+                maximumEncodedBytes = 8,
+            ) { _, _ -> }.use { output -> output.write(byteArrayOf(1, 2, 3)) }
+        }
+    }
+
+    @Test
+    fun `catalog read and write budgets cap aggregate language overlays independently`() {
+        val writeBudget = CatalogWriteBudget()
+        writeBudget.claim("language_overlay:en", CatalogSchema.maximumLanguageOverlaysEncodedBytes)
+        assertThrows(IllegalArgumentException::class.java) {
+            writeBudget.claim("language_overlay:fr", 1)
+        }
+        writeBudget.claimInflated(
+            "language_overlay:en",
+            CatalogSchema.maximumLanguageOverlaysInflatedBytes,
+        )
+        assertThrows(IllegalArgumentException::class.java) {
+            writeBudget.claimInflated("language_overlay:fr", 1)
+        }
+
+        val readBudget = CatalogReadBudget()
+        readBudget.claimInflated("language_overlay:en", CatalogSchema.maximumLanguageOverlaysInflatedBytes)
+        assertThrows(IllegalArgumentException::class.java) {
+            readBudget.claimInflated("language_overlay:fr", 1)
+        }
+    }
+
+    @Test
     fun `catalog section codec rejects gzip beyond its inflate limit`() {
         val payload = ByteArrayOutputStream().also { output ->
             GZIPOutputStream(output).use { gzip ->
@@ -196,10 +244,24 @@ class CatalogStoreTest {
     }
 
     @Test
+    fun `catalog section codec rejects JSON beyond its write inflate limit`() {
+        val catalog = completeCatalog("a".repeat(64)).copy(diagnostics = listOf("x".repeat(256)))
+
+        assertThrows(IllegalArgumentException::class.java) {
+            CatalogSectionCodec().writeSection(
+                catalog = catalog,
+                name = "diagnostics",
+                output = ByteArrayOutputStream(),
+                maximumInflatedBytes = 64,
+            )
+        }
+    }
+
+    @Test
     fun `catalog section codec reconstructs and validates persisted language manifests`() {
         val catalog = completeCatalog("a".repeat(64))
         val codec = CatalogSectionCodec()
-        val sections = codec.encode(catalog, CatalogSchema.requiredSections).toMutableMap()
+        val sections = codec.encode(catalog, CatalogSectionPlan.from(catalog.localization).sections).toMutableMap()
         sections["language_manifest"] = ByteArrayOutputStream().also { output ->
             GZIPOutputStream(output).use { gzip ->
                 gzip.write(
@@ -241,9 +303,15 @@ class CatalogStoreTest {
             status = LanguageResolutionStatus.RESOLVED,
             diagnostics = listOf("validated fixture"),
         )
-        val catalog = completeCatalog("b".repeat(64)).copy(languageManifest = manifest)
+        val fixture = completeCatalog("b".repeat(64))
+        val catalog = fixture.copy(
+            localization = CatalogLocalization(
+                manifest,
+                mapOf(LanguageTag.ENGLISH to requireNotNull(fixture.defaultLocalizedText())),
+            ),
+        )
         val codec = CatalogSectionCodec()
-        val sections = codec.encode(catalog, CatalogSchema.requiredSections)
+        val sections = codec.encode(catalog, CatalogSectionPlan.from(catalog.localization).sections)
 
         val reopened = codec.decode(
             catalog.romSha256,
@@ -272,6 +340,126 @@ class CatalogStoreTest {
         }
         assertThrows(UnsupportedOperationException::class.java) {
             (reopenedTable.bankRemap as MutableMap<Int, Int>).clear()
+        }
+    }
+
+    @Test
+    fun `language overlays use canonical dynamic sections and reopen exactly`() {
+        val root = newRoot()
+        val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
+        val localMap = LocalMap("local/0001", "Test Route", 1, 16, 16, 1, 1, "local/0001/map")
+        val mapAsset = PngMapAsset(
+            PngEncoder.encode(RgbaSprite(16, 16, IntArray(16 * 16) { 0xff204060.toInt() })),
+        )
+        val base = localizedFixtureCatalog(
+            completeCatalog("c".repeat(64)),
+            localMaps = LocalMapCatalog(
+                maps = listOf(localMap),
+                assets = mapOf(localMap.imageAssetKey to mapAsset),
+            ),
+        )
+        val english = requireNotNull(base.defaultLocalizedText())
+        val french = overlayForLanguage(english, LanguageTag.FRENCH, "Dracaufeu")
+        val manifest = RomLanguageManifest(
+            defaultLanguage = LanguageTag.ENGLISH,
+            projections = listOf(
+                base.languageManifest.projections.single(),
+                RomLanguageProjection(
+                    language = LanguageTag.FRENCH,
+                    codecId = "gba-french",
+                    codecVersion = 1,
+                    localizedTables = LocalizedTableLayout(),
+                    evidence = listOf(
+                        LanguageEvidence(LanguageEvidenceKind.TABLE_RELATIONSHIP, "fixture", 100),
+                    ),
+                    status = LanguageResolutionStatus.RESOLVED,
+                ),
+            ),
+            status = LanguageResolutionStatus.RESOLVED,
+        )
+        val catalog = base.copy(
+            localization = CatalogLocalization(
+                manifest,
+                linkedMapOf(LanguageTag.ENGLISH to english, LanguageTag.FRENCH to french),
+            ),
+        )
+
+        cache.write(
+            catalog,
+            CatalogSourceMetadata.direct("Localized.gba", 16_777_216, "LOCALIZED"),
+            CatalogWriteProgress.complete(),
+        )
+        val reopened = requireNotNull(cache.readComplete(catalog.romSha256))
+
+        assertEquals(catalog, reopened.catalog)
+        assertEquals(
+            CatalogSchema.requiredSections + setOf("language_overlay:en", "language_overlay:fr"),
+            reopened.committedSections,
+        )
+        assertEquals(
+            "Dracaufeu",
+            reopened.catalog.localizedText(LanguageTag.FRENCH)?.speciesNames?.get(6)?.value,
+        )
+        assertNull(reopened.catalog.localMaps.maps.single().displayName)
+        assertEquals(
+            "Test Route",
+            reopened.catalog.localizedText(LanguageTag.FRENCH)?.localMapNames?.get("local/0001")?.value,
+        )
+    }
+
+    @Test
+    fun `reader validates the manifest inventory before shared payloads`() {
+        val root = newRoot()
+        val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
+        val catalog = completeCatalog("d".repeat(64))
+        cache.write(
+            catalog,
+            CatalogSourceMetadata.direct("Control.gba", 16_777_216, "CONTROL"),
+            CatalogWriteProgress.complete(),
+        )
+
+        JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
+            database.execute("DELETE FROM catalog_section_chunks WHERE section_name = 'language_overlay:en'")
+            database.execute("DELETE FROM catalog_sections WHERE name = 'language_overlay:en'")
+            val speciesChunkBytes = database.query(
+                "SELECT length(payload) AS payload_bytes FROM catalog_section_chunks " +
+                    "WHERE section_name = 'species' AND chunk_index = 0",
+            ) { row -> requireNotNull(row.long("payload_bytes")).toInt() }.single()
+            database.execute(
+                "UPDATE catalog_section_chunks SET payload = ? " +
+                    "WHERE section_name = 'species' AND chunk_index = 0",
+                listOf(ByteArray(speciesChunkBytes) { 1 }),
+            )
+
+            val failure = assertThrows(IllegalArgumentException::class.java) {
+                CatalogReader(database).readComplete()
+            }
+            assertEquals("completed catalog sections do not match the language manifest", failure.message)
+        }
+    }
+
+    @Test
+    fun `reader rejects noncanonical overlay section names`() {
+        val root = newRoot()
+        val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
+        val catalog = completeCatalog("e".repeat(64))
+        cache.write(
+            catalog,
+            CatalogSourceMetadata.direct("Control.gba", 16_777_216, "CONTROL"),
+            CatalogWriteProgress.complete(),
+        )
+
+        JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
+            database.execute(
+                "UPDATE catalog_section_chunks SET section_name = 'language_overlay:EN' " +
+                    "WHERE section_name = 'language_overlay:en'",
+            )
+            database.execute(
+                "UPDATE catalog_sections SET name = 'language_overlay:EN' WHERE name = 'language_overlay:en'",
+            )
+            assertThrows(IllegalArgumentException::class.java) {
+                CatalogReader(database).readComplete()
+            }
         }
     }
 
@@ -646,8 +834,8 @@ class CatalogStoreTest {
         }
         assertCatalogReferencesClose(reopened)
         assertEquals(second.romSha256, reopened.romSha256)
-        assertEquals(CatalogSchema.requiredSections, stored.committedSections)
-        assertEquals(17, stored.committedSections.size)
+        assertEquals(expectedSections(stored.catalog), stored.committedSections)
+        assertEquals(expectedSections(stored.catalog).size, stored.committedSections.size)
         assertDatabaseIntegrity(cache.fileFor(second.romSha256))
     }
 
@@ -696,8 +884,8 @@ class CatalogStoreTest {
             assertEquals(32, reopened.trainerAssets.assets.getValue(key).height)
         }
         assertCatalogReferencesClose(reopened)
-        assertEquals(CatalogSchema.requiredSections, stored.committedSections)
-        assertEquals(17, stored.committedSections.size)
+        assertEquals(expectedSections(stored.catalog), stored.committedSections)
+        assertEquals(expectedSections(stored.catalog).size, stored.committedSections.size)
         assertDatabaseIntegrity(cache.fileFor(second.romSha256))
     }
 
@@ -749,8 +937,8 @@ class CatalogStoreTest {
                 assertEquals(16, reopened.trainerAssets.assets.getValue(key).width)
                 assertEquals(32, reopened.trainerAssets.assets.getValue(key).height)
             }
-            assertEquals(CatalogSchema.requiredSections, stored.committedSections)
-            assertEquals(17, stored.committedSections.size)
+            assertEquals(expectedSections(stored.catalog), stored.committedSections)
+            assertEquals(expectedSections(stored.catalog).size, stored.committedSections.size)
             assertCatalogReferencesClose(reopened)
             assertDatabaseIntegrity(cache.fileFor(parsed.romSha256))
         }
@@ -765,7 +953,8 @@ class CatalogStoreTest {
             byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10).copyInto(png)
         }
         val map = LocalMap("local/0001", "Large", 1, 16, 16, 1, 1, "local/0001/map")
-        val catalog = completeCatalog("6".repeat(64)).copy(
+        val catalog = localizedFixtureCatalog(
+            completeCatalog("6".repeat(64)),
             localMaps = LocalMapCatalog(listOf(map), mapOf(map.imageAssetKey to PngMapAsset(bytes))),
         )
 
@@ -897,7 +1086,8 @@ class CatalogStoreTest {
                 ),
             ),
         )
-        val catalog = completeCatalog("7".repeat(64)).copy(
+        val catalog = localizedFixtureCatalog(
+            completeCatalog("7".repeat(64)),
             runtimeMetadata = CatalogRuntimeMetadata(gen2TimeOfDayWramOffset = 0x1841),
             worldMaps = worldMaps,
             localMaps = localMaps,
@@ -910,11 +1100,19 @@ class CatalogStoreTest {
         )
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(47, CatalogSchema.parserSchemaVersion)
-        assertEquals(worldMaps, reopened?.catalog?.worldMaps)
-        assertEquals(localMaps.maps, reopened?.catalog?.localMaps?.maps)
-        assertEquals(localMaps.scenes, reopened?.catalog?.localMaps?.scenes)
-        assertEquals(localMaps.pois, reopened?.catalog?.localMaps?.pois)
+        assertEquals(48, CatalogSchema.parserSchemaVersion)
+        assertEquals(catalog.worldMaps, reopened?.catalog?.worldMaps)
+        assertEquals(catalog.localMaps.maps, reopened?.catalog?.localMaps?.maps)
+        assertEquals(catalog.localMaps.scenes, reopened?.catalog?.localMaps?.scenes)
+        assertEquals(catalog.localMaps.pois, reopened?.catalog?.localMaps?.pois)
+        assertEquals(
+            "Route Test",
+            reopened?.catalog?.defaultLocalizedText()?.localMapNames?.get("local/0102")?.value,
+        )
+        assertEquals(
+            "Potion",
+            reopened?.catalog?.defaultLocalizedText()?.itemNames?.get(13)?.value,
+        )
         assertEquals(localPng.bytes.toList(), reopened?.catalog?.localMaps?.assets?.get("local/0102/map")?.bytes?.toList())
         val reopenedIndexed = reopened?.catalog?.localMaps?.indexedAssets?.get("local/0103/map")
         assertEquals(indexedAsset.pixelWidth, reopenedIndexed?.pixelWidth)
@@ -933,7 +1131,10 @@ class CatalogStoreTest {
         assertEquals(timedAsset.paletteModel, reopenedTimed?.paletteModel)
         assertEquals(0x1841, reopened?.catalog?.runtimeMetadata?.gen2TimeOfDayWramOffset)
         assertEquals(raster.argb.toList(), reopened?.catalog?.worldMaps?.assets?.get("world/region-0")?.argb?.toList())
-        assertEquals(CatalogSchema.requiredSections, reopened?.committedSections)
+        assertEquals(
+            expectedSections(requireNotNull(reopened).catalog),
+            reopened.committedSections,
+        )
     }
 
     @Test
@@ -956,7 +1157,7 @@ class CatalogStoreTest {
         val stored = requireNotNull(cache.readComplete(catalog.romSha256))
         val reopened = stored.catalog
 
-        assertEquals(CatalogSchema.requiredSections, stored.committedSections)
+        assertEquals(expectedSections(stored.catalog), stored.committedSections)
         assertEquals(1, reopened.worldMaps.regions.size)
         assertEquals(557, reopened.localMaps.maps.size)
         assertEquals(
@@ -1090,7 +1291,7 @@ class CatalogStoreTest {
     fun `legacy encounter sections without windows reopen as unrestricted`() {
         val catalog = completeCatalog("f".repeat(64))
         val codec = CatalogSectionCodec()
-        val sections = codec.encode(catalog, CatalogSchema.requiredSections).toMutableMap()
+        val sections = codec.encode(catalog, CatalogSectionPlan.from(catalog.localization).sections).toMutableMap()
         val legacyJson = GZIPInputStream(ByteArrayInputStream(sections.getValue("encounters"))).use {
             it.readBytes().toString(Charsets.UTF_8)
         }.replace(Regex(""","windows":\[[^]]*]"""), "")
@@ -1113,7 +1314,7 @@ class CatalogStoreTest {
     fun `legacy learnset rulesets without selectors reopen without inventing save detection`() {
         val catalog = completeCatalog("9".repeat(64))
         val codec = CatalogSectionCodec()
-        val sections = codec.encode(catalog, CatalogSchema.requiredSections).toMutableMap()
+        val sections = codec.encode(catalog, CatalogSectionPlan.from(catalog.localization).sections).toMutableMap()
         val currentJson = GZIPInputStream(ByteArrayInputStream(sections.getValue("learnset_rulesets"))).use {
             it.readBytes().toString(Charsets.UTF_8)
         }
@@ -1207,6 +1408,43 @@ class CatalogStoreTest {
     }
 
     @Test
+    fun `catalog schema migration retains unrelated database state`() {
+        val databaseFile = newRoot().resolve("migration.sqlite").toFile()
+        JdbcCatalogDatabaseFactory.open(databaseFile).use { database ->
+            CatalogMigration.prepare(database)
+            database.execute("CREATE TABLE retained_settings (value TEXT NOT NULL)")
+            database.execute("INSERT INTO retained_settings (value) VALUES ('keep')")
+            database.execute(
+                """
+                INSERT INTO catalog_metadata (
+                    id, schema_version, parser_schema_version, sha256, crc32, rom_size, rom_title,
+                    source_name, source_kind, source_entry, family, platform, phase,
+                    completed_units, total_units, is_complete, written_at_epoch_ms
+                ) VALUES (1, 1, 47, ?, '00000000', 1, 'OLD', 'Old.gba', 'DIRECT', NULL,
+                    'OFFICIAL_GEN_III', 'GBA', 'COMPLETE', 1, 1, 1, 0)
+                """.trimIndent(),
+                listOf("0".repeat(64)),
+            )
+            database.execute("PRAGMA user_version = 1")
+
+            CatalogMigration.prepare(database)
+
+            assertEquals(
+                CatalogSchema.version,
+                database.query("PRAGMA user_version") { row -> row.long("user_version")?.toInt() }.single(),
+            )
+            assertEquals(
+                listOf("keep"),
+                database.query("SELECT value FROM retained_settings") { row -> row.string("value") },
+            )
+            assertEquals(
+                0L,
+                database.query("SELECT COUNT(*) AS count FROM catalog_metadata") { row -> row.long("count") }.single(),
+            )
+        }
+    }
+
+    @Test
     fun `complete catalogs round trip every production section`() {
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
@@ -1216,7 +1454,7 @@ class CatalogStoreTest {
         cache.write(catalog, source, CatalogWriteProgress.complete())
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(47, CatalogSchema.parserSchemaVersion)
+        assertEquals(48, CatalogSchema.parserSchemaVersion)
         assertEquals(source, reopened?.source)
         assertEquals(catalog, reopened?.catalog)
         assertEquals(
@@ -1237,9 +1475,16 @@ class CatalogStoreTest {
             catalog.runtimeMetadata.gen3RuntimeMemoryLayout,
             reopened?.catalog?.runtimeMetadata?.gen3RuntimeMemoryLayout,
         )
-        assertEquals("Route 101", reopened?.catalog?.runtimeMetadata?.areaNamesByBaseId?.get(0x0010))
-        assertEquals(CatalogSchema.requiredSections, reopened?.committedSections)
-        assertEquals(catalog.theme, reopened?.catalog?.theme)
+        assertEquals(setOf(0x0010), reopened?.catalog?.runtimeMetadata?.areaBaseIds)
+        assertEquals(
+            "Route 101",
+            reopened?.catalog?.defaultLocalizedText()?.areaNames?.get(0x0010)?.value,
+        )
+        assertEquals(
+            expectedSections(requireNotNull(reopened).catalog),
+            reopened.committedSections,
+        )
+        assertEquals(catalog.theme, reopened.catalog.theme)
     }
 
     @Test
@@ -1358,7 +1603,7 @@ class CatalogStoreTest {
 
     @Test
     fun `revision 42 caches are invalidated so hybrid move details are rebuilt`() {
-        assertEquals(47, CatalogSchema.parserSchemaVersion)
+        assertEquals(48, CatalogSchema.parserSchemaVersion)
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("4".repeat(64)).copy(diagnostics = listOf("pre-hybrid move output"))
@@ -1380,7 +1625,7 @@ class CatalogStoreTest {
 
     @Test
     fun `revision 43 caches are invalidated so optional relationship evidence is rebuilt`() {
-        assertEquals(47, CatalogSchema.parserSchemaVersion)
+        assertEquals(48, CatalogSchema.parserSchemaVersion)
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("5".repeat(64)).copy(diagnostics = listOf("pre-isolation relationship output"))
@@ -1402,7 +1647,7 @@ class CatalogStoreTest {
 
     @Test
     fun `revision 44 caches are invalidated so bounded detached Gen I evidence is rebuilt`() {
-        assertEquals(47, CatalogSchema.parserSchemaVersion)
+        assertEquals(48, CatalogSchema.parserSchemaVersion)
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("6".repeat(64)).copy(diagnostics = listOf("pre-bounded detached Gen I output"))
@@ -1424,7 +1669,7 @@ class CatalogStoreTest {
 
     @Test
     fun `revision 45 caches are invalidated so Gen I applicability and bounded fallbacks are rebuilt`() {
-        assertEquals(47, CatalogSchema.parserSchemaVersion)
+        assertEquals(48, CatalogSchema.parserSchemaVersion)
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("7".repeat(64)).copy(
@@ -1763,6 +2008,187 @@ class CatalogStoreTest {
         }
     }
 
+    private fun overlayForLanguage(
+        source: CatalogLanguageOverlay,
+        language: LanguageTag,
+        speciesName: String,
+    ) = CatalogLanguageOverlay(
+        language = language,
+        overlayVersion = source.overlayVersion,
+        localizedCapabilities = source.localizedCapabilities,
+        speciesNames = source.speciesNames.mapValues { CatalogField.available(speciesName) },
+        speciesDescriptions = source.speciesDescriptions,
+        moveNames = source.moveNames,
+        moveDescriptions = source.moveDescriptions,
+        abilityNames = source.abilityNames,
+        abilityDescriptions = source.abilityDescriptions,
+        typeNames = source.typeNames,
+        natureNames = source.natureNames,
+        itemNames = source.itemNames,
+        areaNames = source.areaNames,
+        localMapNames = source.localMapNames,
+        worldRegionNames = source.worldRegionNames,
+        worldLocationNames = source.worldLocationNames,
+        encounterAreaNames = source.encounterAreaNames,
+        poiTexts = source.poiTexts,
+    )
+
+    private fun localizedFixtureCatalog(
+        base: ParsedCatalog,
+        runtimeMetadata: CatalogRuntimeMetadata = base.runtimeMetadata,
+        worldMaps: WorldMapCatalog = base.worldMaps,
+        localMaps: LocalMapCatalog = base.localMaps,
+    ): ParsedCatalog {
+        val prior = requireNotNull(base.defaultLocalizedText())
+        val itemIds = base.captureBallsById.keys + localMaps.pois.mapNotNull { it.item?.itemId }
+        val areaIds = runtimeMetadata.areaBaseIds + runtimeMetadata.areaNamesByBaseId.keys
+        val localMapKeys = localMaps.maps.mapTo(linkedSetOf(), LocalMap::key)
+        val regionKeys = worldMaps.regions.mapTo(linkedSetOf(), WorldMapRegion::key)
+        val locationKeys = worldMaps.regions.flatMapTo(linkedSetOf()) { region ->
+            region.locations.map { WorldLocationKey(region.key, it.key) }
+        }
+        val poiKeys = localMaps.pois.mapTo(linkedSetOf(), LocalMapPoi::key)
+        val itemNames = buildMap {
+            putAll(prior.itemNames.filterKeys(itemIds::contains))
+            localMaps.pois.forEach { poi ->
+                val item = poi.item ?: return@forEach
+                val itemId = item.itemId ?: return@forEach
+                val displayName = item.displayName ?: return@forEach
+                val existing = put(itemId, CatalogField.available(displayName))
+                require(existing == null || existing.value == displayName) {
+                    "fixture item names must not conflict"
+                }
+            }
+        }
+        val areaNames = buildMap {
+            putAll(prior.areaNames.filterKeys(areaIds::contains))
+            runtimeMetadata.areaNamesByBaseId.forEach { (id, name) -> put(id, CatalogField.available(name)) }
+        }
+        val localMapNames = localMaps.maps.mapNotNull { map ->
+            map.displayName?.let { map.key to CatalogField.available(it) }
+        }.toMap()
+        val worldRegionNames = worldMaps.regions.mapNotNull { region ->
+            region.displayName?.let { region.key to CatalogField.available(it) }
+        }.toMap()
+        val worldLocationNames = worldMaps.regions.flatMap { region ->
+            region.locations.mapNotNull { location ->
+                location.displayName?.let {
+                    WorldLocationKey(region.key, location.key) to CatalogField.available(it)
+                }
+            }
+        }.toMap()
+        val poiTexts = localMaps.pois.mapNotNull { poi ->
+            val displayName = poi.displayName?.let(CatalogField.Companion::available)
+            val genderNames = poi.displayNamesByTrainerGender.mapValues { (_, text) -> CatalogField.available(text) }
+            val itemName = poi.item?.takeIf { it.itemId == null }?.displayName
+                ?.let(CatalogField.Companion::available)
+            if (displayName == null && genderNames.isEmpty() && itemName == null) {
+                null
+            } else {
+                poi.key to CatalogPoiText(displayName, genderNames, itemName)
+            }
+        }.toMap()
+        val localizedMaps = mapOf(
+            LocalizedTextCapability.SPECIES_NAMES to prior.speciesNames,
+            LocalizedTextCapability.SPECIES_DESCRIPTIONS to prior.speciesDescriptions,
+            LocalizedTextCapability.MOVE_NAMES to prior.moveNames,
+            LocalizedTextCapability.MOVE_DESCRIPTIONS to prior.moveDescriptions,
+            LocalizedTextCapability.ABILITY_NAMES to prior.abilityNames,
+            LocalizedTextCapability.ABILITY_DESCRIPTIONS to prior.abilityDescriptions,
+            LocalizedTextCapability.TYPE_NAMES to prior.typeNames,
+            LocalizedTextCapability.NATURE_NAMES to prior.natureNames,
+            LocalizedTextCapability.ITEM_NAMES to itemNames,
+            LocalizedTextCapability.AREA_NAMES to areaNames,
+            LocalizedTextCapability.LOCAL_MAP_NAMES to localMapNames,
+            LocalizedTextCapability.WORLD_REGION_NAMES to worldRegionNames,
+            LocalizedTextCapability.WORLD_LOCATION_NAMES to worldLocationNames,
+            LocalizedTextCapability.ENCOUNTER_AREA_NAMES to prior.encounterAreaNames,
+            LocalizedTextCapability.POI_TEXT to poiTexts,
+        )
+        val expected = mapOf(
+            LocalizedTextCapability.SPECIES_NAMES to base.speciesById.size,
+            LocalizedTextCapability.SPECIES_DESCRIPTIONS to base.speciesById.count { (id, record) ->
+                id > 0 && record.dexNumber.status != CapabilityStatus.NOT_APPLICABLE
+            },
+            LocalizedTextCapability.MOVE_NAMES to base.movesById.size,
+            LocalizedTextCapability.MOVE_DESCRIPTIONS to base.movesById.keys.count { it > 0 },
+            LocalizedTextCapability.ABILITY_NAMES to base.abilitiesById.size,
+            LocalizedTextCapability.ABILITY_DESCRIPTIONS to base.abilitiesById.keys.count { it > 0 },
+            LocalizedTextCapability.TYPE_NAMES to base.typesById.size,
+            LocalizedTextCapability.NATURE_NAMES to base.naturesById.size,
+            LocalizedTextCapability.ITEM_NAMES to itemIds.size,
+            LocalizedTextCapability.AREA_NAMES to areaIds.size,
+            LocalizedTextCapability.LOCAL_MAP_NAMES to localMapKeys.size,
+            LocalizedTextCapability.WORLD_REGION_NAMES to regionKeys.size,
+            LocalizedTextCapability.WORLD_LOCATION_NAMES to locationKeys.size,
+            LocalizedTextCapability.ENCOUNTER_AREA_NAMES to base.encounterAreas.size,
+            LocalizedTextCapability.POI_TEXT to poiKeys.size,
+        )
+        val capabilities = LocalizedTextCapability.entries.associateWith { capability ->
+            val expectedRecords = expected.getValue(capability)
+            val coveredRecords = localizedMaps.getValue(capability).size
+            when {
+                expectedRecords == 0 -> LocalizedCapabilityState.notApplicable("empty fixture domain")
+                coveredRecords == expectedRecords -> LocalizedCapabilityState.available(expectedRecords)
+                coveredRecords > 0 -> LocalizedCapabilityState(
+                    status = CapabilityStatus.PARTIAL,
+                    confidence = 1.0,
+                    coveredRecords = coveredRecords,
+                    expectedRecords = expectedRecords,
+                )
+                else -> LocalizedCapabilityState.notFound("fixture text unavailable", expectedRecords)
+            }
+        }
+        val overlay = CatalogLanguageOverlay(
+            language = prior.language,
+            overlayVersion = prior.overlayVersion,
+            localizedCapabilities = capabilities,
+            speciesNames = prior.speciesNames,
+            speciesDescriptions = prior.speciesDescriptions,
+            moveNames = prior.moveNames,
+            moveDescriptions = prior.moveDescriptions,
+            abilityNames = prior.abilityNames,
+            abilityDescriptions = prior.abilityDescriptions,
+            typeNames = prior.typeNames,
+            natureNames = prior.natureNames,
+            itemNames = itemNames,
+            areaNames = areaNames,
+            localMapNames = localMapNames,
+            worldRegionNames = worldRegionNames,
+            worldLocationNames = worldLocationNames,
+            encounterAreaNames = prior.encounterAreaNames,
+            poiTexts = poiTexts,
+        )
+        return base.copy(
+            runtimeMetadata = runtimeMetadata.copy(
+                areaBaseIds = areaIds,
+                areaNamesByBaseId = emptyMap(),
+            ),
+            worldMaps = worldMaps.copy(
+                regions = worldMaps.regions.map { region ->
+                    region.copy(
+                        displayName = null,
+                        locations = region.locations.map { it.copy(displayName = null) },
+                    )
+                },
+            ),
+            localMaps = localMaps.copy(
+                maps = localMaps.maps.map { it.copy(displayName = null) },
+                pois = localMaps.pois.map { poi ->
+                    poi.copy(
+                        displayName = null,
+                        displayNamesByTrainerGender = emptyMap(),
+                        item = poi.item?.copy(displayName = null),
+                    )
+                },
+            ),
+            localization = CatalogLocalization(base.languageManifest, mapOf(prior.language to overlay)),
+        )
+    }
+
+    private fun expectedSections(catalog: ParsedCatalog): Set<String> =
+        CatalogSectionPlan.from(catalog.localization).sections
+
     private fun completeCatalog(hash: String): ParsedCatalog {
         val sprite = RgbaSprite(2, 2, intArrayOf(0x00000000, 0xffff0000.toInt(), 0xff00ff00.toInt(), 0xff0000ff.toInt()))
         val avatar = RgbaSprite(64, 64, IntArray(64 * 64) { 0xff406080.toInt() })
@@ -1826,19 +2252,71 @@ class CatalogStoreTest {
                 )),
             ),
         )
+        val manifest = englishLanguageManifest()
+        val localizedExpectedRecords = mapOf(
+            LocalizedTextCapability.SPECIES_NAMES to 1,
+            LocalizedTextCapability.SPECIES_DESCRIPTIONS to 1,
+            LocalizedTextCapability.MOVE_NAMES to 1,
+            LocalizedTextCapability.MOVE_DESCRIPTIONS to 1,
+            LocalizedTextCapability.ABILITY_NAMES to 1,
+            LocalizedTextCapability.ABILITY_DESCRIPTIONS to 1,
+            LocalizedTextCapability.TYPE_NAMES to 1,
+            LocalizedTextCapability.NATURE_NAMES to 1,
+            LocalizedTextCapability.ITEM_NAMES to 1,
+            LocalizedTextCapability.AREA_NAMES to 1,
+            LocalizedTextCapability.ENCOUNTER_AREA_NAMES to 1,
+        )
+        val overlay = CatalogLanguageOverlay(
+            language = LanguageTag.ENGLISH,
+            overlayVersion = 1,
+            localizedCapabilities = LocalizedTextCapability.entries.associateWith { capability ->
+                val expected = localizedExpectedRecords[capability] ?: 0
+                if (expected == 0) {
+                    LocalizedCapabilityState.notApplicable("empty fixture domain")
+                } else {
+                    LocalizedCapabilityState.available(expected)
+                }
+            },
+            speciesNames = mapOf(6 to species.name),
+            speciesDescriptions = mapOf(6 to species.description),
+            moveNames = mapOf(53 to move.name),
+            moveDescriptions = mapOf(53 to move.effectText),
+            abilityNames = mapOf(66 to ability.name),
+            abilityDescriptions = mapOf(66 to ability.description),
+            typeNames = mapOf(10 to CatalogField.available("Fire")),
+            natureNames = mapOf(0 to CatalogField.available("Resolute")),
+            itemNames = mapOf(4 to CatalogField.available("Poké Ball")),
+            areaNames = mapOf(0x0010 to CatalogField.available("Route 101")),
+            encounterAreaNames = mapOf(1 to CatalogField.available("Route 1")),
+        )
+        val localized = CatalogLocalization(manifest, mapOf(LanguageTag.ENGLISH to overlay))
+        val localizedPlaceholder = CatalogField.notApplicable<String>("stored in language overlay")
         return ParsedCatalog(
             romSha256 = hash,
             romCrc32 = "8C7DBECA",
             family = EngineFamily.EMERALD,
             platform = Platform.GBA,
-            speciesById = mapOf(6 to species),
-            movesById = mapOf(53 to move),
-            typesById = mapOf(10 to TypeRecord(10, CatalogField.available("Fire"), CatalogField.available(typePresentation))),
-            abilitiesById = mapOf(66 to ability),
+            speciesById = mapOf(
+                6 to species.copy(name = localizedPlaceholder, description = localizedPlaceholder),
+            ),
+            movesById = mapOf(
+                53 to move.copy(name = localizedPlaceholder, effectText = localizedPlaceholder),
+            ),
+            typesById = mapOf(
+                10 to TypeRecord(
+                    id = 10,
+                    name = localizedPlaceholder,
+                    presentation = CatalogField.available(typePresentation),
+                    semanticRole = CatalogField.available(TypeSemanticRole.FIRE),
+                ),
+            ),
+            abilitiesById = mapOf(
+                66 to ability.copy(name = localizedPlaceholder, description = localizedPlaceholder),
+            ),
             naturesById = mapOf(
                 0 to NatureRecord(
                     id = 0,
-                    name = "Resolute",
+                    name = null,
                     statModifiers = listOf(1, 0, 0, -1, 0),
                     positivePercent = 112,
                     negativePercent = 88,
@@ -1849,13 +2327,15 @@ class CatalogStoreTest {
             encounterAreas = listOf(
                 EncounterArea(
                     1,
-                    CatalogField.available("Route 1"),
+                    localizedPlaceholder,
                     0,
                     listOf(EncounterSlot(6, 34, 36, 10)),
                     setOf(EncounterWindow.NIGHT),
                 ),
             ),
-            captureBallsById = mapOf(4 to CaptureBallRecord(4, CatalogField.available("Poké Ball"), CatalogField.available(sprite))),
+            captureBallsById = mapOf(
+                4 to CaptureBallRecord(4, localizedPlaceholder, CatalogField.available(sprite)),
+            ),
             learnsetRulesets = listOf(
                 LearnsetRuleset(
                     "modern",
@@ -1958,7 +2438,8 @@ class CatalogStoreTest {
                         0x0200143C + 0x43C,
                     ),
                 ),
-                areaNamesByBaseId = mapOf(0x0010 to "Route 101"),
+                areaBaseIds = setOf(0x0010),
+                areaNamesByBaseId = emptyMap(),
             ),
             capabilities = mapOf(
                 RomCapability.SPECIES_CATALOG to CapabilityEvidence(
@@ -1974,7 +2455,7 @@ class CatalogStoreTest {
                 ),
             ),
             diagnostics = listOf("fixture diagnostic"),
-            languageManifest = englishLanguageManifest(),
+            localization = localized,
         )
     }
 

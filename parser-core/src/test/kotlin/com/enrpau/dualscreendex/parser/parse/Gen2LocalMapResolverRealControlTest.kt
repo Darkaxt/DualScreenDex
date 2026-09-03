@@ -2,6 +2,7 @@ package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
+import com.enrpau.dualscreendex.parser.catalog.CatalogTextProjection
 import com.enrpau.dualscreendex.parser.catalog.EncounterMaterializer
 import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
 import com.enrpau.dualscreendex.parser.catalog.LocalMapLightingPolicy
@@ -10,6 +11,7 @@ import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiOrganicVisibility
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiService
 import com.enrpau.dualscreendex.parser.catalog.LocalMapRasterRenderer
 import com.enrpau.dualscreendex.parser.catalog.MapLighting
+import com.enrpau.dualscreendex.parser.catalog.defaultTextProjection
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.language.defaultTextCodec
@@ -74,6 +76,7 @@ class Gen2LocalMapResolverRealControlTest {
         assertEquals(SelectionStatus.SELECTED, attempt.analysis.status)
         val catalog = requireNotNull(attempt.catalog).getOrThrow()
         val localMaps = catalog.localMaps
+        val text = catalog.defaultTextProjection()
 
         assertEquals(control.mapCount, localMaps.maps.size)
         assertEquals(0, localMaps.assets.size)
@@ -83,7 +86,10 @@ class Gen2LocalMapResolverRealControlTest {
             localMaps.indexedAssets.values.sumOf { it.compressedIndices.size.toLong() } <
                 localMaps.maps.sumOf { it.pixelWidth.toLong() * it.pixelHeight },
         )
-        assertEquals(control.namedMapCount, localMaps.maps.count { !it.displayName.isNullOrBlank() })
+        assertEquals(
+            control.namedMapCount,
+            localMaps.maps.count { !text.localMapName(it.key).isNullOrBlank() },
+        )
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.LOCAL_MAP).status)
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.WORLD_MAP).status)
         assertEquals(control.trainerGenders, catalog.trainerAssets.overworldAssetKeys.keys)
@@ -96,11 +102,11 @@ class Gen2LocalMapResolverRealControlTest {
         }
         assertTrue(connectionFailures.joinToString("\n"), connectionFailures.isEmpty())
         assertScenes(localMaps)
-        assertPois(localMaps)
-        control.maps.forEach { expected -> assertMap(localMaps, expected) }
+        assertPois(localMaps, text)
+        control.maps.forEach { expected -> assertMap(localMaps, text, expected) }
     }
 
-    private fun assertPois(catalog: LocalMapCatalog) {
+    private fun assertPois(catalog: LocalMapCatalog, text: CatalogTextProjection) {
         val newBarkTown = catalog.pois.filter { it.baseAreaId == 0x1804 }
         assertEquals(5, newBarkTown.size)
         assertEquals(
@@ -109,7 +115,8 @@ class Gen2LocalMapResolverRealControlTest {
         )
         assertTrue(newBarkTown.all { it.kind == LocalMapPoiKind.PLACE })
         assertTrue(newBarkTown.all { it.organicVisibility == LocalMapPoiOrganicVisibility.ENTRANCE_PROXIMITY })
-        assertEquals("NEW BARK TOWN", newBarkTown.single { it.tileX == 8 && it.tileY == 8 }.displayName)
+        val newBarkEntrance = newBarkTown.single { it.tileX == 8 && it.tileY == 8 }
+        assertEquals("NEW BARK TOWN", text.poiDisplayName(newBarkEntrance.key))
 
         val route29Potion = catalog.pois.single {
             it.baseAreaId == 0x1803 && it.tileX == 48 && it.tileY == 2
@@ -171,9 +178,13 @@ class Gen2LocalMapResolverRealControlTest {
         }
     }
 
-    private fun assertMap(catalog: LocalMapCatalog, expected: ExpectedMap) {
+    private fun assertMap(
+        catalog: LocalMapCatalog,
+        text: CatalogTextProjection,
+        expected: ExpectedMap,
+    ) {
         val map = catalog.maps.single { it.baseAreaId == expected.baseAreaId }
-        assertEquals(expected.displayName, map.displayName)
+        assertEquals(expected.displayName, text.localMapName(map.key))
         assertEquals(expected.gridWidth, map.gridWidth)
         assertEquals(expected.gridHeight, map.gridHeight)
         assertEquals(expected.gridWidth * 16, map.pixelWidth)

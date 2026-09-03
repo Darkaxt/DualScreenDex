@@ -7,7 +7,7 @@ import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.RomCapability
-import com.enrpau.dualscreendex.parser.language.RomLanguageManifest
+import com.enrpau.dualscreendex.parser.language.LanguageTag
 
 data class CatalogField<T>(
     val status: CapabilityStatus,
@@ -76,6 +76,8 @@ data class SpeciesRecord(
         CatalogField.notFound("non-level move acquisition was not materialized"),
     val abilityIds: CatalogField<List<Int>> = CatalogField.notApplicable("abilities are not part of this engine"),
     val growthRate: CatalogField<Int> = CatalogField.notFound("growth rate was not materialized"),
+    val navigable: Boolean = (dexNumber.value ?: 0) > 0 &&
+        (name.value == null || name.value.any(Char::isLetterOrDigit)),
 )
 
 data class MoveRecord(
@@ -91,10 +93,35 @@ data class MoveRecord(
     val effectText: CatalogField<String> = CatalogField.notFound("effect text was not materialized"),
 )
 
+enum class TypeSemanticRole {
+    NORMAL,
+    FIGHTING,
+    FLYING,
+    POISON,
+    GROUND,
+    ROCK,
+    BUG,
+    GHOST,
+    STEEL,
+    MYSTERY,
+    FIRE,
+    WATER,
+    GRASS,
+    ELECTRIC,
+    PSYCHIC,
+    ICE,
+    DRAGON,
+    DARK,
+    FAIRY,
+}
+
 data class TypeRecord(
     val id: Int,
     val name: CatalogField<String>,
     val presentation: CatalogField<TypePresentation> = CatalogField.notFound("type presentation was not materialized"),
+    val semanticRole: CatalogField<TypeSemanticRole> = CatalogField.notFound(
+        "type semantic role was not structurally resolved",
+    ),
 )
 
 data class TypeMatchup(val attackingTypeId: Int, val defendingTypeId: Int, val multiplierPercent: Int)
@@ -466,11 +493,16 @@ data class CatalogRuntimeMetadata(
     val gen2TimeOfDayWramOffset: Int? = null,
     val gen3SaveBlock1PointerAddress: Long? = null,
     val gen3RuntimeMemoryLayout: CatalogGen3RuntimeMemoryLayout? = null,
+    val areaBaseIds: Set<Int> = emptySet(),
     val areaNamesByBaseId: Map<Int, String> = emptyMap(),
 ) {
     fun validate(): CatalogRuntimeMetadata = apply {
         require(gen2TimeOfDayWramOffset == null || gen2TimeOfDayWramOffset in 0 until GEN2_WRAM_BYTES) {
             "Gen II time-of-day offset must remain inside WRAM"
+        }
+        require(areaBaseIds.all { it in 0..0xFFFF }) { "runtime area identities must fit group/map identity" }
+        require(areaNamesByBaseId.keys.all { it in 0..0xFFFF }) {
+            "legacy runtime area-name identities must fit group/map identity"
         }
     }
 
@@ -1011,10 +1043,21 @@ data class ParsedCatalog(
     val theme: CatalogTheme = CatalogTheme.neutral(),
     val capabilities: Map<RomCapability, CapabilityEvidence> = emptyMap(),
     val diagnostics: List<String> = emptyList(),
-    val languageManifest: RomLanguageManifest = RomLanguageManifest.UNKNOWN,
+    val localization: CatalogLocalization = CatalogLocalization.UNKNOWN,
 ) {
-    fun navigableSpecies(): List<SpeciesRecord> = speciesById.values.filter { species ->
-        (species.dexNumber.value ?: 0) > 0 &&
-            (species.name.value == null || species.name.value.any(Char::isLetterOrDigit))
+    val languageManifest get() = localization.manifest
+    val localizedTextByLanguage get() = localization.overlays
+
+    init {
+        localization.validateKeys(this)
     }
+
+    fun navigableSpecies(): List<SpeciesRecord> = speciesById.values.filter(SpeciesRecord::navigable)
+
+    fun localizedText(language: LanguageTag): CatalogLanguageOverlay? = localization.overlay(language)
+
+    fun defaultLocalizedText(): CatalogLanguageOverlay? = localization.defaultOverlay()
+
+    fun localizedCapabilities(language: LanguageTag): Map<LocalizedTextCapability, LocalizedCapabilityState> =
+        localizedText(language)?.localizedCapabilities.orEmpty()
 }

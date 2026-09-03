@@ -72,14 +72,15 @@ class Gen1CompiledTablesLiveRomTest {
         val parsed = CatalogParser.parse(rom)
         assertEquals(SelectionStatus.SELECTED, parsed.analysis.status)
         val catalog = requireNotNull(parsed.catalog)
-        val descriptionsCapability = catalog.capabilities.getValue(RomCapability.POKEDEX_DESCRIPTIONS)
+        val text = catalog.defaultTextProjection()
+        val descriptionsCapability =
+            text.localizedCapabilities.getValue(LocalizedTextCapability.SPECIES_DESCRIPTIONS)
         val moves = catalog.capabilities.getValue(RomCapability.MOVE_CATALOG)
         val machines = catalog.capabilities.getValue(RomCapability.MACHINE_MOVES)
         val evolutions = catalog.capabilities.getValue(RomCapability.EVOLUTIONS)
         val learnsets = catalog.capabilities.getValue(RomCapability.LEARNSETS)
 
         assertEquals(CapabilityStatus.AVAILABLE, descriptionsCapability.status)
-        assertEquals(0x40488, descriptionsCapability.offset)
         assertEquals(151, descriptionsCapability.coveredRecords)
         assertEquals(CapabilityStatus.AVAILABLE, moves.status)
         assertEquals(253, moves.coveredRecords)
@@ -146,12 +147,13 @@ class Gen1CompiledTablesLiveRomTest {
         assertEquals(SelectionStatus.SELECTED, parsed.analysis.status)
         assertEquals(EngineFamily.RED_BLUE, parsed.analysis.selectedFamily)
         val catalog = requireNotNull(parsed.catalog)
+        val text = catalog.defaultTextProjection()
         moveCount?.let { expectedMoves ->
             assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.MOVE_CATALOG).status)
             assertEquals(expectedMoves, catalog.movesById.size)
         }
         relationshipCount?.let { expectedRelationships ->
-            val speciesNames = catalog.capabilities.getValue(RomCapability.SPECIES_NAMES)
+            val speciesNames = text.localizedCapabilities.getValue(LocalizedTextCapability.SPECIES_NAMES)
             val evolutions = catalog.capabilities.getValue(RomCapability.EVOLUTIONS)
             val learnsets = catalog.capabilities.getValue(RomCapability.LEARNSETS)
             assertEquals(CapabilityStatus.AVAILABLE, speciesNames.status)
@@ -181,12 +183,12 @@ class Gen1CompiledTablesLiveRomTest {
             )
         }
         if (descriptionOffset != null && descriptionRecords != null) {
-            val descriptions = catalog.capabilities.getValue(RomCapability.POKEDEX_DESCRIPTIONS)
+            val descriptions =
+                text.localizedCapabilities.getValue(LocalizedTextCapability.SPECIES_DESCRIPTIONS)
             assertEquals(CapabilityStatus.AVAILABLE, descriptions.status)
-            assertEquals(descriptionOffset, descriptions.offset)
             assertEquals(151, descriptions.coveredRecords)
             assertEquals(151, descriptions.expectedRecords)
-            assertEquals(descriptionRecords, catalog.speciesById.values.count { it.description.value != null })
+            assertEquals(descriptionRecords, catalog.speciesById.keys.count { text.speciesDescription(it) != null })
         }
     }
 
@@ -212,15 +214,16 @@ class Gen1CompiledTablesLiveRomTest {
         val parsed = CatalogParser.parse(rom)
         assertEquals(SelectionStatus.SELECTED, parsed.analysis.status)
         val catalog = requireNotNull(parsed.catalog)
+        val text = catalog.defaultTextProjection()
         val evolutions = catalog.capabilities.getValue(RomCapability.EVOLUTIONS)
-        val descriptionsCapability = catalog.capabilities.getValue(RomCapability.POKEDEX_DESCRIPTIONS)
+        val descriptionsCapability =
+            text.localizedCapabilities.getValue(LocalizedTextCapability.SPECIES_DESCRIPTIONS)
         val machines = catalog.capabilities.getValue(RomCapability.MACHINE_MOVES)
         val moveCatalog = catalog.capabilities.getValue(RomCapability.MOVE_CATALOG)
         val sprites = catalog.capabilities.getValue(RomCapability.SPRITES)
         val typeChart = catalog.capabilities.getValue(RomCapability.TYPE_CHART)
 
         assertEquals(CapabilityStatus.AVAILABLE, descriptionsCapability.status)
-        assertEquals(control.descriptionOffset, descriptionsCapability.offset)
         assertEquals(151, descriptionsCapability.coveredRecords)
         assertEquals(CapabilityStatus.AVAILABLE, evolutions.status)
         assertEquals(control.relationshipOffset, evolutions.offset)

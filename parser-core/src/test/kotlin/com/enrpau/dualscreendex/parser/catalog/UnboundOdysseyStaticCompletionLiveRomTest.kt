@@ -2,13 +2,13 @@ package com.enrpau.dualscreendex.parser.catalog
 
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
-import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 
@@ -20,21 +20,29 @@ class UnboundOdysseyStaticCompletionLiveRomTest {
         )
         val parsed = CatalogParser.parse(rom)
         val catalog = requireNotNull(parsed.catalog)
+        val text = catalog.defaultTextProjection()
+        val overlay = requireNotNull(catalog.defaultLocalizedText())
         val moveIds = catalog.movesById.keys.filter { it > 0 }.toSortedSet()
-        val describedIds = catalog.movesById.values
-            .filter { it.id > 0 && it.effectText.status == CapabilityStatus.AVAILABLE }
-            .mapTo(sortedSetOf()) { it.id }
+        val describedIds = moveIds.filterTo(sortedSetOf()) { text.moveDescription(it) != null }
         val missingIds = moveIds - describedIds
-        val capability = catalog.capabilities.getValue(RomCapability.MOVE_DESCRIPTIONS)
+        val capability = overlay.localizedCapabilities.getValue(
+            LocalizedTextCapability.MOVE_DESCRIPTIONS,
+        )
         val session = RomAnalysisSession(rom, RomHeaderReader.read(rom))
         val selected = requireNotNull(parsed.layout?.tables?.moveData)
         val descriptions = decodeMoveDescriptions(rom, 0x99F194, 922)
         val references = requireNotNull(session.gbaReferenceIndex?.target(0x99F194))
         assertEquals((1..922).toSet(), moveIds)
         assertEquals(CapabilityStatus.AVAILABLE, capability.status)
+        assertEquals(922, capability.coveredRecords)
+        assertEquals(922, capability.expectedRecords)
         assertEquals(922, describedIds.size)
         assertEquals(emptySet<Int>(), missingIds)
-        assertEquals(0x99F194, capability.offset)
+        assertTrue(
+            catalog.diagnostics.any {
+                it.startsWith("move descriptions: offset=0x99f194 ")
+            },
+        )
         assertEquals(null, session.gbaReferenceIndex?.overflowReason)
         assertEquals(3, references.count)
         assertEquals(true, references.siteEvidenceAvailable)
@@ -56,12 +64,16 @@ class UnboundOdysseyStaticCompletionLiveRomTest {
         )
         val parsed = CatalogParser.parse(rom)
         val catalog = requireNotNull(parsed.catalog)
+        val text = catalog.defaultTextProjection()
+        val overlay = requireNotNull(catalog.defaultLocalizedText())
         val pokedexSpecies = catalog.navigableSpecies().sortedBy { it.id }
         val describedIds = pokedexSpecies
-            .filter { it.description.status == CapabilityStatus.AVAILABLE }
-            .mapTo(sortedSetOf()) { it.id }
+            .map { it.id }
+            .filterTo(sortedSetOf()) { text.speciesDescription(it) != null }
         val missingIds = pokedexSpecies.mapTo(sortedSetOf()) { it.id } - describedIds
-        val capability = catalog.capabilities.getValue(RomCapability.POKEDEX_DESCRIPTIONS)
+        val capability = overlay.localizedCapabilities.getValue(
+            LocalizedTextCapability.SPECIES_DESCRIPTIONS,
+        )
         val layout = requireNotNull(parsed.layout)
         val session = RomAnalysisSession(rom, RomHeaderReader.read(rom))
         val descriptionReferences = requireNotNull(session.gbaReferenceIndex?.target(0x120C980))
@@ -93,12 +105,16 @@ class UnboundOdysseyStaticCompletionLiveRomTest {
         assertEquals(410, layout.tables.descriptions?.count)
         assertEquals(8, descriptionReferences.count)
         assertEquals(true, descriptionReferences.siteEvidenceAvailable)
-        assertBattleOnlySpecies(abyssEye, "Abyss Eye")
-        assertBattleOnlySpecies(tentacle, "Tentacle")
+        assertBattleOnlySpecies(abyssEye, text.speciesName(abyssEye.id), "Abyss Eye")
+        assertBattleOnlySpecies(tentacle, text.speciesName(tentacle.id), "Tentacle")
     }
 
-    private fun assertBattleOnlySpecies(species: SpeciesRecord, expectedName: String) {
-        assertEquals(expectedName, species.name.value)
+    private fun assertBattleOnlySpecies(
+        species: SpeciesRecord,
+        actualName: String?,
+        expectedName: String,
+    ) {
+        assertEquals(expectedName, actualName)
         assertEquals(CapabilityStatus.NOT_APPLICABLE, species.dexNumber.status)
         assertEquals(CapabilityStatus.AVAILABLE, species.typeIds.status)
         assertEquals(CapabilityStatus.AVAILABLE, species.baseStats.status)

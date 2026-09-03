@@ -3,12 +3,14 @@ package com.enrpau.dualscreendex.companion.map
 import com.enrpau.dualscreendex.companion.model.AppSnapshot
 import com.enrpau.dualscreendex.companion.model.KnowledgeMode
 import com.enrpau.dualscreendex.companion.model.LocalMapPoiPreferences
+import com.enrpau.dualscreendex.parser.catalog.CatalogTextProjection
 import com.enrpau.dualscreendex.parser.catalog.EncounterArea
 import com.enrpau.dualscreendex.parser.catalog.LocalMap
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoi
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiKind
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiOrganicVisibility
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
+import com.enrpau.dualscreendex.parser.catalog.defaultTextProjection
 
 object AreaGuideBuilder {
     fun project(
@@ -18,10 +20,11 @@ object AreaGuideBuilder {
     ): AreaGuideProjection {
         requireBoundedInput(catalog, objectivesByArea)
         val outputBudget = OutputBudget()
-        val names = areaNames(catalog)
+        val text = catalog.defaultTextProjection()
+        val names = areaNames(catalog, text)
         requireAtMost("area-count", names.size.toLong(), MAX_AREA_COUNT)
-        val projectedPoints = projectPoints(catalog, snapshot, names, outputBudget)
-        val guide = build(catalog, snapshot, names, projectedPoints, objectivesByArea, outputBudget)
+        val projectedPoints = projectPoints(catalog, snapshot, names, text, outputBudget)
+        val guide = build(catalog, snapshot, names, text, projectedPoints, objectivesByArea, outputBudget)
         return AreaGuideProjection(
             points = projectedPoints,
             guide = guide,
@@ -34,6 +37,7 @@ object AreaGuideBuilder {
         catalog: ParsedCatalog,
         snapshot: AppSnapshot,
         names: Map<Int, String>,
+        text: CatalogTextProjection,
         projectedPoints: List<AreaGuidePoint>,
         objectivesByArea: Map<Int, List<AreaGuideObjective>>,
         outputBudget: OutputBudget,
@@ -98,7 +102,7 @@ object AreaGuideBuilder {
                     outputBudget = outputBudget,
                 ),
             )
-            val encounters = encounterGroups(catalog, snapshot, baseAreaId, name, outputBudget)
+            val encounters = encounterGroups(catalog, text, snapshot, baseAreaId, name, outputBudget)
             outputBudget.retain()
             areas += AreaGuideArea(
                 baseAreaId = baseAreaId,
@@ -117,7 +121,8 @@ object AreaGuideBuilder {
     private fun projectPoints(
         catalog: ParsedCatalog,
         snapshot: AppSnapshot,
-        names: Map<Int, String> = areaNames(catalog),
+        names: Map<Int, String>,
+        text: CatalogTextProjection,
         outputBudget: OutputBudget? = null,
     ): List<AreaGuidePoint> = buildList {
         catalog.localMaps.pois.forEach { poi ->
@@ -152,8 +157,8 @@ object AreaGuideBuilder {
         val label = when {
             !identified -> null
             category == AreaGuidePointCategory.AVAILABLE_ITEM || category == AreaGuidePointCategory.COLLECTED_ITEM ->
-                normalizeText(poi.item?.displayName, trainer?.name, null)
-            else -> normalizeText(poiName(poi, trainer?.gender), trainer?.name, null)
+                normalizeText(text.poiItemName(poi.key, poi.item?.itemId), trainer?.name, null)
+            else -> normalizeText(text.poiDisplayName(poi.key, trainer?.gender), trainer?.name, null)
         }
         outputBudget?.retain()
         add(AreaGuidePoint(
@@ -174,6 +179,7 @@ object AreaGuideBuilder {
 
     private fun encounterGroups(
         catalog: ParsedCatalog,
+        text: CatalogTextProjection,
         snapshot: AppSnapshot,
         baseAreaId: Int,
         areaName: String,
@@ -192,7 +198,7 @@ object AreaGuideBuilder {
                     .groupBy { it.speciesId }
                     .mapNotNull { (speciesId, slots) ->
                         if (permittedSpecies != null && speciesId !in permittedSpecies) return@mapNotNull null
-                        val speciesName = catalog.speciesById[speciesId]?.name?.value
+                        val speciesName = text.speciesName(speciesId)
                             ?.let { normalizeText(it, null, null) }
                             ?: return@mapNotNull null
                         outputBudget.retain()
@@ -208,7 +214,7 @@ object AreaGuideBuilder {
                     }
                     .sortedWith(compareBy(AreaGuideEncounterSpecies::name, AreaGuideEncounterSpecies::speciesId))
                 if (species.isEmpty()) return@mapNotNull null
-                val sourceName = encounterArea.name.value?.let { normalizeText(it, null, null) }
+                val sourceName = text.encounterAreaName(encounterArea.id)?.let { normalizeText(it, null, null) }
                 val qualifier = sourceName
                     ?.removePrefix(areaName)
                     ?.trim(' ', '-', ':')
@@ -321,27 +327,24 @@ object AreaGuideBuilder {
         AreaGuidePointCategory.UNKNOWN -> preferences.showUnknownPois
     }
 
-    private fun poiName(poi: LocalMapPoi, trainerGender: Int?): String? =
-        trainerGender?.let(poi.displayNamesByTrainerGender::get)
-            ?: poi.displayName
-            ?: poi.displayNamesByTrainerGender.toSortedMap().values.firstOrNull()
-
-    private fun areaNames(catalog: ParsedCatalog): Map<Int, String> = buildMap {
+    private fun areaNames(catalog: ParsedCatalog, text: CatalogTextProjection): Map<Int, String> = buildMap {
         catalog.encounterAreas.forEach { area ->
-            area.name.value?.let { normalizeText(it, null, null) }?.let { putIfAbsent(area.id / 10, it) }
+            text.encounterAreaName(area.id)
+                ?.let { normalizeText(it, null, null) }
+                ?.let { putIfAbsent(area.id / 10, it) }
         }
         catalog.worldMaps.regions.forEach { region ->
             region.locations.forEach { location ->
-                location.displayName?.let { name ->
+                text.worldLocationName(region.key, location.key)?.let { name ->
                     location.baseAreaIds.forEach { put(it, name) }
                 }
             }
         }
         catalog.localMaps.maps.forEach { map ->
-            map.displayName?.let { normalizeText(it, null, null) }?.let { put(map.baseAreaId, it) }
+            text.localMapName(map.key)?.let { normalizeText(it, null, null) }?.let { put(map.baseAreaId, it) }
         }
-        catalog.runtimeMetadata.areaNamesByBaseId.forEach { (baseAreaId, name) ->
-            normalizeText(name, null, null)?.let { put(baseAreaId, it) }
+        (catalog.runtimeMetadata.areaBaseIds + catalog.runtimeMetadata.areaNamesByBaseId.keys).forEach { baseAreaId ->
+            text.areaName(baseAreaId)?.let { normalizeText(it, null, null) }?.let { put(baseAreaId, it) }
         }
     }
 

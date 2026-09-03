@@ -51,16 +51,20 @@ class PublishedUnifiedSpeciesLiveRomTest {
         assertEquals(listOf(4), bulbasaurEvolutions.edges.map { it.methodId })
 
         val catalog = requireNotNull(parsed.catalog)
+        val text = catalog.defaultTextProjection()
         assertEquals(1_494, catalog.speciesById.size)
         assertTrue(catalog.speciesById.containsKey(1_434))
         assertFalse(catalog.speciesById.containsKey(1_435))
         assertTrue(catalog.speciesById.containsKey(1_489))
         assertTrue(catalog.speciesById.containsKey(1_573))
         assertEquals(1_494, catalog.speciesById.values.count { it.sprite.status == CapabilityStatus.AVAILABLE })
-        assertEquals(193, catalog.speciesById.values.count { it.description.value != null })
+        assertEquals(193, catalog.speciesById.keys.count { text.speciesDescription(it) != null })
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.SPECIES_CATALOG).status)
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.SPRITES).status)
-        assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.POKEDEX_DESCRIPTIONS).status)
+        assertEquals(
+            CapabilityStatus.AVAILABLE,
+            text.localizedCapabilities.getValue(LocalizedTextCapability.SPECIES_DESCRIPTIONS).status,
+        )
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.EVOLUTIONS).status)
         assertTrue(
             catalog.speciesById.values.flatMap { it.evolutionEdges.value.orEmpty() }

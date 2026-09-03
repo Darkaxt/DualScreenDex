@@ -2,6 +2,7 @@ package com.enrpau.dualscreendex.parser.cli
 
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
+import com.enrpau.dualscreendex.parser.catalog.defaultTextProjection
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
@@ -137,12 +138,13 @@ object MapFirst50Matrix {
             val result = CatalogParser.parse(RomImage(Files.readAllBytes(path)))
             val catalog = result.catalog
             val mapCapability = catalog?.capabilities?.get(RomCapability.WORLD_MAP)
+            val text = catalog?.defaultTextProjection()
             val reasons = mapCapability?.reasons.orEmpty()
             val regions = catalog?.worldMaps?.regions.orEmpty().map { region ->
                 val raster = requireNotNull(catalog?.worldMaps?.assets?.get(region.imageAssetKey))
                 RegionObservation(
                     key = region.key,
-                    displayName = region.displayName,
+                    displayName = text?.worldRegionName(region.key),
                     pixelWidth = region.pixelWidth,
                     pixelHeight = region.pixelHeight,
                     gridWidth = region.gridWidth,
@@ -151,7 +153,7 @@ object MapFirst50Matrix {
                     locations = region.locations.map { location ->
                         LocationObservation(
                             key = location.key,
-                            displayName = location.displayName,
+                            displayName = text?.worldLocationName(region.key, location.key),
                             baseAreaIds = location.baseAreaIds.sorted(),
                             geometry = location.geometry.map { listOf(it.x, it.y, it.width, it.height) },
                         )
@@ -426,5 +428,5 @@ private data class RegionObservation(
     val rasterArgbSha256: String,
     val locations: List<LocationObservation>,
 )
-private data class LocationObservation(val key: String, val displayName: String, val baseAreaIds: List<Int>, val geometry: List<List<Int>>)
+private data class LocationObservation(val key: String, val displayName: String?, val baseAreaIds: List<Int>, val geometry: List<List<Int>>)
 private data class Control(val identity: String, val romSha256: String, val regionCount: Int, val rasterArgbSha256: List<String>)

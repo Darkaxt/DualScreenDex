@@ -7,6 +7,7 @@ import com.darkaxt.dualdex.battle.BattleTarget
 import com.darkaxt.dualdex.battle.CapabilityState
 import com.darkaxt.dualdex.battle.ResolvedBattleLayout
 import com.darkaxt.dualdex.battle.TargetMode
+import com.enrpau.dualscreendex.companion.battle.AppliedDamageCondition
 import com.enrpau.dualscreendex.companion.battle.CriticalRule
 import com.enrpau.dualscreendex.companion.battle.DamageForecast
 import com.enrpau.dualscreendex.companion.battle.DamageFormulaEvidence
@@ -19,6 +20,8 @@ import com.enrpau.dualscreendex.parser.catalog.MoveRecord
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.catalog.SpeciesRecord
 import com.enrpau.dualscreendex.parser.catalog.TypeMatchup
+import com.enrpau.dualscreendex.parser.catalog.TypeRecord
+import com.enrpau.dualscreendex.parser.catalog.TypeSemanticRole
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
 import org.junit.Assert.assertEquals
@@ -103,6 +106,63 @@ class DamageForecastAssemblerTest {
         )
     }
 
+    @Test
+    fun `proven weather type semantics remain bounded`() {
+        val base = catalog()
+        val fireCatalog = base.copy(
+            movesById = mapOf(
+                10 to base.movesById.getValue(10).copy(typeId = CatalogField.available(10)),
+            ),
+            typesById = mapOf(
+                10 to TypeRecord(
+                    id = 10,
+                    name = CatalogField.available("Feu"),
+                    semanticRole = CatalogField.available(TypeSemanticRole.FIRE),
+                ),
+            ),
+        )
+
+        val assembled = requireNotNull(
+            DamageForecastAssembler.input(
+                sample(owner = 2, target = 1),
+                fireCatalog,
+                KnowledgeMode.DISCOVERED,
+                formula(),
+            ),
+        )
+
+        assertTrue(assembled.unboundedUnknowns.isEmpty())
+        assertEquals(AppliedDamageCondition.WEATHER, assembled.boundedAlternatives.single().kind)
+    }
+
+    @Test
+    fun `unproven weather type semantics fail closed`() {
+        val base = catalog()
+        val customTypeCatalog = base.copy(
+            movesById = mapOf(
+                10 to base.movesById.getValue(10).copy(typeId = CatalogField.available(18)),
+            ),
+            typesById = mapOf(
+                18 to TypeRecord(18, CatalogField.available("Custom")),
+            ),
+        )
+
+        val assembled = requireNotNull(
+            DamageForecastAssembler.input(
+                sample(owner = 2, target = 1),
+                customTypeCatalog,
+                KnowledgeMode.DISCOVERED,
+                formula(),
+            ),
+        )
+
+        assertEquals(
+            listOf("Weather interaction for this move's type is unresolved."),
+            assembled.unboundedUnknowns,
+        )
+        assertTrue(DamageForecastMemoizer().forecast(assembled) is DamageForecast.Absent)
+    }
+
     private fun sample(owner: Int, target: Int): BattleMemorySample {
         val battlers = listOf(
             mon(0, 0, species = 1, attack = 60, defense = 60),
@@ -160,6 +220,13 @@ class DamageForecastAssemblerTest {
                 accuracy = CatalogField.available(100),
                 pp = CatalogField.available(35),
                 effectId = CatalogField.available(0),
+            ),
+        ),
+        typesById = mapOf(
+            0 to TypeRecord(
+                id = 0,
+                name = CatalogField.available("Normal"),
+                semanticRole = CatalogField.available(TypeSemanticRole.NORMAL),
             ),
         ),
         typeChart = listOf(TypeMatchup(0, 0, 100)),

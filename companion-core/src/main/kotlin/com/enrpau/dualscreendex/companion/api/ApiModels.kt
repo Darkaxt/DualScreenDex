@@ -23,17 +23,51 @@ import com.enrpau.dualscreendex.companion.model.KnowledgeMode
 import com.enrpau.dualscreendex.companion.model.OwnedIndividualLocationKind
 import com.enrpau.dualscreendex.companion.model.ResolvedOwnedIndividual
 import com.enrpau.dualscreendex.companion.owned.PreferredIndividualSelector
+import com.enrpau.dualscreendex.parser.catalog.CatalogTextProjection
 import com.enrpau.dualscreendex.parser.catalog.EvolutionEdge
 import com.enrpau.dualscreendex.parser.catalog.LearnsetNormalizer
 import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
+import com.enrpau.dualscreendex.parser.catalog.defaultTextProjection
 import com.enrpau.dualscreendex.parser.dataset.natures.NatureStat
 import java.net.URLEncoder
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 
-data class BootstrapView(val catalog: CatalogView?, val state: StateView)
+data class BootstrapView(
+    val catalog: CatalogView?,
+    val state: StateView,
+    val language: LanguageBootstrapView? = null,
+)
+
+data class LanguageBootstrapView(
+    val manifestStatus: String,
+    val defaultLanguage: String?,
+    val activeLanguage: String?,
+    val authority: String,
+    val activeOverlayVersion: Long?,
+    val projections: List<LanguageProjectionView>,
+)
+
+data class LanguageProjectionView(
+    val language: String,
+    val status: String,
+    val codecId: String,
+    val codecVersion: Int,
+    val overlayVersion: Long?,
+    val localizedCapabilities: Map<String, LocalizedCapabilityView>,
+)
+
+data class LocalizedCapabilityView(
+    val status: String,
+    val confidence: Double,
+    val coveredRecords: Int,
+    val expectedRecords: Int,
+    val incompleteRecords: Int,
+    val reviewStatus: String,
+    val validatorReviewRecommended: Boolean,
+)
 
 data class ApiErrorView(val error: ApiErrorDetailView)
 
@@ -672,7 +706,15 @@ data class RarityView(
 data class ObservedMoveView(val moveId: Int, val frequency: Int)
 
 object ApiViewBuilder {
-    fun catalog(catalog: ParsedCatalog): CatalogView = CatalogView(
+    fun bootstrap(catalog: ParsedCatalog?, state: StateView): BootstrapView = BootstrapView(
+        catalog = catalog?.let(::catalog),
+        state = state,
+        language = catalog?.let(::language),
+    )
+
+    fun catalog(catalog: ParsedCatalog): CatalogView {
+        val text = catalog.defaultTextProjection()
+        return CatalogView(
         hash = catalog.romSha256,
         crc32 = catalog.romCrc32,
         family = catalog.family.name,
@@ -690,7 +732,7 @@ object ApiViewBuilder {
             SpeciesView(
                 id = species.id,
                 dex = species.dexNumber.value ?: species.id,
-                name = species.name.value ?: "#${species.id}",
+                name = text.speciesName(species.id) ?: "#${species.id}",
                 typeIds = species.typeIds.value.orEmpty(),
                 stats = stats?.let {
                     linkedMapOf(
@@ -702,7 +744,7 @@ object ApiViewBuilder {
                         "SP. DEF" to it.specialDefense,
                     )
                 },
-                description = species.description.value,
+                description = text.speciesDescription(species.id),
                 height = species.height.value,
                 weight = species.weight.value,
                 learnset = species.learnset.value.orEmpty().map { LearnsetView(it.level, it.moveId) },
@@ -727,13 +769,13 @@ object ApiViewBuilder {
                     MoveAcquisitionView(it.moveId, it.method.name, it.sourceId)
                 },
                 abilities = species.abilityIds.value.orEmpty().mapNotNull { abilityId ->
-                    val ability = catalog.abilitiesById[abilityId]
-                    val name = ability?.name?.value
+                    val ability = catalog.abilitiesById[abilityId] ?: return@mapNotNull null
+                    val name = text.abilityName(abilityId)
                     if (abilityId == 0 || name.isNullOrBlank()) null
                     else AbilityView(
                         abilityId,
                         name,
-                        ability.description.value,
+                        text.abilityDescription(abilityId),
                         ability.mechanics.value.orEmpty().map { mechanic ->
                             AbilityMechanicView(
                                 mechanic.kind.name,
@@ -755,7 +797,7 @@ object ApiViewBuilder {
                 evolutions = species.evolutionEdges.value.orEmpty().map { edge ->
                     EvolutionView(
                         edge.targetSpeciesId,
-                        catalog.speciesById[edge.targetSpeciesId]?.name?.value ?: "Species ${edge.targetSpeciesId}",
+                        text.speciesName(edge.targetSpeciesId) ?: "Species ${edge.targetSpeciesId}",
                         edge.methodId,
                         edge.parameter,
                         evolutionCondition(catalog, edge),
@@ -767,7 +809,7 @@ object ApiViewBuilder {
         moves = catalog.movesById.values.sortedBy { it.id }.map {
             MoveView(
                 it.id,
-                it.name.value ?: "#${it.id}",
+                text.moveName(it.id) ?: "#${it.id}",
                 it.typeId.value,
                 it.category.value?.name,
                 it.power.value,
@@ -775,14 +817,14 @@ object ApiViewBuilder {
                 it.pp.value,
                 it.priority.value,
                 it.effectId.value,
-                it.effectText.value,
+                text.moveDescription(it.id),
             )
         },
         types = catalog.typesById.values.sortedBy { it.id }.map {
             val presentation = it.presentation.value
             TypeView(
                 it.id,
-                it.name.value ?: "TYPE ${it.id}",
+                text.typeName(it.id) ?: "TYPE ${it.id}",
                 presentation?.foregroundArgb?.toCss(),
                 presentation?.backgroundArgb?.toCss(),
                 presentation?.borderArgb?.toCss(),
@@ -795,7 +837,7 @@ object ApiViewBuilder {
             AreaView(
                 it.id,
                 it.id / 10,
-                it.name.value ?: "Area ${it.id}",
+                text.encounterAreaName(it.id) ?: "Area ${it.id}",
                 it.methodId,
                 it.slots.map { slot -> slot.speciesId }.filter { id -> id > 0 }.distinct(),
                 it.slots.map { slot ->
@@ -805,12 +847,12 @@ object ApiViewBuilder {
             )
         },
         balls = catalog.captureBallsById.values.sortedBy { it.id }.map {
-            BallView(it.id, it.name.value ?: "Ball ${it.id}", it.generic, it.sprite.value != null)
+            BallView(it.id, text.itemName(it.id) ?: "Ball ${it.id}", it.generic, it.sprite.value != null)
         },
         natures = catalog.naturesById.values.sortedBy { it.id }.map { nature ->
             NatureView(
                 id = nature.id,
-                name = nature.name,
+                name = text.natureName(nature.id),
                 statMultipliers = NatureStat.entries.associate { stat -> stat.name to nature.multiplierPercent(stat) },
                 raisedStat = nature.raisedStat?.name,
                 loweredStat = nature.loweredStat?.name,
@@ -823,7 +865,7 @@ object ApiViewBuilder {
         worldMaps = catalog.worldMaps.regions.map { region ->
             WorldMapRegionView(
                 key = region.key,
-                displayName = region.displayName,
+                displayName = text.worldRegionName(region.key),
                 pixelWidth = region.pixelWidth,
                 pixelHeight = region.pixelHeight,
                 gridWidth = region.gridWidth,
@@ -835,7 +877,7 @@ object ApiViewBuilder {
                 locations = region.locations.map { location ->
                     WorldMapLocationView(
                         key = location.key,
-                        displayName = location.displayName,
+                        displayName = text.worldLocationName(region.key, location.key),
                         baseAreaIds = location.baseAreaIds.sorted(),
                         geometry = location.geometry.map { cell ->
                             WorldMapCellView(cell.x, cell.y, cell.width, cell.height)
@@ -847,7 +889,7 @@ object ApiViewBuilder {
         localMaps = catalog.localMaps.maps.map { map ->
             LocalMapView(
                 key = map.key,
-                displayName = map.displayName,
+                displayName = text.localMapName(map.key),
                 baseAreaId = map.baseAreaId,
                 pixelWidth = map.pixelWidth,
                 pixelHeight = map.pixelHeight,
@@ -904,8 +946,9 @@ object ApiViewBuilder {
                 )
             },
         ),
-        capabilities = catalog.capabilities.mapKeys { it.key.name }.mapValues { it.value.status.name },
-    )
+            capabilities = catalog.capabilities.mapKeys { it.key.name }.mapValues { it.value.status.name },
+        )
+    }
 
     fun state(
         snapshot: AppSnapshot,
@@ -922,6 +965,7 @@ object ApiViewBuilder {
         version: Long = snapshot.version,
     ): StateView {
         val effectiveAreaBaseId = snapshot.liveAreaBaseId
+        val text = catalog?.defaultTextProjection()
         val encounterAreasById = catalog?.encounterAreas.orEmpty().associateBy { it.id }
         val selectedAreaIds = if (snapshot.filter == com.enrpau.dualscreendex.companion.model.PokedexFilter.AREA) {
             val requested = snapshot.selectedAreaIds.ifEmpty { setOfNotNull(snapshot.selectedAreaId) }
@@ -939,7 +983,7 @@ object ApiViewBuilder {
                 catalog?.encounterAreas?.filter { it.id / 10 == baseId }?.map { it.id }.orEmpty()
             }.distinct().sorted()
         }
-        val currentAreaName = effectiveAreaBaseId?.let { catalog?.runtimeMetadata?.areaNamesByBaseId?.get(it) }
+        val currentAreaName = effectiveAreaBaseId?.let { text?.areaName(it) }
         val effectiveOwned = snapshot.resolvedOwned.orEmpty()
         val organicallySeenSpecies = snapshot.ledger.seenSpecies +
             snapshot.ledger.seenSpeciesByArea.values.flatten().toSet() +
@@ -1068,7 +1112,7 @@ object ApiViewBuilder {
             trainerMapSpriteKey?.let { trainerAssetUrl(it, catalog?.romSha256) },
             trainerMapSprite?.width,
             trainerMapSprite?.height,
-            partyView(snapshot, catalog),
+            partyView(snapshot, catalog, text),
             partyAnalysis ?: catalog?.let { PartyAnalyzer.analyze(snapshot.party, it, activeRulesetId) },
             snapshot.battle?.let { battle ->
                 BattleView(
@@ -1209,6 +1253,40 @@ object ApiViewBuilder {
         )
     }
 
+    private fun language(catalog: ParsedCatalog): LanguageBootstrapView {
+        val active = catalog.defaultTextProjection()
+        return LanguageBootstrapView(
+            manifestStatus = catalog.languageManifest.status.name,
+            defaultLanguage = catalog.languageManifest.defaultLanguage?.value,
+            activeLanguage = active.language?.value,
+            authority = "ROM_DEFAULT",
+            activeOverlayVersion = active.overlayVersion,
+            projections = catalog.languageManifest.projections.map { projection ->
+                val overlay = catalog.localizedText(projection.language)
+                LanguageProjectionView(
+                    language = projection.language.value,
+                    status = projection.status.name,
+                    codecId = projection.codecId,
+                    codecVersion = projection.codecVersion,
+                    overlayVersion = overlay?.overlayVersion,
+                    localizedCapabilities = overlay?.localizedCapabilities.orEmpty().mapKeys { (capability, _) ->
+                        capability.name
+                    }.mapValues { (_, state) ->
+                        LocalizedCapabilityView(
+                            status = state.status.name,
+                            confidence = state.confidence,
+                            coveredRecords = state.coveredRecords,
+                            expectedRecords = state.expectedRecords,
+                            incompleteRecords = state.incompleteRecords,
+                            reviewStatus = state.reviewStatus.name,
+                            validatorReviewRecommended = state.validatorReviewRecommended,
+                        )
+                    },
+                )
+            },
+        )
+    }
+
     private fun Int.toCss(): String = "#%02X%02X%02X%02X".format(
         this ushr 16 and 0xFF,
         this ushr 8 and 0xFF,
@@ -1223,15 +1301,16 @@ object ApiViewBuilder {
             .map { ObservedMoveView(it.moveId, it.frequency) }
 
     fun specimens(snapshot: AppSnapshot, catalog: ParsedCatalog, speciesId: Int): SpecimenCollectionView {
-        val selected = requireNotNull(catalog.speciesById[speciesId]) { "species is unavailable" }
+        val text = catalog.defaultTextProjection()
+        requireNotNull(catalog.speciesById[speciesId]) { "species is unavailable" }
         val selectedKey = canonicalSpeciesKey(catalog, speciesId)
         val specimens = distinctResolvedIndividuals(snapshot, catalog)
             .filter { canonicalSpeciesKey(catalog, it.individual.speciesId) == selectedKey }
-            .mapNotNull { resolved -> specimenView(snapshot, catalog, resolved) }
+            .mapNotNull { resolved -> specimenView(snapshot, catalog, text, resolved) }
         return SpecimenCollectionView(
             version = snapshot.version,
             speciesId = speciesId,
-            speciesName = selected.name.value?.takeIf(String::isNotBlank) ?: "Pokémon #$speciesId",
+            speciesName = text.speciesName(speciesId)?.takeIf(String::isNotBlank) ?: "Pokémon #$speciesId",
             specimens = specimens,
         )
     }
@@ -1277,17 +1356,18 @@ object ApiViewBuilder {
     private fun specimenView(
         snapshot: AppSnapshot,
         catalog: ParsedCatalog,
+        text: CatalogTextProjection,
         resolved: ResolvedOwnedIndividual,
     ): OwnedIndividualView? {
         val individual = resolved.individual
         val species = catalog.speciesById[individual.speciesId] ?: return null
-        val speciesName = species.name.value?.takeIf(String::isNotBlank)
+        val speciesName = text.speciesName(individual.speciesId)?.takeIf(String::isNotBlank)
         val details = individual.details
         val abilityId = details?.abilityId ?: details?.abilitySlot?.let { slot ->
             species.abilityIds.value?.getOrNull(slot)
         }
         val ability = abilityId?.let(catalog.abilitiesById::get)
-        val abilityName = ability?.name?.value?.takeIf(String::isNotBlank)
+        val abilityName = ability?.id?.let(text::abilityName)?.takeIf(String::isNotBlank)
         val nature = details?.natureId?.let(catalog.naturesById::get)
         val generation = when (catalog.platform.name) {
             "GBA" -> 3
@@ -1337,7 +1417,7 @@ object ApiViewBuilder {
             isEgg = individual.isEgg,
             gender = details?.gender?.let(::partyGender),
             natureId = nature?.id,
-            nature = nature?.name,
+            nature = nature?.id?.let(text::natureName),
             abilityId = ability?.id,
             abilityName = abilityName,
             heldItemId = details?.heldItemId,
@@ -1369,7 +1449,7 @@ object ApiViewBuilder {
                 PartyMoveView(
                     slot = slot,
                     moveId = move?.id,
-                    name = move?.name?.value?.takeIf(String::isNotBlank),
+                    name = move?.id?.let(text::moveName)?.takeIf(String::isNotBlank),
                     currentPp = details?.movePp?.getOrNull(slot).takeIf { move != null },
                     maximumPp = move?.pp?.value,
                 )
@@ -1420,17 +1500,21 @@ object ApiViewBuilder {
         return gender?.let(keys::get) ?: keys.values.distinct().singleOrNull()
     }
 
-    private fun partyView(snapshot: AppSnapshot, catalog: ParsedCatalog?): List<PartyMemberView> =
+    private fun partyView(
+        snapshot: AppSnapshot,
+        catalog: ParsedCatalog?,
+        text: CatalogTextProjection?,
+    ): List<PartyMemberView> =
         (0 until PARTY_SLOT_COUNT).map { slot ->
             val individual = snapshot.party.getOrNull(slot) ?: return@map PartyMemberView(slot, occupied = false)
             val species = catalog?.speciesById?.get(individual.speciesId)
-            val speciesName = species?.name?.value?.takeIf(String::isNotBlank)
+            val speciesName = species?.id?.let { text?.speciesName(it) }?.takeIf(String::isNotBlank)
             val details = individual.details
             val resolvedAbilityId = details?.abilityId?.takeIf { abilityId ->
                 catalog?.abilitiesById?.containsKey(abilityId) == true
             }
             val resolvedAbilityName = resolvedAbilityId?.let { abilityId ->
-                catalog?.abilitiesById?.get(abilityId)?.name?.value?.takeIf(String::isNotBlank)
+                text?.abilityName(abilityId)?.takeIf(String::isNotBlank)
             }
             val resolvedNature = details?.natureId?.let { catalog?.naturesById?.get(it) }
             val quality = individual.level?.takeIf { it > 0 }?.let { level ->
@@ -1465,7 +1549,7 @@ object ApiViewBuilder {
                 isEgg = individual.isEgg,
                 gender = details?.gender?.let(::partyGender),
                 natureId = resolvedNature?.id,
-                nature = resolvedNature?.name,
+                nature = resolvedNature?.id?.let { text?.natureName(it) },
                 abilityId = resolvedAbilityId,
                 abilityName = resolvedAbilityName,
                 heldItemId = null,
@@ -1498,7 +1582,7 @@ object ApiViewBuilder {
                     PartyMoveView(
                         slot = moveSlot,
                         moveId = move?.id,
-                        name = move?.name?.value?.takeIf(String::isNotBlank),
+                        name = move?.id?.let { text?.moveName(it) }?.takeIf(String::isNotBlank),
                         currentPp = details?.movePp?.getOrNull(moveSlot).takeIf { move != null },
                         maximumPp = move?.pp?.value,
                     )
@@ -1584,17 +1668,6 @@ object ApiViewBuilder {
     )
 
     private fun AreaGuideObjective.toView() = AreaGuideObjectiveView(key, title)
-
-    private fun poiDisplayName(
-        poi: com.enrpau.dualscreendex.parser.catalog.LocalMapPoi,
-        trainerGender: Int?,
-        trainerName: String?,
-    ): String? {
-        val conditioned = trainerGender?.let(poi.displayNamesByTrainerGender::get)
-        val unresolved = poi.displayNamesByTrainerGender.toSortedMap().values.firstOrNull()
-        val template = conditioned ?: poi.displayName ?: unresolved ?: return null
-        return resolvePlayerPlaceholder(template, trainerName)
-    }
 
     private fun LocalMapCatalog.isDynamic(key: String): Boolean =
         key in indexedAssets || key in timedAssets

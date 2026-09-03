@@ -83,7 +83,12 @@ class OfficialGen12CompletionLiveRomTest {
         assertCapability(catalog.capabilities.getValue(RomCapability.SPECIES_CATALOG), 151)
         assertCapability(catalog.capabilities.getValue(RomCapability.BASE_STATS), 151)
         assertCapability(catalog.capabilities.getValue(RomCapability.SPRITES), 151)
-        assertCapability(catalog.capabilities.getValue(RomCapability.POKEDEX_DESCRIPTIONS), 151)
+        assertLocalizedCapability(
+            catalog.defaultTextProjection().localizedCapabilities.getValue(
+                LocalizedTextCapability.SPECIES_DESCRIPTIONS,
+            ),
+            151,
+        )
         assertCapability(catalog.capabilities.getValue(RomCapability.MOVE_CATALOG), 165)
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.MACHINE_MOVES).status)
         assertCapability(catalog.capabilities.getValue(RomCapability.EVOLUTIONS), 190)
@@ -96,14 +101,17 @@ class OfficialGen12CompletionLiveRomTest {
 
     private fun assertGen2(environment: String, sha256: String, family: EngineFamily, tableOffset: Int) {
         val catalog = parse(environment, sha256, family)
-        val evidence = catalog.capabilities.getValue(RomCapability.MOVE_DESCRIPTIONS)
+        val text = catalog.defaultTextProjection()
+        val evidence = text.localizedCapabilities.getValue(LocalizedTextCapability.MOVE_DESCRIPTIONS)
         assertEquals(CapabilityStatus.AVAILABLE, evidence.status)
-        assertEquals(tableOffset, evidence.offset)
-        assertEquals(251, evidence.count)
-        assertEquals(251, catalog.movesById.values.count { it.effectText.status == CapabilityStatus.AVAILABLE })
-        assertEquals("Pounds with fore- legs or tail.", catalog.movesById.getValue(1).effectText.value)
-        assertEquals("Used only if all PP are exhausted.", catalog.movesById.getValue(165).effectText.value)
-        assertEquals("Party MON join in the attack.", catalog.movesById.getValue(251).effectText.value)
+        assertTrue(catalog.diagnostics.any {
+            it.startsWith("move descriptions: offset=0x${tableOffset.toString(16)} ")
+        })
+        assertEquals(251, evidence.coveredRecords)
+        assertEquals(251, catalog.movesById.keys.count { text.moveDescription(it) != null })
+        assertEquals("Pounds with fore- legs or tail.", text.moveDescription(1))
+        assertEquals("Used only if all PP are exhausted.", text.moveDescription(165))
+        assertEquals("Party MON join in the attack.", text.moveDescription(251))
     }
 
     private fun parse(environment: String, sha256: String, family: EngineFamily): ParsedCatalog {
@@ -118,6 +126,12 @@ class OfficialGen12CompletionLiveRomTest {
         assertEquals(family, parsed.analysis.selectedFamily)
         assertNotNull(parsed.catalog)
         return requireNotNull(parsed.catalog)
+    }
+
+    private fun assertLocalizedCapability(evidence: LocalizedCapabilityState, expected: Int) {
+        assertEquals(CapabilityStatus.AVAILABLE, evidence.status)
+        assertEquals(expected, evidence.coveredRecords)
+        assertEquals(expected, evidence.expectedRecords)
     }
 
     private fun assertCapability(evidence: CapabilityEvidence, expected: Int) {

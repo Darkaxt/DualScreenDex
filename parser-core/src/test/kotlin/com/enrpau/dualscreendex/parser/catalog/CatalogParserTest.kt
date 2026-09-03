@@ -125,7 +125,7 @@ class CatalogParserTest {
                 },
             )
 
-            assertEquals(CapabilityStatus.NOT_FOUND, catalog.abilitiesById.getValue(1).name.status)
+            assertEquals(CapabilityStatus.NOT_APPLICABLE, catalog.abilitiesById.getValue(1).name.status)
             assertEquals(listOf(expectedMechanic), catalog.abilitiesById.getValue(1).mechanics.value)
             assertEquals(
                 CapabilityStatus.AVAILABLE,
@@ -522,7 +522,8 @@ class CatalogParserTest {
         )
 
         val evidence = CatalogMaterializer.materialize(rom, analysis, layout)
-            .capabilities.getValue(RomCapability.ABILITY_DESCRIPTIONS)
+            .defaultLocalizedText()!!
+            .localizedCapabilities.getValue(LocalizedTextCapability.ABILITY_DESCRIPTIONS)
 
         assertEquals(CapabilityStatus.PARTIAL, evidence.status)
         assertEquals(CapabilityReviewStatus.MANUAL_REVIEW, evidence.reviewStatus)
@@ -666,10 +667,11 @@ class CatalogParserTest {
             SelectionStatus.SELECTED, EngineFamily.EMERALD, null, 20, emptyList(), emptyList(),
         )
 
-        val species = CatalogMaterializer.materialize(rom, analysis, layout).speciesById.getValue(1)
+        val catalog = CatalogMaterializer.materialize(rom, analysis, layout)
+        val species = catalog.speciesById.getValue(1)
 
         assertEquals(25, species.dexNumber.value)
-        assertEquals("ELECTRIC MOUSE", species.description.value)
+        assertEquals("ELECTRIC MOUSE", catalog.defaultLocalizedText()!!.speciesDescriptions.getValue(1).value)
     }
 
     @Test
@@ -732,16 +734,14 @@ class CatalogParserTest {
 
         val catalog = CatalogMaterializer.materialize(rom, analysis, layout)
 
+        val localized = catalog.defaultLocalizedText()!!
         assertEquals(
             "VALID DESCRIPTION",
-            catalog.speciesById.getValue(1).description.value,
+            localized.speciesDescriptions.getValue(1).value,
         )
-        assertEquals(
-            CapabilityStatus.NOT_FOUND,
-            catalog.speciesById.getValue(2).description.status,
-        )
-        val evidence = catalog.capabilities.getValue(
-            RomCapability.POKEDEX_DESCRIPTIONS,
+        assertNull(localized.speciesDescriptions[2])
+        val evidence = localized.localizedCapabilities.getValue(
+            LocalizedTextCapability.SPECIES_DESCRIPTIONS,
         )
         assertEquals(CapabilityStatus.PARTIAL, evidence.status)
         assertEquals(1, evidence.coveredRecords)
@@ -857,8 +857,8 @@ class CatalogParserTest {
 
         val catalog = CatalogMaterializer.materialize(rom, analysis, layout)
 
-        assertEquals("BULBA", catalog.speciesById.getValue(1).name.value)
-        assertEquals("A SEED", catalog.speciesById.getValue(1).description.value)
+        assertEquals("BULBA", catalog.defaultLocalizedText()!!.speciesNames.getValue(1).value)
+        assertEquals("A SEED", catalog.defaultLocalizedText()!!.speciesDescriptions.getValue(1).value)
         assertEquals(1, catalog.speciesById.getValue(1).dexNumber.value)
     }
 
@@ -993,8 +993,11 @@ class CatalogParserTest {
 
         assertEquals(CatalogMaterializationPhase.ESSENTIAL, updates.first().phase)
         assertSame(languageManifest, updates.first().catalog.languageManifest)
-        assertEquals("BULBA", updates.first().catalog.navigableSpecies().single().name.value)
-        assertTrue(updates.first().catalog.navigableSpecies().single().description.value == null)
+        assertEquals(
+            "BULBA",
+            updates.first().catalog.defaultLocalizedText()!!.speciesNames.getValue(1).value,
+        )
+        assertTrue(updates.first().catalog.defaultLocalizedText()!!.speciesDescriptions.isEmpty())
         assertEquals(CatalogMaterializationPhase.COMPLETE, updates.last().phase)
         assertSame(languageManifest, final.languageManifest)
         assertEquals(final, updates.last().catalog)

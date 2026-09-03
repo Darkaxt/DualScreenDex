@@ -6,11 +6,29 @@ import com.darkaxt.dualdex.catalog.CatalogDatabaseFactory
 import com.darkaxt.dualdex.catalog.CatalogRow
 import com.darkaxt.dualdex.catalog.CatalogSourceMetadata
 import com.darkaxt.dualdex.catalog.CatalogWriteProgress
+import com.enrpau.dualscreendex.parser.catalog.AbilityMechanicKind
+import com.enrpau.dualscreendex.parser.catalog.CatalogField
+import com.enrpau.dualscreendex.parser.catalog.CatalogLanguageOverlay
+import com.enrpau.dualscreendex.parser.catalog.CatalogLocalization
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
+import com.enrpau.dualscreendex.parser.catalog.LocalizedCapabilityState
+import com.enrpau.dualscreendex.parser.catalog.LocalizedTextCapability
 import com.enrpau.dualscreendex.parser.catalog.LocalMapAssetRenderer
 import com.enrpau.dualscreendex.parser.catalog.MapLighting
+import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
+import com.enrpau.dualscreendex.parser.catalog.SpeciesRecord
+import com.enrpau.dualscreendex.parser.catalog.defaultTextProjection
+import com.enrpau.dualscreendex.parser.catalog.textProjection
+import com.enrpau.dualscreendex.parser.io.LoadedRom
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.language.LanguageResolutionStatus
+import com.enrpau.dualscreendex.parser.language.LanguageTag
+import com.enrpau.dualscreendex.parser.language.LocalizedTableLayout
+import com.enrpau.dualscreendex.parser.language.RomLanguageManifest
+import com.enrpau.dualscreendex.parser.language.RomLanguageProjection
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
+import com.enrpau.dualscreendex.parser.model.EngineFamily
+import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.RomCapability
 import java.io.File
 import java.net.HttpURLConnection
@@ -23,6 +41,10 @@ import java.security.MessageDigest
 import java.sql.Connection
 import java.sql.DriverManager
 import java.util.Comparator
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
@@ -67,6 +89,108 @@ class WorldMapCatalogApiRealControlTest {
     }
 
     @Test
+    fun persistedLocalizedOverlaysReopenIntoBootstrapWithoutParserInvocation() {
+        val rom = RomImage(ByteArray(0x200) { index -> (index * 31).toByte() })
+        val languages = listOf(LanguageTag.ENGLISH, LanguageTag.FRENCH)
+        val manifest = RomLanguageManifest(
+            defaultLanguage = LanguageTag.ENGLISH,
+            projections = languages.map { language ->
+                RomLanguageProjection(
+                    language = language,
+                    codecId = "fixture-${language.value}",
+                    codecVersion = 1,
+                    localizedTables = LocalizedTableLayout(),
+                    evidence = emptyList(),
+                    status = LanguageResolutionStatus.RESOLVED,
+                )
+            },
+            status = LanguageResolutionStatus.RESOLVED,
+        )
+        fun overlay(language: LanguageTag, version: Long, name: String) = CatalogLanguageOverlay(
+            language = language,
+            overlayVersion = version,
+            localizedCapabilities = LocalizedTextCapability.entries.associateWith { capability ->
+                when (capability) {
+                    LocalizedTextCapability.SPECIES_NAMES -> LocalizedCapabilityState.available(1)
+                    LocalizedTextCapability.SPECIES_DESCRIPTIONS ->
+                        LocalizedCapabilityState.notFound("fixture missing", 1)
+                    else -> LocalizedCapabilityState.unavailable(
+                        CapabilityStatus.NOT_APPLICABLE,
+                        expectedRecords = 0,
+                        confidence = 1.0,
+                    )
+                }
+            },
+            speciesNames = mapOf(1 to CatalogField.available(name)),
+        )
+        val catalog = ParsedCatalog(
+            romSha256 = rom.sha256,
+            romCrc32 = rom.crc32,
+            family = EngineFamily.EMERALD,
+            platform = Platform.GBA,
+            speciesById = mapOf(
+                1 to SpeciesRecord(
+                    id = 1,
+                    dexNumber = CatalogField.available(1),
+                    name = CatalogField.notApplicable("stored in language overlay"),
+                    typeIds = CatalogField.notFound("fixture"),
+                    baseStats = CatalogField.notFound("fixture"),
+                    sprite = CatalogField.notFound("fixture"),
+                ),
+            ),
+            localization = CatalogLocalization(
+                manifest,
+                mapOf(
+                    LanguageTag.ENGLISH to overlay(LanguageTag.ENGLISH, 7, "Bulbasaur"),
+                    LanguageTag.FRENCH to overlay(LanguageTag.FRENCH, 8, "Bulbizarre"),
+                ),
+            ),
+        )
+        val root = newRoot()
+        try {
+            val cache = CatalogCache(root.toFile(), JdbcTestCatalogDatabaseFactory)
+            cache.write(
+                catalog,
+                CatalogSourceMetadata.direct("fixture.gba", rom.size, "FIXTURE"),
+                CatalogWriteProgress.complete(),
+            )
+            val reopened = requireNotNull(cache.readComplete(rom.sha256)).catalog
+            assertEquals("Bulbasaur", reopened.defaultTextProjection().speciesName(1))
+            assertEquals("Bulbizarre", reopened.textProjection(LanguageTag.FRENCH)?.speciesName(1))
+
+            val parserInvocations = AtomicInteger()
+            val completion = AtomicReference<Result<Unit>?>()
+            val completed = CountDownLatch(1)
+            ProductionCompanionRuntime(
+                catalogRepository = cache,
+                parseCatalogWithCancellation = { _, _, _, _ ->
+                    parserInvocations.incrementAndGet()
+                    error("persisted overlay bootstrap must not invoke the parser")
+                },
+            ).use { runtime ->
+                runtime.load(LoadedRom("fixture.gba", rom)) { result ->
+                    completion.set(result)
+                    completed.countDown()
+                }
+                assertTrue("catalog reopen did not complete", completed.await(10, TimeUnit.SECONDS))
+                requireNotNull(completion.get()).getOrThrow()
+
+                val bootstrap = runtime.bootstrap()
+                assertEquals(0, parserInvocations.get())
+                assertTrue(bootstrap.state.catalogReady)
+                assertEquals("CACHE_REOPEN", bootstrap.state.loading.phase)
+                assertEquals(rom.sha256, bootstrap.catalog?.hash)
+                assertEquals("Bulbasaur", bootstrap.catalog?.species?.single()?.name)
+                assertEquals("en", bootstrap.language?.activeLanguage)
+                assertEquals(7L, bootstrap.language?.activeOverlayVersion)
+                assertEquals(listOf("en", "fr"), bootstrap.language?.projections?.map { it.language })
+            }
+        } finally {
+            deleteTree(root)
+        }
+    }
+
+    @Test
     fun redSurvivesCatalogStoreAndServesExactPngBytes() = assertRoundTrip(controls[0])
 
     @Test
@@ -105,7 +229,7 @@ class WorldMapCatalogApiRealControlTest {
         assertEquals(expectedIds, catalog.abilitiesById.filterValues { it.mechanics.value?.isNotEmpty() == true }.keys)
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.ABILITY_DESCRIPTIONS).status)
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.SPRITES).status)
-        assertEquals("Helps repel wild Pokémon.", catalog.abilitiesById.getValue(1).description.value)
+        assertEquals("Helps repel wild Pokémon.", catalog.defaultTextProjection().abilityDescription(1))
 
         val root = newRoot()
         var server: AndroidLoopbackServer? = null
@@ -122,10 +246,7 @@ class WorldMapCatalogApiRealControlTest {
                 catalog.abilitiesById.mapValues { it.value.mechanics },
                 reopened.abilitiesById.mapValues { it.value.mechanics },
             )
-            assertEquals(
-                catalog.abilitiesById.mapValues { it.value.description },
-                reopened.abilitiesById.mapValues { it.value.description },
-            )
+            assertEquals(catalog.localization, reopened.localization)
             assertEquals(CapabilityStatus.AVAILABLE, reopened.capabilities.getValue(RomCapability.SPRITES).status)
 
             val runtime = ProductionCompanionRuntime().apply { loadCatalog(romPath.fileName.toString(), reopened) }
@@ -173,7 +294,7 @@ class WorldMapCatalogApiRealControlTest {
     }
 
     @Test
-    fun officialGen3AbilityBehaviorsSurviveCatalogStoreAndApi() {
+    fun officialGen3AbilityDescriptionsSurviveOverlayWithoutEnteringSharedMechanics() {
         val controls = listOf(
             Triple(
                 "D:/Temp/PokemonHacks/roms/official/Gen III/Pokemon - Ruby Version (USA, Europe) (Rev 2).gba",
@@ -208,12 +329,21 @@ class WorldMapCatalogApiRealControlTest {
             assertEquals(label, expectedSha, rom.sha256)
             val catalog = requireNotNull(CatalogParser.parse(rom).catalog)
             assertEquals(label, (1..77).toSet(), catalog.abilitiesById.keys)
+            val text = catalog.defaultTextProjection()
+            assertTrue(
+                "$label retained description-derived behavior in shared mechanics",
+                catalog.abilitiesById.all { (abilityId, ability) ->
+                    val description = text.abilityDescription(abilityId)
+                    ability.mechanics.value.orEmpty().none { mechanic ->
+                        mechanic.kind == AbilityMechanicKind.BEHAVIOR && mechanic.value == description
+                    }
+                },
+            )
             assertEquals(
                 label,
-                (1..77).toSet(),
-                catalog.abilitiesById.filterValues { ability ->
-                    ability.mechanics.value.orEmpty().any { it.kind.name == "BEHAVIOR" }
-                }.keys,
+                "Defined but inactive in this engine",
+                catalog.abilitiesById.getValue(76).mechanics.value.orEmpty()
+                    .single { it.kind == AbilityMechanicKind.BEHAVIOR }.value,
             )
 
             val root = newRoot()
@@ -226,11 +356,12 @@ class WorldMapCatalogApiRealControlTest {
                 )
                 val reopened = requireNotNull(cache.readComplete(rom.sha256)).catalog
                 assertEquals(label, catalog.abilitiesById, reopened.abilitiesById)
+                assertEquals(label, catalog.localization, reopened.localization)
                 assertEquals(
                     label,
                     "Defined but inactive in this engine",
                     reopened.abilitiesById.getValue(76).mechanics.value.orEmpty()
-                        .single { it.kind.name == "BEHAVIOR" }.value,
+                        .single { it.kind == AbilityMechanicKind.BEHAVIOR }.value,
                 )
                 val api = requireNotNull(
                     ProductionCompanionRuntime().apply {
@@ -239,8 +370,16 @@ class WorldMapCatalogApiRealControlTest {
                 )
                 val referencedAbilities = api.species.flatMap { it.abilities }.distinctBy { it.id }
                 assertTrue(
-                    "$label API omitted source-backed behavior",
-                    referencedAbilities.all { ability -> ability.mechanics.any { it.kind == "BEHAVIOR" } },
+                    "$label API omitted source-backed descriptions",
+                    referencedAbilities.all { ability -> !ability.description.isNullOrBlank() },
+                )
+                assertTrue(
+                    "$label API exposed description-derived behavior as shared mechanics",
+                    referencedAbilities.none { ability ->
+                        ability.mechanics.any { mechanic ->
+                            mechanic.kind == "BEHAVIOR" && mechanic.value == ability.description
+                        }
+                    },
                 )
             } finally {
                 deleteTree(root)

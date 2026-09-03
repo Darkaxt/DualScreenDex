@@ -182,6 +182,7 @@ class CatalogWorldMapMaterializationRealControlTest {
 
         val parsed = CatalogParser.parse(rom)
         val catalog = requireNotNull(parsed.catalog)
+        val text = catalog.defaultTextProjection()
 
         assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.WORLD_MAP).status)
         assertEquals(expectedArgb.size, catalog.worldMaps.regions.size)
@@ -190,10 +191,14 @@ class CatalogWorldMapMaterializationRealControlTest {
             assertEquals(expected, catalog.worldMaps.regions.map { it.locations.size })
         }
         expectedLocationBaseId?.let { baseAreaId ->
-            val location = catalog.worldMaps.regions
-                .flatMap { it.locations }
-                .single { baseAreaId in it.baseAreaIds }
-            assertEquals(expectedLocationName, location.displayName)
+            val region = catalog.worldMaps.regions.single { candidate ->
+                candidate.locations.any { baseAreaId in it.baseAreaIds }
+            }
+            val location = region.locations.single { baseAreaId in it.baseAreaIds }
+            assertEquals(
+                expectedLocationName,
+                text.worldLocationName(region.key, location.key),
+            )
         }
         assertEquals(
             expectedArgb,

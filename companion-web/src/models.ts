@@ -577,9 +577,38 @@ export interface PartyAnalysis {
   };
 }
 
+export interface LocalizedCapability {
+  status: string;
+  confidence: number;
+  coveredRecords: number;
+  expectedRecords: number;
+  incompleteRecords: number;
+  reviewStatus: string;
+  validatorReviewRecommended: boolean;
+}
+
+export interface LanguageProjection {
+  language: string;
+  status: string;
+  codecId: string;
+  codecVersion: number;
+  overlayVersion: number | null;
+  localizedCapabilities: Record<string, LocalizedCapability>;
+}
+
+export interface LanguageBootstrap {
+  manifestStatus: string;
+  defaultLanguage: string | null;
+  activeLanguage: string | null;
+  authority: 'ROM_DEFAULT' | 'LIVE_RAM';
+  activeOverlayVersion: number | null;
+  projections: LanguageProjection[];
+}
+
 export interface Bootstrap {
   catalog: Catalog | null;
   state: State;
+  language?: LanguageBootstrap | null;
 }
 
 export interface DiagnosticCapability {

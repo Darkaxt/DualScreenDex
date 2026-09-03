@@ -176,7 +176,7 @@ class DualDexRuntime(
     @Synchronized
     fun bootstrap(): BootstrapView {
         val current = catalog
-        return BootstrapView(current?.let(ApiViewBuilder::catalog), stateView())
+        return ApiViewBuilder.bootstrap(current, stateView())
     }
 
     @Synchronized
