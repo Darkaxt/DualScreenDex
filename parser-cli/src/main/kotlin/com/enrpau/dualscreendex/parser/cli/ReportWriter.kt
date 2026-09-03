@@ -424,6 +424,15 @@ data class AreaGuideCatalogMetrics(
     val poiRecordsWithContent: Int = 0,
 )
 
+data class LocalizedCapabilityMetrics(
+    val status: CapabilityStatus,
+    val confidence: Double,
+    val coveredRecords: Int,
+    val expectedRecords: Int,
+    val reviewStatus: CapabilityReviewStatus,
+    val validatorReviewRecommended: Boolean,
+)
+
 data class CatalogMetrics(
     val species: Int,
     val namedSpecies: Int,
@@ -453,6 +462,7 @@ data class CatalogMetrics(
     val abilitiesWithProvenTypedModifiers: Int = 0,
     val provenTypedAbilityModifiers: Int = 0,
     val areaGuide: AreaGuideCatalogMetrics = AreaGuideCatalogMetrics(),
+    val localizedCapabilities: Map<String, LocalizedCapabilityMetrics> = emptyMap(),
 ) {
     companion object {
         fun from(catalog: ParsedCatalog): CatalogMetrics {
@@ -520,6 +530,18 @@ data class CatalogMetrics(
                     ability.mechanics.value.orEmpty().count(::isProvenTypedModifier)
                 },
                 areaGuide = areaGuideMetrics(catalog, text),
+                localizedCapabilities = text.localizedCapabilities.entries
+                    .sortedBy { (capability, _) -> capability.ordinal }
+                    .associateTo(linkedMapOf()) { (capability, state) ->
+                        capability.name to LocalizedCapabilityMetrics(
+                            status = state.status,
+                            confidence = state.confidence,
+                            coveredRecords = state.coveredRecords,
+                            expectedRecords = state.expectedRecords,
+                            reviewStatus = state.reviewStatus,
+                            validatorReviewRecommended = state.validatorReviewRecommended,
+                        )
+                    },
             )
         }
 

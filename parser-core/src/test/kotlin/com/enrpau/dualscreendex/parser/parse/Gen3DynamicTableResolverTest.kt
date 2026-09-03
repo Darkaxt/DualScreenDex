@@ -3,13 +3,19 @@ package com.enrpau.dualscreendex.parser.parse
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.analysis.ResolutionLimits
 import com.enrpau.dualscreendex.parser.analysis.SafeGbaReferenceIndexBuilder
+import com.enrpau.dualscreendex.parser.language.LanguageTag
 import com.enrpau.dualscreendex.parser.model.GbaCompiledReferenceIndex
+import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.ProfileTables
 import com.enrpau.dualscreendex.parser.model.CapabilityReviewStatus
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.model.TableRecordFormat
+import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
+import com.enrpau.dualscreendex.parser.text.PokemonTextToken
+import com.enrpau.dualscreendex.parser.text.PokemonTextTokenDecoder
+import com.enrpau.dualscreendex.parser.validate.TableValidators
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -51,12 +57,64 @@ class Gen3DynamicTableResolverTest {
             tables = inherited,
             proposedCount = proposedCount,
             references = GbaCompiledReferenceIndex(mapOf(shorterMap to 2, expectedMap to 2)),
+            codec = PokemonTextCodec.gbaEnglish,
             referenceSites = SafeGbaReferenceIndexBuilder.build(rom, ResolutionLimits()),
         )
 
         assertEquals(expectedCount, resolved.speciesCount)
         assertEquals(expectedCount, resolved.tables.speciesNames?.count)
         assertEquals(expectedCount, resolved.tables.baseStats?.count)
+        assertEquals(36, resolved.tables.baseStats?.recordSize)
+    }
+
+    @Test
+    fun trimsSparseInactiveSuffixWithSelectedNonEnglishCodec() {
+        val proposedCount = 420
+        val expectedCount = 330
+        val names = 0x4000
+        val stats = 0x6000
+        val map = 0xA400
+        val bytes = ByteArray(0x10000)
+        repeat(expectedCount) { id ->
+            bytes[names + id * 11] = 0x30
+            bytes[names + id * 11 + 1] = 0xFF.toByte()
+            writeValidStats(bytes, stats + id * 36, id)
+        }
+        bytes[names + expectedCount * 11] = 0xBB.toByte()
+        bytes[names + expectedCount * 11 + 1] = 0xFF.toByte()
+        repeat(expectedCount - 1) { index -> writeU16(bytes, map + index * 2, index + 1) }
+        putLeafSpeciesToDexConsumer(bytes, 0x200, 0x280, map)
+        putLeafSpeciesToDexConsumer(bytes, 0x220, 0x284, map)
+        val rom = RomImage(bytes)
+        val codec = PokemonTextCodec(
+            id = "test-gen3-fr",
+            version = 1,
+            language = LanguageTag.FRENCH,
+            applicableGenerations = setOf(3),
+            applicablePlatforms = setOf(Platform.GBA),
+            terminator = 0xFF,
+            tokenDecoder = PokemonTextTokenDecoder { image, offset, _ ->
+                when (image.u8(offset)) {
+                    0x30 -> PokemonTextToken.Glyph("É")
+                    0xFF -> PokemonTextToken.Terminator()
+                    else -> PokemonTextToken.Invalid()
+                }
+            },
+        )
+
+        val resolved = Gen3DynamicTableResolver.reconcileSpeciesExtent(
+            rom = rom,
+            tables = ProfileTables(
+                speciesNames = TableLayout(names, proposedCount, 11),
+                baseStats = TableLayout(stats, proposedCount, 28),
+            ),
+            proposedCount = proposedCount,
+            references = GbaCompiledReferenceIndex(mapOf(map to 2)),
+            referenceSites = SafeGbaReferenceIndexBuilder.build(rom, ResolutionLimits()),
+            codec = codec,
+        )
+
+        assertEquals(expectedCount, resolved.speciesCount)
         assertEquals(36, resolved.tables.baseStats?.recordSize)
     }
 
@@ -91,6 +149,7 @@ class Gen3DynamicTableResolverTest {
             ),
             proposedCount = proposedCount,
             references = GbaCompiledReferenceIndex(mapOf(firstMap to 2, secondMap to 2)),
+            codec = PokemonTextCodec.gbaEnglish,
             referenceSites = SafeGbaReferenceIndexBuilder.build(rom, ResolutionLimits()),
         )
 
@@ -122,6 +181,7 @@ class Gen3DynamicTableResolverTest {
             ),
             proposedCount = proposedCount,
             references = GbaCompiledReferenceIndex(mapOf(map to 2)),
+            codec = PokemonTextCodec.gbaEnglish,
             referenceSites = SafeGbaReferenceIndexBuilder.build(rom, ResolutionLimits()),
         )
 
@@ -171,6 +231,7 @@ class Gen3DynamicTableResolverTest {
             inherited,
             proposedCount,
             references,
+            PokemonTextCodec.gbaEnglish,
         )
 
         assertEquals(expectedCount, resolved.speciesCount)
@@ -210,6 +271,7 @@ class Gen3DynamicTableResolverTest {
             inherited,
             speciesCount,
             references,
+            PokemonTextCodec.gbaEnglish,
         )
 
         assertEquals(speciesCount, resolved.speciesCount)
@@ -259,6 +321,7 @@ class Gen3DynamicTableResolverTest {
             inherited,
             speciesCount,
             references,
+            PokemonTextCodec.gbaEnglish,
         )
         val relocated = Gen3DynamicTableResolver.resolveWithEvidence(
             RomImage(bytes),
@@ -271,6 +334,174 @@ class Gen3DynamicTableResolverTest {
         assertEquals(speciesCount, extent.tables.speciesNames?.count)
         assertEquals(relocatedStats, relocated.tables.baseStats?.offset)
         assertEquals(speciesCount, relocated.tables.baseStats?.count)
+    }
+
+    @Test
+    fun prefersStrongerReferencedStatsOverCompatibleInheritedStats() {
+        val speciesCount = 80
+        val moveCount = 70
+        val inheritedStats = 0x2000
+        val relocatedStats = 0x4000
+        val inheritedMoves = 0x7000
+        val bytes = ByteArray(0x10000)
+        repeat(72) { index -> writeValidStats(bytes, inheritedStats + (index + 1) * 28, index + 1) }
+        repeat(speciesCount - 1) { index ->
+            writeValidStats(bytes, relocatedStats + (index + 1) * 28, index + 1)
+        }
+        fillRetailMoves(bytes, inheritedMoves, moveCount)
+        repeat(2) { reference -> writePointer(bytes, 0x200 + reference * 4, relocatedStats) }
+        val rom = RomImage(bytes)
+        val inheritedEvidence = TableValidators.baseStats(
+            rom,
+            inheritedStats,
+            speciesCount,
+            28,
+            generation = 3,
+        )
+        val relocatedEvidence = TableValidators.baseStats(
+            rom,
+            relocatedStats,
+            speciesCount,
+            28,
+            generation = 3,
+        )
+        assertTrue(inheritedEvidence.compatible)
+        assertTrue(relocatedEvidence.compatible)
+        assertTrue(relocatedEvidence.confidence > inheritedEvidence.confidence)
+
+        val resolved = Gen3DynamicTableResolver.resolveWithEvidence(
+            rom,
+            ProfileTables(
+                baseStats = TableLayout(inheritedStats, speciesCount, 28),
+                moveData = TableLayout(inheritedMoves, moveCount, 12),
+            ),
+            speciesCount,
+            moveCount,
+        )
+
+        assertEquals(relocatedStats, resolved.tables.baseStats?.offset)
+        assertEquals(28, resolved.tables.baseStats?.recordSize)
+        assertEquals(relocatedStats, resolved.baseStatsEvidence?.offset)
+    }
+
+    @Test
+    fun rejectsEquallyStrongerReferencedStatsRootsAsAmbiguous() {
+        val speciesCount = 80
+        val moveCount = 70
+        val inheritedStats = 0x2000
+        val firstStats = 0x4000
+        val secondStats = 0x6000
+        val inheritedMoves = 0x9000
+        val bytes = ByteArray(0x12000)
+        repeat(72) { index -> writeValidStats(bytes, inheritedStats + (index + 1) * 28, index + 1) }
+        listOf(firstStats, secondStats).forEach { root ->
+            repeat(speciesCount - 1) { index -> writeValidStats(bytes, root + (index + 1) * 28, index + 1) }
+        }
+        fillRetailMoves(bytes, inheritedMoves, moveCount)
+        repeat(2) { reference -> writePointer(bytes, 0x200 + reference * 4, firstStats) }
+        repeat(2) { reference -> writePointer(bytes, 0x220 + reference * 4, secondStats) }
+
+        val resolved = Gen3DynamicTableResolver.resolveWithEvidence(
+            RomImage(bytes),
+            ProfileTables(
+                baseStats = TableLayout(inheritedStats, speciesCount, 28),
+                moveData = TableLayout(inheritedMoves, moveCount, 12),
+            ),
+            speciesCount,
+            moveCount,
+        )
+
+        assertNull(resolved.tables.baseStats)
+        val evidence = requireNotNull(resolved.baseStatsEvidence)
+        assertTrue(evidence.ambiguous)
+        assertTrue(evidence.reviewRecommended)
+    }
+
+    @Test
+    fun rejectsSameRootCrossFormatMoveOverlapAsAmbiguous() {
+        val speciesCount = 80
+        val moveCount = 100
+        val wrongMoves = 0x2000
+        val moves = 0x6000
+        val bytes = ByteArray(0x12000)
+        repeat(moveCount) { id ->
+            val base = moves + id * 16
+            if (id > 0) {
+                writeU16(bytes, base, id % 64)
+                writeU16(bytes, base + 2, 20)
+                bytes[base + 4] = (id % 19).toByte()
+                bytes[base + 5] = 100
+                bytes[base + 6] = 20
+                bytes[base + 7] = 10
+                bytes[base + 10] = (id % 3).toByte()
+            }
+        }
+        repeat(4) { index -> bytes[moves + (96 + index) * 16 + 4] = 100 }
+        repeat(2) { reference -> writePointer(bytes, 0x200 + reference * 4, moves) }
+        val rom = RomImage(bytes)
+        assertTrue(TableValidators.moveData(rom, moves, moveCount, 12, generation = 3).compatible)
+        assertTrue(TableValidators.cfruMoveData(rom, moves, moveCount).compatible)
+
+        val resolved = Gen3DynamicTableResolver.resolveWithEvidence(
+            rom,
+            ProfileTables(moveData = TableLayout(wrongMoves, moveCount, 12)),
+            speciesCount,
+            moveCount,
+        )
+
+        assertNull(resolved.tables.moveData)
+        val evidence = requireNotNull(resolved.moveDataEvidence)
+        assertTrue(evidence.ambiguous)
+        assertTrue(evidence.reviewRecommended)
+    }
+
+    @Test
+    fun rejectsReferencedInteriorRetailRecordAsTableRoot() {
+        val speciesCount = 80
+        val moveCount = 100
+        val wrongMoves = 0x2000
+        val retailMoves = 0x5000
+        val shiftedMoves = retailMoves + 12
+        val bytes = ByteArray(0x10000)
+        fillRetailMoves(bytes, retailMoves, moveCount)
+        writePointer(bytes, 0x128, retailMoves)
+        repeat(2) { reference -> writePointer(bytes, 0x200 + reference * 4, shiftedMoves) }
+
+        val resolved = Gen3DynamicTableResolver.resolveWithEvidence(
+            RomImage(bytes),
+            ProfileTables(moveData = TableLayout(wrongMoves, moveCount, 12)),
+            speciesCount,
+            moveCount,
+        )
+
+        assertEquals(retailMoves, resolved.tables.moveData?.offset)
+        assertEquals(TableRecordFormat.STANDARD, resolved.tables.moveData?.format)
+    }
+
+    @Test
+    fun resolvesReferencedRetailMovesOverWeakerSixteenByteCandidate() {
+        val speciesCount = 80
+        val moveCount = 100
+        val wrongMoves = 0x2000
+        val retailMoves = 0x5000
+        val cfruDecoy = 0x9000
+        val bytes = ByteArray(0x12000)
+        fillRetailMoves(bytes, retailMoves, moveCount)
+        fillCfruMoves(bytes, cfruDecoy, moveCount, invalidRecords = setOf(96, 97, 98, 99))
+        repeat(2) { reference -> writePointer(bytes, 0x200 + reference * 4, retailMoves) }
+        repeat(4) { reference -> writePointer(bytes, 0x220 + reference * 4, cfruDecoy) }
+
+        val resolved = Gen3DynamicTableResolver.resolveWithEvidence(
+            RomImage(bytes),
+            ProfileTables(moveData = TableLayout(wrongMoves, moveCount, 12)),
+            speciesCount,
+            moveCount,
+        )
+
+        assertEquals(retailMoves, resolved.tables.moveData?.offset)
+        assertEquals(12, resolved.tables.moveData?.recordSize)
+        assertEquals(TableRecordFormat.STANDARD, resolved.tables.moveData?.format)
+        assertEquals(retailMoves, resolved.moveDataEvidence?.offset)
     }
 
     @Test
@@ -673,13 +904,31 @@ class Gen3DynamicTableResolverTest {
         }
     }
 
-    private fun fillCfruMoves(bytes: ByteArray, offset: Int, count: Int) {
+    private fun fillRetailMoves(bytes: ByteArray, offset: Int, count: Int) {
+        repeat(count) { id ->
+            val base = offset + id * 12
+            if (id > 0) {
+                bytes[base] = (id % 64).toByte()
+                bytes[base + 1] = (20 + id % 150).toByte()
+                bytes[base + 2] = (id % 19).toByte()
+                bytes[base + 3] = 100
+                bytes[base + 4] = 20
+            }
+        }
+    }
+
+    private fun fillCfruMoves(
+        bytes: ByteArray,
+        offset: Int,
+        count: Int,
+        invalidRecords: Set<Int> = emptySet(),
+    ) {
         repeat(count) { id ->
             val base = offset + id * 16
             if (id > 0) {
                 writeU16(bytes, base, id % 300)
                 writeU16(bytes, base + 2, 20 + id % 150)
-                bytes[base + 4] = (id % 19).toByte()
+                bytes[base + 4] = (if (id in invalidRecords) 100 else id % 19).toByte()
                 bytes[base + 5] = 100
                 bytes[base + 6] = 20
                 bytes[base + 7] = 10

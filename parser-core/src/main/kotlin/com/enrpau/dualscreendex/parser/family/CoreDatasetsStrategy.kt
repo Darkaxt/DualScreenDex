@@ -155,6 +155,7 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
                 tables,
                 speciesCount,
                 identity.compiledGbaReferences,
+                probeCodec,
                 session.gbaReferenceIndex,
             )
             speciesCount = reconciled.speciesCount

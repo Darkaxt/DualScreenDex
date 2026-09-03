@@ -7,6 +7,7 @@ import com.enrpau.dualscreendex.parser.model.GbaCompiledReferenceIndex
 import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.model.TableRecordFormat
 import com.enrpau.dualscreendex.parser.model.ValidationEvidence
+import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import com.enrpau.dualscreendex.parser.validate.TableValidators
 
 /** Resolves referenced CFRU/DPE data tables without assuming which published pointer slot a fork retained. */
@@ -16,6 +17,7 @@ object Gen3DynamicTableResolver {
         tables: ProfileTables,
         proposedCount: Int,
         references: GbaCompiledReferenceIndex?,
+        codec: PokemonTextCodec,
         referenceSites: GbaReferenceIndex? = null,
     ): Gen3SpeciesExtentResolution {
         val names = tables.speciesNames ?: return Gen3SpeciesExtentResolution(proposedCount, tables)
@@ -29,6 +31,7 @@ object Gen3DynamicTableResolver {
             rom = rom,
             tables = tables,
             proposedCount = proposedCount,
+            codec = codec,
             referenceSites = referenceSites,
         )?.let { return it }
         val mapOffset = references.counts.keys.singleOrNull { candidate ->
@@ -79,6 +82,7 @@ object Gen3DynamicTableResolver {
         rom: RomImage,
         tables: ProfileTables,
         proposedCount: Int,
+        codec: PokemonTextCodec,
         referenceSites: GbaReferenceIndex?,
     ): Gen3SpeciesExtentResolution? {
         val names = tables.speciesNames ?: return null
@@ -96,7 +100,7 @@ object Gen3DynamicTableResolver {
                 rom,
                 names.copy(count = boundary),
                 boundary,
-                com.enrpau.dualscreendex.parser.text.PokemonTextCodec.gbaEnglish,
+                codec,
             )
             if (!nameEvidence.compatible) return@mapNotNull null
             val recordSize = TableValidators.inferBaseStatsRecordSize(
@@ -113,7 +117,7 @@ object Gen3DynamicTableResolver {
                 generation = 3,
             )
             if (!statsEvidence.compatible ||
-                !speciesDomainEndsAt(rom, names, stats, boundary, recordSize)
+                !speciesDomainEndsAt(rom, names, stats, boundary, recordSize, codec)
             ) return@mapNotNull null
             SparseSpeciesExtentCandidate(boundary, recordSize)
         }
@@ -158,12 +162,13 @@ object Gen3DynamicTableResolver {
         stats: TableLayout,
         boundary: Int,
         baseStatsRecordSize: Int,
+        codec: PokemonTextCodec,
     ): Boolean {
         val nextName = TableValidators.names(
             rom,
             names.copy(offset = names.offset + boundary * names.recordSize, count = 1),
             1,
-            com.enrpau.dualscreendex.parser.text.PokemonTextCodec.gbaEnglish,
+            codec,
         )
         if (nextName.validRecords != 0) return false
         val nextStatsOffset = stats.offset.toLong() + boundary.toLong() * baseStatsRecordSize
@@ -264,7 +269,7 @@ object Gen3DynamicTableResolver {
             TableValidators.moveData(rom, it.offset, moveCount, it.recordSize, generation = 3)
         }
         val standardMovesValid = standardMoveEvidence?.compatible == true
-        if (statsValid && standardMovesValid) {
+        if (statsValid && standardMovesValid && inheritedStatsEvidence.confidence == 1.0) {
             return Gen3DynamicTableResolution(inherited, inheritedStatsEvidence, standardMoveEvidence)
         }
 
@@ -290,22 +295,50 @@ object Gen3DynamicTableResolver {
             inherited.moveData?.offset?.let(::add)
         }
 
-        val statsCandidate = if (statsValid) inheritedStatsEvidence else candidates.asSequence()
+        val statsCandidates = (if (statsValid) references.keys.asSequence() else candidates.asSequence())
             .filter { it % 4 == 0 && it.toLong() + speciesCount.toLong() * 28 <= rom.size }
             .mapNotNull { offset ->
                 if (!plausibleStatsSample(rom, offset, speciesCount)) return@mapNotNull null
                 val evidence = TableValidators.baseStats(rom, offset, speciesCount, 28, generation = 3)
                 if (evidence.compatible) evidence to (references[offset] ?: 0) else null
             }
-            .sortedWith(candidateOrder)
-            .firstOrNull()
-            ?.first
-        val stats = if (statsValid) inherited.baseStats else statsCandidate?.toLayout()
+        val statsSelection = if (statsValid) {
+            val inheritedEvidence = requireNotNull(inheritedStatsEvidence)
+            val stronger = statsCandidates.filter { (evidence, _) ->
+                evidence.confidence > inheritedEvidence.confidence
+            }.toList()
+            if (stronger.isEmpty()) {
+                StatsCandidateSelection(inherited.baseStats, inheritedEvidence)
+            } else {
+                selectStatsCandidate(stronger)
+            }
+        } else {
+            val recovered = statsCandidates.toList()
+            if (recovered.isEmpty()) {
+                StatsCandidateSelection(inherited.baseStats, null)
+            } else {
+                selectStatsCandidate(recovered)
+            }
+        }
 
         val moveCandidates = if (standardMovesValid) emptyList() else candidates.asSequence()
             .filter { it % 4 == 0 }
             .flatMap { offset ->
                 buildList {
+                    if (offset.toLong() + moveCount.toLong() * 12 <= rom.size &&
+                        plausibleRetailMoveSample(rom, offset, moveCount)
+                    ) {
+                        val evidence = TableValidators.moveData(
+                            rom,
+                            offset,
+                            moveCount,
+                            12,
+                            generation = 3,
+                        )
+                        if (evidence.compatible) {
+                            add(DynamicMoveCandidate(evidence, references[offset] ?: 0, TableRecordFormat.STANDARD))
+                        }
+                    }
                     if (offset.toLong() + moveCount.toLong() * 16 <= rom.size &&
                         plausibleWidenedRetailMoveSample(rom, offset, moveCount, maximumMoveTypeId)
                     ) {
@@ -367,17 +400,68 @@ object Gen3DynamicTableResolver {
 
         return Gen3DynamicTableResolution(
             tables = inherited.copy(
-                baseStats = stats ?: inherited.baseStats,
+                baseStats = statsSelection.layout,
                 moveData = moveSelection.layout,
             ),
-            baseStatsEvidence = statsCandidate,
+            baseStatsEvidence = statsSelection.evidence,
             moveDataEvidence = moveSelection.evidence,
         )
     }
 
+    private fun selectStatsCandidate(
+        candidates: List<Pair<ValidationEvidence, Int>>,
+    ): StatsCandidateSelection {
+        val ordered = candidates.sortedWith(candidateOrder)
+        val winner = ordered.first()
+        val equallyCredible = ordered.filter {
+            it.first.confidence == winner.first.confidence && it.second == winner.second
+        }
+        if (equallyCredible.size == 1) {
+            return StatsCandidateSelection(winner.first.toLayout(), winner.first)
+        }
+        return StatsCandidateSelection(
+            layout = null,
+            evidence = ValidationEvidence(
+                compatible = false,
+                validRecords = 0,
+                totalRecords = equallyCredible.size,
+                confidence = 0.0,
+                reasons = listOf(
+                    "ambiguous base-stat roots: " + equallyCredible.joinToString { candidate ->
+                        "0x${requireNotNull(candidate.first.offset).toString(16)}"
+                    },
+                ),
+                ambiguous = true,
+                reviewRecommended = true,
+            ),
+        )
+    }
+
     private fun selectMoveCandidate(candidates: List<DynamicMoveCandidate>): MoveCandidateSelection {
-        val winner = candidates.first()
-        val equallyCredible = candidates.filter {
+        val crossFormatRoots = candidates.groupBy { requireNotNull(it.evidence.offset) }
+            .filterValues { candidatesAtRoot -> candidatesAtRoot.map { it.format }.distinct().size > 1 }
+        val eligible = candidates.filterNot { requireNotNull(it.evidence.offset) in crossFormatRoots }
+        if (eligible.isEmpty() && crossFormatRoots.isNotEmpty()) {
+            return MoveCandidateSelection(
+                layout = null,
+                evidence = ValidationEvidence(
+                    compatible = false,
+                    validRecords = 0,
+                    totalRecords = crossFormatRoots.size,
+                    confidence = 0.0,
+                    reasons = listOf(
+                        "ambiguous move-data ABIs at the same root: " + crossFormatRoots.entries.joinToString {
+                            (offset, candidatesAtRoot) ->
+                            "0x${offset.toString(16)}/${candidatesAtRoot.map { it.format }.distinct().joinToString("|")}"
+                        },
+                    ),
+                    ambiguous = true,
+                    reviewRecommended = true,
+                ),
+            )
+        }
+        val winner = eligible.first()
+        val equallyCredible = eligible.filter {
             it.evidence.confidence == winner.evidence.confidence && it.references == winner.references
         }
         if (equallyCredible.size == 1) {
@@ -473,6 +557,8 @@ object Gen3DynamicTableResolver {
     ): Boolean =
         (tableFits(rom, offset, speciesCount, 28) &&
             plausibleStatsSample(rom, offset, speciesCount, MAX_PREFILTER_RECORDS)) ||
+            (tableFits(rom, offset, moveCount, 12) &&
+                plausibleRetailMoveSample(rom, offset, moveCount, MAX_PREFILTER_RECORDS)) ||
             (tableFits(rom, offset, moveCount, 16) &&
                 plausibleCfruMoveSample(rom, offset, moveCount, MAX_PREFILTER_RECORDS)) ||
             (tableFits(rom, offset, moveCount, 16) &&
@@ -572,6 +658,25 @@ object Gen3DynamicTableResolver {
             ) plausible++
         }
         return plausible * 10 >= (sample - 1) * 9
+    }
+
+    private fun plausibleRetailMoveSample(rom: RomImage, offset: Int, count: Int, maximumSample: Int = 96): Boolean {
+        val sample = minOf(count, maximumSample)
+        if (sample < 4 || (0 until 12).any { rom.u8(offset + it) != 0 }) return false
+        var plausible = 0
+        var populated = 0
+        for (index in 1 until sample) {
+            val base = offset + index * 12
+            val reserved = (0 until 12).all { rom.u8(base + it) == 0 }
+            if (!reserved) populated++
+            val accuracy = rom.u8(base + 3)
+            if (reserved || (
+                    rom.u8(base + 2) in 0..31 && rom.u8(base + 4) in 0..64 &&
+                        (accuracy == 0 || accuracy in 10..100)
+                    )
+            ) plausible++
+        }
+        return plausible * 10 >= (sample - 1) * 9 && populated * 5 >= (sample - 1) * 4
     }
 
     private fun plausibleCfruMoveSample(rom: RomImage, offset: Int, count: Int, maximumSample: Int = 96): Boolean {
@@ -700,6 +805,11 @@ object Gen3DynamicTableResolver {
         val evidence: ValidationEvidence,
         val references: Int,
         val format: TableRecordFormat,
+    )
+
+    private data class StatsCandidateSelection(
+        val layout: TableLayout?,
+        val evidence: ValidationEvidence?,
     )
 
     private data class MoveCandidateSelection(

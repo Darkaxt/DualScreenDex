@@ -1,6 +1,7 @@
 package com.enrpau.dualscreendex.parser.cli
 
 import com.enrpau.dualscreendex.parser.model.CapabilityEvidence
+import com.enrpau.dualscreendex.parser.model.CapabilityReviewStatus
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.ParseResult
@@ -16,6 +17,10 @@ import com.enrpau.dualscreendex.parser.catalog.AbilityMechanicConditionKind
 import com.enrpau.dualscreendex.parser.catalog.AbilityMechanicKind
 import com.enrpau.dualscreendex.parser.catalog.AbilityRecord
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
+import com.enrpau.dualscreendex.parser.catalog.CatalogLanguageOverlay
+import com.enrpau.dualscreendex.parser.catalog.CatalogLocalization
+import com.enrpau.dualscreendex.parser.catalog.LocalizedCapabilityState
+import com.enrpau.dualscreendex.parser.catalog.LocalizedTextCapability
 import com.enrpau.dualscreendex.parser.catalog.MoveCategory
 import com.enrpau.dualscreendex.parser.catalog.MoveAcquisition
 import com.enrpau.dualscreendex.parser.catalog.MoveAcquisitionMethod
@@ -27,6 +32,11 @@ import com.enrpau.dualscreendex.parser.catalog.TypeSemanticRole
 import com.enrpau.dualscreendex.parser.catalog.LearnsetEntry
 import com.enrpau.dualscreendex.parser.catalog.LearnsetRuleset
 import com.enrpau.dualscreendex.parser.catalog.LevelUpRulesetSelector
+import com.enrpau.dualscreendex.parser.language.LanguageResolutionStatus
+import com.enrpau.dualscreendex.parser.language.LanguageTag
+import com.enrpau.dualscreendex.parser.language.LocalizedTableLayout
+import com.enrpau.dualscreendex.parser.language.RomLanguageManifest
+import com.enrpau.dualscreendex.parser.language.RomLanguageProjection
 import com.enrpau.dualscreendex.parser.parse.ParserOrchestrator
 import com.google.gson.JsonParser
 import java.io.StringWriter
@@ -272,6 +282,80 @@ class ReportWriterTest {
         assertEquals(2, metrics.abilitiesWithMechanics)
         assertEquals(1, metrics.abilitiesWithProvenTypedModifiers)
         assertEquals(1, metrics.provenTypedAbilityModifiers)
+    }
+
+    @Test
+    fun catalogMetricsExposeSanitizedLocalizedCapabilityEvidence() {
+        val capabilities = LocalizedTextCapability.entries.associateWith { capability ->
+            when (capability) {
+                LocalizedTextCapability.TYPE_NAMES -> LocalizedCapabilityState.available(1)
+                LocalizedTextCapability.SPECIES_DESCRIPTIONS -> LocalizedCapabilityState.unavailable(
+                    status = CapabilityStatus.NOT_FOUND,
+                    expectedRecords = 0,
+                    reviewStatus = CapabilityReviewStatus.MANUAL_REVIEW,
+                    validatorReviewRecommended = true,
+                    reasons = listOf("private diagnostic must not enter metrics"),
+                )
+                else -> LocalizedCapabilityState.notApplicable("fixture")
+            }
+        }
+        val projection = RomLanguageProjection(
+            language = LanguageTag.FRENCH,
+            codecId = "gba-gen3-fr",
+            codecVersion = 1,
+            localizedTables = LocalizedTableLayout(),
+            evidence = emptyList(),
+            status = LanguageResolutionStatus.RESOLVED,
+        )
+        val manifest = RomLanguageManifest(
+            defaultLanguage = LanguageTag.FRENCH,
+            projections = listOf(projection),
+            status = LanguageResolutionStatus.RESOLVED,
+        )
+        val overlay = CatalogLanguageOverlay(
+            language = LanguageTag.FRENCH,
+            overlayVersion = 1,
+            localizedCapabilities = capabilities,
+            typeNames = mapOf(10 to CatalogField.available("FEU")),
+        )
+        val catalog = ParsedCatalog(
+            romSha256 = "0".repeat(64),
+            family = EngineFamily.FIRERED_LEAFGREEN,
+            platform = Platform.GBA,
+            typesById = mapOf(
+                10 to TypeRecord(
+                    id = 10,
+                    name = CatalogField.notFound("localized overlay owns the name"),
+                    semanticRole = CatalogField.available(TypeSemanticRole.FIRE),
+                ),
+            ),
+            localization = CatalogLocalization(manifest, mapOf(LanguageTag.FRENCH to overlay)),
+        )
+
+        val metrics = CatalogMetrics.from(catalog)
+        val descriptions = metrics.localizedCapabilities.getValue("SPECIES_DESCRIPTIONS")
+
+        assertEquals(LocalizedTextCapability.entries.size, metrics.localizedCapabilities.size)
+        assertEquals(CapabilityStatus.NOT_FOUND, descriptions.status)
+        assertEquals(0, descriptions.coveredRecords)
+        assertEquals(0, descriptions.expectedRecords)
+        assertEquals(CapabilityReviewStatus.MANUAL_REVIEW, descriptions.reviewStatus)
+        assertTrue(descriptions.validatorReviewRecommended)
+        val json = ReportWriter.json(
+            CorpusReport(
+                roots = emptyList(),
+                results = listOf(
+                    CorpusResult(
+                        displayName = "fixture.gba",
+                        source = "fixture.gba",
+                        durationMillis = 1,
+                        catalog = metrics,
+                    ),
+                ),
+            ),
+        )
+        assertTrue(json.contains("\"localizedCapabilities\""))
+        assertFalse(json.contains("private diagnostic"))
     }
 
     @Test
