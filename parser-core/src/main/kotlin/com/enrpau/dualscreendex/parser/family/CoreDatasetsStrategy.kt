@@ -8,6 +8,7 @@ import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.model.TableRecordFormat
 import com.enrpau.dualscreendex.parser.model.ValidationEvidence
 import com.enrpau.dualscreendex.parser.parse.DatasetResolvers
+import com.enrpau.dualscreendex.parser.parse.Gen2CompiledNamePairResolver
 import com.enrpau.dualscreendex.parser.parse.Gen3DynamicTableResolver
 import com.enrpau.dualscreendex.parser.parse.Gen3PublishedPartialBaseStatsResolver
 import com.enrpau.dualscreendex.parser.parse.PokeemeraldExpansionResolver
@@ -21,6 +22,7 @@ import com.enrpau.dualscreendex.parser.dataset.moves.ResolvedMoveDetailsLayout
 import com.enrpau.dualscreendex.parser.dataset.learnsets.EmbeddedLearnsetPointerResolver
 import com.enrpau.dualscreendex.parser.resolution.DatasetResolution
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
+import com.enrpau.dualscreendex.parser.language.LanguageTag
 import com.enrpau.dualscreendex.parser.language.RomLanguageManifest
 import com.enrpau.dualscreendex.parser.validate.TableValidators
 import java.util.Collections
@@ -161,6 +163,20 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
         val inferredMoveCount = expansion?.moveCount ?: headerlessUnifiedMoves?.moveCount ?: inferMoveCount(
             rom, tables.moveNames, probeCodec, profile, exactProfile = exact != null,
         )
+        if (generation == 2 && speciesCount != null && inferredMoveCount != null) {
+            Gen2CompiledNamePairResolver.resolve(
+                rom = rom,
+                speciesCount = speciesCount,
+                moveCount = inferredMoveCount,
+                codec = probeCodec,
+                cancellation = session.cancellation,
+            )?.let { compiledNames ->
+                tables = tables.copy(
+                    speciesNames = compiledNames.speciesNames,
+                    moveNames = compiledNames.moveNames,
+                )
+            }
+        }
         var dynamicBaseStatsEvidence: ValidationEvidence? = null
         var dynamicMoveDataEvidence: ValidationEvidence? = null
         if (
@@ -236,7 +252,8 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
         var moveNames = headerlessUnifiedMoves?.moveNamesEvidence
             ?: validateNames(rom, moveNamesLayout, inferredMoveCount, probeCodec, generation)
         if (
-            generation == 2 && exact == null && inferredMoveCount != null &&
+            generation == 2 && exact == null && probeCodec.language == LanguageTag.ENGLISH &&
+                inferredMoveCount != null &&
             moveNamesLayout?.variableLength == true &&
             tables.moveData?.let { hasCanonicalGen2MovePrefix(rom, it) } == true
         ) {
