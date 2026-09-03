@@ -112,6 +112,16 @@ class LanguageModelsTest {
     }
 
     @Test
+    fun resolvesAuthoritativeCodecBeforeTheFinalLayoutExists() {
+        val expected = WesternPokemonTextCodecs.gen3German
+        val manifest = resolvedLanguageManifest(expected, expected.language)
+
+        assertSame(expected, manifest.defaultTextCodec(generation = 3, platform = Platform.GBA))
+        assertNull(manifest.defaultTextCodec(generation = 2, platform = Platform.GBC))
+        assertNull(RomLanguageManifest.UNKNOWN.defaultTextCodec(generation = 3, platform = Platform.GBA))
+    }
+
+    @Test
     fun rejectsCodecLanguageGenerationAndPlatformMismatches() {
         val mismatchedLanguage = RomLanguageManifest(
             defaultLanguage = LanguageTag.JAPANESE,

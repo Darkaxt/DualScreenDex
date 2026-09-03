@@ -70,7 +70,7 @@ object AbilityDescriptionMaterializer {
         val tableBytes = pointerTableBytes.toInt()
         val expectedOffset = align4((names.offset.toLong() + names.count.toLong() * names.recordSize).toInt())
         val candidates = linkedSetOf<Int>()
-        val publishedRoot = GbaPublishedHeaderResolver.resolve(rom).abilityDescriptions
+        val publishedRoot = GbaPublishedHeaderResolver.resolve(rom, codec).abilityDescriptions
         publishedRoot?.let(candidates::add)
         val referenceIndex = layout.compiledGbaReferences
         if (publishedRoot == null && (referenceIndex == null || referenceIndex.overflowed)) return null

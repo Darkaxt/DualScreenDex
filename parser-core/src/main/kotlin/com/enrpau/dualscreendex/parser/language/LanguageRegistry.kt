@@ -54,11 +54,16 @@ object LanguageRegistry {
     }
 }
 
+fun RomLanguageManifest.defaultTextCodec(
+    generation: Int,
+    platform: Platform,
+): PokemonTextCodec? = defaultProjection()?.let { projection ->
+    LanguageRegistry.codec(projection.codecId, projection.codecVersion)
+        ?.takeIf { codec ->
+            codec.language == projection.language &&
+                codec.supports(generation, platform)
+        }
+}
+
 fun ResolvedRomLayout.defaultTextCodec(): PokemonTextCodec? =
-    languageManifest.defaultProjection()?.let { projection ->
-        LanguageRegistry.codec(projection.codecId, projection.codecVersion)
-            ?.takeIf { codec ->
-                codec.language == projection.language &&
-                    codec.supports(generation, platform)
-            }
-    }
+    languageManifest.defaultTextCodec(generation, platform)
