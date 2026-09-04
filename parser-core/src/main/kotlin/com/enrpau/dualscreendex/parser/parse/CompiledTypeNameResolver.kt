@@ -273,7 +273,7 @@ private object WesternTypeNameLexicon {
             TypeSemanticRole.BUG to listOf("BICHO"),
             TypeSemanticRole.GHOST to listOf("FANT.", "FANTASMA"),
             TypeSemanticRole.STEEL to listOf("ACERO"),
-            TypeSemanticRole.MYSTERY to listOf("???", "(?)"),
+            TypeSemanticRole.MYSTERY to listOf("???", "(?)", "¿¿??"),
             TypeSemanticRole.FIRE to listOf("FUEGO"),
             TypeSemanticRole.WATER to listOf("AGUA"),
             TypeSemanticRole.GRASS to listOf("PLANTA"),

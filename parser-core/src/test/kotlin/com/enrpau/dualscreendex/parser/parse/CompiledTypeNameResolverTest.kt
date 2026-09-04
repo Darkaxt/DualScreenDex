@@ -7,6 +7,7 @@ import com.enrpau.dualscreendex.parser.catalog.TypeSemanticRole
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.RomHeader
+import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.text.WesternPokemonTextCodecs
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -46,6 +47,40 @@ class CompiledTypeNameResolverTest {
         assertEquals(TypeSemanticRole.FIRE, decoded?.get(20)?.semanticRole)
         assertEquals(TypeSemanticRole.DARK, decoded?.get(27)?.semanticRole)
         assertNull(decoded?.get(6))
+    }
+
+    @Test
+    fun acceptsOfficialSpanishGen2MysteryTypeLabel() {
+        val bytes = ByteArray(0xC000)
+        val table = 0x9000
+        val labels = listOf(
+            "NORMAL", "LUCHA", "VOLADOR", "VENENO", "TIERRA", "ROCA", "", "BICHO", "FANTASMA",
+            "ACERO", "NORMAL", "NORMAL", "NORMAL", "NORMAL", "NORMAL", "NORMAL", "NORMAL", "NORMAL",
+            "NORMAL", "¿¿??", "FUEGO", "AGUA", "PLANTA", "ELÉCTRIC", "PSÍQUICO", "HIELO", "DRAGÓN", "SINIEST.",
+        )
+        labels.forEachIndexed { id, label ->
+            val target = 0x9200 + id * 12
+            writeU16(bytes, table + id * 2, 0x4000 + target - 0x8000)
+            encodeSpanishGb(bytes, target, label)
+        }
+        val layout = TableLayout(
+            offset = table,
+            count = 28,
+            recordSize = 2,
+            bank = 2,
+            valuesArePointers = true,
+        )
+
+        val decoded = CompiledTypeNameResolver.decode(
+            RomImage(bytes),
+            generation = 2,
+            layout = layout,
+            codec = WesternPokemonTextCodecs.gen2Spanish,
+        )
+
+        assertEquals("¿¿??", decoded?.get(19)?.name)
+        assertEquals(TypeSemanticRole.MYSTERY, decoded?.get(19)?.semanticRole)
+        assertEquals(TypeSemanticRole.DARK, decoded?.get(27)?.semanticRole)
     }
 
     @Test
@@ -129,6 +164,22 @@ class CompiledTypeNameResolverTest {
                 in 'A'..'Z' -> (0x80 + character.code - 'A'.code).toByte()
                 '?' -> 0xE6.toByte()
                 else -> error("unsupported GB fixture character $character")
+            }
+        }
+        target[offset + value.length] = 0x50
+    }
+
+    private fun encodeSpanishGb(target: ByteArray, offset: Int, value: String) {
+        value.forEachIndexed { index, character ->
+            target[offset + index] = when (character) {
+                in 'A'..'Z' -> (0x80 + character.code - 'A'.code).toByte()
+                'É' -> 0xC7.toByte()
+                'Í' -> 0xC9.toByte()
+                'Ó' -> 0xCC.toByte()
+                '¿' -> 0xE4.toByte()
+                '?' -> 0xE6.toByte()
+                '.' -> 0xE8.toByte()
+                else -> error("unsupported Spanish GB fixture character $character")
             }
         }
         target[offset + value.length] = 0x50
