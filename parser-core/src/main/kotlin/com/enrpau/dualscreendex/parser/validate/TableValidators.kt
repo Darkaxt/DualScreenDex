@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.validate
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.io.RomBoundsException
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.Platform
@@ -370,27 +371,27 @@ object TableValidators {
         codec: PokemonTextCodec,
         maximumWidth: Int = 24,
     ): ValidationEvidence = safely(offset, 0, count) {
+        if (offset !in 0 until rom.size || maximumWidth <= 0 || count <= 0) {
+            return@safely ValidationEvidence(
+                false, 0, count, 0.0, listOf("invalid variable-name byte window or count"), offset, null,
+            )
+        }
         var cursor = offset
         var valid = 0
         val reasons = mutableListOf<String>()
-        repeat(count) {
-            val buffer = ArrayList<Byte>()
-            var terminated = false
-            var length = 0
-            while (length < maximumWidth && cursor < rom.size && !terminated) {
-                val value = rom.u8(cursor++)
-                buffer += value.toByte()
-                if (value == codec.terminator) {
-                    terminated = true
-                }
-                length++
+        for (index in 0 until count) {
+            val decoded = codec.decodeDetailed(rom, cursor, maximumWidth, ParserCancellationToken.NONE)
+            if (!decoded.terminated || decoded.consumedBytes <= 0) {
+                reasons += "unterminated variable name at record $index; next boundary is unknown"
+                break
             }
-            val decoded = codec.decodeDetailed(buffer.toByteArray())
-            if (terminated && decoded.text.isNotBlank() && decoded.validRatio >= 0.8) valid++
+            cursor += decoded.consumedBytes
+            if (decoded.text.isNotBlank() && decoded.validRatio >= 0.8) valid++
         }
-        val confidence = valid.toDouble() / count.coerceAtLeast(1)
+        val confidence = valid.toDouble() / count
+        val compatible = reasons.isEmpty() && confidence >= 0.85
         if (confidence < 0.85) reasons += "valid variable names $valid/$count below 85%"
-        ValidationEvidence(confidence >= 0.85, valid, count, confidence, reasons, offset, null)
+        ValidationEvidence(compatible, valid, count, confidence, reasons, offset, null)
     }
 
     fun baseStats(
