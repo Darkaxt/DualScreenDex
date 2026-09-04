@@ -13,6 +13,7 @@ import com.enrpau.dualscreendex.parser.catalog.defaultTextProjection
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
+import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import java.nio.ByteBuffer
@@ -94,7 +95,9 @@ class Gen2WorldMapHackRealControlTest {
         assertEquals(ORANGE_RASTER_SHA, sha256(second.assets.getValue(region.imageAssetKey)))
         assertEquals(ORANGE_NAMED_LOCATION_SHA, namedLocationFingerprint(second))
 
-        val integratedCatalog = requireNotNull(CatalogParser.parse(rom).catalog)
+        val integrated = CatalogParser.parse(rom)
+        assertEquals(EngineFamily.CRYSTAL, integrated.analysis.selectedFamily)
+        val integratedCatalog = requireNotNull(integrated.catalog)
         assertEquals(253, integratedCatalog.speciesById.size)
         assertTrue(integratedCatalog.speciesById.values.all { it.sprite.status == CapabilityStatus.AVAILABLE })
         assertEquals(

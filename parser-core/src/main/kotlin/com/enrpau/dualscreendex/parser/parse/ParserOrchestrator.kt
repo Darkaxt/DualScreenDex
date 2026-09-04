@@ -368,12 +368,30 @@ object ParserOrchestrator {
         if (top.score < minimumScore) return Selection(SelectionStatus.NO_FAMILY_MATCH, null, null)
         val runnerUp = eligible.drop(1).firstOrNull()
         val margin = top.score - (runnerUp?.score ?: 0)
-        return if (margin >= minimumMargin) {
-            Selection(SelectionStatus.SELECTED, top, margin)
-        } else {
-            Selection(SelectionStatus.AMBIGUOUS, null, margin)
+        if (margin >= minimumMargin) {
+            return Selection(SelectionStatus.SELECTED, top, margin)
         }
+        if (margin == 0) {
+            val tied = eligible.takeWhile { it.score == top.score }
+            val typeChartWinner = tied.singleOrNull { it.hasCompleteTypeChart() }
+            if (typeChartWinner != null) {
+                return Selection(SelectionStatus.SELECTED, typeChartWinner, margin)
+            }
+        }
+        return Selection(SelectionStatus.AMBIGUOUS, null, margin)
     }
+
+    private fun ParserProbe.hasCompleteTypeChart(): Boolean = capabilities
+        .singleOrNull { it.capability == RomCapability.TYPE_CHART }
+        ?.let { evidence ->
+            evidence.compatible &&
+                evidence.status == CapabilityStatus.AVAILABLE &&
+                evidence.validRecords != null &&
+                evidence.validRecords == evidence.totalRecords &&
+                evidence.validRecords > 0 &&
+                evidence.reviewStatus == CapabilityReviewStatus.NONE &&
+                !evidence.validatorReviewRecommended
+        } == true
 
     fun resolveCapabilities(selection: Selection, probes: List<ParserProbe>): List<CapabilityEvidence> {
         selection.winner?.let { return completeCapabilitySet(it.capabilities) }

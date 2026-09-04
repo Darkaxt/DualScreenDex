@@ -66,6 +66,50 @@ class ParserOrchestratorTest {
     }
 
     @Test
+    fun selectsExactScoreTieWithSingleCompleteTypeChart() {
+        val completeTypeChart = CapabilityEvidence(
+            capability = RomCapability.TYPE_CHART,
+            compatible = true,
+            confidence = 1.0,
+            count = 108,
+            status = CapabilityStatus.AVAILABLE,
+            validRecords = 108,
+            totalRecords = 108,
+        )
+        val result = ParserOrchestrator.select(
+            listOf(
+                probe(EngineFamily.GOLD_SILVER, 80),
+                probe(EngineFamily.CRYSTAL, 80).copy(capabilities = listOf(completeTypeChart)),
+            ),
+        )
+
+        assertEquals(SelectionStatus.SELECTED, result.status)
+        assertEquals(EngineFamily.CRYSTAL, result.winner?.family)
+        assertEquals(0, result.margin)
+    }
+
+    @Test
+    fun refusesExactScoreTieWhenBothTypeChartsAreComplete() {
+        val completeTypeChart = CapabilityEvidence(
+            capability = RomCapability.TYPE_CHART,
+            compatible = true,
+            confidence = 1.0,
+            count = 108,
+            status = CapabilityStatus.AVAILABLE,
+            validRecords = 108,
+            totalRecords = 108,
+        )
+        val result = ParserOrchestrator.select(
+            listOf(
+                probe(EngineFamily.EMERALD, 80).copy(capabilities = listOf(completeTypeChart)),
+                probe(EngineFamily.FIRERED_LEAFGREEN, 80).copy(capabilities = listOf(completeTypeChart)),
+            ),
+        )
+
+        assertEquals(SelectionStatus.AMBIGUOUS, result.status)
+    }
+
+    @Test
     fun requiresTwoIndependentAnchors() {
         val weak = probe(EngineFamily.EMERALD, 100).copy(anchors = 1)
         assertEquals(SelectionStatus.NO_FAMILY_MATCH, ParserOrchestrator.select(listOf(weak)).status)
