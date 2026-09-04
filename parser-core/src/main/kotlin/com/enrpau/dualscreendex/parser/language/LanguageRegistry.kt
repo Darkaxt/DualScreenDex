@@ -1,7 +1,10 @@
 package com.enrpau.dualscreendex.parser.language
 
+import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
+import com.enrpau.dualscreendex.parser.text.JapanesePokemonTextCodecs
+import com.enrpau.dualscreendex.parser.text.KoreanGen2PokemonTextCodec
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import com.enrpau.dualscreendex.parser.text.WesternPokemonTextCodecs
 import java.util.Collections
@@ -23,8 +26,11 @@ object LanguageRegistry {
         LanguageDescriptor(LanguageTag.KOREAN, "Korean", setOf("Kore")),
     )
     private val descriptorsByTag = registeredDescriptors.associateBy(LanguageDescriptor::tag)
+    private val officialCodecs = WesternPokemonTextCodecs.all +
+        JapanesePokemonTextCodecs.all +
+        KoreanGen2PokemonTextCodec.codec
     private val codecsByIdentity = (
-        WesternPokemonTextCodecs.all + listOf(
+        officialCodecs + listOf(
             PokemonTextCodec.gbEnglish,
             PokemonTextCodec.gbaEnglish,
         )
@@ -41,11 +47,19 @@ object LanguageRegistry {
         language: LanguageTag,
         generation: Int,
         platform: Platform,
-    ): PokemonTextCodec? = WesternPokemonTextCodecs.forLanguage(language, generation)
-        ?.takeIf { it.supports(generation, platform) }
+        family: EngineFamily? = null,
+    ): PokemonTextCodec? {
+        if (language == LanguageTag.JAPANESE) {
+            return JapanesePokemonTextCodecs.forGeneration(generation, family)
+                ?.takeIf { it.supports(generation, platform) }
+        }
+        return officialCodecs.singleOrNull {
+            it.language == language && it.supports(generation, platform)
+        }
+    }
 
     fun candidateCodecs(generation: Int, platform: Platform): List<PokemonTextCodec> =
-        WesternPokemonTextCodecs.all.filter { it.supports(generation, platform) }
+        officialCodecs.filter { it.supports(generation, platform) }
 
     fun candidateCodec(language: LanguageTag, platform: Platform): PokemonTextCodec? = when (platform) {
         Platform.GB, Platform.GBC -> PokemonTextCodec.gbEnglish.takeIf { language == LanguageTag.ENGLISH }

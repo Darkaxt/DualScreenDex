@@ -172,7 +172,9 @@ class LanguageModelsTest {
         assertNull(LanguageRegistry.candidateCodec(LanguageTag.FRENCH, 3, Platform.GBC))
         assertEquals(
             WesternPokemonTextCodecs.all.filter { 2 in it.applicableGenerations },
-            LanguageRegistry.candidateCodecs(2, Platform.GBC),
+            LanguageRegistry.candidateCodecs(2, Platform.GBC).filter { candidate ->
+                candidate.language in WesternPokemonTextCodecs.all.map { it.language }
+            },
         )
     }
 

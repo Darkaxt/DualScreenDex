@@ -42,6 +42,7 @@ object RomHeaderReader {
                     } else {
                         null
                     },
+                    gbDestinationCode = rom.u8(0x14A),
                 )
             }
         }

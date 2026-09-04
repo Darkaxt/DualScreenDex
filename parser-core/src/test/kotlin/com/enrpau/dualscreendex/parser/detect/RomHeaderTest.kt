@@ -51,10 +51,12 @@ class RomHeaderTest {
         "POKEMON_GLD".toByteArray().copyInto(bytes, 0x134)
         "01PX".toByteArray().copyInto(bytes, 0x13F)
         bytes[0x143] = 0x80.toByte()
+        bytes[0x14A] = 0x01
         val header = RomHeaderReader.read(RomImage(bytes))
         assertEquals(Platform.GBC, header.platform)
         assertEquals("POKEMON_GLD01PX", header.title)
         assertEquals("01PX", header.gbManufacturerCode)
+        assertEquals(1, header.gbDestinationCode)
         assertEquals(16, header.rawTitleBytes.size)
         assertEquals(0x80, header.rawTitleBytes.last())
     }

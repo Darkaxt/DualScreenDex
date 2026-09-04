@@ -125,6 +125,7 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
             rom = session.rom,
             header = header,
             generation = generation,
+            family = definition.family,
             cancellation = session.cancellation,
         )
         val expansion = if (generation == 3 && identityMatched) {

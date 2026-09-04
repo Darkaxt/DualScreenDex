@@ -2,6 +2,7 @@ package com.enrpau.dualscreendex.parser.language
 
 import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.RomHeader
 import org.junit.Assert.assertEquals
@@ -62,6 +63,89 @@ class OfficialLanguageResolverTest {
                 generation = 2,
             ),
         )
+    }
+
+    @Test
+    fun seedsJapaneseAndKoreanCandidatesOnlyAsOfficialHeaderHints() {
+        assertEquals(
+            LanguageTag.JAPANESE,
+            OfficialLanguageResolver.headerCandidate(
+                RomHeader(Platform.GB, "POKEMON YELLOW", gbDestinationCode = 0),
+                generation = 1,
+            )?.language,
+        )
+        assertEquals(
+            LanguageTag.JAPANESE,
+            OfficialLanguageResolver.headerCandidate(
+                RomHeader(Platform.GBA, "POKEMON EMER", gameCode = "BPEJ"),
+                generation = 3,
+            )?.language,
+        )
+        assertEquals(
+            LanguageTag.JAPANESE,
+            OfficialLanguageResolver.headerCandidate(
+                RomHeader(Platform.GBC, "PM_CRYSTAL", gbManufacturerCode = "BXTJ"),
+                generation = 2,
+            )?.language,
+        )
+        for (productCode in listOf("AAUK", "AAXK")) {
+            assertEquals(
+                LanguageTag.KOREAN,
+                OfficialLanguageResolver.headerCandidate(
+                    RomHeader(Platform.GBC, "POKEMON", gbManufacturerCode = productCode),
+                    generation = 2,
+                )?.language,
+            )
+        }
+        for (productCode in listOf("BXTK", "BYTK")) {
+            assertNull(
+                OfficialLanguageResolver.headerCandidate(
+                    RomHeader(Platform.GBC, "PM_CRYSTAL", gbManufacturerCode = productCode),
+                    generation = 2,
+                ),
+            )
+        }
+        assertNull(
+            OfficialLanguageResolver.headerCandidate(
+                RomHeader(Platform.GBA, "CUSTOM", gameCode = "BPEK"),
+                generation = 3,
+            ),
+        )
+        assertNull(
+            OfficialLanguageResolver.headerCandidate(
+                RomHeader(Platform.GBC, "CUSTOM", gbManufacturerCode = "APSK"),
+                generation = 1,
+            ),
+        )
+    }
+
+    @Test
+    fun selectsTheJapaneseDialectFromTheResolvedEngineFamily() {
+        val yellow = OfficialLanguageResolver.preferredProbeCodec(
+            rom = RomImage(ByteArray(1)),
+            header = RomHeader(Platform.GB, "POKEMON YELLOW", gbDestinationCode = 0),
+            generation = 1,
+            family = EngineFamily.YELLOW,
+            cancellation = ParserCancellationToken.NONE,
+        )
+        val rubySapphire = OfficialLanguageResolver.preferredProbeCodec(
+            rom = RomImage(ByteArray(1)),
+            header = RomHeader(Platform.GBA, "POKEMON RUBY", gameCode = "AXVJ"),
+            generation = 3,
+            family = EngineFamily.RUBY_SAPPHIRE,
+            cancellation = ParserCancellationToken.NONE,
+        )
+        val later = OfficialLanguageResolver.preferredProbeCodec(
+            rom = RomImage(ByteArray(1)),
+            header = RomHeader(Platform.GBA, "POKEMON EMER", gameCode = "BPEJ"),
+            generation = 3,
+            family = EngineFamily.EMERALD,
+            cancellation = ParserCancellationToken.NONE,
+        )
+
+        assertEquals("gb-gen1-ja-yellow", yellow.id)
+        assertEquals("gba-gen3-ja-ruby-sapphire", rubySapphire.id)
+        assertEquals("gba-gen3-ja-emerald-frlg", later.id)
     }
 
     @Test

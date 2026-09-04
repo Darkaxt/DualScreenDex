@@ -63,6 +63,7 @@ data class RomHeader(
     val rawTitleBytes: List<Int> = emptyList(),
     val rawGameCodeBytes: List<Int> = emptyList(),
     val gbManufacturerCode: String? = null,
+    val gbDestinationCode: Int? = null,
     val gbaMakerCode: String? = null,
     val gbaUnitCode: Int? = null,
 )
