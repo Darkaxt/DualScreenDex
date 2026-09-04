@@ -1,14 +1,86 @@
 package com.enrpau.dualscreendex.parser.dataset.abilities
 
 import com.enrpau.dualscreendex.parser.analysis.GbaReferenceIndex
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationException
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.resolution.CandidateSource
 import com.enrpau.dualscreendex.parser.resolution.DatasetKind
 import com.enrpau.dualscreendex.parser.resolution.DatasetResolution
+import com.enrpau.dualscreendex.parser.text.JapanesePokemonTextCodecs
+import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertSame
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AbilityDescriptionResolverTest {
+    @Test
+    fun cancellationAtEntryPrecedesUnavailableResolution() {
+        val failure = ParserCancellationException()
+        val session = abilitySession(ByteArray(0x800), cancellation = ParserCancellationToken { throw failure })
+
+        assertSame(failure, assertThrows(ParserCancellationException::class.java) {
+            AbilityDescriptionResolver(AbilityDescriptionCodec(PokemonTextCodec.gbaEnglish)).resolve(session, resolvedNames(3))
+        })
+    }
+
+    @Test
+    fun cancellationIsCheckedForEveryDirectProposalBeforeCardinalityRejection() {
+        assertProposalCancellation(direct = true)
+    }
+
+    @Test
+    fun cancellationIsCheckedForEveryInheritedProposalBeforeCardinalityRejection() {
+        assertProposalCancellation(direct = false)
+    }
+
+    private fun assertProposalCancellation(direct: Boolean) {
+        val failure = ParserCancellationException()
+        var checks = 0
+        var decodes = 0
+        val session = abilitySession(ByteArray(0x800), cancellation = ParserCancellationToken {
+            if (++checks == 3) throw failure
+        })
+        val resolver = AbilityDescriptionResolver(AbilityDescriptionTableDecoder { _, layout ->
+            decodes++
+            AbilityDescriptionTableOutcome.Rejected(layout, "fixture rejection")
+        })
+        val proposals = listOf(AbilityDescriptionTableLayout(0x100, 5), AbilityDescriptionTableLayout(0x200, 5))
+
+        assertSame(failure, assertThrows(ParserCancellationException::class.java) {
+            resolver.resolve(
+                session,
+                resolvedNames(3),
+                directCompiledConsumerLayouts = if (direct) proposals else emptyList(),
+                inheritedLayouts = if (direct) emptyList() else proposals,
+            )
+        })
+        assertEquals(3, checks)
+        assertEquals(0, decodes)
+    }
+
+    @Test
+    fun resolvesJapaneseDescriptionsThroughExplicitDecoder() {
+        val table = AbilityDescriptionTableLayout(0x100, 3)
+        val bytes = ByteArray(0x1000)
+        putGbaPointer(bytes, 0x100, 0x400)
+        bytes[0x400] = 0xFF.toByte()
+        for (index in 1..2) {
+            val target = 0x400 + index * 0x40
+            putGbaPointer(bytes, 0x100 + index * 4, target)
+            byteArrayOf(0x01, 0x02, 0x13, 0x19, 0x0A, 0x03, 0x3A, 0x07, 0x2D, 0x1C, 0x0E, 0x39, 0xFF.toByte())
+                .copyInto(bytes, target)
+        }
+
+        val result = AbilityDescriptionResolver(AbilityDescriptionCodec(JapanesePokemonTextCodecs.gen3Later))
+            .resolve(abilitySession(bytes), resolvedNames(2), inheritedLayouts = listOf(table))
+            as DatasetResolution.Resolved<ResolvedAbilityDescriptionLayout>
+
+        assertEquals(2, result.candidate.strength.semanticCoverage?.covered)
+        assertEquals(AbilityDescriptionRowOutcome.Decoded(2, "あいてのこうげきをふせぐ"), result.candidate.layout.rows[2])
+    }
+
     @Test
     fun publishedAbilityDescriptionsBeatADenseCompiledMoveDescriptionDecoy() {
         val names = resolvedNames(abilityCount = 20)
@@ -28,7 +100,7 @@ class AbilityDescriptionResolverTest {
         putAbilityDescriptions(bytes, published, partialDescriptions, 0x1000)
         putAbilityDescriptions(bytes, decoy, moveDescriptions, 0x3000)
 
-        val result = AbilityDescriptionResolver().resolve(
+        val result = AbilityDescriptionResolver(AbilityDescriptionCodec(PokemonTextCodec.gbaEnglish)).resolve(
             session = abilitySession(bytes, references = mapOf(0x100 to 2, 0x300 to 2)),
             abilityNames = names,
             publishedLayouts = listOf(published),
@@ -52,7 +124,7 @@ class AbilityDescriptionResolverTest {
         val bytes = ByteArray(0x10000)
         putAbilityDescriptions(bytes, table, descriptions, 0x1000)
 
-        val result = AbilityDescriptionResolver().resolve(
+        val result = AbilityDescriptionResolver(AbilityDescriptionCodec(PokemonTextCodec.gbaEnglish)).resolve(
             session = abilitySession(bytes),
             abilityNames = names,
             inheritedLayouts = listOf(table),
@@ -74,7 +146,7 @@ class AbilityDescriptionResolverTest {
         val bytes = ByteArray(0x10000)
         putAbilityDescriptions(bytes, table, descriptions, 0x3000)
 
-        val result = AbilityDescriptionResolver().resolve(
+        val result = AbilityDescriptionResolver(AbilityDescriptionCodec(PokemonTextCodec.gbaEnglish)).resolve(
             session = abilitySession(bytes),
             abilityNames = names,
             directCompiledConsumerLayouts = listOf(table),
@@ -101,7 +173,7 @@ class AbilityDescriptionResolverTest {
         putAbilityDescriptions(bytes, compiled, descriptions, 0x1000)
         var indexBuilds = 0
 
-        val result = AbilityDescriptionResolver().resolve(
+        val result = AbilityDescriptionResolver(AbilityDescriptionCodec(PokemonTextCodec.gbaEnglish)).resolve(
             session = abilitySession(
                 bytes,
                 referenceIndexOverride = GbaReferenceIndex.budgetExceeded(
@@ -139,7 +211,7 @@ class AbilityDescriptionResolverTest {
         putAbilityDescriptions(bytes, compiled, descriptions, 0x1800)
         var indexBuilds = 0
 
-        val result = AbilityDescriptionResolver().resolve(
+        val result = AbilityDescriptionResolver(AbilityDescriptionCodec(PokemonTextCodec.gbaEnglish)).resolve(
             session = abilitySession(
                 bytes,
                 referenceIndexOverride = GbaReferenceIndex.budgetExceeded(
@@ -173,7 +245,7 @@ class AbilityDescriptionResolverTest {
         putAbilityDescriptions(bytes, first, descriptions, 0x800)
         putAbilityDescriptions(bytes, second, descriptions, 0x1000)
 
-        val result = AbilityDescriptionResolver().resolve(
+        val result = AbilityDescriptionResolver(AbilityDescriptionCodec(PokemonTextCodec.gbaEnglish)).resolve(
             session = abilitySession(bytes, references = mapOf(0x100 to 2, 0x200 to 2)),
             abilityNames = names,
             compiledLayouts = listOf(second, first),
@@ -200,7 +272,7 @@ class AbilityDescriptionResolverTest {
         val bytes = ByteArray(0x2000)
         putAbilityDescriptions(bytes, table, descriptions, 0x800)
 
-        val result = AbilityDescriptionResolver().resolve(
+        val result = AbilityDescriptionResolver(AbilityDescriptionCodec(PokemonTextCodec.gbaEnglish)).resolve(
             session = abilitySession(bytes),
             abilityNames = names,
             inheritedLayouts = listOf(table),
@@ -215,7 +287,7 @@ class AbilityDescriptionResolverTest {
         val wrongCount = AbilityDescriptionTableLayout(0x100, 5)
         val bytes = ByteArray(0x1000)
 
-        val result = AbilityDescriptionResolver().resolve(
+        val result = AbilityDescriptionResolver(AbilityDescriptionCodec(PokemonTextCodec.gbaEnglish)).resolve(
             session = abilitySession(bytes),
             abilityNames = names,
             inheritedLayouts = listOf(wrongCount),

@@ -9,6 +9,7 @@ import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.ProfileTables
 import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.resolution.DatasetResolution
+import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -49,7 +50,7 @@ class AbilityLegacyParityTest {
             semanticDomain = AbilitySemanticDomain(setOf(1, 2, 3)),
             inheritedLayouts = listOf(names),
         ) as DatasetResolution.Resolved<ResolvedAbilityNameLayout>
-        val resolvedDescriptions = AbilityDescriptionResolver().resolve(
+        val resolvedDescriptions = AbilityDescriptionResolver(AbilityDescriptionCodec(PokemonTextCodec.gbaEnglish)).resolve(
             session = abilitySession(bytes, references = mapOf(0x300 to 2)),
             abilityNames = resolvedNames.candidate.layout,
             compiledLayouts = listOf(descriptions),

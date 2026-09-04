@@ -394,7 +394,7 @@ class AbilityNameResolver(
 }
 
 class AbilityDescriptionResolver(
-    private val codec: AbilityDescriptionTableDecoder = AbilityDescriptionCodec(),
+    private val codec: AbilityDescriptionTableDecoder,
 ) {
     fun resolve(
         session: RomAnalysisSession,
@@ -404,12 +404,14 @@ class AbilityDescriptionResolver(
         compiledLayouts: Collection<AbilityDescriptionTableLayout> = emptyList(),
         inheritedLayouts: Collection<AbilityDescriptionTableLayout> = emptyList(),
     ): DatasetResolution<ResolvedAbilityDescriptionLayout> {
+        session.cancellation.throwIfCancellationRequested()
         val rejectionReasons = linkedSetOf<String>()
         val roots = linkedSetOf<Long>()
         var work = 0L
         var observed = 0
         val directCandidates = mutableListOf<DatasetCandidate<ResolvedAbilityDescriptionLayout>>()
         for (layout in directCompiledConsumerLayouts) {
+            session.cancellation.throwIfCancellationRequested()
             val proposal = DescriptionProposal(layout, CandidateSource.DIRECT_COMPILED_CONSUMER)
             observed++
             if (roots.add(proposal.layout.offset) && roots.size > session.limits.maxProbeRootsPerDataset) {
@@ -501,6 +503,7 @@ class AbilityDescriptionResolver(
 
         val candidates = mutableListOf<DatasetCandidate<ResolvedAbilityDescriptionLayout>>()
         for (proposal in proposals) {
+            session.cancellation.throwIfCancellationRequested()
             observed++
             if (roots.add(proposal.layout.offset) && roots.size > session.limits.maxProbeRootsPerDataset) {
                 return descriptionBudget(

@@ -1,7 +1,9 @@
 package com.enrpau.dualscreendex.parser.dataset.abilities
 
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
+import com.enrpau.dualscreendex.parser.text.LanguageTextPlausibility
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
+import java.util.concurrent.CancellationException
 
 fun interface AbilityDescriptionTableDecoder {
     fun decode(
@@ -11,11 +13,14 @@ fun interface AbilityDescriptionTableDecoder {
 }
 
 /** Decodes each base ability pointer independently; malformed or placeholder rows never cut the tail. */
-class AbilityDescriptionCodec : AbilityDescriptionTableDecoder {
+class AbilityDescriptionCodec(
+    private val textCodec: PokemonTextCodec,
+) : AbilityDescriptionTableDecoder {
     override fun decode(
         session: RomAnalysisSession,
         layout: AbilityDescriptionTableLayout,
     ): AbilityDescriptionTableOutcome {
+        session.cancellation.throwIfCancellationRequested()
         val extent = when (val check = checkStridedExtent(
             offset = layout.offset,
             count = layout.count,
@@ -42,6 +47,7 @@ class AbilityDescriptionCodec : AbilityDescriptionTableDecoder {
             )
         }
         val rows = List(layout.count.toInt()) { rowIndex ->
+            session.cancellation.throwIfCancellationRequested()
             val pointerLocation = extent.offset + rowIndex * layout.recordStride + layout.pointerOffset
             decodeRow(session, rowIndex, pointerLocation)
         }
@@ -58,14 +64,21 @@ class AbilityDescriptionCodec : AbilityDescriptionTableDecoder {
         if (target < 0 || target >= session.rom.size) {
             return AbilityDescriptionRowOutcome.Malformed(rowIndex, listOf("description pointer is outside the ROM"))
         }
-        val decoded = runCatching {
-            PokemonTextCodec.gbaEnglish.decodeDetailed(
-                session.rom.slice(target, minOf(MAX_DESCRIPTION_BYTES, session.rom.size - target)),
+        val decoded = try {
+            textCodec.decodeDetailed(
+                session.rom,
+                target,
+                MAX_DESCRIPTION_BYTES,
+                session.cancellation,
             )
-        }.getOrNull() ?: return AbilityDescriptionRowOutcome.Malformed(
-            rowIndex,
-            listOf("description bytes could not be decoded"),
-        )
+        } catch (failure: CancellationException) {
+            throw failure
+        } catch (_: Exception) {
+            return AbilityDescriptionRowOutcome.Malformed(
+                rowIndex,
+                listOf("description bytes could not be decoded"),
+            )
+        }
         if (!decoded.terminated) {
             return AbilityDescriptionRowOutcome.Malformed(
                 rowIndex,
@@ -73,17 +86,22 @@ class AbilityDescriptionCodec : AbilityDescriptionTableDecoder {
             )
         }
         val normalized = decoded.text.replace(WHITESPACE, " ").trim()
-        if (normalized.isBlank() || normalized == "-") {
-            return AbilityDescriptionRowOutcome.MissingProse(rowIndex, normalized)
-        }
-        if (decoded.validRatio < MINIMUM_VALID_BYTE_RATIO) {
+        if (decoded.contentUnits > 0 && decoded.validRatio < MINIMUM_VALID_BYTE_RATIO) {
             return AbilityDescriptionRowOutcome.Malformed(
                 rowIndex,
                 listOf("description contains too many undecodable bytes"),
             )
         }
-        val words = normalized.split(WHITESPACE).count { word -> word.any(Char::isLetter) }
-        return if (normalized.length >= MINIMUM_DESCRIPTION_LENGTH && words >= MINIMUM_WORDS) {
+        if (normalized.isBlank() || normalized == "-") {
+            return AbilityDescriptionRowOutcome.MissingProse(rowIndex, normalized)
+        }
+        return if (LanguageTextPlausibility.looksLikeNaturalDescription(
+                normalized,
+                textCodec.language,
+                minimumLength = MINIMUM_DESCRIPTION_LENGTH,
+                minimumWords = MINIMUM_WORDS,
+            )
+        ) {
             AbilityDescriptionRowOutcome.Decoded(rowIndex, normalized)
         } else {
             AbilityDescriptionRowOutcome.Malformed(rowIndex, listOf("description does not contain natural prose"))

@@ -34,6 +34,7 @@ class DescriptionResolver(
         structuralCandidates: Collection<DescriptionTableLayout> = emptyList(),
         selectedLayout: DescriptionTableLayout? = null,
     ): DatasetResolution<ResolvedDescriptionLayout> {
+        session.cancellation.throwIfCancellationRequested()
         if (expectedSpeciesCount <= 0) {
             return DatasetResolution.Unavailable(
                 kind = DatasetKind.POKEDEX_DESCRIPTIONS,
@@ -139,7 +140,7 @@ class DescriptionResolver(
                 )
             }
             referenceIndex?.targets?.forEach { (root, evidence) ->
-                if (!looksLikeDescriptionStart(session.rom, root)) return@forEach
+                if (!looksLikeDescriptionStart(session, root)) return@forEach
                 canonicalLayouts(root, expectedSpeciesCount).forEach { layout ->
                     yield(
                         DescriptionProposal.Probe(
@@ -167,6 +168,7 @@ class DescriptionResolver(
         val roots = linkedSetOf<Long>()
         val iterator = proposals.iterator()
         while (iterator.hasNext()) {
+            session.cancellation.throwIfCancellationRequested()
             val proposal = iterator.next()
             if (proposal is DescriptionProposal.ProbeWorkExceeded) {
                 return probeWorkBudgetExceeded(workBudget, proposal.activity)
@@ -370,6 +372,7 @@ class DescriptionResolver(
         if (longestAnchor > session.rom.size) return@sequence
         val lastOffset = session.rom.size - longestAnchor
         for (seedOffset in 0..lastOffset) {
+            session.cancellation.throwIfCancellationRequested()
             if (!workBudget.tryConsume()) {
                 yield(DescriptionProposal.ProbeWorkExceeded("internal anchor scan"))
                 return@sequence
@@ -386,7 +389,7 @@ class DescriptionResolver(
                             yield(DescriptionProposal.ProbeWorkExceeded("internal root-start check"))
                             return@sequence
                         }
-                        if (root % 4 != 0 || !looksLikeDescriptionStart(session.rom, root)) continue
+                        if (root % 4 != 0 || !looksLikeDescriptionStart(session, root)) continue
                         val layout = DescriptionTableLayout(
                             offset = root.toLong(),
                             count = expectedSpeciesCount.toLong(),
@@ -466,18 +469,17 @@ class DescriptionResolver(
             rom.u8(offset + index) == (pattern[index].toInt() and 0xFF)
         }
 
-    private fun looksLikeDescriptionStart(rom: RomImage, offset: Int): Boolean = runCatching {
+    private fun looksLikeDescriptionStart(session: RomAnalysisSession, offset: Int): Boolean {
+        session.cancellation.throwIfCancellationRequested()
+        val rom = session.rom
         if (offset < 0 || offset.toLong() + MIN_DESCRIPTION_RECORD_BYTES > rom.size.toLong()) {
-            return@runCatching false
+            return false
         }
-        val category = rom.slice(offset, CATEGORY_BYTES)
-        val terminator = category.indexOf(textCodec.terminator.toByte())
-        terminator >= 0 &&
-            textCodec.decode(category.copyOfRange(0, terminator + 1))
-                .any(Char::isLetterOrDigit) &&
+        val category = textCodec.decodeDetailed(rom, offset, CATEGORY_BYTES, session.cancellation)
+        return category.terminated && category.text.any(Char::isLetterOrDigit) &&
             rom.u16le(offset + 12) == 0 &&
             rom.u16le(offset + 14) == 0
-    }.getOrDefault(false)
+    }
 
     private fun budgetExceeded(
         kind: BudgetKind,

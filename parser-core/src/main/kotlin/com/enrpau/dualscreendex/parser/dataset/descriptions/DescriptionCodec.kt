@@ -2,7 +2,6 @@ package com.enrpau.dualscreendex.parser.dataset.descriptions
 
 import com.enrpau.dualscreendex.parser.analysis.ExtentCheck
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
-import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 
 fun interface DescriptionTableDecoder {
@@ -20,6 +19,7 @@ class DescriptionCodec(
         session: RomAnalysisSession,
         layout: DescriptionTableLayout,
     ): DescriptionTableOutcome {
+        session.cancellation.throwIfCancellationRequested()
         validateShape(layout)?.let { reason ->
             return DescriptionTableOutcome.Rejected(layout, reason)
         }
@@ -46,6 +46,7 @@ class DescriptionCodec(
         val tableOffset = extent.offset
         val rawPointers = buildList {
             repeat(rowCount) { rowIndex ->
+                session.cancellation.throwIfCancellationRequested()
                 val record = tableOffset + rowIndex * layout.recordSize
                 layout.pointerOffsets.forEach { fieldOffset ->
                     session.rom.gbaPointer(record + fieldOffset)?.let(::add)
@@ -57,11 +58,11 @@ class DescriptionCodec(
             val maximumLength = nextPointer
                 ?.let { minOf(MAX_DESCRIPTION_BYTES, it - pointer) }
                 ?: MAX_DESCRIPTION_BYTES
-            decodeDirectPage(session.rom, pointer, maximumLength)?.let { pointer to it }
+            decodeDirectPage(session, pointer, maximumLength)?.let { pointer to it }
         }.toMap()
         val rows = List(rowCount) { rowIndex ->
             decodeRow(
-                rom = session.rom,
+                session = session,
                 layout = layout,
                 tableOffset = tableOffset,
                 rowIndex = rowIndex,
@@ -92,13 +93,15 @@ class DescriptionCodec(
     }
 
     private fun decodeRow(
-        rom: RomImage,
+        session: RomAnalysisSession,
         layout: DescriptionTableLayout,
         tableOffset: Int,
         rowIndex: Int,
         directPages: Map<Int, String>,
         referencedBoundaries: List<Int>,
     ): DescriptionRowOutcome {
+        session.cancellation.throwIfCancellationRequested()
+        val rom = session.rom
         val record = tableOffset + rowIndex * layout.recordSize
         val bytes = rom.slice(record, layout.recordSize)
         if (bytes.all { it == 0.toByte() } || bytes.all { it == 0xFF.toByte() }) {
@@ -106,7 +109,7 @@ class DescriptionCodec(
         }
 
         val reasons = mutableListOf<String>()
-        val category = decodeInlineCategory(rom, record)
+        val category = decodeInlineCategory(session, record)
             ?: "".also { reasons += "category is not terminated readable text" }
         val height = rom.u16le(record + HEIGHT_OFFSET)
         val weight = rom.u16le(record + WEIGHT_OFFSET)
@@ -122,7 +125,7 @@ class DescriptionCodec(
                 )
             }
             val recovery = if (pointer != null && direct == null) {
-                recoverOffByOne(rom, pointer, referencedBoundaries)
+                recoverOffByOne(session, pointer, referencedBoundaries)
             } else {
                 null
             }
@@ -166,25 +169,25 @@ class DescriptionCodec(
         }
     }
 
-    private fun decodeInlineCategory(rom: RomImage, offset: Int): String? =
-        decodeTerminated(rom, offset, CATEGORY_BYTES, MIN_CATEGORY_VALID_RATIO)
+    private fun decodeInlineCategory(session: RomAnalysisSession, offset: Int): String? =
+        decodeTerminated(session, offset, CATEGORY_BYTES, MIN_CATEGORY_VALID_RATIO)
 
-    private fun decodeDirectPage(rom: RomImage, offset: Int, maximumLength: Int): String? =
-        decodeTerminated(rom, offset, maximumLength, MIN_PAGE_VALID_RATIO)
+    private fun decodeDirectPage(session: RomAnalysisSession, offset: Int, maximumLength: Int): String? =
+        decodeTerminated(session, offset, maximumLength, MIN_PAGE_VALID_RATIO)
 
     private fun recoverOffByOne(
-        rom: RomImage,
+        session: RomAnalysisSession,
         pointer: Int,
         directBoundaries: List<Int>,
     ): DecodedDescriptionPage? {
-        if (rom.u8(pointer) != textCodec.terminator) return null
+        if (session.rom.u8(pointer) != textCodec.terminator) return null
         val nextBoundary = directBoundaries.firstOrNull { it > pointer } ?: return null
         val recoveredPointer = pointer + 1
         if (recoveredPointer !in 0 until nextBoundary) return null
         val text = decodeTerminated(
-            rom = rom,
+            session = session,
             offset = recoveredPointer,
-            maximumLength = nextBoundary - recoveredPointer,
+            maximumLength = minOf(MAX_DESCRIPTION_BYTES, nextBoundary - recoveredPointer),
             minimumValidRatio = MIN_RECOVERY_VALID_RATIO,
         )?.takeIf(::looksNaturalForRecovery) ?: return null
         return DecodedDescriptionPage(
@@ -205,16 +208,14 @@ class DescriptionCodec(
     )
 
     private fun decodeTerminated(
-        rom: RomImage,
+        session: RomAnalysisSession,
         offset: Int,
         maximumLength: Int,
         minimumValidRatio: Double,
     ): String? {
+        val rom = session.rom
         if (offset !in 0 until rom.size || maximumLength <= 0) return null
-        val end = minOf(rom.size.toLong(), offset.toLong() + maximumLength.toLong()).toInt()
-        val terminator = (offset until end).firstOrNull { rom.u8(it) == textCodec.terminator }
-            ?: return null
-        val decoded = textCodec.decodeDetailed(rom.slice(offset, terminator - offset + 1))
+        val decoded = textCodec.decodeDetailed(rom, offset, maximumLength, session.cancellation)
         return decoded.text.takeIf {
             decoded.terminated && decoded.validRatio >= minimumValidRatio && it.isNotBlank()
         }

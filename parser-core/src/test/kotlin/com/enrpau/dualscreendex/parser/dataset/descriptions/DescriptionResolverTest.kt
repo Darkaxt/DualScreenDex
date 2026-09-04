@@ -1,15 +1,54 @@
 package com.enrpau.dualscreendex.parser.dataset.descriptions
 
 import com.enrpau.dualscreendex.parser.analysis.GbaReferenceIndex
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationException
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
+import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.analysis.ResolutionLimits
 import com.enrpau.dualscreendex.parser.resolution.BudgetKind
 import com.enrpau.dualscreendex.parser.resolution.CandidateSource
 import com.enrpau.dualscreendex.parser.resolution.DatasetResolution
+import com.enrpau.dualscreendex.parser.text.JapanesePokemonTextCodecs
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class DescriptionResolverTest {
+    @Test
+    fun discoversReferencedJapaneseCategoriesAfterControlParameters() {
+        val bytes = ByteArray(0x2000)
+        val layout = DescriptionTableLayout(0x200, 4, 32, listOf(16))
+        putDescriptionTable(bytes, 0x200, 4, 32, listOf(16), 0x1000)
+        val text = byteArrayOf(0xF7.toByte(), 0xFF.toByte(), 0x01, 0x02, 0xFF.toByte())
+        repeat(4) { index ->
+            text.copyInto(bytes, 0x200 + index * 32)
+            text.copyInto(bytes, 0x1000 + index * 32)
+        }
+        val codec = JapanesePokemonTextCodecs.gen3Later
+        val result = DescriptionResolver(DescriptionCodec(codec), codec).resolve(
+            session = descriptionSession(bytes, references = mapOf(0x200 to 1)),
+            expectedSpeciesCount = 4,
+        )
+
+        assertTrue(result is DatasetResolution.Resolved)
+        val candidate = (result as DatasetResolution.Resolved).candidate
+        assertEquals(layout, candidate.layout.table)
+        assertEquals(CandidateSource.COMPILED_REFERENCE, candidate.source)
+        assertTrue(candidate.layout.rows.all { (it as DescriptionRowOutcome.Decoded).category == "あい" })
+    }
+
+    @Test(expected = ParserCancellationException::class)
+    fun cancellationPrecedesUnavailableDescriptionResolution() {
+        val base = descriptionSession(ByteArray(0x1000))
+        val session = RomAnalysisSession(
+            rom = base.rom,
+            header = base.header,
+            cancellation = ParserCancellationToken { throw ParserCancellationException() },
+        )
+
+        DescriptionResolver().resolve(session, expectedSpeciesCount = 0)
+    }
+
     @Test
     fun exactProfileLayoutHasAuthorityOverAnEquallyValidCompiledCandidate() {
         val bytes = ByteArray(0x3000)

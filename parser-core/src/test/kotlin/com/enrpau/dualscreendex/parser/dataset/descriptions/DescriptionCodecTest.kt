@@ -1,6 +1,10 @@
 package com.enrpau.dualscreendex.parser.dataset.descriptions
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationException
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.analysis.ResolutionLimits
+import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
+import com.enrpau.dualscreendex.parser.text.JapanesePokemonTextCodecs
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
 import org.junit.Assert.fail
@@ -32,6 +36,64 @@ class DescriptionCodecTest {
             assertTrue(rows.all { it is DescriptionRowOutcome.Decoded })
             assertEquals(layout.pointerOffsets.size, (rows[1] as DescriptionRowOutcome.Decoded).pages.size)
         }
+    }
+
+    @Test
+    fun decodesJapaneseCategoryAndPagePastTerminatorValuedControlParameters() {
+        val bytes = ByteArray(0x1000)
+        val layout = DescriptionTableLayout(0x100, 1, 32, listOf(16))
+        putDescriptionTable(bytes, 0x100, 1, 32, listOf(16), 0x600)
+        val text = byteArrayOf(0x01, 0xF7.toByte(), 0xFF.toByte(), 0x02, 0xFF.toByte())
+        text.copyInto(bytes, 0x100)
+        text.copyInto(bytes, 0x600)
+
+        val rows = (DescriptionCodec(JapanesePokemonTextCodecs.gen3Later).decode(
+            descriptionSession(bytes), layout,
+        ) as DescriptionTableOutcome.Decoded).rows
+
+        assertTrue(rows.single() is DescriptionRowOutcome.Decoded)
+        val row = rows.single() as DescriptionRowOutcome.Decoded
+        assertEquals("あ い", row.category)
+        assertEquals("あ い", row.pages.single().text)
+    }
+
+    @Test
+    fun doesNotBorrowControlParametersFromTheNextReferencedPage() {
+        val bytes = ByteArray(0x1000)
+        val layout = DescriptionTableLayout(0x100, 2, 32, listOf(16))
+        putDescriptionTable(bytes, 0x100, 2, 32, listOf(16), 0x600)
+        val category = byteArrayOf(0x01, 0x02, 0xFF.toByte())
+        category.copyInto(bytes, 0x100)
+        category.copyInto(bytes, 0x120)
+        putU32(bytes, 0x120 + 16, 0x08000604)
+        byteArrayOf(0x01, 0x02, 0x03, 0xF7.toByte()).copyInto(bytes, 0x600)
+        category.copyInto(bytes, 0x604)
+
+        val rows = (DescriptionCodec(JapanesePokemonTextCodecs.gen3Later).decode(
+            descriptionSession(bytes), layout,
+        ) as DescriptionTableOutcome.Decoded).rows
+
+        assertTrue(rows[0] is DescriptionRowOutcome.Malformed)
+        assertTrue(rows[1] is DescriptionRowOutcome.Decoded)
+        assertEquals("あい", (rows[1] as DescriptionRowOutcome.Decoded).pages.single().text)
+    }
+
+    @Test(expected = ParserCancellationException::class)
+    fun propagatesCancellationDuringDescriptionDecoding() {
+        val bytes = ByteArray(0x1000)
+        val layout = DescriptionTableLayout(0x100, 1, 32, listOf(16))
+        putDescriptionTable(bytes, 0x100, 1, 32, listOf(16), 0x600)
+        val base = descriptionSession(bytes)
+        var checks = 0
+        val session = RomAnalysisSession(
+            rom = base.rom,
+            header = base.header,
+            cancellation = ParserCancellationToken {
+                if (++checks == 6) throw ParserCancellationException()
+            },
+        )
+
+        DescriptionCodec().decode(session, layout)
     }
 
     @Test
@@ -158,6 +220,24 @@ class DescriptionCodecTest {
             ),
             recovered.provenance,
         )
+    }
+
+    @Test
+    fun doesNotRecoverPastTheDescriptionByteBudget() {
+        val bytes = ByteArray(0x1200)
+        val layout = DescriptionTableLayout(0x100, 2, 32, listOf(16))
+        putDescriptionTable(bytes, 0x100, 2, 32, listOf(16), 0x600)
+        putU32(bytes, 0x120 + 16, 0x08000900)
+        bytes[0x600] = 0xFF.toByte()
+        putGbaText(bytes, 0x601, "A".repeat(520))
+        putGbaText(bytes, 0x900, "NEXT DESCRIPTION")
+
+        val rows = (DescriptionCodec().decode(
+            descriptionSession(bytes), layout,
+        ) as DescriptionTableOutcome.Decoded).rows
+
+        assertTrue(rows[0] is DescriptionRowOutcome.Malformed)
+        assertTrue(rows[1] is DescriptionRowOutcome.Decoded)
     }
 
     @Test
