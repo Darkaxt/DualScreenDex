@@ -5,6 +5,7 @@ import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.parse.GbaPublishedHeaderResolver
 import com.enrpau.dualscreendex.parser.parse.ParserOrchestrator
+import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.Assert.assertEquals
@@ -24,7 +25,7 @@ class AbilityMechanicsMaterializerLiveRomTest {
         val catalog = CatalogMaterializer.materialize(loaded.rom, loaded.parse, loaded.layout)
         val text = catalog.defaultTextProjection()
 
-        assertEquals(0x67F958, GbaPublishedHeaderResolver.resolve(loaded.rom).abilityDescriptions)
+        assertEquals(0x67F958, GbaPublishedHeaderResolver.resolve(loaded.rom, PokemonTextCodec.gbaEnglish).abilityDescriptions)
         val descriptions = text.localizedCapabilities.getValue(LocalizedTextCapability.ABILITY_DESCRIPTIONS)
         assertEquals(CapabilityStatus.AVAILABLE, descriptions.status)
         assertEquals(81, descriptions.coveredRecords)

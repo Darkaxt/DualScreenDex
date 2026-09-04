@@ -10,6 +10,7 @@ import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.model.TableRecordFormat
 import com.enrpau.dualscreendex.parser.model.ValidationEvidence
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
+import com.enrpau.dualscreendex.parser.text.WesternPokemonTextCodecs
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -48,6 +49,29 @@ class DatasetResolversTest {
 
         assertTrue(result.compatible)
         assertEquals(0x200, result.offset)
+    }
+
+    @Test
+    fun englishSeedAnchorCannotAuthorizeLegacyFrenchDescriptionDiscovery() {
+        val bytes = ByteArray(0x1000)
+        repeat(3) { index ->
+            val base = 0x200 + index * 32
+            putGbaText(bytes, base, if (index == 0) "UNKNOWN" else "SEED")
+            putU16(bytes, base + 12, if (index == 0) 0 else 7)
+            putU16(bytes, base + 14, if (index == 0) 0 else 69)
+            putU32(bytes, base + 16, 0x08000800 + index * 0x20)
+            putGbaText(bytes, 0x800 + index * 0x20, "POKEMON TEXT")
+        }
+
+        val result = DatasetResolvers.gen3Descriptions(
+            rom = RomImage(bytes),
+            speciesCount = 3,
+            inherited = null,
+            codec = WesternPokemonTextCodecs.gen3French,
+            referenceIndex = GbaCompiledReferenceIndex(emptyMap()),
+        )
+
+        assertFalse(result.compatible)
     }
 
     @Test

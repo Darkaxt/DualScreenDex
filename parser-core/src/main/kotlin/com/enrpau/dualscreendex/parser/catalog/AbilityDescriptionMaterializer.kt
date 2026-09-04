@@ -7,6 +7,7 @@ import com.enrpau.dualscreendex.parser.language.defaultTextCodec
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.parse.GbaPublishedHeaderResolver
+import com.enrpau.dualscreendex.parser.text.LanguageTextPlausibility
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import kotlin.math.abs
 
@@ -56,7 +57,10 @@ object AbilityDescriptionMaterializer {
                         cancellation = cancellation,
                     ) ?: return@repeat
                     val normalized = decoded.text.replace(Regex("\\s+"), " ").trim()
-                    if (decoded.terminated && decoded.validRatio >= 0.85 && looksLikeNaturalDescription(normalized)) {
+                    if (
+                        decoded.terminated && decoded.validRatio >= 0.85 &&
+                        looksLikeNaturalDescription(normalized, codec)
+                    ) {
                         put(id, normalized)
                     }
                 }
@@ -160,7 +164,10 @@ object AbilityDescriptionMaterializer {
         }
         val expectedDescriptions = count - 1
         val decodedRatio = descriptions.size.toDouble() / expectedDescriptions
-        val naturalRatio = descriptions.values.count(::looksLikeNaturalDescription).toDouble() / descriptions.size.coerceAtLeast(1)
+        val naturalDescriptionCount = descriptions.values.count {
+            looksLikeNaturalDescription(it, codec)
+        }
+        val naturalRatio = naturalDescriptionCount.toDouble() / descriptions.size.coerceAtLeast(1)
         val confidence = minOf(decodedRatio, naturalRatio)
         val minimum = maxOf(2, kotlin.math.ceil(expectedDescriptions * minimumCoverage).toInt())
         return if (descriptions.size >= minimum && naturalRatio >= 0.75) {
@@ -234,10 +241,13 @@ object AbilityDescriptionMaterializer {
         }.getOrDefault(false)
     }
 
-    private fun looksLikeNaturalDescription(value: String): Boolean {
-        val words = value.split(Regex("\\s+")).count { it.any(Char::isLetter) }
-        return value.length >= 8 && words >= 2
-    }
+    private fun looksLikeNaturalDescription(value: String, codec: PokemonTextCodec): Boolean =
+        LanguageTextPlausibility.looksLikeNaturalDescription(
+            value = value,
+            language = codec.language,
+            minimumLength = 8,
+            minimumWords = 2,
+        )
 
     private fun align4(value: Int): Int = (value + 3) and 3.inv()
 

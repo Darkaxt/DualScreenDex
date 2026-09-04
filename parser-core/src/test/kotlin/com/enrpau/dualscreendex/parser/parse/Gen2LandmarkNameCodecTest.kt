@@ -5,6 +5,7 @@ import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import com.enrpau.dualscreendex.parser.text.PokemonTextToken
 import com.enrpau.dualscreendex.parser.text.PokemonTextTokenDecoder
+import com.enrpau.dualscreendex.parser.text.WesternPokemonTextCodecs
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -71,6 +72,73 @@ class Gen2LandmarkNameCodecTest {
                     0xd4.toByte(), 0x1f,
                     0x82.toByte(), 0x80.toByte(), 0x95.toByte(), 0x84.toByte(), 0x50,
                 ),
+            ),
+        )
+    }
+
+    @Test fun standardDialectDefersLocalizedGlyphsToSelectedCodec() {
+        assertEquals(
+            "ìíñòóúº",
+            decode(
+                byteArrayOf(
+                    0xd0.toByte(), 0xd1.toByte(), 0xd2.toByte(), 0xd3.toByte(),
+                    0xd4.toByte(), 0xd5.toByte(), 0xd6.toByte(), 0x50,
+                ),
+                codec = WesternPokemonTextCodecs.gen2Spanish,
+            ),
+        )
+        assertEquals(
+            "c'",
+            decode(
+                byteArrayOf(0xd4.toByte(), 0x50),
+                codec = WesternPokemonTextCodecs.gen2French,
+            ),
+        )
+    }
+
+    @Test fun expandedEnglishDialectFailsClosedForLocalizedCodecs() {
+        val bytes = byteArrayOf(0xea.toByte(), 0x50)
+
+        assertEquals("é", decode(bytes, codec = WesternPokemonTextCodecs.gen2French))
+        assertNull(
+            decode(
+                bytes,
+                encoding = Gen2LandmarkNameEncoding.EXPANDED,
+                codec = WesternPokemonTextCodecs.gen2French,
+            ),
+        )
+    }
+
+    @Test fun technicalMachineSubstitutionFollowsTheSelectedWesternLanguage() {
+        assertEquals(
+            "CT",
+            decode(byteArrayOf(0x5c, 0x50), codec = WesternPokemonTextCodecs.gen2French),
+        )
+        assertEquals(
+            "TM",
+            decode(byteArrayOf(0x5c, 0x50), codec = WesternPokemonTextCodecs.gen2German),
+        )
+        assertEquals(
+            "MT",
+            decode(byteArrayOf(0x5c, 0x50), codec = WesternPokemonTextCodecs.gen2Italian),
+        )
+        assertEquals(
+            "MT",
+            decode(byteArrayOf(0x5c, 0x50), codec = WesternPokemonTextCodecs.gen2Spanish),
+        )
+    }
+
+    @Test fun englishOnlyPlaceStringSubstitutionsFailClosedForLocalizedCodecs() {
+        assertNull(
+            decode(
+                byteArrayOf(0x5d, 0x50),
+                codec = WesternPokemonTextCodecs.gen2French,
+            ),
+        )
+        assertNull(
+            decode(
+                byteArrayOf(0x5e, 0x50),
+                codec = WesternPokemonTextCodecs.gen2German,
             ),
         )
     }

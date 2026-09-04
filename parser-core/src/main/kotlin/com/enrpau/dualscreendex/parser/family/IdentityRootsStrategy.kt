@@ -128,7 +128,7 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
             cancellation = session.cancellation,
         )
         val expansion = if (generation == 3 && identityMatched) {
-            PokeemeraldExpansionResolver.resolve(session.rom)
+            PokeemeraldExpansionResolver.resolve(session.rom, probeCodec)
         } else {
             null
         }

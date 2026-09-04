@@ -156,7 +156,7 @@ internal class SemanticDomainStrategy : FamilyProbePhaseStrategy {
             } ?: missingEvidence("Gen 2 Pokédex description table not resolved")
             else -> identity.headerlessUnifiedSpecies?.descriptionsEvidence
                 ?: identity.expansion?.let {
-                    PokeemeraldExpansionResolver.validateDescriptions(rom, it)
+                    PokeemeraldExpansionResolver.validateDescriptions(rom, it, textCodec)
                 } ?: DatasetResolvers.gen3Descriptions(
                 session,
                 if (identity.exactProfile != null) {

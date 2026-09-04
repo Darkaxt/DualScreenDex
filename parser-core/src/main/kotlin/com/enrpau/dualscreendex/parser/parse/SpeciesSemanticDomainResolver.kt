@@ -3,6 +3,7 @@ package com.enrpau.dualscreendex.parser.parse
 import com.enrpau.dualscreendex.parser.catalog.RecordMaterializers
 import com.enrpau.dualscreendex.parser.catalog.SpeciesIndexResolution
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.language.defaultTextCodec
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.ValidationEvidence
@@ -245,7 +246,8 @@ internal object SpeciesSemanticDomainResolver {
                 descriptionCount = layout.tables.descriptions?.count,
             )
         }
-        val publishedPokedexCount = GbaPublishedHeaderResolver.resolve(rom).pokedexCount
+        val publishedPokedexCount = layout.defaultTextCodec()
+            ?.let { codec -> GbaPublishedHeaderResolver.resolve(rom, codec).pokedexCount }
             ?.takeIf { count -> layout.tables.descriptions?.count == count }
         val publishedPokedexDomain = if (
             regionalOrder == null && compiledSpeciesToDexMap == null && !expansionDomain &&

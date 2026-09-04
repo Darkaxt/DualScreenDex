@@ -5,6 +5,7 @@ import com.enrpau.dualscreendex.parser.analysis.GbaTargetReferenceEvidence
 import com.enrpau.dualscreendex.parser.analysis.ResolutionLimits
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.language.LanguageTag
 import com.enrpau.dualscreendex.parser.model.Gen3LearnsetEncoding
 import com.enrpau.dualscreendex.parser.model.GbaCompiledReferenceIndex
 import com.enrpau.dualscreendex.parser.model.Gen3LearnsetSelectorEvidence
@@ -129,8 +130,9 @@ object DatasetResolvers {
         )
         referenced.overflowReason?.let { return missing(it, reviewRecommended = true) }
         candidates += referenced.candidates
+        if (codec.language != LanguageTag.ENGLISH) return chooseDescriptions(candidates, speciesCount)
         DESCRIPTION_LAYOUTS.forEach { layout ->
-            DESCRIPTION_ANCHORS.forEach { anchor ->
+            ENGLISH_DESCRIPTION_ANCHORS.forEach { anchor ->
                 patternOffsets(rom, anchor).forEach { seedOffset ->
                     val maximumAnchorIndex = minOf(speciesCount - 1, seedOffset / layout.recordSize)
                     for (anchorIndex in 1..maximumAnchorIndex) {
@@ -1460,7 +1462,7 @@ object DatasetResolvers {
         TableLayout(0, 0, 36, pointerOffsets = listOf(16)),
         TableLayout(0, 0, 36, pointerOffsets = listOf(16, 20)),
     )
-    private val DESCRIPTION_ANCHORS = listOf(gbaText("SEED"), gbaText("Seed"))
+    private val ENGLISH_DESCRIPTION_ANCHORS = listOf(gbaText("SEED"), gbaText("Seed"))
     private const val MINIMUM_DESCRIPTION_PREFIX_RECORDS = 2
     private const val DESCRIPTION_CONSUMER_WINDOW_BYTES = 8
     private const val THUMB_LITERAL_LOAD_MASK = 0xF800

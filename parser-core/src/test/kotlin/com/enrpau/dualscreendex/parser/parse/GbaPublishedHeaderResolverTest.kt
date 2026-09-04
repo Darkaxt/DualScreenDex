@@ -1,6 +1,11 @@
 package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.language.LanguageTag
+import com.enrpau.dualscreendex.parser.model.Platform
+import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
+import com.enrpau.dualscreendex.parser.text.PokemonTextToken
+import com.enrpau.dualscreendex.parser.text.PokemonTextTokenDecoder
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -15,10 +20,12 @@ class GbaPublishedHeaderResolverTest {
         repeat(386) { id -> encodeGbaName(bytes, 0x9000 + id * 11, "MON") }
         writeU32(bytes, 0x168, 386)
 
-        assertEquals(386, GbaPublishedHeaderResolver.resolve(RomImage(bytes)).pokedexCount)
+        val rom = RomImage(bytes)
+        assertEquals(386, GbaPublishedHeaderResolver.resolve(rom, PokemonTextCodec.gbaEnglish).pokedexCount)
+        assertNull(GbaPublishedHeaderResolver.resolve(rom, rejectingEnglishCodec()).pokedexCount)
 
         bytes.fill(0, 0x144, 0x148)
-        assertNull(GbaPublishedHeaderResolver.resolve(RomImage(bytes)).pokedexCount)
+        assertNull(GbaPublishedHeaderResolver.resolve(RomImage(bytes), PokemonTextCodec.gbaEnglish).pokedexCount)
     }
 
     @Test
@@ -27,7 +34,7 @@ class GbaPublishedHeaderResolverTest {
         val roots = listOf(0x8000, 0x9000, 0xA000, 0xB000, 0xC000, 0xD000, 0xE000)
         roots.forEachIndexed { index, target -> writePointer(bytes, 0x1AC + index * 4, target) }
 
-        val resolved = GbaPublishedHeaderResolver.resolve(RomImage(bytes))
+        val resolved = GbaPublishedHeaderResolver.resolve(RomImage(bytes), PokemonTextCodec.gbaEnglish)
 
         assertEquals(0x8000, resolved.baseStats)
         assertEquals(0x9000, resolved.abilities)
@@ -41,7 +48,7 @@ class GbaPublishedHeaderResolverTest {
         val roots = listOf(0x10000, 0x11000, 0x12000, 0x13000, 0x14000, 0x15000, 0x16000)
         roots.forEachIndexed { index, target -> writePointer(bytes, 0x1BC + index * 4, target) }
 
-        val resolved = GbaPublishedHeaderResolver.resolve(RomImage(bytes))
+        val resolved = GbaPublishedHeaderResolver.resolve(RomImage(bytes), PokemonTextCodec.gbaEnglish)
 
         assertEquals(0x10000, resolved.baseStats)
         assertEquals(0x11000, resolved.abilities)
@@ -55,7 +62,7 @@ class GbaPublishedHeaderResolverTest {
         val roots = listOf(0xE000, 0xF000, 0x10000, 0x11000, 0x12000, 0x13000, 0x14000)
         roots.forEachIndexed { index, target -> writePointer(bytes, 0x1B4 + index * 4, target) }
 
-        val resolved = GbaPublishedHeaderResolver.resolve(RomImage(bytes))
+        val resolved = GbaPublishedHeaderResolver.resolve(RomImage(bytes), PokemonTextCodec.gbaEnglish)
 
         assertEquals(0xE000, resolved.baseStats)
         assertEquals(0xF000, resolved.abilities)
@@ -100,7 +107,7 @@ class GbaPublishedHeaderResolverTest {
             writePointer(bytes, 0x1C8 + index * 4, target)
         }
 
-        val resolved = GbaPublishedHeaderResolver.resolve(RomImage(bytes))
+        val resolved = GbaPublishedHeaderResolver.resolve(RomImage(bytes), PokemonTextCodec.gbaEnglish)
 
         assertEquals(stats, resolved.baseStats)
         assertEquals(moves, resolved.moveData)
@@ -111,13 +118,23 @@ class GbaPublishedHeaderResolverTest {
         val bytes = ByteArray(0x30000)
         repeat(11) { index -> writePointer(bytes, 0x1AC + index * 4, 0x8000 + index * 0x1000) }
 
-        val resolved = GbaPublishedHeaderResolver.resolve(RomImage(bytes))
+        val resolved = GbaPublishedHeaderResolver.resolve(RomImage(bytes), PokemonTextCodec.gbaEnglish)
 
         assertNull(resolved.baseStats)
         assertNull(resolved.abilities)
         assertNull(resolved.abilityDescriptions)
         assertNull(resolved.moveData)
     }
+
+    private fun rejectingEnglishCodec() = PokemonTextCodec(
+        id = "test-gba-published-header-rejecting-en",
+        version = 1,
+        language = LanguageTag.ENGLISH,
+        applicableGenerations = setOf(3),
+        applicablePlatforms = setOf(Platform.GBA),
+        terminator = 0xFF,
+        tokenDecoder = PokemonTextTokenDecoder { _, _, _ -> PokemonTextToken.Invalid() },
+    )
 
     private fun encodeGbaName(bytes: ByteArray, offset: Int, value: String) {
         value.forEachIndexed { index, char ->

@@ -2,6 +2,7 @@ package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.io.RomBoundsException
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.language.LanguageTag
 import com.enrpau.dualscreendex.parser.model.PokeemeraldExpansionMetadata
 import com.enrpau.dualscreendex.parser.model.ProfileTables
 import com.enrpau.dualscreendex.parser.model.TableLayout
@@ -29,15 +30,19 @@ data class PokeemeraldExpansionResolution(
 /** Resolves the append-only public headers emitted by pokeemerald-expansion. */
 object PokeemeraldExpansionResolver {
     private val magic = "RHHEXP".toByteArray(Charsets.US_ASCII)
-    private val codec = PokemonTextCodec.gbaEnglish
 
-    fun resolve(rom: RomImage): PokeemeraldExpansionResolution? {
+    fun resolve(rom: RomImage, codec: PokemonTextCodec): PokeemeraldExpansionResolution? {
+        if (codec.language != LanguageTag.ENGLISH) return null
         return rom.findAll(magic).asSequence().mapNotNull { header ->
-            tryResolve(rom, header)
+            tryResolve(rom, header, codec)
         }.singleOrNull()
     }
 
-    fun validateSpeciesNames(rom: RomImage, resolution: PokeemeraldExpansionResolution): ValidationEvidence {
+    fun validateSpeciesNames(
+        rom: RomImage,
+        resolution: PokeemeraldExpansionResolution,
+        codec: PokemonTextCodec,
+    ): ValidationEvidence {
         val table = resolution.tables.speciesNames ?: error("resolved expansion species-name table is absent")
         return validateActiveSpeciesRows(
             rom = rom,
@@ -51,6 +56,7 @@ object PokeemeraldExpansionResolver {
                 rom,
                 record + resolution.metadata.speciesNameOffset,
                 resolution.metadata.speciesNameWidth,
+                codec,
             )
         }
     }
@@ -67,7 +73,11 @@ object PokeemeraldExpansionResolver {
         ) { record -> plausibleStats(rom, record) }
     }
 
-    fun validateDescriptions(rom: RomImage, resolution: PokeemeraldExpansionResolution): ValidationEvidence {
+    fun validateDescriptions(
+        rom: RomImage,
+        resolution: PokeemeraldExpansionResolution,
+        codec: PokemonTextCodec,
+    ): ValidationEvidence {
         val table = resolution.tables.baseStats ?: error("resolved expansion species table is absent")
         return validateSpeciesPointerField(
             rom,
@@ -75,7 +85,7 @@ object PokeemeraldExpansionResolver {
             resolution.metadata.descriptionPointerOffset,
             "description",
             minimumRatio = 0.80,
-        ) { pointer -> plausibleInlineName(rom, pointer, 512) }.copy(
+        ) { pointer -> plausibleInlineName(rom, pointer, 512, codec) }.copy(
             offset = table.offset,
             recordSize = resolution.metadata.speciesRecordSize,
         )
@@ -244,7 +254,11 @@ object PokeemeraldExpansionResolver {
         }
     }
 
-    private fun tryResolve(rom: RomImage, header: Int): PokeemeraldExpansionResolution? = try {
+    private fun tryResolve(
+        rom: RomImage,
+        header: Int,
+        codec: PokemonTextCodec,
+    ): PokeemeraldExpansionResolution? = try {
         val moveCount = rom.u16le(header + 0x0A)
         val speciesCount = rom.u16le(header + 0x0C)
         val abilityCount = rom.u16le(header + 0x0E)
@@ -254,10 +268,10 @@ object PokeemeraldExpansionResolver {
         val gfHeader = findGfHeader(rom) ?: return null
         val speciesBase = rom.gbaPointer(gfHeader + 0xBC) ?: return null
         val moveBase = rom.gbaPointer(gfHeader + 0xCC) ?: return null
-        val species = inferSpeciesShape(rom, speciesBase, speciesCount, moveCount) ?: return null
+        val species = inferSpeciesShape(rom, speciesBase, speciesCount, moveCount, codec) ?: return null
         val evolutionRecordSize = inferEvolutionRecordSize(rom, speciesBase, species, speciesCount)
-        val moveStride = inferMoveStride(rom, moveBase, moveCount) ?: return null
-        val ability = inferAbilityShape(rom, abilityBase, abilityCount) ?: return null
+        val moveStride = inferMoveStride(rom, moveBase, moveCount, codec) ?: return null
+        val ability = inferAbilityShape(rom, abilityBase, abilityCount, codec) ?: return null
         val typeChart = locateTypeChart(rom, moveBase, moveCount, moveStride) ?: return null
 
         val metadata = PokeemeraldExpansionMetadata(
@@ -356,10 +370,15 @@ object PokeemeraldExpansionResolver {
             tables = tables,
             metadata = metadata,
             firstRegisters = PokeemeraldExpansionFirstRegisters(
-                speciesName = decodeInline(rom, speciesBase + species.stride + species.nameOffset, species.nameWidth),
+                speciesName = decodeInline(
+                    rom,
+                    speciesBase + species.stride + species.nameOffset,
+                    species.nameWidth,
+                    codec,
+                ),
                 speciesNationalDex = rom.u16le(speciesBase + species.stride + species.nationalDexOffset),
-                moveName = decodePointerName(rom, moveBase + moveStride),
-                abilityName = decodeInline(rom, abilityBase + ability.stride, ability.nameWidth),
+                moveName = decodePointerName(rom, moveBase + moveStride, codec),
+                abilityName = decodeInline(rom, abilityBase + ability.stride, ability.nameWidth, codec),
             ),
         )
     } catch (_: RomBoundsException) {
@@ -386,6 +405,7 @@ object PokeemeraldExpansionResolver {
         base: Int,
         count: Int,
         moveCount: Int,
+        codec: PokemonTextCodec,
     ): SpeciesShape? {
         val sample = sampleIds(count, 24)
         val candidates = mutableListOf<SpeciesShape>()
@@ -394,9 +414,13 @@ object PokeemeraldExpansionResolver {
             val statsScore = sample.count { id -> plausibleStats(rom, base + id * stride) }
             if (statsScore < sample.size * 0.80) continue
             for (nameOffset in 24..96) {
-                val names = sample.count { id -> plausibleInlineName(rom, base + id * stride + nameOffset, 13) }
+                val names = sample.count { id ->
+                    plausibleInlineName(rom, base + id * stride + nameOffset, 13, codec)
+                }
                 if (names < sample.size * 0.85) continue
-                val categories = sample.count { id -> plausibleInlineName(rom, base + id * stride + nameOffset - 13, 13) }
+                val categories = sample.count { id ->
+                    plausibleInlineName(rom, base + id * stride + nameOffset - 13, 13, codec)
+                }
                 if (categories < sample.size * 0.80) continue
                 val natDexOffset = inferNationalDexOffset(
                     rom = rom,
@@ -405,6 +429,7 @@ object PokeemeraldExpansionResolver {
                     count = count,
                     nameOffset = nameOffset,
                     sample = sample,
+                    codec = codec,
                 ) ?: continue
                 val levelUp = inferLearnsetPointerOffset(rom, base, stride, sample, count, moveCount)
                     ?: continue
@@ -435,6 +460,7 @@ object PokeemeraldExpansionResolver {
         count: Int,
         nameOffset: Int,
         sample: List<Int>,
+        codec: PokemonTextCodec,
     ): Int? {
         val eligible = ((nameOffset + 12)..minOf(stride - 2, nameOffset + 32))
             .filter { field ->
@@ -444,7 +470,7 @@ object PokeemeraldExpansionResolver {
         if (eligible.isEmpty()) return null
         val active = (1 until count).filter { id ->
             val record = base + id * stride
-            plausibleStats(rom, record) && plausibleInlineName(rom, record + nameOffset, 13)
+            plausibleStats(rom, record) && plausibleInlineName(rom, record + nameOffset, 13, codec)
         }
         val scores = eligible.associateWith { field ->
             active.count { id -> rom.u16le(base + id * stride + field) == id }
@@ -484,13 +510,18 @@ object PokeemeraldExpansionResolver {
         return candidates.maxWithOrNull(compareBy<Pair<Int, Int>> { it.second }.thenBy { it.first })?.first
     }
 
-    private fun inferMoveStride(rom: RomImage, base: Int, count: Int): Int? {
+    private fun inferMoveStride(
+        rom: RomImage,
+        base: Int,
+        count: Int,
+        codec: PokemonTextCodec,
+    ): Int? {
         val sample = sampleIdsAcrossExtent(count, 32)
         return (20..128 step 4).mapNotNull { stride ->
             if (base.toLong() + count.toLong() * stride > rom.size) return@mapNotNull null
             val valid = sample.count { id ->
                 val record = base + id * stride
-                val name = rom.gbaPointer(record)?.let { plausibleInlineName(rom, it, 32) } == true
+                val name = rom.gbaPointer(record)?.let { plausibleInlineName(rom, it, 32, codec) } == true
                 val packed = rom.u16le(record + 10)
                 val type = packed and 0x1F
                 val category = (packed ushr 5) and 0x3
@@ -503,7 +534,12 @@ object PokeemeraldExpansionResolver {
         }.maxWithOrNull(compareBy<Pair<Int, Int>> { it.second }.thenBy { it.first })?.first
     }
 
-    private fun inferAbilityShape(rom: RomImage, base: Int, count: Int): AbilityShape? {
+    private fun inferAbilityShape(
+        rom: RomImage,
+        base: Int,
+        count: Int,
+        codec: PokemonTextCodec,
+    ): AbilityShape? {
         val sample = sampleIds(count, 24)
         val candidates = mutableListOf<AbilityShape>()
         for (stride in 20..64 step 4) {
@@ -511,8 +547,10 @@ object PokeemeraldExpansionResolver {
             for (descriptionOffset in 12..stride - 4 step 4) {
                 val valid = sample.count { id ->
                     val record = base + id * stride
-                    plausibleInlineName(rom, record, descriptionOffset) &&
-                        rom.gbaPointer(record + descriptionOffset)?.let { plausibleInlineName(rom, it, 96) } == true
+                    plausibleInlineName(rom, record, descriptionOffset, codec) &&
+                        rom.gbaPointer(record + descriptionOffset)?.let {
+                            plausibleInlineName(rom, it, 96, codec)
+                        } == true
                 }
                 if (valid >= sample.size * 0.85) {
                     candidates += AbilityShape(stride, descriptionOffset, descriptionOffset, valid)
@@ -647,18 +685,34 @@ object PokeemeraldExpansionResolver {
         return method == 0xFFFF || (method in 0..1024 && rom.u16le(offset + 4) in 0 until speciesCount)
     }
 
-    private fun plausibleInlineName(rom: RomImage, offset: Int, width: Int): Boolean = runCatching {
+    private fun plausibleInlineName(
+        rom: RomImage,
+        offset: Int,
+        width: Int,
+        codec: PokemonTextCodec,
+    ): Boolean = runCatching {
         if (rom.u8(offset) == 0 || rom.u8(offset) == codec.terminator) return@runCatching false
         val decoded = codec.decodeDetailed(rom.slice(offset, minOf(width, rom.size - offset)))
         decoded.terminated && decoded.text.isNotBlank() && decoded.validRatio >= 0.8
     }.getOrDefault(false)
 
-    private fun decodeInline(rom: RomImage, offset: Int, width: Int): String = codec.decode(rom.slice(offset, width))
+    private fun decodeInline(
+        rom: RomImage,
+        offset: Int,
+        width: Int,
+        codec: PokemonTextCodec,
+    ): String = codec.decode(rom.slice(offset, width))
 
-    private fun decodePointerName(rom: RomImage, pointerField: Int): String {
+    private fun decodePointerName(
+        rom: RomImage,
+        pointerField: Int,
+        codec: PokemonTextCodec,
+    ): String {
         val offset = rom.gbaPointer(pointerField) ?: return ""
-        val length = (0 until minOf(32, rom.size - offset)).firstOrNull { rom.u8(offset + it) == codec.terminator }
-            ?.plus(1) ?: minOf(32, rom.size - offset)
+        val maximumLength = minOf(32, rom.size - offset)
+        val length = (0 until maximumLength).firstOrNull {
+            rom.u8(offset + it) == codec.terminator
+        }?.plus(1) ?: maximumLength
         return codec.decode(rom.slice(offset, length))
     }
 

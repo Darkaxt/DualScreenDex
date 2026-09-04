@@ -55,7 +55,7 @@ internal object PublishedUnifiedSpeciesResolver {
         session: RomAnalysisSession,
         codec: PokemonTextCodec,
     ): HeaderlessUnifiedSpeciesResolution? {
-        val published = GbaPublishedHeaderResolver.resolve(session.rom)
+        val published = GbaPublishedHeaderResolver.resolve(session.rom, codec)
         if (published.publishedDataState != GbaPublishedDataState.RESOLVED ||
             published.speciesNames != null || published.sprites != null
         ) return null

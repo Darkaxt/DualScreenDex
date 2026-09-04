@@ -33,7 +33,7 @@ internal enum class GbaPublishedDataState { RESOLVED, ABSENT, AMBIGUOUS }
 internal object GbaPublishedHeaderResolver {
     fun resolve(
         rom: RomImage,
-        codec: PokemonTextCodec = PokemonTextCodec.gbaEnglish,
+        codec: PokemonTextCodec,
     ): GbaHeaderPointers {
         val speciesCount = inferredNameCount(rom, SPECIES_NAMES_SLOT, SPECIES_NAME_WIDTH, 2_048, codec)
         val moveCount = inferredNameCount(rom, MOVE_NAMES_SLOT, MOVE_NAME_WIDTH, 2_048, codec)

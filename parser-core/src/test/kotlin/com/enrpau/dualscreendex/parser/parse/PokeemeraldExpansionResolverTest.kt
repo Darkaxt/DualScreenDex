@@ -2,9 +2,16 @@ package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.family.resolvedLayout
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.language.LanguageTag
+import com.enrpau.dualscreendex.parser.model.Platform
+import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
+import com.enrpau.dualscreendex.parser.text.PokemonTextToken
+import com.enrpau.dualscreendex.parser.text.PokemonTextTokenDecoder
+import com.enrpau.dualscreendex.parser.text.WesternPokemonTextCodecs
 import java.util.Base64
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class PokeemeraldExpansionResolverTest {
@@ -12,7 +19,7 @@ class PokeemeraldExpansionResolverTest {
     fun resolvesPublishedCountsPointersAndValidatedRecordShapes() {
         val bytes = fixture()
 
-        val resolved = PokeemeraldExpansionResolver.resolve(RomImage(bytes))
+        val resolved = resolve(RomImage(bytes))
 
         assertNotNull(resolved)
         requireNotNull(resolved)
@@ -35,7 +42,7 @@ class PokeemeraldExpansionResolverTest {
     @Test
     fun samplesMoveTableAcrossPublishedExtentToRejectAliasedStride() {
         val resolved = requireNotNull(
-            PokeemeraldExpansionResolver.resolve(
+            resolve(
                 RomImage(fixture(moveCount = 80, moveStride = 48)),
             ),
         )
@@ -46,7 +53,7 @@ class PokeemeraldExpansionResolverTest {
     @Test
     fun scoresNationalDexFieldAcrossActiveSpeciesInsteadOfAcceptingAnEarlyCryAlias() {
         val resolved = requireNotNull(
-            PokeemeraldExpansionResolver.resolve(
+            resolve(
                 RomImage(
                     fixture(
                         speciesCount = 80,
@@ -72,12 +79,12 @@ class PokeemeraldExpansionResolverTest {
             it[0x8200 + 2] = 0x1F
         }
         val rom = RomImage(bytes)
-        val resolved = requireNotNull(PokeemeraldExpansionResolver.resolve(rom))
+        val resolved = requireNotNull(resolve(rom))
 
         val evidence = listOf(
-            PokeemeraldExpansionResolver.validateSpeciesNames(rom, resolved),
+            PokeemeraldExpansionResolver.validateSpeciesNames(rom, resolved, PokemonTextCodec.gbaEnglish),
             PokeemeraldExpansionResolver.validateBaseStats(rom, resolved),
-            PokeemeraldExpansionResolver.validateDescriptions(rom, resolved),
+            PokeemeraldExpansionResolver.validateDescriptions(rom, resolved, PokemonTextCodec.gbaEnglish),
             PokeemeraldExpansionResolver.validateSprites(rom, resolved),
             PokeemeraldExpansionResolver.validateLearnsets(rom, resolved),
             PokeemeraldExpansionResolver.validateEvolutions(rom, resolved),
@@ -102,13 +109,13 @@ class PokeemeraldExpansionResolverTest {
     @Test
     fun infersCompleteSixByteEightByteAndTwelveByteEvolutionRecords() {
         val sixByte = requireNotNull(
-            PokeemeraldExpansionResolver.resolve(RomImage(fixture(evolutionRecordSize = 6))),
+            resolve(RomImage(fixture(evolutionRecordSize = 6))),
         )
         val eightByte = requireNotNull(
-            PokeemeraldExpansionResolver.resolve(RomImage(fixture(evolutionRecordSize = 8))),
+            resolve(RomImage(fixture(evolutionRecordSize = 8))),
         )
         val twelveByte = requireNotNull(
-            PokeemeraldExpansionResolver.resolve(RomImage(fixture(evolutionRecordSize = 12))),
+            resolve(RomImage(fixture(evolutionRecordSize = 12))),
         )
 
         assertEquals(6, sixByte.metadata.evolutionRecordSize)
@@ -122,7 +129,7 @@ class PokeemeraldExpansionResolverTest {
     @Test
     fun disablesOnlyEvolutionResolutionWhenNoCandidateAbiTerminates() {
         val rom = RomImage(fixture(evolutionRecordSize = 6, terminateEvolutions = false))
-        val resolved = requireNotNull(PokeemeraldExpansionResolver.resolve(rom))
+        val resolved = requireNotNull(resolve(rom))
 
         assertEquals(null, resolved.metadata.evolutionRecordSize)
         assertEquals(null, resolved.tables.evolutions)
@@ -134,9 +141,13 @@ class PokeemeraldExpansionResolverTest {
     @Test
     fun descriptionValidationPreservesTheSpeciesTableRootAndStride() {
         val bytes = fixture()
-        val resolved = requireNotNull(PokeemeraldExpansionResolver.resolve(RomImage(bytes)))
+        val resolved = requireNotNull(resolve(RomImage(bytes)))
 
-        val evidence = PokeemeraldExpansionResolver.validateDescriptions(RomImage(bytes), resolved)
+        val evidence = PokeemeraldExpansionResolver.validateDescriptions(
+            RomImage(bytes),
+            resolved,
+            PokemonTextCodec.gbaEnglish,
+        )
 
         assertEquals(true, evidence.compatible)
         assertEquals(0x1000, evidence.offset)
@@ -149,17 +160,51 @@ class PokeemeraldExpansionResolverTest {
             Base64.getDecoder().decode("ASAIAAAAKAABAAAAAAH+BwEAAAA=").copyInto(bytes, 0x8100)
             bytes[0x8200 + 2] = 0x1F
         }
-        val validResolution = requireNotNull(PokeemeraldExpansionResolver.resolve(RomImage(valid)))
+        val validResolution = requireNotNull(resolve(RomImage(valid)))
         val validEvidence = PokeemeraldExpansionResolver.validateSprites(RomImage(valid), validResolution)
         assertEquals(true, validEvidence.compatible)
         assertEquals(19, validEvidence.validRecords)
 
         val malformed = valid.copyOf().also { it[0x8100] = 7 }
-        val malformedResolution = requireNotNull(PokeemeraldExpansionResolver.resolve(RomImage(malformed)))
+        val malformedResolution = requireNotNull(resolve(RomImage(malformed)))
         val malformedEvidence = PokeemeraldExpansionResolver.validateSprites(RomImage(malformed), malformedResolution)
         assertEquals(false, malformedEvidence.compatible)
         assertEquals(0, malformedEvidence.validRecords)
     }
+
+    @Test
+    fun expansionDiscoveryUsesTheSuppliedEnglishCodec() {
+        val rejectingEnglishCodec = PokemonTextCodec(
+            id = "test-gba-expansion-rejecting-en",
+            version = 1,
+            language = LanguageTag.ENGLISH,
+            applicableGenerations = setOf(3),
+            applicablePlatforms = setOf(Platform.GBA),
+            terminator = 0xFF,
+            tokenDecoder = PokemonTextTokenDecoder { rom, offset, _ ->
+                if (rom.u8(offset) == 0xFF) {
+                    PokemonTextToken.Terminator()
+                } else {
+                    PokemonTextToken.Invalid()
+                }
+            },
+        )
+
+        assertNull(PokeemeraldExpansionResolver.resolve(RomImage(fixture()), rejectingEnglishCodec))
+    }
+
+    @Test
+    fun expansionTextDiscoveryIsExplicitlyEnglishScoped() {
+        assertNull(
+            PokeemeraldExpansionResolver.resolve(
+                RomImage(fixture()),
+                WesternPokemonTextCodecs.gen3French,
+            ),
+        )
+    }
+
+    private fun resolve(rom: RomImage): PokeemeraldExpansionResolution? =
+        PokeemeraldExpansionResolver.resolve(rom, PokemonTextCodec.gbaEnglish)
 
     private fun fixture(
         moveCount: Int = 16,

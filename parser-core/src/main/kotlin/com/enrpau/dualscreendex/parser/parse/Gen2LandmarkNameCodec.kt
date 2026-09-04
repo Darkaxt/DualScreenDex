@@ -1,6 +1,7 @@
 package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.language.LanguageTag
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import com.enrpau.dualscreendex.parser.text.PokemonTextToken
 
@@ -19,6 +20,8 @@ internal object Gen2LandmarkNameCodec {
         encoding: Gen2LandmarkNameEncoding,
         codec: PokemonTextCodec,
     ): String? {
+        val usesEnglishDialect = codec.language == LanguageTag.ENGLISH
+        if (encoding == Gen2LandmarkNameEncoding.EXPANDED && !usesEnglishDialect) return null
         val rom = RomImage(bytes)
         val output = StringBuilder()
         var cursor = 0
@@ -64,17 +67,13 @@ internal object Gen2LandmarkNameCodec {
                         continue
                     }
                     TM -> {
-                        output.append("TM")
+                        output.append(TECHNICAL_MACHINE_SUBSTITUTIONS[codec.language] ?: return null)
                         cursor++
                         continue
                     }
-                    TRAINER -> {
-                        output.append("TRAINER")
-                        cursor++
-                        continue
-                    }
-                    ROCKET -> {
-                        output.append("ROCKET")
+                    TRAINER, ROCKET -> {
+                        if (!usesEnglishDialect) return null
+                        output.append(if (value == TRAINER) "TRAINER" else "ROCKET")
                         cursor++
                         continue
                     }
@@ -109,7 +108,11 @@ internal object Gen2LandmarkNameCodec {
                         continue
                     }
                     in 0xba..0xff -> {
-                        val dialect = decodeDialectGlyph(value, encoding)
+                        val dialect = if (usesEnglishDialect) {
+                            decodeDialectGlyph(value, encoding)
+                        } else {
+                            null
+                        }
                         if (dialect != null) {
                             output.append(dialect)
                             cursor++
@@ -239,5 +242,12 @@ internal object Gen2LandmarkNameCodec {
     private const val ROCKET = 0x5e
     private const val FIRST_FONT_GLYPH = 0x60
     private val CONTRACTIONS = arrayOf("'d", "'l", "'m", "'r", "'s", "'t", "'v")
+    private val TECHNICAL_MACHINE_SUBSTITUTIONS = mapOf(
+        LanguageTag.ENGLISH to "TM",
+        LanguageTag.FRENCH to "CT",
+        LanguageTag.GERMAN to "TM",
+        LanguageTag.ITALIAN to "MT",
+        LanguageTag.SPANISH to "MT",
+    )
     private val WHITESPACE = Regex("\\s+")
 }

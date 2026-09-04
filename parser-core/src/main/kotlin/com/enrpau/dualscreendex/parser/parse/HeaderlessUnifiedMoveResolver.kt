@@ -38,11 +38,14 @@ internal object HeaderlessUnifiedMoveResolver {
     fun resolve(
         session: RomAnalysisSession,
         ordinaryMoveCount: Int,
+        codec: PokemonTextCodec,
     ): Resolution? {
         if (ordinaryMoveCount !in 2..4096) return null
         val index = session.gbaReferenceIndex ?: return null
         if (index.overflowed) return null
-        val plausibleRoots = index.targets.keys.filter { root -> plausibleSample(session, root, ordinaryMoveCount) }
+        val plausibleRoots = index.targets.keys.filter { root ->
+            plausibleSample(session, root, ordinaryMoveCount, codec)
+        }
         val candidates = plausibleRoots.asSequence()
             .mapNotNull { root ->
                 val indexed = index.target(root)
@@ -54,7 +57,7 @@ internal object HeaderlessUnifiedMoveResolver {
                 if (references?.siteEvidenceAvailable != true || references.instructionSites.isEmpty()) {
                     null
                 } else {
-                    resolveRoot(session, root, ordinaryMoveCount)
+                    resolveRoot(session, root, ordinaryMoveCount, codec)
                 }
             }
             .toList()
@@ -65,6 +68,7 @@ internal object HeaderlessUnifiedMoveResolver {
         session: RomAnalysisSession,
         root: Int,
         moveCount: Int,
+        codec: PokemonTextCodec,
     ): Resolution? {
         when (
             session.limits.checkTableExtent(
@@ -78,7 +82,7 @@ internal object HeaderlessUnifiedMoveResolver {
             is ExtentCheck.Invalid, is ExtentCheck.BudgetExceeded -> return null
         }
         for (moveId in 0 until moveCount) {
-            if (!plausibleRow(session, root + moveId * RECORD_SIZE, moveId)) return null
+            if (!plausibleRow(session, root + moveId * RECORD_SIZE, moveId, codec)) return null
         }
         val typedTable = MoveDetailsTableLayout(
             offset = root.toLong(),
@@ -141,6 +145,7 @@ internal object HeaderlessUnifiedMoveResolver {
         session: RomAnalysisSession,
         root: Int,
         moveCount: Int,
+        codec: PokemonTextCodec,
     ): Boolean {
         val last = moveCount - 1
         val sample = linkedSetOf(0, 1, last)
@@ -148,7 +153,7 @@ internal object HeaderlessUnifiedMoveResolver {
             val record = root.toLong() + moveId.toLong() * RECORD_SIZE
             record >= 0L &&
                 record <= session.rom.size.toLong() - RECORD_SIZE.toLong() &&
-                plausibleRow(session, record.toInt(), moveId)
+                plausibleRow(session, record.toInt(), moveId, codec)
         }
     }
 
@@ -156,11 +161,26 @@ internal object HeaderlessUnifiedMoveResolver {
         session: RomAnalysisSession,
         record: Int,
         moveId: Int,
+        codec: PokemonTextCodec,
     ): Boolean = try {
         val name = session.rom.gbaPointer(record + NAME_POINTER_OFFSET) ?: return false
         val description = session.rom.gbaPointer(record + DESCRIPTION_POINTER_OFFSET) ?: return false
-        if (!plausibleText(session, name, MAX_NAME_BYTES, allowEmpty = false)) return false
-        if (!plausibleText(session, description, MAX_DESCRIPTION_BYTES, allowEmpty = moveId == 0)) return false
+        val nameIsPlausible = plausibleText(
+            session = session,
+            offset = name,
+            maximumBytes = MAX_NAME_BYTES,
+            allowEmpty = false,
+            codec = codec,
+        )
+        if (!nameIsPlausible) return false
+        val descriptionIsPlausible = plausibleText(
+            session = session,
+            offset = description,
+            maximumBytes = MAX_DESCRIPTION_BYTES,
+            allowEmpty = moveId == 0,
+            codec = codec,
+        )
+        if (!descriptionIsPlausible) return false
         val packedMove = session.rom.u16le(record + 10)
         val packedAccuracy = session.rom.u16le(record + 12)
         val category = (packedMove ushr 5) and 0x3
@@ -175,10 +195,11 @@ internal object HeaderlessUnifiedMoveResolver {
         offset: Int,
         maximumBytes: Int,
         allowEmpty: Boolean,
+        codec: PokemonTextCodec,
     ): Boolean {
         val width = minOf(maximumBytes, session.rom.size - offset)
         if (width <= 0) return false
-        val decoded = PokemonTextCodec.gbaEnglish.decodeDetailed(session.rom.slice(offset, width))
+        val decoded = codec.decodeDetailed(session.rom.slice(offset, width))
         if (!decoded.terminated) return false
         if (decoded.contentBytes == 0) return allowEmpty
         return decoded.text.isNotBlank()

@@ -5,6 +5,7 @@ import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.ValidationEvidence
 import com.enrpau.dualscreendex.parser.model.TableLayout
+import com.enrpau.dualscreendex.parser.text.LanguageTextPlausibility
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import kotlin.math.abs
 
@@ -114,13 +115,19 @@ object TableValidators {
             val decoded = codec.decodeDetailed(rom.slice(recordOffset.toInt(), width))
             val valid = plausibleFixedName(decoded, width, minimumRatio = 0.8)
             if (valid && !decoded.terminated) {
-                if (pendingFullWidth && decoded.text.firstOrNull(Char::isLetterOrDigit)?.isLowerCase() == true) break
+                if (
+                    pendingFullWidth &&
+                    LanguageTextPlausibility.startsWithLowercaseName(decoded.text, codec.language)
+                ) break
                 if (!pendingFullWidth) fullWidthRunStart = index
                 pendingFullWidth = true
                 lastFullWidthGood = index + 1
                 consecutiveInvalid = 0
             } else if (valid) {
-                if (pendingFullWidth && !looksLikeStandaloneFixedName(decoded.text)) break
+                if (
+                    pendingFullWidth &&
+                    !LanguageTextPlausibility.looksLikeStandaloneFixedName(decoded.text, codec.language)
+                ) break
                 lastGood = index + 1
                 pendingFullWidth = false
                 fullWidthRunStart = -1
@@ -146,11 +153,6 @@ object TableValidators {
     }
 
     private const val MIN_TRAILING_FULL_WIDTH_NAME_RUN = 3
-
-    private fun looksLikeStandaloneFixedName(value: String): Boolean {
-        val first = value.firstOrNull(Char::isLetterOrDigit) ?: return false
-        return !first.isLetter() || first.isUpperCase()
-    }
 
     fun locateFixedNameTable(
         rom: RomImage,

@@ -5,6 +5,7 @@ import com.enrpau.dualscreendex.parser.resolution.BudgetKind
 import com.enrpau.dualscreendex.parser.resolution.CandidateReasonKind
 import com.enrpau.dualscreendex.parser.resolution.CandidateSource
 import com.enrpau.dualscreendex.parser.resolution.DatasetResolution
+import com.enrpau.dualscreendex.parser.text.WesternPokemonTextCodecs
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -41,6 +42,20 @@ class DescriptionResolverCompatibilityTest {
         assertEquals(0x200L, result.candidate.layout.table.offset)
         assertEquals(32, result.candidate.layout.table.recordSize)
         assertEquals(CandidateSource.STRUCTURAL_ANCHOR, result.candidate.source)
+    }
+
+    @Test
+    fun englishSeedAnchorCannotAuthorizeFrenchDescriptionDiscovery() {
+        val bytes = ByteArray(0x1200)
+        putDescriptionTable(bytes, 0x200, 3, 32, listOf(16), 0x900)
+        putGbaText(bytes, 0x200 + 32, "SEED")
+
+        val result = DescriptionResolver(textCodec = WesternPokemonTextCodecs.gen3French).resolve(
+            descriptionSession(bytes),
+            expectedSpeciesCount = 3,
+        )
+
+        assertTrue(result is DatasetResolution.Unavailable)
     }
 
     @Test

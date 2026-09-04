@@ -9,6 +9,7 @@ import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.model.RomHeader
 import com.enrpau.dualscreendex.parser.model.TableLayout
+import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import com.enrpau.dualscreendex.parser.validate.TableValidators
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -158,7 +159,7 @@ class Gen3PublishedPartialBaseStatsResolverTest {
 
         val probe = probe(fixture.bytes)
 
-        assertEquals(GbaPublishedDataState.AMBIGUOUS, GbaPublishedHeaderResolver.resolve(RomImage(fixture.bytes)).publishedDataState)
+        assertEquals(GbaPublishedDataState.AMBIGUOUS, GbaPublishedHeaderResolver.resolve(RomImage(fixture.bytes), PokemonTextCodec.gbaEnglish).publishedDataState)
         assertNull(probe.resolvedLayout?.tables?.baseStats)
     }
 

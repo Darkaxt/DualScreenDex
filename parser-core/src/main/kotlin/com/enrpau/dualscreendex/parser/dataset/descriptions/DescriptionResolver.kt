@@ -3,6 +3,7 @@ package com.enrpau.dualscreendex.parser.dataset.descriptions
 import com.enrpau.dualscreendex.parser.analysis.GbaTargetReferenceEvidence
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.language.LanguageTag
 import com.enrpau.dualscreendex.parser.resolution.BudgetKind
 import com.enrpau.dualscreendex.parser.resolution.CandidateEligibility
 import com.enrpau.dualscreendex.parser.resolution.CandidateIdentity
@@ -151,7 +152,7 @@ class DescriptionResolver(
                     )
                 }
             }
-            if (candidates.isEmpty()) {
+            if (candidates.isEmpty() && textCodec.language == LanguageTag.ENGLISH) {
                 yieldAll(
                     internalStructuralProposals(
                         session,

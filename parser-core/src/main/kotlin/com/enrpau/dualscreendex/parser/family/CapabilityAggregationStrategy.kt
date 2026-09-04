@@ -18,6 +18,7 @@ import com.enrpau.dualscreendex.parser.model.ValidationEvidence
 import com.enrpau.dualscreendex.parser.parse.capabilityEvidence
 import com.enrpau.dualscreendex.parser.parse.speciesCatalogEvidence
 import com.enrpau.dualscreendex.parser.language.LanguageResolutionStatus
+import com.enrpau.dualscreendex.parser.language.LanguageTag
 import com.enrpau.dualscreendex.parser.language.LocalizedTableLayout
 
 /** Aggregates independent phase evidence into the stable public probe and resolved layout. */
@@ -246,9 +247,13 @@ internal class CapabilityAggregationStrategy : FamilyProbePhaseStrategy {
         )) {
             is RetailBattleMechanicsResolution.Resolved -> {
                 val resolved = resolution.layout
-                val sourceBacked = abilityNames?.let { names ->
-                    SourceBackedAbilityMechanicsResolver.resolve(definition.family, names, resolved)
-                }.orEmpty()
+                val sourceBacked = if (core.languageManifest.defaultLanguage == LanguageTag.ENGLISH) {
+                    abilityNames?.let { names ->
+                        SourceBackedAbilityMechanicsResolver.resolve(definition.family, names, resolved)
+                    }.orEmpty()
+                } else {
+                    emptyList()
+                }
                 val layout = ResolvedAbilityMechanicsLayout(
                     resolved.routineEntry,
                     resolved.abi,

@@ -1,8 +1,18 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.analysis.GbaReferenceIndex
+import com.enrpau.dualscreendex.parser.analysis.GbaReferenceIndexFactory
+import com.enrpau.dualscreendex.parser.analysis.GbaTargetReferenceEvidence
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
+import com.enrpau.dualscreendex.parser.dataset.moves.putUnifiedMoveInfo
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.language.LanguageTag
+import com.enrpau.dualscreendex.parser.model.Platform
+import com.enrpau.dualscreendex.parser.model.RomHeader
+import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
+import com.enrpau.dualscreendex.parser.text.PokemonTextToken
+import com.enrpau.dualscreendex.parser.text.PokemonTextTokenDecoder
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.Assert.assertEquals
@@ -13,6 +23,46 @@ import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 class HeaderlessUnifiedMoveResolverLiveRomTest {
+    @Test
+    fun suppliedCodecControlsDeterministicHeaderlessMoveValidation() {
+        val root = 0x200
+        val moveCount = 2
+        val bytes = ByteArray(0x1000)
+        repeat(moveCount) { id ->
+            val record = root + id * MOVE_STRIDE
+            val name = 0x800 + id * 0x20
+            val description = 0x900 + id * 0x20
+            putU32(bytes, record, GBA_ROM_BASE + name)
+            putU32(bytes, record + 4, GBA_ROM_BASE + description)
+            putUnifiedMoveInfo(bytes, record)
+            putGbaText(bytes, name, "MOVE")
+            putGbaText(bytes, description, "HITS")
+        }
+        val referenceIndex = GbaReferenceIndex.fromTargets(
+            targets = mapOf(
+                root to GbaTargetReferenceEvidence(
+                    count = 1,
+                    instructionSites = listOf(0x20),
+                    observedSites = 1,
+                    limitSites = 16,
+                    overflowReason = null,
+                ),
+            ),
+            limitTargets = 16,
+        )
+        val session = RomAnalysisSession(
+            rom = RomImage(bytes),
+            header = RomHeader(Platform.GBA, ""),
+            gbaReferenceIndexFactory = GbaReferenceIndexFactory { _, _ -> referenceIndex },
+        )
+
+        val resolved = requireNotNull(
+            HeaderlessUnifiedMoveResolver.resolve(session, moveCount, PokemonTextCodec.gbaEnglish),
+        )
+        assertEquals(root, resolved.tables.moveData?.offset)
+        assertNull(HeaderlessUnifiedMoveResolver.resolve(session, moveCount, rejectingEnglishCodec()))
+    }
+
     @Test
     fun selectsTheUniqueCompiledReferencedOrdinaryMoveTableAndRejectsRealMutations() {
         val configured = System.getenv("DUALDEX_DREAMSTONE_ROM")
@@ -30,7 +80,11 @@ class HeaderlessUnifiedMoveResolverLiveRomTest {
         val completeSites = originalSession.nominatedGbaReferenceSites(MOVE_ROOT)
         assertTrue(completeSites?.siteEvidenceAvailable == true)
         assertEquals(379, completeSites?.instructionSites?.size)
-        val selected = HeaderlessUnifiedMoveResolver.resolve(originalSession, MOVE_COUNT)
+        val selected = HeaderlessUnifiedMoveResolver.resolve(
+            originalSession,
+            MOVE_COUNT,
+            PokemonTextCodec.gbaEnglish,
+        )
         assertNotNull(selected)
         requireNotNull(selected)
         assertEquals(MOVE_ROOT, selected.tables.moveNames?.offset)
@@ -60,7 +114,25 @@ class HeaderlessUnifiedMoveResolverLiveRomTest {
         return HeaderlessUnifiedMoveResolver.resolve(
             session = RomAnalysisSession(rom, RomHeaderReader.read(rom)),
             ordinaryMoveCount = MOVE_COUNT,
+            codec = PokemonTextCodec.gbaEnglish,
         )
+    }
+
+    private fun rejectingEnglishCodec() = PokemonTextCodec(
+        id = "test-headerless-move-rejecting-en",
+        version = 1,
+        language = LanguageTag.ENGLISH,
+        applicableGenerations = setOf(3),
+        applicablePlatforms = setOf(Platform.GBA),
+        terminator = 0xFF,
+        tokenDecoder = PokemonTextTokenDecoder { _, _, _ -> PokemonTextToken.Invalid() },
+    )
+
+    private fun putGbaText(bytes: ByteArray, offset: Int, value: String) {
+        value.forEachIndexed { index, char ->
+            bytes[offset + index] = (0xBB + char.code - 'A'.code).toByte()
+        }
+        bytes[offset + value.length] = 0xFF.toByte()
     }
 
     private fun putU32(bytes: ByteArray, offset: Int, value: Int) {

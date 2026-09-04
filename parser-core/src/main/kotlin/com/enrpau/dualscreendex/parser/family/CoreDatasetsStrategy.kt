@@ -137,6 +137,7 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
             com.enrpau.dualscreendex.parser.parse.HeaderlessUnifiedMoveResolver.resolve(
                 session = session,
                 ordinaryMoveCount = moveCount,
+                codec = probeCodec,
             )
         }
         headerlessUnifiedMoves?.let { unified ->
@@ -209,7 +210,9 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
             }
         }
         var speciesNamesLayout = tables.speciesNames
-        var names = expansion?.let { PokeemeraldExpansionResolver.validateSpeciesNames(rom, it) }
+        var names = expansion?.let {
+            PokeemeraldExpansionResolver.validateSpeciesNames(rom, it, probeCodec)
+        }
             ?: headerlessUnifiedSpecies?.speciesNamesEvidence
             ?: validateNames(rom, speciesNamesLayout, speciesCount, probeCodec, generation)
         if (generation == 2 && !names.compatible && speciesCount != null) {

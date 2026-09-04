@@ -7,6 +7,7 @@ import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.language.defaultTextCodec
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.TableRecordFormat
+import com.enrpau.dualscreendex.parser.text.LanguageTextPlausibility
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 
 
@@ -226,7 +227,10 @@ object MoveDescriptionMaterializer {
             if (length <= 0) return@repeat
             val decoded = codec.decodeDetailed(rom.slice(target, length))
             val normalized = decoded.text.replace(Regex("\\s+"), " ").trim()
-            if (decoded.terminated && decoded.validRatio >= 0.70 && looksLikeNaturalDescription(normalized)) {
+            if (
+                decoded.terminated && decoded.validRatio >= 0.70 &&
+                looksLikeNaturalDescription(normalized, codec)
+            ) {
                 descriptions[index + 1] = normalized
             }
         }
@@ -316,8 +320,8 @@ object MoveDescriptionMaterializer {
             }
         }
         val decodedRatio = descriptions.size.toDouble() / pointerCount
-        val descriptionLike = descriptions.values.count(::looksLikeNaturalDescription)
-        val naturalLanguageRatio = descriptionLike.toDouble() / descriptions.size.coerceAtLeast(1)
+        val naturalDescriptionCount = descriptions.values.count { looksLikeNaturalDescription(it, codec) }
+        val naturalLanguageRatio = naturalDescriptionCount.toDouble() / descriptions.size.coerceAtLeast(1)
         val confidence = minOf(decodedRatio, naturalLanguageRatio)
         val minimum = maxOf(3, (pointerCount * 0.8).toInt())
         return if (descriptions.size >= minimum && naturalLanguageRatio >= 0.75) {
@@ -327,10 +331,14 @@ object MoveDescriptionMaterializer {
         }
     }
 
-    private fun looksLikeNaturalDescription(value: String): Boolean {
-        val words = value.split(Regex("\\s+")).count { it.any(Char::isLetter) }
-        return value.length >= 12 && words >= 3 && value.any(Char::isLowerCase)
-    }
+    private fun looksLikeNaturalDescription(value: String, codec: PokemonTextCodec): Boolean =
+        LanguageTextPlausibility.looksLikeNaturalDescription(
+            value = value,
+            language = codec.language,
+            minimumLength = 12,
+            minimumWords = 3,
+            requireLowercase = true,
+        )
 
     private fun isExplicitPlaceholder(value: String): Boolean = value == "-" || value == "—"
 
@@ -339,7 +347,9 @@ object MoveDescriptionMaterializer {
         val decoded = runCatching { codec.decodeDetailed(rom.slice(offset, length)) }.getOrNull()
             ?: return null
         val normalized = decoded.text.replace(Regex("\\s+"), " ").trim()
-        return normalized.takeIf { decoded.terminated && decoded.validRatio >= 0.85 && looksLikeNaturalDescription(it) }
+        return normalized.takeIf {
+            decoded.terminated && decoded.validRatio >= 0.85 && looksLikeNaturalDescription(it, codec)
+        }
     }
 
     private fun checkCancellation(index: Int, cancellation: ParserCancellationToken) {
