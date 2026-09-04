@@ -1,0 +1,5178 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "b53303c433ad5eb01e1aee8199ed06353cf22b59",
+  "reportSchemaVersion": 14,
+  "generator": {
+    "name": "parser-cli",
+    "schemaVersion": 14,
+    "sha256": "781965ab0ce7757b66bb591c2732d90119c5de20fe1d1c2c4cc1390169b28294"
+  },
+  "rawReportSha256": "d4f6962d507d0140f8e99d7376d2c9a790a34b7a76885778d858000b637cae39",
+  "summary": {
+    "expectedCells": 35,
+    "validatedCells": 35,
+    "uniqueRomSha256": 35,
+    "selected": 35,
+    "resolvedManifests": 35,
+    "exactCodecMatches": 35,
+    "persistedAndReopenedExactly": 35,
+    "completeLocalizedTypeTables": 35,
+    "completeCompiledTypeSemantics": 35,
+    "crossLanguageFallbackEvidence": 0,
+    "catalogErrors": 0,
+    "persistenceErrors": 0,
+    "localizedCapabilityStates": {
+      "AVAILABLE": 260,
+      "NOT_APPLICABLE": 95,
+      "NOT_FOUND": 77,
+      "PARTIAL": 93
+    }
+  },
+  "cells": [
+    {
+      "romSha256": "5ca7ba01642a3b27b0cc0b5349b52792795b62d3ed977e98a09390659af96b7b",
+      "family": "RED_BLUE",
+      "language": "en",
+      "manifestStatus": "RESOLVED",
+      "projectionStatus": "RESOLVED",
+      "codecId": "gb-gen1-en",
+      "codecVersion": 1,
+      "selected": true,
+      "persistedAndReopenedExactly": true,
+      "compiledLocalizedTypeTable": true,
+      "crossLanguageFallbackEvidence": [],
+      "catalog": {
+        "species": 151,
+        "moves": 165,
+        "types": 15,
+        "namedTypes": 15,
+        "typesWithSemanticRoles": 15,
+        "abilities": 0,
+        "evolutionEdges": 72,
+        "learnsetEntries": 728,
+        "encounterAreas": 58,
+        "areaIdentities": 226
+      },
+      "localizedCapabilities": {
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 190,
+          "expectedRecords": 190,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 151,
+          "expectedRecords": 151,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 165,
+          "expectedRecords": 165,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 165,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "TYPE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 15,
+          "expectedRecords": 15,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "NATURE_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ITEM_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 62,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "AREA_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "LOCAL_MAP_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 226,
+          "expectedRecords": 226,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_REGION_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1,
+          "expectedRecords": 1,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_LOCATION_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 57,
+          "expectedRecords": 57,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 58,
+          "expectedRecords": 58,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "POI_TEXT": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 154,
+          "expectedRecords": 1098,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        }
+      }
+    },
+    {
+      "romSha256": "23766290f3b2347f815f1e8977c3b84047ed880cadda8c4f1a3595a633daa303",
+      "family": "RED_BLUE",
+      "language": "fr",
+      "manifestStatus": "RESOLVED",
+      "projectionStatus": "RESOLVED",
+      "codecId": "gb-gen1-fr",
+      "codecVersion": 1,
+      "selected": true,
+      "persistedAndReopenedExactly": true,
+      "compiledLocalizedTypeTable": true,
+      "crossLanguageFallbackEvidence": [],
+      "catalog": {
+        "species": 151,
+        "moves": 165,
+        "types": 15,
+        "namedTypes": 15,
+        "typesWithSemanticRoles": 15,
+        "abilities": 0,
+        "evolutionEdges": 72,
+        "learnsetEntries": 728,
+        "encounterAreas": 58,
+        "areaIdentities": 226
+      },
+      "localizedCapabilities": {
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 190,
+          "expectedRecords": 190,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 151,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 165,
+          "expectedRecords": 165,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 165,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "TYPE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 15,
+          "expectedRecords": 15,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "NATURE_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ITEM_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 62,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "AREA_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "LOCAL_MAP_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 226,
+          "expectedRecords": 226,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_REGION_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1,
+          "expectedRecords": 1,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_LOCATION_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 57,
+          "expectedRecords": 57,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 58,
+          "expectedRecords": 58,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "POI_TEXT": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 154,
+          "expectedRecords": 1098,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        }
+      }
+    },
+    {
+      "romSha256": "9cd186b288dbcd52413d561ae449f1f700c32b45af56dbf849095d4a0c8637a6",
+      "family": "RED_BLUE",
+      "language": "de",
+      "manifestStatus": "RESOLVED",
+      "projectionStatus": "RESOLVED",
+      "codecId": "gb-gen1-de",
+      "codecVersion": 1,
+      "selected": true,
+      "persistedAndReopenedExactly": true,
+      "compiledLocalizedTypeTable": true,
+      "crossLanguageFallbackEvidence": [],
+      "catalog": {
+        "species": 151,
+        "moves": 165,
+        "types": 15,
+        "namedTypes": 15,
+        "typesWithSemanticRoles": 15,
+        "abilities": 0,
+        "evolutionEdges": 72,
+        "learnsetEntries": 728,
+        "encounterAreas": 58,
+        "areaIdentities": 226
+      },
+      "localizedCapabilities": {
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 190,
+          "expectedRecords": 190,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 151,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 165,
+          "expectedRecords": 165,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 165,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "TYPE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 15,
+          "expectedRecords": 15,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "NATURE_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ITEM_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 62,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "AREA_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "LOCAL_MAP_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 226,
+          "expectedRecords": 226,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_REGION_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1,
+          "expectedRecords": 1,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_LOCATION_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 57,
+          "expectedRecords": 57,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 58,
+          "expectedRecords": 58,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "POI_TEXT": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 154,
+          "expectedRecords": 1098,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        }
+      }
+    },
+    {
+      "romSha256": "e805d00b0002156d38b96efd57c823b0db3a3ef4cd32f98bd9bb4779bda3dd5b",
+      "family": "RED_BLUE",
+      "language": "it",
+      "manifestStatus": "RESOLVED",
+      "projectionStatus": "RESOLVED",
+      "codecId": "gb-gen1-it",
+      "codecVersion": 1,
+      "selected": true,
+      "persistedAndReopenedExactly": true,
+      "compiledLocalizedTypeTable": true,
+      "crossLanguageFallbackEvidence": [],
+      "catalog": {
+        "species": 151,
+        "moves": 165,
+        "types": 15,
+        "namedTypes": 15,
+        "typesWithSemanticRoles": 15,
+        "abilities": 0,
+        "evolutionEdges": 72,
+        "learnsetEntries": 728,
+        "encounterAreas": 58,
+        "areaIdentities": 226
+      },
+      "localizedCapabilities": {
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 190,
+          "expectedRecords": 190,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 151,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 165,
+          "expectedRecords": 165,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 165,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "TYPE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 15,
+          "expectedRecords": 15,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "NATURE_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ITEM_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 62,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "AREA_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "LOCAL_MAP_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 226,
+          "expectedRecords": 226,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_REGION_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1,
+          "expectedRecords": 1,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_LOCATION_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 57,
+          "expectedRecords": 57,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 58,
+          "expectedRecords": 58,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "POI_TEXT": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 154,
+          "expectedRecords": 1098,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        }
+      }
+    },
+    {
+      "romSha256": "a756cf7ad888aa46de4b9699a177a0edf1775e59eb6330014c6f5c139be9c45d",
+      "family": "RED_BLUE",
+      "language": "es",
+      "manifestStatus": "RESOLVED",
+      "projectionStatus": "RESOLVED",
+      "codecId": "gb-gen1-es",
+      "codecVersion": 1,
+      "selected": true,
+      "persistedAndReopenedExactly": true,
+      "compiledLocalizedTypeTable": true,
+      "crossLanguageFallbackEvidence": [],
+      "catalog": {
+        "species": 151,
+        "moves": 165,
+        "types": 15,
+        "namedTypes": 15,
+        "typesWithSemanticRoles": 15,
+        "abilities": 0,
+        "evolutionEdges": 72,
+        "learnsetEntries": 728,
+        "encounterAreas": 58,
+        "areaIdentities": 226
+      },
+      "localizedCapabilities": {
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 190,
+          "expectedRecords": 190,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 151,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 165,
+          "expectedRecords": 165,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 165,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "TYPE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 15,
+          "expectedRecords": 15,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "NATURE_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ITEM_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 62,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "AREA_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "LOCAL_MAP_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 226,
+          "expectedRecords": 226,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_REGION_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1,
+          "expectedRecords": 1,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_LOCATION_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 57,
+          "expectedRecords": 57,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 58,
+          "expectedRecords": 58,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "POI_TEXT": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 154,
+          "expectedRecords": 1098,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        }
+      }
+    },
+    {
+      "romSha256": "8cbaa499397e4f1a679c992ea9382a2dd7942ab398b48c19829c2d9529de47bf",
+      "family": "YELLOW",
+      "language": "en",
+      "manifestStatus": "RESOLVED",
+      "projectionStatus": "RESOLVED",
+      "codecId": "gb-gen1-en",
+      "codecVersion": 1,
+      "selected": true,
+      "persistedAndReopenedExactly": true,
+      "compiledLocalizedTypeTable": true,
+      "crossLanguageFallbackEvidence": [],
+      "catalog": {
+        "species": 151,
+        "moves": 165,
+        "types": 15,
+        "namedTypes": 15,
+        "typesWithSemanticRoles": 15,
+        "abilities": 0,
+        "evolutionEdges": 72,
+        "learnsetEntries": 755,
+        "encounterAreas": 63,
+        "areaIdentities": 227
+      },
+      "localizedCapabilities": {
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 190,
+          "expectedRecords": 190,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 151,
+          "expectedRecords": 151,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 165,
+          "expectedRecords": 165,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 165,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "TYPE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 15,
+          "expectedRecords": 15,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "NATURE_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ITEM_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 62,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "AREA_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "LOCAL_MAP_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 227,
+          "expectedRecords": 227,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_REGION_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1,
+          "expectedRecords": 1,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_LOCATION_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 57,
+          "expectedRecords": 57,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 63,
+          "expectedRecords": 63,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "POI_TEXT": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 130,
+          "expectedRecords": 1109,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        }
+      }
+    },
+    {
+      "romSha256": "77b31f874fd877fbf48757f315ffc3144e06fc7222aba6ac4eda2045ebf5d3fa",
+      "family": "YELLOW",
+      "language": "fr",
+      "manifestStatus": "RESOLVED",
+      "projectionStatus": "RESOLVED",
+      "codecId": "gb-gen1-fr",
+      "codecVersion": 1,
+      "selected": true,
+      "persistedAndReopenedExactly": true,
+      "compiledLocalizedTypeTable": true,
+      "crossLanguageFallbackEvidence": [],
+      "catalog": {
+        "species": 151,
+        "moves": 165,
+        "types": 15,
+        "namedTypes": 15,
+        "typesWithSemanticRoles": 15,
+        "abilities": 0,
+        "evolutionEdges": 72,
+        "learnsetEntries": 755,
+        "encounterAreas": 63,
+        "areaIdentities": 227
+      },
+      "localizedCapabilities": {
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 190,
+          "expectedRecords": 190,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 151,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 165,
+          "expectedRecords": 165,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 165,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "TYPE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 15,
+          "expectedRecords": 15,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "NATURE_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ITEM_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 62,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "AREA_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "LOCAL_MAP_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 227,
+          "expectedRecords": 227,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_REGION_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1,
+          "expectedRecords": 1,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_LOCATION_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 57,
+          "expectedRecords": 57,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 63,
+          "expectedRecords": 63,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "POI_TEXT": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 130,
+          "expectedRecords": 1109,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        }
+      }
+    },
+    {
+      "romSha256": "aed41ea3e785ac9c06fd641270ff30b59de5fc64fed4349e81a9aaa4ba7d31f9",
+      "family": "YELLOW",
+      "language": "de",
+      "manifestStatus": "RESOLVED",
+      "projectionStatus": "RESOLVED",
+      "codecId": "gb-gen1-de",
+      "codecVersion": 1,
+      "selected": true,
+      "persistedAndReopenedExactly": true,
+      "compiledLocalizedTypeTable": true,
+      "crossLanguageFallbackEvidence": [],
+      "catalog": {
+        "species": 151,
+        "moves": 165,
+        "types": 15,
+        "namedTypes": 15,
+        "typesWithSemanticRoles": 15,
+        "abilities": 0,
+        "evolutionEdges": 72,
+        "learnsetEntries": 755,
+        "encounterAreas": 63,
+        "areaIdentities": 227
+      },
+      "localizedCapabilities": {
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 190,
+          "expectedRecords": 190,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 151,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 165,
+          "expectedRecords": 165,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 165,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "TYPE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 15,
+          "expectedRecords": 15,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "NATURE_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ITEM_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 62,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "AREA_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "LOCAL_MAP_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 227,
+          "expectedRecords": 227,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_REGION_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1,
+          "expectedRecords": 1,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_LOCATION_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 57,
+          "expectedRecords": 57,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 63,
+          "expectedRecords": 63,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "POI_TEXT": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 130,
+          "expectedRecords": 1109,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        }
+      }
+    },
+    {
+      "romSha256": "e3f0663e16ac240bc1c6681cdb95ca7230d86fca23eb931ea58f4abce0002856",
+      "family": "YELLOW",
+      "language": "it",
+      "manifestStatus": "RESOLVED",
+      "projectionStatus": "RESOLVED",
+      "codecId": "gb-gen1-it",
+      "codecVersion": 1,
+      "selected": true,
+      "persistedAndReopenedExactly": true,
+      "compiledLocalizedTypeTable": true,
+      "crossLanguageFallbackEvidence": [],
+      "catalog": {
+        "species": 151,
+        "moves": 165,
+        "types": 15,
+        "namedTypes": 15,
+        "typesWithSemanticRoles": 15,
+        "abilities": 0,
+        "evolutionEdges": 72,
+        "learnsetEntries": 755,
+        "encounterAreas": 63,
+        "areaIdentities": 227
+      },
+      "localizedCapabilities": {
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 190,
+          "expectedRecords": 190,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 151,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 165,
+          "expectedRecords": 165,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 165,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "TYPE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 15,
+          "expectedRecords": 15,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "NATURE_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ITEM_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 62,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "AREA_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "LOCAL_MAP_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 227,
+          "expectedRecords": 227,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_REGION_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1,
+          "expectedRecords": 1,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_LOCATION_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 57,
+          "expectedRecords": 57,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 63,
+          "expectedRecords": 63,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "POI_TEXT": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 130,
+          "expectedRecords": 1109,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        }
+      }
+    },
+    {
+      "romSha256": "55d56d6f73225886bfdc0db1ddb754d2f4dfc6ef5ae74ddfa079c23b6ec80039",
+      "family": "YELLOW",
+      "language": "es",
+      "manifestStatus": "RESOLVED",
+      "projectionStatus": "RESOLVED",
+      "codecId": "gb-gen1-es",
+      "codecVersion": 1,
+      "selected": true,
+      "persistedAndReopenedExactly": true,
+      "compiledLocalizedTypeTable": true,
+      "crossLanguageFallbackEvidence": [],
+      "catalog": {
+        "species": 151,
+        "moves": 165,
+        "types": 15,
+        "namedTypes": 15,
+        "typesWithSemanticRoles": 15,
+        "abilities": 0,
+        "evolutionEdges": 72,
+        "learnsetEntries": 755,
+        "encounterAreas": 63,
+        "areaIdentities": 227
+      },
+      "localizedCapabilities": {
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 190,
+          "expectedRecords": 190,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 151,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 165,
+          "expectedRecords": 165,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 165,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "TYPE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 15,
+          "expectedRecords": 15,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "NATURE_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ITEM_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 62,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "AREA_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "LOCAL_MAP_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 227,
+          "expectedRecords": 227,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_REGION_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1,
+          "expectedRecords": 1,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_LOCATION_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 57,
+          "expectedRecords": 57,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 63,
+          "expectedRecords": 63,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "POI_TEXT": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 130,
+          "expectedRecords": 1109,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        }
+      }
+    },
+    {
+      "romSha256": "fb0016d27b1e5374e1ec9fcad60e6628d8646103b5313ca683417f52b97e7e4e",
+      "family": "GOLD_SILVER",
+      "language": "en",
+      "manifestStatus": "RESOLVED",
+      "projectionStatus": "RESOLVED",
+      "codecId": "gb-gen2-en",
+      "codecVersion": 1,
+      "selected": true,
+      "persistedAndReopenedExactly": true,
+      "compiledLocalizedTypeTable": true,
+      "crossLanguageFallbackEvidence": [],
+      "catalog": {
+        "species": 251,
+        "moves": 251,
+        "types": 18,
+        "namedTypes": 18,
+        "typesWithSemanticRoles": 18,
+        "abilities": 0,
+        "evolutionEdges": 122,
+        "learnsetEntries": 2207,
+        "encounterAreas": 335,
+        "areaIdentities": 368
+      },
+      "localizedCapabilities": {
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 251,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 251,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 251,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 251,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "TYPE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 18,
+          "expectedRecords": 18,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "NATURE_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ITEM_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 62,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "AREA_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "LOCAL_MAP_NAMES": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 364,
+          "expectedRecords": 368,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_REGION_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 2,
+          "expectedRecords": 2,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_LOCATION_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 79,
+          "expectedRecords": 79,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 335,
+          "expectedRecords": 335,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "POI_TEXT": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 323,
+          "expectedRecords": 1951,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        }
+      }
+    },
+    {
+      "romSha256": "6103cadf2ae505f4b489a8a414c8db27a2307d797ddf8a3a848659b591dd4023",
+      "family": "GOLD_SILVER",
+      "language": "fr",
+      "manifestStatus": "RESOLVED",
+      "projectionStatus": "RESOLVED",
+      "codecId": "gb-gen2-fr",
+      "codecVersion": 1,
+      "selected": true,
+      "persistedAndReopenedExactly": true,
+      "compiledLocalizedTypeTable": true,
+      "crossLanguageFallbackEvidence": [],
+      "catalog": {
+        "species": 251,
+        "moves": 251,
+        "types": 18,
+        "namedTypes": 18,
+        "typesWithSemanticRoles": 18,
+        "abilities": 0,
+        "evolutionEdges": 0,
+        "learnsetEntries": 0,
+        "encounterAreas": 335,
+        "areaIdentities": 368
+      },
+      "localizedCapabilities": {
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 251,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9721115537848606,
+          "coveredRecords": 244,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 251,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9920318725099602,
+          "coveredRecords": 249,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "TYPE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 18,
+          "expectedRecords": 18,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "NATURE_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ITEM_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 62,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "AREA_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "LOCAL_MAP_NAMES": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 364,
+          "expectedRecords": 368,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_REGION_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 2,
+          "expectedRecords": 2,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_LOCATION_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 79,
+          "expectedRecords": 79,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 335,
+          "expectedRecords": 335,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "POI_TEXT": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 336,
+          "expectedRecords": 1951,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        }
+      }
+    },
+    {
+      "romSha256": "542f275f8632ef5265e5cde80a8ba1f0ec11ce714ef9d773088a92680bd17d73",
+      "family": "GOLD_SILVER",
+      "language": "de",
+      "manifestStatus": "RESOLVED",
+      "projectionStatus": "RESOLVED",
+      "codecId": "gb-gen2-de",
+      "codecVersion": 1,
+      "selected": true,
+      "persistedAndReopenedExactly": true,
+      "compiledLocalizedTypeTable": true,
+      "crossLanguageFallbackEvidence": [],
+      "catalog": {
+        "species": 251,
+        "moves": 251,
+        "types": 18,
+        "namedTypes": 18,
+        "typesWithSemanticRoles": 18,
+        "abilities": 0,
+        "evolutionEdges": 0,
+        "learnsetEntries": 0,
+        "encounterAreas": 335,
+        "areaIdentities": 368
+      },
+      "localizedCapabilities": {
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 251,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9402390438247012,
+          "coveredRecords": 236,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 251,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9043824701195219,
+          "coveredRecords": 227,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "TYPE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 18,
+          "expectedRecords": 18,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "NATURE_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ITEM_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 62,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "AREA_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "LOCAL_MAP_NAMES": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 364,
+          "expectedRecords": 368,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_REGION_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 2,
+          "expectedRecords": 2,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_LOCATION_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 79,
+          "expectedRecords": 79,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 335,
+          "expectedRecords": 335,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "POI_TEXT": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 323,
+          "expectedRecords": 1951,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        }
+      }
+    },
+    {
+      "romSha256": "367e606f82b9e2e16d0cc8011c5ba2df1862da574e57ffd66e786a82af5b6e22",
+      "family": "GOLD_SILVER",
+      "language": "it",
+      "manifestStatus": "RESOLVED",
+      "projectionStatus": "RESOLVED",
+      "codecId": "gb-gen2-it",
+      "codecVersion": 1,
+      "selected": true,
+      "persistedAndReopenedExactly": true,
+      "compiledLocalizedTypeTable": true,
+      "crossLanguageFallbackEvidence": [],
+      "catalog": {
+        "species": 251,
+        "moves": 251,
+        "types": 18,
+        "namedTypes": 18,
+        "typesWithSemanticRoles": 18,
+        "abilities": 0,
+        "evolutionEdges": 0,
+        "learnsetEntries": 0,
+        "encounterAreas": 335,
+        "areaIdentities": 368
+      },
+      "localizedCapabilities": {
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 251,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9482071713147411,
+          "coveredRecords": 238,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 251,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9760956175298805,
+          "coveredRecords": 245,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "TYPE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 18,
+          "expectedRecords": 18,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "NATURE_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ITEM_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 62,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "AREA_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "LOCAL_MAP_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 1.0,
+          "coveredRecords": 0,
+          "expectedRecords": 368,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_REGION_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_LOCATION_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 335,
+          "expectedRecords": 335,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "POI_TEXT": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 330,
+          "expectedRecords": 1951,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        }
+      }
+    },
+    {
+      "romSha256": "7b78e33a348a0729e38ee0fd778cf49b3e07c35d2175ebc74d8f9be41f41455b",
+      "family": "GOLD_SILVER",
+      "language": "es",
+      "manifestStatus": "RESOLVED",
+      "projectionStatus": "RESOLVED",
+      "codecId": "gb-gen2-es",
+      "codecVersion": 1,
+      "selected": true,
+      "persistedAndReopenedExactly": true,
+      "compiledLocalizedTypeTable": true,
+      "crossLanguageFallbackEvidence": [],
+      "catalog": {
+        "species": 251,
+        "moves": 251,
+        "types": 18,
+        "namedTypes": 18,
+        "typesWithSemanticRoles": 18,
+        "abilities": 0,
+        "evolutionEdges": 0,
+        "learnsetEntries": 0,
+        "encounterAreas": 335,
+        "areaIdentities": 368
+      },
+      "localizedCapabilities": {
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 251,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9402390438247012,
+          "coveredRecords": 236,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 251,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9960159362549801,
+          "coveredRecords": 250,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "TYPE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 18,
+          "expectedRecords": 18,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "NATURE_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ITEM_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 62,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "AREA_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "LOCAL_MAP_NAMES": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 364,
+          "expectedRecords": 368,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_REGION_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 2,
+          "expectedRecords": 2,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_LOCATION_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 79,
+          "expectedRecords": 79,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 335,
+          "expectedRecords": 335,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "POI_TEXT": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 326,
+          "expectedRecords": 1951,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        }
+      }
+    },
+    {
+      "romSha256": "fdcc3c8c43813cf8731fc037d2a6d191bac75439c34b24ba1c27526e6acdc8a2",
+      "family": "CRYSTAL",
+      "language": "en",
+      "manifestStatus": "RESOLVED",
+      "projectionStatus": "RESOLVED",
+      "codecId": "gb-gen2-en",
+      "codecVersion": 1,
+      "selected": true,
+      "persistedAndReopenedExactly": true,
+      "compiledLocalizedTypeTable": true,
+      "crossLanguageFallbackEvidence": [],
+      "catalog": {
+        "species": 251,
+        "moves": 251,
+        "types": 18,
+        "namedTypes": 18,
+        "typesWithSemanticRoles": 18,
+        "abilities": 0,
+        "evolutionEdges": 122,
+        "learnsetEntries": 2215,
+        "encounterAreas": 335,
+        "areaIdentities": 388
+      },
+      "localizedCapabilities": {
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 251,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 251,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 251,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 251,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "TYPE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 18,
+          "expectedRecords": 18,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "NATURE_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ITEM_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 76,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "AREA_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "LOCAL_MAP_NAMES": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 382,
+          "expectedRecords": 388,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_REGION_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 2,
+          "expectedRecords": 2,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_LOCATION_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 79,
+          "expectedRecords": 79,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 335,
+          "expectedRecords": 335,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "POI_TEXT": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 342,
+          "expectedRecords": 2082,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        }
+      }
+    },
+    {
+      "romSha256": "178b0da870a3cc58414940412eb6473f515b8941cb83d81a1a42d05ca82749e7",
+      "family": "CRYSTAL",
+      "language": "fr",
+      "manifestStatus": "RESOLVED",
+      "projectionStatus": "RESOLVED",
+      "codecId": "gb-gen2-fr",
+      "codecVersion": 1,
+      "selected": true,
+      "persistedAndReopenedExactly": true,
+      "compiledLocalizedTypeTable": true,
+      "crossLanguageFallbackEvidence": [],
+      "catalog": {
+        "species": 251,
+        "moves": 251,
+        "types": 18,
+        "namedTypes": 18,
+        "typesWithSemanticRoles": 18,
+        "abilities": 0,
+        "evolutionEdges": 0,
+        "learnsetEntries": 0,
+        "encounterAreas": 335,
+        "areaIdentities": 388
+      },
+      "localizedCapabilities": {
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 251,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9362549800796812,
+          "coveredRecords": 235,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 251,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9920318725099602,
+          "coveredRecords": 249,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "TYPE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 18,
+          "expectedRecords": 18,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "NATURE_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ITEM_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 76,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "AREA_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "LOCAL_MAP_NAMES": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 284,
+          "expectedRecords": 388,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_REGION_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 2,
+          "expectedRecords": 2,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_LOCATION_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 79,
+          "expectedRecords": 79,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 335,
+          "expectedRecords": 335,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "POI_TEXT": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 354,
+          "expectedRecords": 2082,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        }
+      }
+    },
+    {
+      "romSha256": "22c0dfec9ce004dceebe280d71fa2579fa376064f70284bbf46322e163aa1160",
+      "family": "CRYSTAL",
+      "language": "de",
+      "manifestStatus": "RESOLVED",
+      "projectionStatus": "RESOLVED",
+      "codecId": "gb-gen2-de",
+      "codecVersion": 1,
+      "selected": true,
+      "persistedAndReopenedExactly": true,
+      "compiledLocalizedTypeTable": true,
+      "crossLanguageFallbackEvidence": [],
+      "catalog": {
+        "species": 251,
+        "moves": 251,
+        "types": 18,
+        "namedTypes": 18,
+        "typesWithSemanticRoles": 18,
+        "abilities": 0,
+        "evolutionEdges": 116,
+        "learnsetEntries": 2119,
+        "encounterAreas": 335,
+        "areaIdentities": 388
+      },
+      "localizedCapabilities": {
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 251,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9402390438247012,
+          "coveredRecords": 236,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 251,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9243027888446215,
+          "coveredRecords": 232,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "TYPE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 18,
+          "expectedRecords": 18,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "NATURE_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ITEM_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 76,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "AREA_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "LOCAL_MAP_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 1.0,
+          "coveredRecords": 0,
+          "expectedRecords": 388,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_REGION_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_LOCATION_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 335,
+          "expectedRecords": 335,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "POI_TEXT": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 341,
+          "expectedRecords": 2082,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        }
+      }
+    },
+    {
+      "romSha256": "2592aef20701fa1d5df5cf3343ffb4293092c911177868fa4a94698c27f7be89",
+      "family": "CRYSTAL",
+      "language": "it",
+      "manifestStatus": "RESOLVED",
+      "projectionStatus": "RESOLVED",
+      "codecId": "gb-gen2-it",
+      "codecVersion": 1,
+      "selected": true,
+      "persistedAndReopenedExactly": true,
+      "compiledLocalizedTypeTable": true,
+      "crossLanguageFallbackEvidence": [],
+      "catalog": {
+        "species": 251,
+        "moves": 251,
+        "types": 18,
+        "namedTypes": 18,
+        "typesWithSemanticRoles": 18,
+        "abilities": 0,
+        "evolutionEdges": 0,
+        "learnsetEntries": 0,
+        "encounterAreas": 335,
+        "areaIdentities": 388
+      },
+      "localizedCapabilities": {
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 251,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9322709163346613,
+          "coveredRecords": 234,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 251,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9721115537848606,
+          "coveredRecords": 244,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "TYPE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 18,
+          "expectedRecords": 18,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "NATURE_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ITEM_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 76,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "AREA_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "LOCAL_MAP_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 1.0,
+          "coveredRecords": 0,
+          "expectedRecords": 388,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_REGION_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_LOCATION_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 335,
+          "expectedRecords": 335,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "POI_TEXT": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 347,
+          "expectedRecords": 2082,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        }
+      }
+    },
+    {
+      "romSha256": "4aacb5b3ac7a741d99f507e7c31393c015dea26a3ce8876021c50e7c761c1141",
+      "family": "CRYSTAL",
+      "language": "es",
+      "manifestStatus": "RESOLVED",
+      "projectionStatus": "RESOLVED",
+      "codecId": "gb-gen2-es",
+      "codecVersion": 1,
+      "selected": true,
+      "persistedAndReopenedExactly": true,
+      "compiledLocalizedTypeTable": true,
+      "crossLanguageFallbackEvidence": [],
+      "catalog": {
+        "species": 251,
+        "moves": 251,
+        "types": 18,
+        "namedTypes": 18,
+        "typesWithSemanticRoles": 18,
+        "abilities": 0,
+        "evolutionEdges": 0,
+        "learnsetEntries": 0,
+        "encounterAreas": 335,
+        "areaIdentities": 388
+      },
+      "localizedCapabilities": {
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 251,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9322709163346613,
+          "coveredRecords": 234,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 251,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9960159362549801,
+          "coveredRecords": 250,
+          "expectedRecords": 251,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "TYPE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 18,
+          "expectedRecords": 18,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "NATURE_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ITEM_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 76,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "AREA_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "LOCAL_MAP_NAMES": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 382,
+          "expectedRecords": 388,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_REGION_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 2,
+          "expectedRecords": 2,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_LOCATION_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 79,
+          "expectedRecords": 79,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 335,
+          "expectedRecords": 335,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "POI_TEXT": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 337,
+          "expectedRecords": 2082,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        }
+      }
+    },
+    {
+      "romSha256": "0fdd36e92b75bed65d09df4635ab0b707b288c2bf1dc4c6e7a4a4f0eebe9d64c",
+      "family": "RUBY_SAPPHIRE",
+      "language": "en",
+      "manifestStatus": "RESOLVED",
+      "projectionStatus": "RESOLVED",
+      "codecId": "gba-gen3-en",
+      "codecVersion": 1,
+      "selected": true,
+      "persistedAndReopenedExactly": true,
+      "compiledLocalizedTypeTable": true,
+      "crossLanguageFallbackEvidence": [],
+      "catalog": {
+        "species": 386,
+        "moves": 354,
+        "types": 18,
+        "namedTypes": 18,
+        "typesWithSemanticRoles": 18,
+        "abilities": 77,
+        "evolutionEdges": 184,
+        "learnsetEntries": 3947,
+        "encounterAreas": 179,
+        "areaIdentities": 394
+      },
+      "localizedCapabilities": {
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 412,
+          "expectedRecords": 412,
+          "reviewStatus": "MANUAL_REVIEW",
+          "validatorReviewRecommended": true
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9391727493917275,
+          "coveredRecords": 386,
+          "expectedRecords": 411,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 354,
+          "expectedRecords": 354,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 354,
+          "expectedRecords": 354,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 77,
+          "expectedRecords": 77,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 0.922077922077922,
+          "coveredRecords": 77,
+          "expectedRecords": 77,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "TYPE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 18,
+          "expectedRecords": 18,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "NATURE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 25,
+          "expectedRecords": 25,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ITEM_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 101,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 375,
+          "expectedRecords": 375,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "LOCAL_MAP_NAMES": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 375,
+          "expectedRecords": 394,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_REGION_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 1.0,
+          "coveredRecords": 0,
+          "expectedRecords": 1,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_LOCATION_NAMES": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 83,
+          "expectedRecords": 84,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 179,
+          "expectedRecords": 179,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "POI_TEXT": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 281,
+          "expectedRecords": 1904,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        }
+      }
+    },
+    {
+      "romSha256": "9678645ca67932a42c92b1d6bac118925a6be9f67135ae8fe7747df85cdabdd0",
+      "family": "RUBY_SAPPHIRE",
+      "language": "fr",
+      "manifestStatus": "RESOLVED",
+      "projectionStatus": "RESOLVED",
+      "codecId": "gba-gen3-fr",
+      "codecVersion": 1,
+      "selected": true,
+      "persistedAndReopenedExactly": true,
+      "compiledLocalizedTypeTable": true,
+      "crossLanguageFallbackEvidence": [],
+      "catalog": {
+        "species": 386,
+        "moves": 354,
+        "types": 18,
+        "namedTypes": 18,
+        "typesWithSemanticRoles": 18,
+        "abilities": 77,
+        "evolutionEdges": 184,
+        "learnsetEntries": 3947,
+        "encounterAreas": 179,
+        "areaIdentities": 394
+      },
+      "localizedCapabilities": {
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 412,
+          "expectedRecords": 412,
+          "reviewStatus": "MANUAL_REVIEW",
+          "validatorReviewRecommended": true
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9391727493917275,
+          "coveredRecords": 386,
+          "expectedRecords": 411,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 354,
+          "expectedRecords": 354,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 354,
+          "expectedRecords": 354,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 77,
+          "expectedRecords": 77,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 0.8961038961038961,
+          "coveredRecords": 77,
+          "expectedRecords": 77,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "TYPE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 18,
+          "expectedRecords": 18,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "NATURE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 25,
+          "expectedRecords": 25,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ITEM_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 101,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 375,
+          "expectedRecords": 375,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "LOCAL_MAP_NAMES": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 375,
+          "expectedRecords": 394,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_REGION_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 1.0,
+          "coveredRecords": 0,
+          "expectedRecords": 1,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_LOCATION_NAMES": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 83,
+          "expectedRecords": 84,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 179,
+          "expectedRecords": 179,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "POI_TEXT": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 281,
+          "expectedRecords": 1904,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        }
+      }
+    },
+    {
+      "romSha256": "e0b620d576bc503e083bb9d2af1f5ffc40127b84e6ca734e3c45534d0d008043",
+      "family": "RUBY_SAPPHIRE",
+      "language": "de",
+      "manifestStatus": "RESOLVED",
+      "projectionStatus": "RESOLVED",
+      "codecId": "gba-gen3-de",
+      "codecVersion": 1,
+      "selected": true,
+      "persistedAndReopenedExactly": true,
+      "compiledLocalizedTypeTable": true,
+      "crossLanguageFallbackEvidence": [],
+      "catalog": {
+        "species": 386,
+        "moves": 354,
+        "types": 18,
+        "namedTypes": 18,
+        "typesWithSemanticRoles": 18,
+        "abilities": 77,
+        "evolutionEdges": 184,
+        "learnsetEntries": 3947,
+        "encounterAreas": 179,
+        "areaIdentities": 394
+      },
+      "localizedCapabilities": {
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 412,
+          "expectedRecords": 412,
+          "reviewStatus": "MANUAL_REVIEW",
+          "validatorReviewRecommended": true
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9391727493917275,
+          "coveredRecords": 386,
+          "expectedRecords": 411,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 354,
+          "expectedRecords": 354,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 354,
+          "expectedRecords": 354,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 77,
+          "expectedRecords": 77,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 0.948051948051948,
+          "coveredRecords": 77,
+          "expectedRecords": 77,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "TYPE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 18,
+          "expectedRecords": 18,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "NATURE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 25,
+          "expectedRecords": 25,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ITEM_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 101,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 375,
+          "expectedRecords": 375,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "LOCAL_MAP_NAMES": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 375,
+          "expectedRecords": 394,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_REGION_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 1.0,
+          "coveredRecords": 0,
+          "expectedRecords": 1,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_LOCATION_NAMES": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 83,
+          "expectedRecords": 84,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 179,
+          "expectedRecords": 179,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "POI_TEXT": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 281,
+          "expectedRecords": 1904,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        }
+      }
+    },
+    {
+      "romSha256": "be116b6fa8d8c12d7ccff3faefd5defd886faa427ff2c85c06d245cbe4e531b2",
+      "family": "RUBY_SAPPHIRE",
+      "language": "it",
+      "manifestStatus": "RESOLVED",
+      "projectionStatus": "RESOLVED",
+      "codecId": "gba-gen3-it",
+      "codecVersion": 1,
+      "selected": true,
+      "persistedAndReopenedExactly": true,
+      "compiledLocalizedTypeTable": true,
+      "crossLanguageFallbackEvidence": [],
+      "catalog": {
+        "species": 386,
+        "moves": 354,
+        "types": 18,
+        "namedTypes": 18,
+        "typesWithSemanticRoles": 18,
+        "abilities": 77,
+        "evolutionEdges": 184,
+        "learnsetEntries": 3947,
+        "encounterAreas": 179,
+        "areaIdentities": 394
+      },
+      "localizedCapabilities": {
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 412,
+          "expectedRecords": 412,
+          "reviewStatus": "MANUAL_REVIEW",
+          "validatorReviewRecommended": true
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9391727493917275,
+          "coveredRecords": 386,
+          "expectedRecords": 411,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 354,
+          "expectedRecords": 354,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 354,
+          "expectedRecords": 354,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 77,
+          "expectedRecords": 77,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 0.935064935064935,
+          "coveredRecords": 77,
+          "expectedRecords": 77,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "TYPE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 18,
+          "expectedRecords": 18,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "NATURE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 25,
+          "expectedRecords": 25,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ITEM_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 101,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 375,
+          "expectedRecords": 375,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "LOCAL_MAP_NAMES": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 375,
+          "expectedRecords": 394,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_REGION_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 1.0,
+          "coveredRecords": 0,
+          "expectedRecords": 1,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_LOCATION_NAMES": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 83,
+          "expectedRecords": 84,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 179,
+          "expectedRecords": 179,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "POI_TEXT": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 280,
+          "expectedRecords": 1904,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        }
+      }
+    },
+    {
+      "romSha256": "0db39958c19abcedc7670fb16fd3274a5b205df794eb7491bea0580aa752e095",
+      "family": "RUBY_SAPPHIRE",
+      "language": "es",
+      "manifestStatus": "RESOLVED",
+      "projectionStatus": "RESOLVED",
+      "codecId": "gba-gen3-es",
+      "codecVersion": 1,
+      "selected": true,
+      "persistedAndReopenedExactly": true,
+      "compiledLocalizedTypeTable": true,
+      "crossLanguageFallbackEvidence": [],
+      "catalog": {
+        "species": 386,
+        "moves": 354,
+        "types": 18,
+        "namedTypes": 18,
+        "typesWithSemanticRoles": 18,
+        "abilities": 77,
+        "evolutionEdges": 184,
+        "learnsetEntries": 3947,
+        "encounterAreas": 179,
+        "areaIdentities": 394
+      },
+      "localizedCapabilities": {
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 412,
+          "expectedRecords": 412,
+          "reviewStatus": "MANUAL_REVIEW",
+          "validatorReviewRecommended": true
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9391727493917275,
+          "coveredRecords": 386,
+          "expectedRecords": 411,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 354,
+          "expectedRecords": 354,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 354,
+          "expectedRecords": 354,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 77,
+          "expectedRecords": 77,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 0.948051948051948,
+          "coveredRecords": 77,
+          "expectedRecords": 77,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "TYPE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 18,
+          "expectedRecords": 18,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "NATURE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 25,
+          "expectedRecords": 25,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ITEM_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 101,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 375,
+          "expectedRecords": 375,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "LOCAL_MAP_NAMES": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 375,
+          "expectedRecords": 394,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_REGION_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 1.0,
+          "coveredRecords": 0,
+          "expectedRecords": 1,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_LOCATION_NAMES": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 83,
+          "expectedRecords": 84,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 179,
+          "expectedRecords": 179,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "POI_TEXT": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 281,
+          "expectedRecords": 1904,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        }
+      }
+    },
+    {
+      "romSha256": "a9dec84dfe7f62ab2220bafaef7479da0929d066ece16a6885f6226db19085af",
+      "family": "EMERALD",
+      "language": "en",
+      "manifestStatus": "RESOLVED",
+      "projectionStatus": "RESOLVED",
+      "codecId": "gba-gen3-en",
+      "codecVersion": 1,
+      "selected": true,
+      "persistedAndReopenedExactly": true,
+      "compiledLocalizedTypeTable": true,
+      "crossLanguageFallbackEvidence": [],
+      "catalog": {
+        "species": 386,
+        "moves": 354,
+        "types": 18,
+        "namedTypes": 18,
+        "typesWithSemanticRoles": 18,
+        "abilities": 77,
+        "evolutionEdges": 184,
+        "learnsetEntries": 3947,
+        "encounterAreas": 201,
+        "areaIdentities": 518
+      },
+      "localizedCapabilities": {
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 412,
+          "expectedRecords": 412,
+          "reviewStatus": "MANUAL_REVIEW",
+          "validatorReviewRecommended": true
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9391727493917275,
+          "coveredRecords": 386,
+          "expectedRecords": 411,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 354,
+          "expectedRecords": 354,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 354,
+          "expectedRecords": 354,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 77,
+          "expectedRecords": 77,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 77,
+          "expectedRecords": 77,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "TYPE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 18,
+          "expectedRecords": 18,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "NATURE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 25,
+          "expectedRecords": 25,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ITEM_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 104,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 482,
+          "expectedRecords": 482,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "LOCAL_MAP_NAMES": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 482,
+          "expectedRecords": 518,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_REGION_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 1.0,
+          "coveredRecords": 0,
+          "expectedRecords": 1,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_LOCATION_NAMES": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 98,
+          "expectedRecords": 99,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 201,
+          "expectedRecords": 201,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "POI_TEXT": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 293,
+          "expectedRecords": 2136,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        }
+      }
+    },
+    {
+      "romSha256": "e79b40e6189550b4870b06918a5c59e04d3a2e1d7c92718aeda92181201f51e4",
+      "family": "EMERALD",
+      "language": "fr",
+      "manifestStatus": "RESOLVED",
+      "projectionStatus": "RESOLVED",
+      "codecId": "gba-gen3-fr",
+      "codecVersion": 1,
+      "selected": true,
+      "persistedAndReopenedExactly": true,
+      "compiledLocalizedTypeTable": true,
+      "crossLanguageFallbackEvidence": [],
+      "catalog": {
+        "species": 386,
+        "moves": 354,
+        "types": 18,
+        "namedTypes": 18,
+        "typesWithSemanticRoles": 18,
+        "abilities": 77,
+        "evolutionEdges": 184,
+        "learnsetEntries": 3947,
+        "encounterAreas": 201,
+        "areaIdentities": 518
+      },
+      "localizedCapabilities": {
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 412,
+          "expectedRecords": 412,
+          "reviewStatus": "MANUAL_REVIEW",
+          "validatorReviewRecommended": true
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9391727493917275,
+          "coveredRecords": 386,
+          "expectedRecords": 411,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 354,
+          "expectedRecords": 354,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 354,
+          "expectedRecords": 354,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 77,
+          "expectedRecords": 77,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 77,
+          "expectedRecords": 77,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "TYPE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 18,
+          "expectedRecords": 18,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "NATURE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 25,
+          "expectedRecords": 25,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ITEM_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 104,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 482,
+          "expectedRecords": 482,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "LOCAL_MAP_NAMES": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 482,
+          "expectedRecords": 518,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_REGION_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 1.0,
+          "coveredRecords": 0,
+          "expectedRecords": 1,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_LOCATION_NAMES": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 98,
+          "expectedRecords": 99,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 201,
+          "expectedRecords": 201,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "POI_TEXT": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 293,
+          "expectedRecords": 2136,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        }
+      }
+    },
+    {
+      "romSha256": "7c599c56849efeebeb93bd71f714932ae4cdf980db51c9c1016b4431057f71d4",
+      "family": "EMERALD",
+      "language": "de",
+      "manifestStatus": "RESOLVED",
+      "projectionStatus": "RESOLVED",
+      "codecId": "gba-gen3-de",
+      "codecVersion": 1,
+      "selected": true,
+      "persistedAndReopenedExactly": true,
+      "compiledLocalizedTypeTable": true,
+      "crossLanguageFallbackEvidence": [],
+      "catalog": {
+        "species": 386,
+        "moves": 354,
+        "types": 18,
+        "namedTypes": 18,
+        "typesWithSemanticRoles": 18,
+        "abilities": 77,
+        "evolutionEdges": 184,
+        "learnsetEntries": 0,
+        "encounterAreas": 201,
+        "areaIdentities": 518
+      },
+      "localizedCapabilities": {
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 412,
+          "expectedRecords": 412,
+          "reviewStatus": "MANUAL_REVIEW",
+          "validatorReviewRecommended": true
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9391727493917275,
+          "coveredRecords": 386,
+          "expectedRecords": 411,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 354,
+          "expectedRecords": 354,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 354,
+          "expectedRecords": 354,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 77,
+          "expectedRecords": 77,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 77,
+          "expectedRecords": 77,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "TYPE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 18,
+          "expectedRecords": 18,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "NATURE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 25,
+          "expectedRecords": 25,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ITEM_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 104,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 482,
+          "expectedRecords": 482,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "LOCAL_MAP_NAMES": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 482,
+          "expectedRecords": 518,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_REGION_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 1.0,
+          "coveredRecords": 0,
+          "expectedRecords": 1,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_LOCATION_NAMES": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 98,
+          "expectedRecords": 99,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 201,
+          "expectedRecords": 201,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "POI_TEXT": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 293,
+          "expectedRecords": 2136,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        }
+      }
+    },
+    {
+      "romSha256": "63cbff3500b657cb6966568beb0780de3655d3a0b2e5ac6e0ec33d5d01a916ad",
+      "family": "EMERALD",
+      "language": "it",
+      "manifestStatus": "RESOLVED",
+      "projectionStatus": "RESOLVED",
+      "codecId": "gba-gen3-it",
+      "codecVersion": 1,
+      "selected": true,
+      "persistedAndReopenedExactly": true,
+      "compiledLocalizedTypeTable": true,
+      "crossLanguageFallbackEvidence": [],
+      "catalog": {
+        "species": 386,
+        "moves": 354,
+        "types": 18,
+        "namedTypes": 18,
+        "typesWithSemanticRoles": 18,
+        "abilities": 77,
+        "evolutionEdges": 184,
+        "learnsetEntries": 3947,
+        "encounterAreas": 201,
+        "areaIdentities": 518
+      },
+      "localizedCapabilities": {
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 412,
+          "expectedRecords": 412,
+          "reviewStatus": "MANUAL_REVIEW",
+          "validatorReviewRecommended": true
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9391727493917275,
+          "coveredRecords": 386,
+          "expectedRecords": 411,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 354,
+          "expectedRecords": 354,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 354,
+          "expectedRecords": 354,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 77,
+          "expectedRecords": 77,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 77,
+          "expectedRecords": 77,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "TYPE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 18,
+          "expectedRecords": 18,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "NATURE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 25,
+          "expectedRecords": 25,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ITEM_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 104,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 482,
+          "expectedRecords": 482,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "LOCAL_MAP_NAMES": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 482,
+          "expectedRecords": 518,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_REGION_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 1.0,
+          "coveredRecords": 0,
+          "expectedRecords": 1,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_LOCATION_NAMES": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 98,
+          "expectedRecords": 99,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 201,
+          "expectedRecords": 201,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "POI_TEXT": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 294,
+          "expectedRecords": 2136,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        }
+      }
+    },
+    {
+      "romSha256": "e32c82bd10f174cf4019123b36f3ef7729105fb6634d9aa6b61413ee5101a55e",
+      "family": "EMERALD",
+      "language": "es",
+      "manifestStatus": "RESOLVED",
+      "projectionStatus": "RESOLVED",
+      "codecId": "gba-gen3-es",
+      "codecVersion": 1,
+      "selected": true,
+      "persistedAndReopenedExactly": true,
+      "compiledLocalizedTypeTable": true,
+      "crossLanguageFallbackEvidence": [],
+      "catalog": {
+        "species": 386,
+        "moves": 354,
+        "types": 18,
+        "namedTypes": 18,
+        "typesWithSemanticRoles": 18,
+        "abilities": 77,
+        "evolutionEdges": 184,
+        "learnsetEntries": 3947,
+        "encounterAreas": 201,
+        "areaIdentities": 518
+      },
+      "localizedCapabilities": {
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 412,
+          "expectedRecords": 412,
+          "reviewStatus": "MANUAL_REVIEW",
+          "validatorReviewRecommended": true
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9391727493917275,
+          "coveredRecords": 386,
+          "expectedRecords": 411,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 354,
+          "expectedRecords": 354,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 354,
+          "expectedRecords": 354,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 77,
+          "expectedRecords": 77,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 77,
+          "expectedRecords": 77,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "TYPE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 18,
+          "expectedRecords": 18,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "NATURE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 25,
+          "expectedRecords": 25,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ITEM_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 104,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 482,
+          "expectedRecords": 482,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "LOCAL_MAP_NAMES": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 482,
+          "expectedRecords": 518,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_REGION_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 1.0,
+          "coveredRecords": 0,
+          "expectedRecords": 1,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_LOCATION_NAMES": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 98,
+          "expectedRecords": 99,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 201,
+          "expectedRecords": 201,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "POI_TEXT": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 293,
+          "expectedRecords": 2136,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        }
+      }
+    },
+    {
+      "romSha256": "729041b940afe031302d630fdbe57c0c145f3f7b6d9b8eca5e98678d0ca4d059",
+      "family": "FIRERED_LEAFGREEN",
+      "language": "en",
+      "manifestStatus": "RESOLVED",
+      "projectionStatus": "RESOLVED",
+      "codecId": "gba-gen3-en",
+      "codecVersion": 1,
+      "selected": true,
+      "persistedAndReopenedExactly": true,
+      "compiledLocalizedTypeTable": true,
+      "crossLanguageFallbackEvidence": [],
+      "catalog": {
+        "species": 386,
+        "moves": 354,
+        "types": 18,
+        "namedTypes": 18,
+        "typesWithSemanticRoles": 18,
+        "abilities": 77,
+        "evolutionEdges": 184,
+        "learnsetEntries": 4011,
+        "encounterAreas": 219,
+        "areaIdentities": 425
+      },
+      "localizedCapabilities": {
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 412,
+          "expectedRecords": 412,
+          "reviewStatus": "MANUAL_REVIEW",
+          "validatorReviewRecommended": true
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9391727493917275,
+          "coveredRecords": 386,
+          "expectedRecords": 411,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 354,
+          "expectedRecords": 354,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 354,
+          "expectedRecords": 354,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 77,
+          "expectedRecords": 77,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 77,
+          "expectedRecords": 77,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "TYPE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 18,
+          "expectedRecords": 18,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "NATURE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 25,
+          "expectedRecords": 25,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ITEM_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 127,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "AREA_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "LOCAL_MAP_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 1.0,
+          "coveredRecords": 0,
+          "expectedRecords": 425,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_REGION_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 1.0,
+          "coveredRecords": 0,
+          "expectedRecords": 4,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_LOCATION_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 1.0,
+          "coveredRecords": 0,
+          "expectedRecords": 69,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 219,
+          "expectedRecords": 219,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "POI_TEXT": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 250,
+          "expectedRecords": 2129,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        }
+      }
+    },
+    {
+      "romSha256": "245866842349cedbe2a034c6d20438d26d18b627b3d0909d7cb795fc87d7675a",
+      "family": "FIRERED_LEAFGREEN",
+      "language": "fr",
+      "manifestStatus": "RESOLVED",
+      "projectionStatus": "RESOLVED",
+      "codecId": "gba-gen3-fr",
+      "codecVersion": 1,
+      "selected": true,
+      "persistedAndReopenedExactly": true,
+      "compiledLocalizedTypeTable": true,
+      "crossLanguageFallbackEvidence": [],
+      "catalog": {
+        "species": 386,
+        "moves": 354,
+        "types": 18,
+        "namedTypes": 18,
+        "typesWithSemanticRoles": 18,
+        "abilities": 77,
+        "evolutionEdges": 184,
+        "learnsetEntries": 4011,
+        "encounterAreas": 219,
+        "areaIdentities": 425
+      },
+      "localizedCapabilities": {
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 412,
+          "expectedRecords": 412,
+          "reviewStatus": "MANUAL_REVIEW",
+          "validatorReviewRecommended": true
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9391727493917275,
+          "coveredRecords": 386,
+          "expectedRecords": 411,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 354,
+          "expectedRecords": 354,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 354,
+          "expectedRecords": 354,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 77,
+          "expectedRecords": 77,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 77,
+          "expectedRecords": 77,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "TYPE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 18,
+          "expectedRecords": 18,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "NATURE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 25,
+          "expectedRecords": 25,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ITEM_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 127,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "AREA_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "LOCAL_MAP_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 1.0,
+          "coveredRecords": 0,
+          "expectedRecords": 425,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_REGION_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 1.0,
+          "coveredRecords": 0,
+          "expectedRecords": 4,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_LOCATION_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 1.0,
+          "coveredRecords": 0,
+          "expectedRecords": 69,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 219,
+          "expectedRecords": 219,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "POI_TEXT": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 250,
+          "expectedRecords": 2129,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        }
+      }
+    },
+    {
+      "romSha256": "eed4fb0242bcbb6e0b0b80b197b47e3aec99ef4c5562cc45bae50ae86b970507",
+      "family": "FIRERED_LEAFGREEN",
+      "language": "de",
+      "manifestStatus": "RESOLVED",
+      "projectionStatus": "RESOLVED",
+      "codecId": "gba-gen3-de",
+      "codecVersion": 1,
+      "selected": true,
+      "persistedAndReopenedExactly": true,
+      "compiledLocalizedTypeTable": true,
+      "crossLanguageFallbackEvidence": [],
+      "catalog": {
+        "species": 386,
+        "moves": 354,
+        "types": 18,
+        "namedTypes": 18,
+        "typesWithSemanticRoles": 18,
+        "abilities": 77,
+        "evolutionEdges": 184,
+        "learnsetEntries": 4011,
+        "encounterAreas": 219,
+        "areaIdentities": 425
+      },
+      "localizedCapabilities": {
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 412,
+          "expectedRecords": 412,
+          "reviewStatus": "MANUAL_REVIEW",
+          "validatorReviewRecommended": true
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9391727493917275,
+          "coveredRecords": 386,
+          "expectedRecords": 411,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 354,
+          "expectedRecords": 354,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 354,
+          "expectedRecords": 354,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 77,
+          "expectedRecords": 77,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 77,
+          "expectedRecords": 77,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "TYPE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 18,
+          "expectedRecords": 18,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "NATURE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 25,
+          "expectedRecords": 25,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ITEM_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 127,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "AREA_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "LOCAL_MAP_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 1.0,
+          "coveredRecords": 0,
+          "expectedRecords": 425,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_REGION_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 1.0,
+          "coveredRecords": 0,
+          "expectedRecords": 4,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_LOCATION_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 1.0,
+          "coveredRecords": 0,
+          "expectedRecords": 69,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 219,
+          "expectedRecords": 219,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "POI_TEXT": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 251,
+          "expectedRecords": 2129,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        }
+      }
+    },
+    {
+      "romSha256": "ad52b593ef0c7439e1409d3f0a1ec3ff865a494ca46c2184fe65573759838f3a",
+      "family": "FIRERED_LEAFGREEN",
+      "language": "it",
+      "manifestStatus": "RESOLVED",
+      "projectionStatus": "RESOLVED",
+      "codecId": "gba-gen3-it",
+      "codecVersion": 1,
+      "selected": true,
+      "persistedAndReopenedExactly": true,
+      "compiledLocalizedTypeTable": true,
+      "crossLanguageFallbackEvidence": [],
+      "catalog": {
+        "species": 386,
+        "moves": 354,
+        "types": 18,
+        "namedTypes": 18,
+        "typesWithSemanticRoles": 18,
+        "abilities": 77,
+        "evolutionEdges": 184,
+        "learnsetEntries": 4011,
+        "encounterAreas": 219,
+        "areaIdentities": 425
+      },
+      "localizedCapabilities": {
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 412,
+          "expectedRecords": 412,
+          "reviewStatus": "MANUAL_REVIEW",
+          "validatorReviewRecommended": true
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9391727493917275,
+          "coveredRecords": 386,
+          "expectedRecords": 411,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 354,
+          "expectedRecords": 354,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 354,
+          "expectedRecords": 354,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 77,
+          "expectedRecords": 77,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 77,
+          "expectedRecords": 77,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "TYPE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 18,
+          "expectedRecords": 18,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "NATURE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 25,
+          "expectedRecords": 25,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ITEM_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 127,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "AREA_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "LOCAL_MAP_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 1.0,
+          "coveredRecords": 0,
+          "expectedRecords": 425,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_REGION_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 1.0,
+          "coveredRecords": 0,
+          "expectedRecords": 4,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_LOCATION_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 1.0,
+          "coveredRecords": 0,
+          "expectedRecords": 69,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 219,
+          "expectedRecords": 219,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "POI_TEXT": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 250,
+          "expectedRecords": 2129,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        }
+      }
+    },
+    {
+      "romSha256": "ab696c065639e4d73c3c3ed9d4fbf9c7fed593761f3b6746256ff82465596554",
+      "family": "FIRERED_LEAFGREEN",
+      "language": "es",
+      "manifestStatus": "RESOLVED",
+      "projectionStatus": "RESOLVED",
+      "codecId": "gba-gen3-es",
+      "codecVersion": 1,
+      "selected": true,
+      "persistedAndReopenedExactly": true,
+      "compiledLocalizedTypeTable": true,
+      "crossLanguageFallbackEvidence": [],
+      "catalog": {
+        "species": 386,
+        "moves": 354,
+        "types": 18,
+        "namedTypes": 18,
+        "typesWithSemanticRoles": 18,
+        "abilities": 77,
+        "evolutionEdges": 184,
+        "learnsetEntries": 4011,
+        "encounterAreas": 219,
+        "areaIdentities": 425
+      },
+      "localizedCapabilities": {
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 412,
+          "expectedRecords": 412,
+          "reviewStatus": "MANUAL_REVIEW",
+          "validatorReviewRecommended": true
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9391727493917275,
+          "coveredRecords": 386,
+          "expectedRecords": 411,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 354,
+          "expectedRecords": 354,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 354,
+          "expectedRecords": 354,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 77,
+          "expectedRecords": 77,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 77,
+          "expectedRecords": 77,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "TYPE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 18,
+          "expectedRecords": 18,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "NATURE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 25,
+          "expectedRecords": 25,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ITEM_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 127,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "AREA_NAMES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "LOCAL_MAP_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 1.0,
+          "coveredRecords": 0,
+          "expectedRecords": 425,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_REGION_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 1.0,
+          "coveredRecords": 0,
+          "expectedRecords": 4,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_LOCATION_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 1.0,
+          "coveredRecords": 0,
+          "expectedRecords": 69,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 219,
+          "expectedRecords": 219,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "POI_TEXT": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 251,
+          "expectedRecords": 2129,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        }
+      }
+    }
+  ]
+}
