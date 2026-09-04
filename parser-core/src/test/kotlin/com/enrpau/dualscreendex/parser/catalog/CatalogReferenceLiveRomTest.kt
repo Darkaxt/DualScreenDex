@@ -1,6 +1,7 @@
 package com.enrpau.dualscreendex.parser.catalog
 
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.language.LanguageResolutionStatus
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.model.SelectionStatus
@@ -17,7 +18,7 @@ import org.junit.Test
 /** Opt-in regressions bound to the real corpus ROMs that exposed cross-catalog reference failures. */
 class CatalogReferenceLiveRomTest {
     @Test
-    fun radicalRedKeepsItsCatalogWhenTheAbilityDomainDoesNotFitARejectedBattleField() {
+    fun radicalRedRetainsReferencedAbilityIdsWithoutClaimingLocalizedNames() {
         val configuredPath = System.getenv("DUALDEX_RADICAL_RED_ROM")
         assumeTrue("set DUALDEX_RADICAL_RED_ROM to run this live-ROM regression", !configuredPath.isNullOrBlank())
         val path = Path.of(requireNotNull(configuredPath))
@@ -27,10 +28,27 @@ class CatalogReferenceLiveRomTest {
 
         val parsed = CatalogParser.parse(rom)
         val catalog = requireNotNull(parsed.catalog)
+        val text = catalog.defaultTextProjection()
+        val referencedAbilityIds = catalog.speciesById.values
+            .flatMap { species -> species.abilityIds.value.orEmpty() }
+            .filterTo(linkedSetOf()) { it > 0 }
+        val materializedMechanicIds = catalog.abilitiesById.values
+            .filterTo(linkedSetOf()) { ability -> ability.mechanics.value.orEmpty().isNotEmpty() }
+            .mapTo(linkedSetOf()) { it.id }
 
         assertEquals(SelectionStatus.SELECTED, parsed.analysis.status)
         assertTrue(catalog.speciesById.isNotEmpty())
-        assertTrue(catalog.abilitiesById.keys.max() > 0xFF)
+        assertTrue(referencedAbilityIds.isNotEmpty())
+        assertTrue(referencedAbilityIds.all(catalog.abilitiesById::containsKey))
+        assertEquals(LanguageResolutionStatus.UNKNOWN, catalog.languageManifest.status)
+        assertTrue(catalog.localizedTextByLanguage.isEmpty())
+        assertTrue(referencedAbilityIds.all { text.abilityName(it) == null })
+        assertTrue(materializedMechanicIds.isNotEmpty())
+        assertTrue(materializedMechanicIds.all(catalog.abilitiesById::containsKey))
+        assertTrue(
+            parsed.analysis.capabilities.single { it.capability == RomCapability.ABILITY_MECHANICS }.status in
+                setOf(CapabilityStatus.AVAILABLE, CapabilityStatus.PARTIAL),
+        )
     }
 
     @Test

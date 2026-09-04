@@ -1,6 +1,9 @@
 package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
+import com.enrpau.dualscreendex.parser.dataset.abilities.AbilityNameRowOutcome
+import com.enrpau.dualscreendex.parser.dataset.abilities.AbilityNameTableLayout
+import com.enrpau.dualscreendex.parser.dataset.abilities.ResolvedAbilityNameLayout
 import com.enrpau.dualscreendex.parser.model.ValidationEvidence
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.RomCapability
@@ -8,6 +11,8 @@ import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.RomHeader
+import com.enrpau.dualscreendex.parser.family.abilityMechanicsCoverage
+import com.enrpau.dualscreendex.parser.family.abilityMechanicsDomain
 import com.enrpau.dualscreendex.parser.family.reconcileAbilityEvidence
 import com.enrpau.dualscreendex.parser.family.validatedDirectAbilityIds
 import com.enrpau.dualscreendex.parser.family.validatedAbilityCoverageLayout
@@ -88,6 +93,41 @@ class FamilyParsersAbilityResolutionTest {
             setOf(19, 203, 207),
             validatedDirectAbilityIds(RomImage(bytes), table),
         )
+    }
+
+    @Test
+    fun abilityMechanicsDomainRetainsMalformedActiveAndNumericOnlyIds() {
+        val names = ResolvedAbilityNameLayout(
+            table = AbilityNameTableLayout(0, 3, 13),
+            rows = listOf(
+                AbilityNameRowOutcome.StructuralSentinel(0, "-"),
+                AbilityNameRowOutcome.Decoded(1, "OVERGROW"),
+                AbilityNameRowOutcome.Malformed(2, listOf("invalid text")),
+            ),
+            baseRowCount = 3,
+            aliasLabels = emptyList(),
+            unresolvedActiveAbilityIds = setOf(2),
+        )
+
+        assertEquals(
+            setOf(1, 2, 3),
+            abilityMechanicsDomain(names, validatedNumericIds = setOf(0, 2, 3)),
+        )
+    }
+
+    @Test
+    fun abilityMechanicsCoverageExcludesEmptySlotsAndOutOfDomainMechanics() {
+        val coverage = abilityMechanicsCoverage(
+            activeAbilityIds = setOf(0, 1, 2),
+            mechanicIds = listOf(2, 3),
+        )
+
+        assertEquals(setOf(1, 2), coverage.expectedIds)
+        assertEquals(setOf(2), coverage.coveredIds)
+        assertEquals(2, coverage.expectedRecords)
+        assertEquals(1, coverage.coveredRecords)
+        assertEquals(1, coverage.incompleteRecords)
+        assertFalse(coverage.complete)
     }
 
     @Test

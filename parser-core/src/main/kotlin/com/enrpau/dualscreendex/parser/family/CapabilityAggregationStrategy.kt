@@ -3,6 +3,7 @@ package com.enrpau.dualscreendex.parser.family
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.dataset.abilities.AbilityMechanicsResolver
 import com.enrpau.dualscreendex.parser.dataset.abilities.ResolvedAbilityMechanicsLayout
+import com.enrpau.dualscreendex.parser.dataset.abilities.ResolvedAbilityNameLayout
 import com.enrpau.dualscreendex.parser.dataset.abilities.SourceBackedAbilityMechanicsResolver
 import com.enrpau.dualscreendex.parser.dataset.abilities.analysis.RetailBattleMechanicsResolution
 import com.enrpau.dualscreendex.parser.model.CapabilityEvidence
@@ -226,18 +227,28 @@ internal class CapabilityAggregationStrategy : FamilyProbePhaseStrategy {
             null,
             unavailableMechanics("parser did not select a typed move ABI for ability mechanics"),
         )
-        val abilityNames = semantic.resolvedAbilityNames ?: return AbilityMechanicsPhaseResult(
-            null,
-            unavailableMechanics("parser did not select a typed ability domain for ability mechanics"),
+        val abilityNames = semantic.resolvedAbilityNames
+        val abilityDomain = abilityMechanicsDomain(
+            abilityNames = abilityNames,
+            validatedNumericIds = activeAbilityIds(session, identity, core),
         )
+        val expectedAbilityIds = abilityDomain
+        if (abilityDomain.isEmpty()) {
+            return AbilityMechanicsPhaseResult(
+                null,
+                unavailableMechanics("parser did not resolve an independently validated numeric ability domain"),
+            )
+        }
         return when (val resolution = AbilityMechanicsResolver.resolve(
             session = session,
             moveDetails = moveDetails,
-            abilityNames = abilityNames,
+            activeAbilityIds = abilityDomain,
         )) {
             is RetailBattleMechanicsResolution.Resolved -> {
                 val resolved = resolution.layout
-                val sourceBacked = SourceBackedAbilityMechanicsResolver.resolve(definition.family, abilityNames, resolved)
+                val sourceBacked = abilityNames?.let { names ->
+                    SourceBackedAbilityMechanicsResolver.resolve(definition.family, names, resolved)
+                }.orEmpty()
                 val layout = ResolvedAbilityMechanicsLayout(
                     resolved.routineEntry,
                     resolved.abi,
@@ -247,8 +258,10 @@ internal class CapabilityAggregationStrategy : FamilyProbePhaseStrategy {
                 )
                 val mechanicIds = (resolved.mechanics.map { it.abilityId } + sourceBacked.map { it.abilityId })
                     .distinct()
-                val expectedAbilityCount = abilityNames.catalogAbilities().size
-                val complete = mechanicIds.size == expectedAbilityCount
+                val coverage = abilityMechanicsCoverage(expectedAbilityIds, mechanicIds)
+                val decodedMechanicCount = resolved.mechanics.map { it.abilityId }
+                    .distinct()
+                    .count(coverage.expectedIds::contains)
                 AbilityMechanicsPhaseResult(
                     layout,
                     CapabilityEvidence(
@@ -256,17 +269,17 @@ internal class CapabilityAggregationStrategy : FamilyProbePhaseStrategy {
                         compatible = true,
                         confidence = 1.0,
                         offset = resolved.routineEntry,
-                        count = mechanicIds.size,
-                        coveredRecords = mechanicIds.size,
-                        expectedRecords = expectedAbilityCount,
-                        incompleteRecords = (expectedAbilityCount - mechanicIds.size).coerceAtLeast(0),
+                        count = coverage.coveredRecords,
+                        coveredRecords = coverage.coveredRecords,
+                        expectedRecords = coverage.expectedRecords,
+                        incompleteRecords = coverage.incompleteRecords,
                         reasons = listOf(
-                            "decoded ${resolved.mechanics.map { it.abilityId }.distinct().size} numeric mechanic " +
+                            "decoded $decodedMechanicCount numeric mechanic " +
                                 "abilities with complete caller-role, typed field, predicate, effect, and writeback proofs",
                         ) + if (sourceBacked.isNotEmpty()) listOf(
                             "source-oracle behavior profile joined to the complete parser-selected ability domain",
                         ) else emptyList(),
-                        status = if (complete) CapabilityStatus.AVAILABLE else CapabilityStatus.PARTIAL,
+                        status = if (coverage.complete) CapabilityStatus.AVAILABLE else CapabilityStatus.PARTIAL,
                     ),
                 )
             }
@@ -286,6 +299,28 @@ internal class CapabilityAggregationStrategy : FamilyProbePhaseStrategy {
                 unavailableMechanics(resolution.reason),
             )
         }
+    }
+
+    private fun activeAbilityIds(
+        session: RomAnalysisSession,
+        identity: IdentityRootsPhaseResult.Resolved,
+        core: CoreDatasetsPhaseResult.Resolved,
+    ): Set<Int> {
+        val unified = identity.headerlessUnifiedSpecies?.metadata
+        val unifiedAbilities = unified?.abilities
+        if (unified != null && unifiedAbilities != null) {
+            return validatedHeaderlessUnifiedAbilityIds(
+                rom = session.rom,
+                species = unified,
+                abilities = unifiedAbilities,
+                speciesCount = core.speciesCount ?: core.candidateTables.baseStats?.count ?: 0,
+            )
+        }
+        val physicalBaseStats = resolvedLayout(core.candidateTables.baseStats, core.baseStats)
+        return validatedDirectAbilityIds(
+            session.rom,
+            validatedAbilityCoverageLayout(session.rom, physicalBaseStats, core.baseStatsLayout),
+        )
     }
 
     private fun unavailableMechanics(
@@ -380,6 +415,33 @@ internal class CapabilityAggregationStrategy : FamilyProbePhaseStrategy {
             )
         }
     }
+}
+
+internal fun abilityMechanicsDomain(
+    abilityNames: ResolvedAbilityNameLayout?,
+    validatedNumericIds: Set<Int>,
+): Set<Int> = (validatedNumericIds + abilityNames?.catalogDirectAbilityIds().orEmpty())
+    .filterTo(sortedSetOf()) { it > 0 }
+
+internal data class AbilityMechanicsCoverage(
+    val expectedIds: Set<Int>,
+    val coveredIds: Set<Int>,
+) {
+    val expectedRecords: Int = expectedIds.size
+    val coveredRecords: Int = coveredIds.size
+    val incompleteRecords: Int = expectedRecords - coveredRecords
+    val complete: Boolean = expectedIds == coveredIds
+}
+
+internal fun abilityMechanicsCoverage(
+    activeAbilityIds: Set<Int>,
+    mechanicIds: Collection<Int>,
+): AbilityMechanicsCoverage {
+    val expected = activeAbilityIds.filterTo(sortedSetOf()) { it > 0 }
+    return AbilityMechanicsCoverage(
+        expectedIds = expected,
+        coveredIds = mechanicIds.filterTo(sortedSetOf()) { it in expected },
+    )
 }
 
 internal fun applyCapabilityApplicability(

@@ -26,6 +26,8 @@ import com.enrpau.dualscreendex.parser.language.textUnavailableLanguageManifests
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.GbaCompiledReferenceIndex
+import com.enrpau.dualscreendex.parser.model.HeaderlessUnifiedAbilityMetadata
+import com.enrpau.dualscreendex.parser.model.HeaderlessUnifiedSpeciesMetadata
 import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.PokeemeraldExpansionMetadata
 import com.enrpau.dualscreendex.parser.model.ProfileTables
@@ -948,6 +950,78 @@ class RecordMaterializersTest {
         )
 
         assertTrue(RecordMaterializers.abilities(RomImage(bytes), layout).isEmpty())
+    }
+
+    @Test
+    fun preservesValidatedAbilityIdsWithoutLocalizedAbilityNames() {
+        val statsOffset = 40
+        val bytes = ByteArray(128)
+        repeat(3) { index ->
+            val base = statsOffset + index * 28
+            repeat(6) { stat -> bytes[base + stat] = (40 + stat).toByte() }
+            bytes[base + 6] = 1
+            bytes[base + 7] = 2
+        }
+        bytes[statsOffset + 28 + 22] = 65
+        bytes[statsOffset + 28 + 23] = 34
+        bytes[statsOffset + 56 + 22] = 19
+        val baseLayout = gbaLayout(statsOffset)
+
+        (textUnavailableLanguageManifests + baseLayout.languageManifest).forEach { manifest ->
+            val abilities = RecordMaterializers.abilities(
+                RomImage(bytes),
+                baseLayout.copy(languageManifest = manifest),
+            )
+
+            assertEquals(setOf(19, 34, 65), abilities.keys)
+            abilities.values.forEach { ability ->
+                assertEquals(CapabilityStatus.NOT_FOUND, ability.name.status)
+                assertNull(ability.name.value)
+            }
+        }
+    }
+
+    @Test
+    fun preservesHeaderlessUnifiedAbilityIdsWithoutLocalizedAbilityNames() {
+        val root = 16
+        val stride = 64
+        val bytes = ByteArray(root + stride * 3)
+        val abilityMetadata = HeaderlessUnifiedAbilityMetadata(
+            speciesAbilityOffset = 40,
+            speciesAbilitySlotCount = 2,
+            speciesAbilityElementSize = 2,
+            abilityRecordSize = 16,
+            abilityNameWidth = 13,
+        )
+        listOf(1 to listOf(300, 511), 2 to listOf(65, 300)).forEach { (speciesId, abilityIds) ->
+            val record = root + speciesId * stride
+            bytes[record] = 1
+            abilityIds.forEachIndexed { slot, abilityId ->
+                writeU16(bytes, record + abilityMetadata.speciesAbilityOffset + slot * 2, abilityId)
+            }
+        }
+        val unified = HeaderlessUnifiedSpeciesMetadata(
+            speciesTableOffset = root,
+            speciesRecordSize = stride,
+            activePredicateOffset = 0,
+            speciesNameOffset = 4,
+            speciesNameWidth = 8,
+            nationalDexOffset = 12,
+            abilities = abilityMetadata,
+        )
+        val layout = gbaLayout(root, stride).copy(
+            tables = gbaLayout(root, stride).tables.copy(baseStats = TableLayout(root, 3, stride)),
+            headerlessUnifiedSpecies = unified,
+            languageManifest = textUnavailableLanguageManifests.first(),
+        )
+
+        val abilities = RecordMaterializers.abilities(RomImage(bytes), layout)
+
+        assertEquals(setOf(65, 300, 511), abilities.keys)
+        abilities.values.forEach { ability ->
+            assertEquals(CapabilityStatus.NOT_FOUND, ability.name.status)
+            assertNull(ability.name.value)
+        }
     }
 
     @Test

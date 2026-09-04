@@ -1,6 +1,8 @@
 package com.enrpau.dualscreendex.parser.catalog
 
 import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
+import com.enrpau.dualscreendex.parser.family.validatedDirectAbilityIds
+import com.enrpau.dualscreendex.parser.family.validatedHeaderlessUnifiedAbilityIds
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.language.defaultTextCodec
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
@@ -494,19 +496,40 @@ object RecordMaterializers {
     ): Map<Int, AbilityRecord> {
         val codec = layout.defaultTextCodec()
         if (layout.generation == 3 && layout.pokeemeraldExpansion == null) {
-            val abilities = layout.resolvedDatasets.abilityNames?.catalogAbilities().orEmpty()
-            return if (codec == null) {
-                abilities.mapValues { (_, ability) ->
-                    ability.copy(name = CatalogField.notFound(TEXT_CODEC_UNAVAILABLE_REASON))
-                }
+            val named = layout.resolvedDatasets.abilityNames?.catalogAbilities().orEmpty()
+            val activeIds = validatedAbilityIds(rom, layout).filterTo(sortedSetOf()) { it > 0 }
+            val unavailableReason = if (codec == null) {
+                TEXT_CODEC_UNAVAILABLE_REASON
             } else {
-                abilities
+                ABILITY_NAME_UNAVAILABLE_REASON
+            }
+            return (named.keys + activeIds).toSortedSet().associateWith { id ->
+                val ability = named[id] ?: AbilityRecord(id, CatalogField.notFound(unavailableReason))
+                if (codec == null) {
+                    ability.copy(name = CatalogField.notFound(TEXT_CODEC_UNAVAILABLE_REASON))
+                } else {
+                    ability
+                }
             }
         }
         val table = layout.tables.abilities ?: return emptyMap()
         return (0 until table.count).associateWith { id ->
             AbilityRecord(id, nameField(rom, table, id, codec, cancellation))
         }
+    }
+
+    private fun validatedAbilityIds(rom: RomImage, layout: ResolvedRomLayout): Set<Int> {
+        val unified = layout.headerlessUnifiedSpecies
+        val unifiedAbilities = unified?.abilities
+        if (unified != null && unifiedAbilities != null) {
+            return validatedHeaderlessUnifiedAbilityIds(
+                rom = rom,
+                species = unified,
+                abilities = unifiedAbilities,
+                speciesCount = layout.speciesCount ?: layout.tables.baseStats?.count ?: 0,
+            )
+        }
+        return validatedDirectAbilityIds(rom, layout.tables.baseStats)
     }
 
     fun typeChart(rom: RomImage, layout: ResolvedRomLayout): List<TypeMatchup> {
@@ -633,6 +656,8 @@ object RecordMaterializers {
 
     private const val TEXT_CODEC_UNAVAILABLE_REASON =
         "default ROM language codec is unavailable"
+    private const val ABILITY_NAME_UNAVAILABLE_REASON =
+        "validated active ability ID has no decoded localized name"
     private const val MALFORMED_NAME_REASON =
         "ROM name is malformed or unterminated within its byte bound"
     private const val MAX_VARIABLE_NAME_BYTES = 64

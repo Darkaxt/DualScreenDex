@@ -655,10 +655,22 @@ object AbilityMechanicsResolver {
         moveDetails: ResolvedMoveDetailsLayout,
         abilityNames: ResolvedAbilityNameLayout,
         selectedAbi: BattleMechanicsAbi? = null,
-    ): RetailBattleMechanicsResolution = RetailBattleMechanicsResolver.resolve(
+    ): RetailBattleMechanicsResolution = resolve(
         session = session,
         moveDetails = moveDetails,
         activeAbilityIds = abilityNames.decodedDirectAbilityIds(),
+        selectedAbi = selectedAbi,
+    )
+
+    fun resolve(
+        session: RomAnalysisSession,
+        moveDetails: ResolvedMoveDetailsLayout,
+        activeAbilityIds: Set<Int>,
+        selectedAbi: BattleMechanicsAbi? = null,
+    ): RetailBattleMechanicsResolution = RetailBattleMechanicsResolver.resolve(
+        session = session,
+        moveDetails = moveDetails,
+        activeAbilityIds = activeAbilityIds,
         selectedAbi = selectedAbi,
     )
 }
