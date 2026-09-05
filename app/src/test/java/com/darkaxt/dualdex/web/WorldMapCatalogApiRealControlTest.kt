@@ -206,6 +206,58 @@ class WorldMapCatalogApiRealControlTest {
     @Test fun nativeOfficialKoreanGold() = assertNativeRoundTrip(nativeControls[7])
     @Test fun nativeOfficialKoreanSilver() = assertNativeRoundTrip(nativeControls[8])
 
+    @Test
+    fun nativeOfficialJapaneseFireRedUnprovenMoveProseFailsClosed() {
+        // Negative safety evidence only. nativeOfficialJapaneseFireRedLeafGreen remains the
+        // mandatory positive acceptance case and must stay red until its real prose ABI is proved.
+        val control = nativeControls[6]
+        val configured = System.getenv("DUALDEX_NATIVE_CONTROLS")
+        assumeTrue("set DUALDEX_NATIVE_CONTROLS for the exact native control", !configured.isNullOrBlank())
+        val path = Files.list(Path.of(requireNotNull(configured)).resolve(control.folder)).use { paths ->
+            paths.filter { Files.isRegularFile(it) }.toList().single()
+        }
+        val rom = RomImage(Files.readAllBytes(path))
+        assertEquals(control.sha256, rom.sha256)
+        val parsed = requireNotNull(CatalogParser.parse(rom).catalog)
+        fun assertUnavailable(catalog: ParsedCatalog) {
+            assertEquals(EngineFamily.FIRERED_LEAFGREEN, catalog.family)
+            val overlay = requireNotNull(catalog.localizedText(LanguageTag.JAPANESE))
+            val state = overlay.localizedCapabilities.getValue(LocalizedTextCapability.MOVE_DESCRIPTIONS)
+            assertEquals(CapabilityStatus.NOT_FOUND, state.status)
+            assertEquals(354, state.expectedRecords)
+            assertEquals(0, state.coveredRecords)
+            assertTrue(overlay.moveDescriptions.isEmpty())
+            assertTrue(catalog.movesById.values.all { it.effectText.value == null })
+        }
+        assertUnavailable(parsed)
+        val cache = CatalogCache(newRoot().toFile(), JdbcTestCatalogDatabaseFactory)
+        cache.write(parsed, CatalogSourceMetadata.direct("native-control", rom.size, "NATIVE-CONTROL"), CatalogWriteProgress.complete())
+        val reopened = requireNotNull(cache.readComplete(rom.sha256)).catalog
+        assertUnavailable(reopened)
+        assertEquals(parsed, reopened)
+        ProductionCompanionRuntime().use { runtime ->
+            runtime.loadCatalog("native-control", reopened)
+            val api = requireNotNull(runtime.bootstrap().catalog)
+            assertTrue(api.moves.isNotEmpty())
+            assertTrue(api.moves.all { it.description == null })
+        }
+        assertDatabaseIntegrity(cache.fileFor(rom.sha256))
+        println("NATIVE_MOVE_PROSE_NEGATIVE ${control.folder} sha256=${control.sha256} failClosed=PASS requiredPositive=BLOCKED")
+    }
+
+    private fun assertNativeMoveProseSamples(catalog: ParsedCatalog) {
+        val overlay = requireNotNull(catalog.localizedText(LanguageTag.JAPANESE))
+        val state = overlay.localizedCapabilities.getValue(LocalizedTextCapability.MOVE_DESCRIPTIONS)
+        assertEquals(CapabilityStatus.AVAILABLE, state.status)
+        assertEquals(354, state.expectedRecords)
+        assertEquals(354, state.coveredRecords)
+        assertEquals((1..354).toSet(), overlay.moveDescriptions.keys)
+        nativeMoveProseHashes.forEach { (id, expected) ->
+            val prose = requireNotNull(catalog.defaultTextProjection().moveDescription(id))
+            assertEquals("independent move-prose digest for move $id", expected, sha256(prose.toByteArray(StandardCharsets.UTF_8)))
+        }
+    }
+
     private fun assertNativeRoundTrip(control: NativeControl) {
         val configured = System.getenv("DUALDEX_NATIVE_CONTROLS")
         assumeTrue("set DUALDEX_NATIVE_CONTROLS for the nine exact native controls", !configured.isNullOrBlank())
@@ -239,6 +291,10 @@ class WorldMapCatalogApiRealControlTest {
             }
             val overlay = catalog.localizedText(language)
             val text = catalog.defaultTextProjection()
+            val directMoveProseControl = control.family in setOf(EngineFamily.RUBY_SAPPHIRE, EngineFamily.EMERALD)
+            if (directMoveProseControl) checks.attempt("LNG-B002.move-prose.independent-samples") {
+                assertNativeMoveProseSamples(catalog)
+            }
             // Gen III dexNumber can be regional: source SPECIES_BULBASAUR and the compiled name row are 1.
             // Selecting dexNumber == 1 there would test Treecko, not the independently pinned Bulbasaur sample.
             val bulbasaur = if (control.generation == 3) catalog.speciesById[1]
@@ -321,6 +377,9 @@ class WorldMapCatalogApiRealControlTest {
             // CatalogCache opens and closes a JDBC connection for each operation; this is not an in-memory round trip.
             val stored = checks.attempt("sqlite.reopen-close") { requireNotNull(cache.readComplete(rom.sha256)) } ?: return
             val reopened = stored.catalog
+            if (directMoveProseControl) checks.attempt("sqlite.move-prose.independent-samples") {
+                assertNativeMoveProseSamples(reopened)
+            }
             checks.attempt("sqlite.whole-catalog-equality") { assertTrue("whole catalog differs", catalog == reopened) }
             checks.attempt("sqlite.sections") {
                 assertEquals(CatalogSchema.requiredSections + "language_overlay:${language.value}", stored.committedSections)
@@ -387,6 +446,13 @@ class WorldMapCatalogApiRealControlTest {
                         assertEquals(listOf(language.value), bootstrap.language?.projections?.map { it.language })
                     }
                     val api = requireNotNull(bootstrap.catalog)
+                    if (directMoveProseControl) checks.attempt("api.move-prose.independent-samples") {
+                        nativeMoveProseHashes.forEach { (id, expected) ->
+                            val prose = requireNotNull(api.moves.single { it.id == id }.description)
+                            assertEquals("independent API move-prose digest for move $id", expected,
+                                sha256(prose.toByteArray(StandardCharsets.UTF_8)))
+                        }
+                    }
                     checks.attempt("api.sample.species") {
                         val species = api.species.single { it.id == speciesId }
                         assertEquals(control.speciesName, species.name)
@@ -879,6 +945,16 @@ class WorldMapCatalogApiRealControlTest {
     }
 
     private companion object {
+        // UTF-8 digests of independently decoded, whitespace-normalized compiled Ruby/Emerald
+        // move records using the pinned pokeruby charmap below; not production-parser baselines.
+        // Covers first/last moves plus short-learnset false negatives. No raw ROM prose is retained here.
+        val nativeMoveProseHashes = mapOf(
+            1 to "6a560e56dbc81ff4d54a063ea1f3a39346aa1cd1667e62f8be962c72ec67edad",
+            11 to "d67892aff9e60a4434cc332043dd0dd17490d9ab44a06d83b0ba04811c097379",
+            72 to "5a90513a9d1c5eaba24fed32f8707e28538d9c8d2aee0cb642668a4bac5b1ff6",
+            253 to "1b2b0799fe0bc62b6a3516352bc429acfd3f2ae2605598417a1b8975192e1f71",
+            354 to "e77157a51610a80036160bd8b7c61ca486b1b705664f00c1c4240c31a746cc1c",
+        )
         const val OFFICIAL_FORECAST_BOUNDARY = "LNG-D005.forecast.official-rom-semantic-policy"
         const val FAULT_INJECTED_FORECAST_BOUNDARY = "LNG-D005.forecast.fault-injected-authority-removed"
 

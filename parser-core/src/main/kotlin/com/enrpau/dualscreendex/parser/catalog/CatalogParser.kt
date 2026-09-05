@@ -534,8 +534,12 @@ object CatalogMaterializer {
 
         beginWork(CatalogWorkModule.MOVE_DATA)
         val learnsetRulesets = LearnsetRulesetMaterializer.materialize(rom, layout, learnsets)
-        val moveDescriptions = resolveMoveDescriptions?.invoke(layout)
-            ?: MoveDescriptionMaterializer.materialize(rom, layout, cancellation = cancellation)
+        // A session resolver owns its terminal absence/conflict/budget result, including null.
+        val moveDescriptions = if (resolveMoveDescriptions != null) {
+            resolveMoveDescriptions(layout)
+        } else {
+            MoveDescriptionMaterializer.materialize(rom, layout, cancellation = cancellation)
+        }
         val moveAcquisitions = runCatching {
             MoveAcquisitionMaterializer.materialize(rom, layout)
         }.getOrElse {

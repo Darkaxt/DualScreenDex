@@ -1,5 +1,7 @@
 package com.enrpau.dualscreendex.parser.catalog
 
+import com.enrpau.dualscreendex.parser.analysis.GbaReferenceIndex
+import com.enrpau.dualscreendex.parser.analysis.ResolutionLimits
 import com.enrpau.dualscreendex.parser.analysis.ParserCancellationException
 import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
@@ -46,6 +48,92 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CatalogParserTest {
+    @Test
+    fun moveDescriptionResolverNullIsAuthoritative() {
+        val (rom, analysis, layout) = moveDescriptionCallerFixture()
+        var calls = 0
+        val catalog = CatalogMaterializer.materialize(rom, analysis, layout, resolveMoveDescriptions = {
+            calls++
+            null
+        })
+        assertEquals(1, calls)
+        assertNull(catalog.defaultTextProjection().moveDescription(1))
+    }
+
+    @Test
+    fun moveDescriptionResolverConflictIsNotRetriedWithoutItsReferences() {
+        val (rom, analysis, layout) = moveDescriptionCallerFixture()
+        val references = GbaReferenceIndex.countsOnlyForTesting(mapOf(0x100 to 1, 0x200 to 1))
+        assertNull(MoveDescriptionMaterializer.materialize(rom, layout, references))
+        var calls = 0
+        val catalog = CatalogMaterializer.materialize(rom, analysis, layout, resolveMoveDescriptions = {
+            calls++
+            MoveDescriptionMaterializer.materialize(rom, it, references)
+        })
+        assertEquals(1, calls)
+        assertNull(catalog.defaultTextProjection().moveDescription(1))
+    }
+
+    @Test
+    fun moveDescriptionResolverBudgetIsNotRetriedWithAFreshBudget() {
+        val (rom, analysis, layout) = moveDescriptionCallerFixture()
+        val references = GbaReferenceIndex.countsOnlyForTesting(mapOf(0x100 to 1))
+        val limits = ResolutionLimits(maxProbeWorkPerDataset = 1)
+        assertNull(MoveDescriptionMaterializer.materialize(rom, layout, references, limits = limits))
+        var calls = 0
+        val catalog = CatalogMaterializer.materialize(rom, analysis, layout, resolveMoveDescriptions = {
+            calls++
+            MoveDescriptionMaterializer.materialize(rom, it, references, limits = limits)
+        })
+        assertEquals(1, calls)
+        assertNull(catalog.defaultTextProjection().moveDescription(1))
+    }
+
+    @Test
+    fun moveDescriptionResolverAbsentRetainsStandaloneMaterialization() {
+        val (rom, analysis, layout) = moveDescriptionCallerFixture()
+        val catalog = CatalogMaterializer.materialize(rom, analysis, layout)
+        assertEquals("A small flame attack.", catalog.defaultTextProjection().moveDescription(1))
+        assertEquals(3, catalog.defaultLocalizedText()?.moveDescriptions?.size)
+    }
+
+    @Test
+    fun moveDescriptionResolverCancellationPropagatesWithoutRetry() {
+        val (rom, analysis, layout) = moveDescriptionCallerFixture()
+        var calls = 0
+        assertThrows(ParserCancellationException::class.java) {
+            CatalogMaterializer.materialize(rom, analysis, layout, resolveMoveDescriptions = {
+                calls++
+                throw ParserCancellationException()
+            })
+        }
+        assertEquals(1, calls)
+    }
+
+    private fun moveDescriptionCallerFixture(): Triple<RomImage, ParseResult, ResolvedRomLayout> {
+        val bytes = ByteArray(0x1000)
+        repeat(4) { id ->
+            encodeGbaText(bytes, 0x20 + id * 13, "MOVE")
+            bytes[0x80 + id * 12 + 1] = 40
+            bytes[0x80 + id * 12 + 3] = 100
+            bytes[0x80 + id * 12 + 4] = 20
+        }
+        listOf(0x100, 0x200).forEachIndexed { table, root ->
+            repeat(3) { id ->
+                val text = 0x400 + table * 0x200 + id * 0x40
+                putGbaPointer(bytes, root + id * 4, text)
+                encodeGbaText(bytes, text, "A small flame attack.")
+            }
+        }
+        val rom = RomImage(bytes)
+        val analysis = ParseResult(RomHeader(Platform.GBA, "MOVE TEST"), rom.sha256, rom.crc32, rom.size,
+            SelectionStatus.SELECTED, EngineFamily.EMERALD, null, 20, emptyList(), emptyList())
+        val layout = ResolvedRomLayout(EngineFamily.EMERALD, 3, Platform.GBA, 0, 4,
+            ProfileTables(moveNames = TableLayout(0x20, 4, 13), moveData = TableLayout(0x80, 4, 12)),
+            languageManifest = resolvedLanguageManifest(PokemonTextCodec.gbaEnglish))
+        return Triple(rom, analysis, layout)
+    }
+
     @Test
     fun numericOnlyNatureMechanicsAreReportedAsPartialWithoutClaimingDecodedText() {
         val resolution = NatureResolution.Resolved(
@@ -1065,6 +1153,8 @@ class CatalogParserTest {
             target[offset + index] = when (char) {
                 ' ' -> 0
                 in 'A'..'Z' -> (0xBB + char.code - 'A'.code).toByte()
+                in 'a'..'z' -> (0xD5 + char.code - 'a'.code).toByte()
+                '.' -> 0xAD.toByte()
                 else -> error("unsupported fixture character")
             }
         }

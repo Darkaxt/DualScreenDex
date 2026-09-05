@@ -105,6 +105,16 @@ Task 373 remains responsible for current real reports/receipts/caches, normalize
 
 Stage 4 remains open; Stage 5 is blocked. No corpus rerun, device testing, signing or ROM publication was performed for this tooling checkpoint.
 
+## Verified native move-prose checkpoint
+
+`stage-04-native-move-prose-checkpoint.md` records the bounded Task 388 correction under `LNG-B002`. The coordinator independently passed **96/96 tests, zero failures/errors/skips**, on unchanged source bytes after both review findings were reproduced and fixed. Japanese Ruby/Emerald now have **354/354** move descriptions, with five independently derived sample digests verified at parse, actual SQLite close/reopen and API boundaries. Native unproven pointer prose is withheld; compiled consumer, selected numeric move index/root and text-wrapper evidence are required. Parser revision **50** invalidates revision-49 caches containing false prose; storage schema remains **2**.
+
+Resolver-null results no longer trigger reference-free catalog retries. Incomplete reference-site recovery counts all original literal sites together in one bounded scan before full role proof; unreadable competing roots, count disagreement or exhausted budgets cannot be discarded based on text plausibility. Focused caller, Western/embedded, overflow, cancellation, cache and forecast regressions pass.
+
+**Task 388 remains open for mandatory FireRed positive acceptance.** The separate FireRed negative test passes with `NOT_FOUND` 0/354 and empty overlay/API prose; it explicitly reports `requiredPositive=BLOCKED`. Actual FireRed prose authority remains unresolved. This is not an applicability waiver or a three-control positive acceptance claim.
+
+Task 385's compiled species-slot proof still requires implementation, description-only accounting and fresh acceptance. Task 389's Korean direct-sign opcode and headline-control proof is now independently checked for two signs per exact control using bounded raw-byte/source-algorithm assertions; Kotlin implementation and parse/reopen/API tests remain pending. Task 386's other capability gaps and Tasks 373–375's current official matrix/final corpus/closure remain required. Stage 4 stays open; Stage 5 stays blocked. No corpus, devices, signing or ROM publication was performed for this checkpoint.
+
 ## Audit rule
 
 An item without a durable ID, exact spec clause, evidence, owner, target, acceptance condition, and fail-closed temporary disposition is a `STOP-CORE` blocker. Required official language-family cells in Stages 3 and 4 cannot be deferred.
