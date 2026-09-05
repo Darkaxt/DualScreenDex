@@ -189,6 +189,8 @@ internal object Gen2LocalMapResolver {
                 maps = maps,
                 family = family,
                 codec = codec,
+                limits = session.limits,
+                cancellation = session.cancellation,
             ).also { resolution ->
                 LocalMapCatalog(
                     maps = maps,
@@ -198,6 +200,7 @@ internal object Gen2LocalMapResolver {
                 ).validate()
             }
         }.getOrElse { failure ->
+            if (failure is CancellationException) throw failure
             Gen2LocalMapPoiResolver.Resolution(
                 pois = emptyList(),
                 skippedReasons = listOf("Gen II POIs: ${failure.message}"),

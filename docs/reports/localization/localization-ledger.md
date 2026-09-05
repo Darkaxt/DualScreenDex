@@ -141,6 +141,16 @@ Required authority remains one coherent compiled chain: structurally accepted ma
 
 The assessment also found that the two retained red fixtures lack a fully bound positive dispatcher/consumer/grammar chain. They remain useful attack sketches, but do not independently isolate reachable supported-authority defects. The next test target is a complete relocated positive witness followed by single-dependency mutations, selected-dialect conflict/incompleteness/budget tests with no legacy retry, and unrelated decoys that do not poison valid legacy parsing. Original red artifacts remain retained. Both exact Korean parse/reopen/API controls and numeric/item/destination/legacy preservation remain mandatory; implementation and acceptance are pending.
 
+## Verified Korean declared-sign checkpoint
+
+`stage-04-korean-declared-sign-checkpoint.md` closes **Task 389's bounded static direct-sign slice** under `LNG-B002`, superseding the preceding implementation-pending status without claiming live execution preservation or full POI coverage. A coherent compiled map/event/operand/template/text-grammar chain now supplies Korean kind-0 declared headlines. Selected incomplete/conflicting/exhausted evidence cannot retry the legacy family opcode; unrelated decoys do not poison it. Parser revision **52** invalidates revision-51 sign projections; storage schema remains **2**.
+
+All three bounded review defects were reproduced and corrected: bank-window addresses could alias home-ROM START code, direct copier/stride implementations were unchecked, and missing DONE could borrow a neighboring declaration's terminator. Complete direct leaves, strict home targets and independently bound next-root limits now reject those cases. The final overlap regressions preserve malformed-neighbor boundaries, same-root aliases, visible/hidden items and destination/numeric POIs.
+
+The coordinator inspected the corrective production/test diffs and independently verified **221 cases: 214 passed, seven existing opt-in skips, zero failures/errors**, in 7 minutes 55 seconds. All eight source hashes remained unchanged. Korean Gold and Silver separately pass independent town/laboratory headline samples through materialization, actual SQLite close/reopen and API projection, retaining language authority, cache-only bootstrap and zero reparses. All three Japanese species-slot controls also pass; FireRed's move-prose negative remains explicit. Private source/log/XML/cache evidence is retained.
+
+Task 386 still owns item-name production, remaining Local/region-label applicability and reference-aware POI coverage. Task 388 still requires actual FireRed positive move prose. Tasks 373–375 still require the complete current 43-cell/44-control matrix, final current corpus after executable changes stabilize, ledger audit and stage closure. The skipped opt-in cases are identified in the checkpoint and are not represented as executed controls. Stage 4 remains open and Stage 5 blocked; no full corpus, devices, signing or ROM publication was performed.
+
 ## Audit rule
 
 An item without a durable ID, exact spec clause, evidence, owner, target, acceptance condition, and fail-closed temporary disposition is a `STOP-CORE` blocker. Required official language-family cells in Stages 3 and 4 cannot be deferred.

@@ -1,5 +1,7 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
+import com.enrpau.dualscreendex.parser.analysis.ResolutionLimits
 import com.enrpau.dualscreendex.parser.catalog.LocalMap
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoi
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiItem
@@ -19,16 +21,22 @@ internal object Gen2LocalMapPoiResolver {
         maps: List<LocalMap>,
         family: EngineFamily,
         codec: PokemonTextCodec?,
+        limits: ResolutionLimits = ResolutionLimits(),
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
     ): Resolution {
+        cancellation.throwIfCancellationRequested()
+        val declaration = if (codec == null) Gen2DeclaredSignAbi.Resolution(Gen2DeclaredSignAbi.Status.ABSENT)
+            else Gen2DeclaredSignAbi.resolve(rom, sources, limits, cancellation)
         val mapsByBaseArea = maps.associateBy(LocalMap::baseAreaId)
         val sourcesByBaseArea = sources.associateBy(Source::baseAreaId)
         val pois = mutableListOf<LocalMapPoi>()
         val skipped = mutableListOf<String>()
         mapsByBaseArea.toSortedMap().forEach { (baseAreaId, map) ->
             val source = sourcesByBaseArea[baseAreaId] ?: return@forEach
-            runCatching { readMapPois(rom, source, map, mapsByBaseArea.keys, family, codec) }
+            cancellation.throwIfCancellationRequested()
+            runCatching { readMapPois(rom, source, map, mapsByBaseArea.keys, family, codec, declaration, cancellation) }
                 .onSuccess(pois::addAll)
-                .onFailure { failure -> skipped += "map 0x${baseAreaId.hex4()} POIs: ${failure.message}" }
+                .onFailure { failure -> cancellation.throwIfCancellationRequested(); skipped += "map 0x${baseAreaId.hex4()} POIs: ${failure.message}" }
         }
         return Resolution(pois.sortedBy(LocalMapPoi::key), skipped)
     }
@@ -40,6 +48,8 @@ internal object Gen2LocalMapPoiResolver {
         acceptedAreaIds: Set<Int>,
         family: EngineFamily,
         codec: PokemonTextCodec?,
+        declaration: Gen2DeclaredSignAbi.Resolution,
+        cancellation: ParserCancellationToken,
     ): List<LocalMapPoi> {
         val scriptsBank = rom.u8(source.attributes + SCRIPTS_BANK_OFFSET)
         val events = requireNotNull(
@@ -124,6 +134,13 @@ internal object Gen2LocalMapPoiResolver {
         val signs = validBackgrounds.filter { it.kind in SIGN_KINDS }
         val backgroundWarps = associateBackgroundsWithWarps(signs, validWarps)
         val representedWarpIndexes = backgroundWarps.values.mapTo(mutableSetOf(), WarpRecord::index)
+        val forbidden = listOf(events until (cursor + objectCount * OBJECT_RECORD_BYTES), source.attributes until source.attributes + 12) +
+            backgrounds.filter { it.kind in SIGN_KINDS }.map { it.data until it.data + 3 }
+        // A selected declaration bounds its predecessor even when its own text is malformed.
+        // Collect before decoding; distinct roots preserve legitimate same-record aliases.
+        val declaredTextRoots = signs.mapNotNull { background ->
+            declaredSignText(rom, scriptsBank, background.data, background.kind, declaration, forbidden)?.first
+        }.distinct().sorted()
         return buildList {
             objects.forEach { objectEvent ->
                 if (objectEvent.type != OBJECT_TYPE_ITEMBALL || !objectEvent.inside(map)) return@forEach
@@ -172,7 +189,7 @@ internal object Gen2LocalMapPoiResolver {
                         )
                     }
                 } else if (background.kind in SIGN_KINDS) {
-                    val semantics = readSignSemantics(rom, scriptsBank, background.data, family, codec)
+                    val semantics = readSignSemantics(rom, scriptsBank, background.data, family, codec, declaration, background.kind, forbidden, declaredTextRoots, cancellation)
                     val destination = backgroundWarps[background.index]
                     add(
                         LocalMapPoi(
@@ -226,6 +243,11 @@ internal object Gen2LocalMapPoiResolver {
         script: Int,
         family: EngineFamily,
         codec: PokemonTextCodec?,
+        declaration: Gen2DeclaredSignAbi.Resolution,
+        kind: Int,
+        forbidden: List<IntRange>,
+        declaredTextRoots: List<Int>,
+        cancellation: ParserCancellationToken,
     ): SignSemantics {
         if (script + 3 > bankEnd(rom, scriptsBank)) return SignSemantics()
         if (rom.u8(script) == JUMP_STD_COMMAND) {
@@ -235,6 +257,16 @@ internal object Gen2LocalMapPoiResolver {
                 else -> SignSemantics()
             }
         }
+        if (declaration.status != Gen2DeclaredSignAbi.Status.ABSENT) {
+            // Only the compiled kind-0 direct declaration is in this bounded ABI. Terminal
+            // incomplete/conflicting/budget evidence never re-enters family opcode decoding.
+            if (codec == null) return SignSemantics()
+            val (text, grammar) = declaredSignText(rom, scriptsBank, script, kind, declaration, forbidden) ?: return SignSemantics()
+            val limit = minOf(bankEnd(rom, scriptsBank), text + MAX_SIGN_TEXT_BYTES,
+                forbidden.map { it.first }.filter { it > text }.minOrNull() ?: rom.size,
+                declaredTextRoots.firstOrNull { it > text } ?: rom.size)
+            return SignSemantics(displayName = decodeDeclaredHeadline(rom, text, limit, codec, grammar, cancellation))
+        }
         val jumpTextCommand = when (family) {
             EngineFamily.GOLD_SILVER -> GOLD_SILVER_JUMP_TEXT_COMMAND
             EngineFamily.CRYSTAL -> CRYSTAL_JUMP_TEXT_COMMAND
@@ -243,6 +275,45 @@ internal object Gen2LocalMapPoiResolver {
         if (rom.u8(script) != jumpTextCommand) return SignSemantics()
         val text = rom.gbBankAddress(scriptsBank, rom.u16le(script + 1)) ?: return SignSemantics()
         return SignSemantics(displayName = codec?.let { decodeHeadline(rom, text, it) })
+    }
+
+    private fun declaredSignText(
+        rom: RomImage, scriptsBank: Int, script: Int, kind: Int,
+        declaration: Gen2DeclaredSignAbi.Resolution, forbidden: List<IntRange>,
+    ): Pair<Int, Gen2DeclaredSignAbi.Grammar>? {
+        if (kind != 0 || script / BANK_BYTES != scriptsBank || script + 3 > bankEnd(rom, scriptsBank)) return null
+        val grammar = declaration.abi?.grammar(rom.u8(script)) ?: return null
+        val text = rom.gbBankAddress(scriptsBank, rom.u16le(script + 1)) ?: return null
+        if (text / BANK_BYTES != scriptsBank || forbidden.any { text in it }) return null
+        return text to grammar // No START/content/DONE check: root authority is the declaration.
+    }
+
+    private fun decodeDeclaredHeadline(
+        rom: RomImage, offset: Int, limit: Int, codec: PokemonTextCodec,
+        grammar: Gen2DeclaredSignAbi.Grammar, cancellation: ParserCancellationToken,
+    ): String? {
+        if (offset >= limit || rom.u8(offset) != grammar.start) return null
+        val headline = StringBuilder()
+        var firstLine = true
+        var cursor = offset + 1
+        while (cursor < limit) {
+            cancellation.throwIfCancellationRequested()
+            val value = rom.u8(cursor)
+            if (value == grammar.done) return headline.toString().replace(WHITESPACE, " ").trim().takeIf { it.length >= MIN_SIGN_HEADLINE_CHARS }
+            if (value == grammar.line) { firstLine = false; cursor++; continue }
+            val token = codec.decodeToken(rom, cursor, limit)
+            val expectedWidth = if (value in 1 until grammar.leadLimit) 2 else 1
+            if (token.byteCount != expectedWidth || cursor + token.byteCount > limit) return null
+            val text = when (token) {
+                is PokemonTextToken.Glyph -> token.text
+                is PokemonTextToken.Whitespace -> token.text
+                is PokemonTextToken.Substitution -> token.text
+                else -> return null // No unconditional Western controls/substitutions or codec terminator.
+            }
+            if (firstLine) headline.append(text)
+            cursor += token.byteCount
+        }
+        return null // A LINE alone is not a complete declared text record.
     }
 
     private fun decodeHeadline(rom: RomImage, offset: Int, codec: PokemonTextCodec): String? {
