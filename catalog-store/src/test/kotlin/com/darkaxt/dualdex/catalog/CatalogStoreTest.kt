@@ -94,6 +94,8 @@ import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.io.RomSourceLoader
 import com.enrpau.dualscreendex.parser.dataset.natures.NatureRecord
 import com.enrpau.dualscreendex.parser.sprite.PngEncoder
+import com.enrpau.dualscreendex.parser.text.JapanesePokemonTextCodecs
+import com.enrpau.dualscreendex.parser.text.KoreanGen2PokemonTextCodec
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import com.google.gson.reflect.TypeToken
 import java.nio.file.Files
@@ -418,6 +420,106 @@ class CatalogStoreTest {
             "Test Route",
             reopened.catalog.localizedText(LanguageTag.FRENCH)?.localMapNames?.get("local/0001")?.value,
         )
+    }
+
+    @Test
+    fun `native type overlays and unresolved semantics survive database close and reopen without leakage`() {
+        val root = newRoot()
+        val base = completeCatalog("a".repeat(64))
+        val prior = requireNotNull(base.defaultLocalizedText())
+        val codecs = listOf(JapanesePokemonTextCodecs.gen2, KoreanGen2PokemonTextCodec.codec)
+        // Deliberately swapped IDs: neither persistence nor text projection may infer a numeric type order.
+        val names = mapOf(
+            LanguageTag.JAPANESE to mapOf(21 to "ほのお", 20 to "みず", 19 to "？？？", 31 to "ほのお"),
+            LanguageTag.KOREAN to mapOf(21 to "화염", 20 to "물", 19 to "???"),
+        )
+        val manifest = RomLanguageManifest(
+            defaultLanguage = LanguageTag.JAPANESE,
+            projections = codecs.map { codec ->
+                RomLanguageProjection(
+                    language = codec.language,
+                    codecId = codec.id,
+                    codecVersion = codec.version,
+                    localizedTables = LocalizedTableLayout(),
+                    evidence = listOf(
+                        LanguageEvidence(LanguageEvidenceKind.TABLE_RELATIONSHIP, "synthetic native overlay", 100),
+                    ),
+                    status = LanguageResolutionStatus.RESOLVED,
+                )
+            },
+            status = LanguageResolutionStatus.RESOLVED,
+        )
+        val overlays = names.mapValues { (language, typeNames) ->
+            CatalogLanguageOverlay(
+                language = language,
+                overlayVersion = 1,
+                localizedCapabilities = prior.localizedCapabilities.mapValues { (capability, state) ->
+                    if (capability == LocalizedTextCapability.TYPE_NAMES) {
+                        LocalizedCapabilityState(
+                            status = if (typeNames.size == 4) CapabilityStatus.AVAILABLE else CapabilityStatus.PARTIAL,
+                            confidence = 1.0,
+                            coveredRecords = typeNames.size,
+                            expectedRecords = 4,
+                        )
+                    } else {
+                        LocalizedCapabilityState.notFound("type-only synthetic overlay", state.expectedRecords)
+                    }
+                },
+                typeNames = typeNames.mapValues { CatalogField.available(it.value) },
+            )
+        }
+        val localizedPlaceholder = CatalogField.notApplicable<String>("stored in language overlay")
+        val catalog = base.copy(
+            family = EngineFamily.GOLD_SILVER,
+            platform = Platform.GBC,
+            speciesById = base.speciesById.mapValues { (_, species) ->
+                species.copy(typeIds = CatalogField.available(listOf(21, 20)))
+            },
+            movesById = base.movesById.mapValues { (_, move) -> move.copy(typeId = CatalogField.available(21)) },
+            typesById = mapOf(
+                21 to TypeRecord(21, localizedPlaceholder, semanticRole = CatalogField.available(TypeSemanticRole.FIRE)),
+                20 to TypeRecord(20, localizedPlaceholder, semanticRole = CatalogField.available(TypeSemanticRole.WATER)),
+                19 to TypeRecord(19, localizedPlaceholder, semanticRole = CatalogField.available(TypeSemanticRole.MYSTERY)),
+                // A display label alone is not semantic evidence, even when another row has the same name.
+                31 to TypeRecord(31, localizedPlaceholder, semanticRole = CatalogField.notFound("unresolved fixture role")),
+            ),
+            typeChart = listOf(TypeMatchup(21, 20, 50), TypeMatchup(19, 31, 100)),
+            runtimeMetadata = CatalogRuntimeMetadata(areaBaseIds = base.runtimeMetadata.areaBaseIds),
+            localization = CatalogLocalization(manifest, overlays),
+        )
+        val file = root.resolve("native-types.sqlite").toFile()
+        JdbcCatalogDatabaseFactory.open(file).use { database ->
+            CatalogWriter(database).write(
+                catalog,
+                CatalogSourceMetadata.direct("Synthetic native types.gbc", 49_152, "SYNTHETIC TYPES"),
+                CatalogWriteProgress.complete(),
+            )
+        }
+
+        val stored = JdbcCatalogDatabaseFactory.open(file).use { database ->
+            requireNotNull(CatalogReader(database).readComplete())
+        }
+        val reopened = stored.catalog
+
+        assertEquals(catalog, reopened)
+        assertEquals(CatalogSchema.requiredSections + setOf("language_overlay:ja", "language_overlay:ko"), stored.committedSections)
+        assertEquals(manifest, reopened.languageManifest)
+        names.forEach { (language, expected) ->
+            assertEquals(expected, reopened.localizedText(language)?.typeNames?.mapValues { it.value.value })
+        }
+        assertEquals(names.getValue(LanguageTag.JAPANESE), reopened.defaultLocalizedText()?.typeNames?.mapValues { it.value.value })
+        assertNull(reopened.localizedText(LanguageTag.ENGLISH))
+        assertNull(reopened.localizedText(LanguageTag.KOREAN)?.typeNames?.get(31))
+        assertEquals("ほのお", reopened.localizedText(LanguageTag.JAPANESE)?.typeNames?.get(31)?.value)
+        assertTrue(reopened.typesById.values.all { it.name.value == null })
+        assertEquals(TypeSemanticRole.FIRE, reopened.typesById.getValue(21).semanticRole.value)
+        assertEquals(TypeSemanticRole.WATER, reopened.typesById.getValue(20).semanticRole.value)
+        assertEquals(TypeSemanticRole.MYSTERY, reopened.typesById.getValue(19).semanticRole.value)
+        assertEquals(CapabilityStatus.NOT_FOUND, reopened.typesById.getValue(31).semanticRole.status)
+        assertNull(reopened.typesById.getValue(31).semanticRole.value)
+        assertEquals(listOf(21, 20), reopened.speciesById.getValue(6).typeIds.value)
+        assertEquals(21, reopened.movesById.getValue(53).typeId.value)
+        assertEquals(catalog.typeChart, reopened.typeChart)
     }
 
     @Test

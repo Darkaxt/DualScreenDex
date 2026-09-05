@@ -43,7 +43,7 @@ internal object CompiledTypeNameResolver {
         val decoded = requiredIds.mapNotNull { id ->
             cancellation.throwIfCancellationRequested()
             val name = decodeName(rom, layout, id, codec, cancellation) ?: return null
-            val role = WesternTypeNameLexicon.role(codec.language, name) ?: return null
+            val role = LocalizedTypeNameLexicon.role(codec.language, name) ?: return null
             id to DecodedTypeName(name, role)
         }.toMap(linkedMapOf())
         return decoded.takeIf { values ->
@@ -90,16 +90,50 @@ internal object CompiledTypeNameResolver {
         if (generation != 3) return emptyList()
         val index = session.gbaReferenceIndex?.takeUnless { it.overflowed } ?: return emptyList()
         val candidates = linkedSetOf<TableLayout>()
-        index.targets.keys.forEach { root ->
+        index.targets.forEach { (root, references) ->
             session.cancellation.throwIfCancellationRequested()
-            val layout = TableLayout(root, GEN3_TYPE_COUNT, GEN3_TYPE_NAME_WIDTH)
-            if (decode(session.rom, generation, layout, codec, session.cancellation) != null) {
-                candidates += layout
-                if (candidates.size > 1) return candidates.toList()
+            val standard = TableLayout(root, GEN3_TYPE_COUNT, GEN3_TYPE_NAME_WIDTH)
+            if (decode(session.rom, generation, standard, codec, session.cancellation) != null) {
+                candidates += standard
             }
+            val hasCompactConsumer = references.siteEvidenceAvailable && references.instructionSites.any { site ->
+                session.cancellation.throwIfCancellationRequested()
+                isGbaFiveByteTypeNameConsumer(session.rom, site, root)
+            }
+            if (hasCompactConsumer) {
+                val compact = TableLayout(root, GEN3_TYPE_COUNT, GEN3_COMPACT_TYPE_NAME_WIDTH)
+                if (decode(session.rom, generation, compact, codec, session.cancellation) != null) {
+                    candidates += compact
+                }
+            }
+            if (candidates.size > 1) return candidates.toList()
         }
         return candidates.toList()
     }
+
+    /** Proves root + type * 5; readable five-byte rows or a bare literal load are insufficient. */
+    private fun isGbaFiveByteTypeNameConsumer(rom: RomImage, site: Int, root: Int): Boolean {
+        if (site < 4 || site % 2 != 0 || site.toLong() + 4 > rom.size.toLong()) return false
+        val load = rom.u16le(site)
+        if (load and 0xF800 != 0x4800) return false
+        val literal = ((site.toLong() + 4) and -4L) + (load and 0xFF) * 4L
+        if (literal !in 0..rom.size.toLong() - 4L ||
+            rom.u32le(literal.toInt()) != 0x08000000L + root.toLong()
+        ) return false
+
+        val shift = rom.u16le(site - 4)
+        if (shift and 0xF800 != 0 || (shift ushr 6) and 0x1F != 2) return false
+        val typeRegister = (shift ushr 3) and 7
+        val productRegister = shift and 7
+        val rootRegister = (load ushr 8) and 7
+        // The shift must preserve the original type, and the root load must preserve its product.
+        if (productRegister == typeRegister || productRegister == rootRegister) return false
+        return rom.u16le(site - 2) == thumbAdds(productRegister, productRegister, typeRegister) &&
+            rom.u16le(site + 2) == thumbAdds(productRegister, productRegister, rootRegister)
+    }
+
+    private fun thumbAdds(destination: Int, left: Int, right: Int): Int =
+        0x1800 or (right shl 6) or (left shl 3) or destination
 
     private fun decodeName(
         rom: RomImage,
@@ -176,13 +210,54 @@ internal object CompiledTypeNameResolver {
     private const val MAX_GB_TYPE_NAME_BYTES = 16
     private const val GEN3_TYPE_COUNT = 18
     private const val GEN3_TYPE_NAME_WIDTH = 7
+    private const val GEN3_COMPACT_TYPE_NAME_WIDTH = 5
 }
 
-private object WesternTypeNameLexicon {
+private object LocalizedTypeNameLexicon {
     fun role(language: LanguageTag, name: String): TypeSemanticRole? =
         entries[language]?.get(name.uppercase())
 
     private val entries = mapOf(
+        LanguageTag.JAPANESE to roles(
+            TypeSemanticRole.NORMAL to listOf("ノーマル"),
+            TypeSemanticRole.FIGHTING to listOf("かくとう"),
+            TypeSemanticRole.FLYING to listOf("ひこう"),
+            TypeSemanticRole.POISON to listOf("どく"),
+            TypeSemanticRole.GROUND to listOf("じめん"),
+            TypeSemanticRole.ROCK to listOf("いわ"),
+            TypeSemanticRole.BUG to listOf("むし"),
+            TypeSemanticRole.GHOST to listOf("ゴースト"),
+            TypeSemanticRole.STEEL to listOf("はがね"),
+            TypeSemanticRole.MYSTERY to listOf("？？？"),
+            TypeSemanticRole.FIRE to listOf("ほのお"),
+            TypeSemanticRole.WATER to listOf("みず"),
+            TypeSemanticRole.GRASS to listOf("くさ"),
+            TypeSemanticRole.ELECTRIC to listOf("でんき"),
+            TypeSemanticRole.PSYCHIC to listOf("エスパー"),
+            TypeSemanticRole.ICE to listOf("こおり"),
+            TypeSemanticRole.DRAGON to listOf("ドラゴン"),
+            TypeSemanticRole.DARK to listOf("あく"),
+        ),
+        LanguageTag.KOREAN to roles(
+            TypeSemanticRole.NORMAL to listOf("노말"),
+            TypeSemanticRole.FIGHTING to listOf("격투"),
+            TypeSemanticRole.FLYING to listOf("비행"),
+            TypeSemanticRole.POISON to listOf("독"),
+            TypeSemanticRole.GROUND to listOf("땅"),
+            TypeSemanticRole.ROCK to listOf("바위"),
+            TypeSemanticRole.BUG to listOf("벌레"),
+            TypeSemanticRole.GHOST to listOf("고스트"),
+            TypeSemanticRole.STEEL to listOf("강철"),
+            TypeSemanticRole.MYSTERY to listOf("???"),
+            TypeSemanticRole.FIRE to listOf("화염"),
+            TypeSemanticRole.WATER to listOf("물"),
+            TypeSemanticRole.GRASS to listOf("풀"),
+            TypeSemanticRole.ELECTRIC to listOf("전기"),
+            TypeSemanticRole.PSYCHIC to listOf("에스퍼"),
+            TypeSemanticRole.ICE to listOf("얼음"),
+            TypeSemanticRole.DRAGON to listOf("드래곤"),
+            TypeSemanticRole.DARK to listOf("악"),
+        ),
         LanguageTag.ENGLISH to roles(
             TypeSemanticRole.NORMAL to listOf("NORMAL"),
             TypeSemanticRole.FIGHTING to listOf("FIGHT", "FIGHTING"),

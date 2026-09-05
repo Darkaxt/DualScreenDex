@@ -36,7 +36,13 @@ import com.enrpau.dualscreendex.parser.model.ResolvedDatasetLayouts
 import com.enrpau.dualscreendex.parser.model.RomHeader
 import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.model.TableRecordFormat
+import com.enrpau.dualscreendex.parser.parse.CompiledNativeTypeNameFixtures
+import com.enrpau.dualscreendex.parser.parse.CompiledNativeTypeNameFixtures.Fixture
+import com.enrpau.dualscreendex.parser.parse.CompiledTypeNameResolver
+import com.enrpau.dualscreendex.parser.text.JapanesePokemonTextCodecs
+import com.enrpau.dualscreendex.parser.text.KoreanGen2PokemonTextCodec
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
+import com.enrpau.dualscreendex.parser.text.WesternPokemonTextCodecs
 import com.enrpau.dualscreendex.parser.text.PokemonTextToken
 import com.enrpau.dualscreendex.parser.text.PokemonTextTokenDecoder
 import org.junit.Assert.assertEquals
@@ -907,6 +913,161 @@ class RecordMaterializersTest {
         assertNull(types.getValue(18).name.value)
         assertNull(types.getValue(18).semanticRole.value)
         assertEquals(18, types.getValue(18).id)
+    }
+
+    @Test
+    fun materializesNativeGbTypeNamesAndSemanticsFromCompiledEvidenceRatherThanNumericOrder() {
+        listOf(
+            CompiledNativeTypeNameFixtures.gb(JapanesePokemonTextCodecs.gen2),
+            CompiledNativeTypeNameFixtures.gb(KoreanGen2PokemonTextCodec.codec),
+        ).forEach(::assertNativeTypeMaterialization)
+    }
+
+    @Test
+    fun materializesNativeJapaneseTypesFromCompiledFiveByteGbaTables() {
+        listOf(
+            CompiledNativeTypeNameFixtures.gba(JapanesePokemonTextCodecs.gen3RubySapphire),
+            CompiledNativeTypeNameFixtures.gba(JapanesePokemonTextCodecs.gen3Later, laterRegisters = true),
+        ).forEach(::assertNativeTypeMaterialization)
+    }
+
+    @Test
+    fun unavailableNativeTypeEvidencePreservesIndependentNumericIdsWithoutNamesOrSemantics() {
+        listOf(
+            CompiledNativeTypeNameFixtures.gb(JapanesePokemonTextCodecs.gen2),
+            CompiledNativeTypeNameFixtures.gb(KoreanGen2PokemonTextCodec.codec),
+            CompiledNativeTypeNameFixtures.gba(JapanesePokemonTextCodecs.gen3Later, laterRegisters = true),
+        ).forEach { fixture ->
+            val validLayout = nativeTypeLayout(fixture)
+            val projection = requireNotNull(validLayout.languageManifest.defaultProjection())
+            val wrongCodec = if (fixture.generation == 3) {
+                WesternPokemonTextCodecs.gen3English
+            } else {
+                WesternPokemonTextCodecs.gen2English
+            }
+            val wrongLanguage = RomLanguageManifest(
+                defaultLanguage = wrongCodec.language,
+                projections = listOf(
+                    RomLanguageProjection(
+                        language = wrongCodec.language,
+                        codecId = wrongCodec.id,
+                        codecVersion = wrongCodec.version,
+                        localizedTables = projection.localizedTables,
+                        evidence = emptyList(),
+                        status = LanguageResolutionStatus.RESOLVED,
+                    ),
+                ),
+                status = LanguageResolutionStatus.RESOLVED,
+            )
+            val unavailableLayouts = listOf(
+                nativeTypeLayout(fixture, typeNames = null),
+                nativeTypeLayout(fixture, typeNames = fixture.layout.copy(offset = fixture.bytes.size - 1)),
+                validLayout.copy(languageManifest = wrongLanguage),
+            ) + textUnavailableLanguageManifests.map { validLayout.copy(languageManifest = it) }
+            unavailableLayouts.forEach { layout -> assertNativeTypesRemainNumeric(fixture, layout) }
+
+            val fireId = fixture.expected.entries.single { it.value.role == TypeSemanticRole.FIRE }.key
+            // A selected table still must reject a blank native label instead of guessing its role from the ID.
+            fixture.replaceName(fireId, byteArrayOf(fixture.codec.terminator.toByte()))
+            assertNativeTypesRemainNumeric(fixture, validLayout)
+        }
+    }
+
+    private fun assertNativeTypeMaterialization(fixture: Fixture) {
+        val fire = fixture.expected.entries.single { it.value.role == TypeSemanticRole.FIRE }
+        val water = fixture.expected.entries.single { it.value.role == TypeSemanticRole.WATER }
+        val mystery = fixture.expected.entries.single { it.value.role == TypeSemanticRole.MYSTERY }
+        fixture.replaceName(fire.key, water.value.encoded(fixture.generation))
+        fixture.replaceName(water.key, fire.value.encoded(fixture.generation))
+        val selected = requireNotNull(
+            CompiledTypeNameResolver.resolve(fixture.session(), fixture.generation, fixture.codec),
+        )
+
+        val types = materializeNativeTypeReferences(fixture, nativeTypeLayout(fixture, selected))
+
+        assertEquals(fixture.codec.id, setOf(fire.key, water.key, mystery.key, 31), types.keys)
+        assertEquals(water.value.text, types.getValue(fire.key).name.value)
+        assertEquals(TypeSemanticRole.WATER, types.getValue(fire.key).semanticRole.value)
+        assertEquals(fire.value.text, types.getValue(water.key).name.value)
+        assertEquals(TypeSemanticRole.FIRE, types.getValue(water.key).semanticRole.value)
+        assertEquals(mystery.value.text, types.getValue(mystery.key).name.value)
+        assertEquals(TypeSemanticRole.MYSTERY, types.getValue(mystery.key).semanticRole.value)
+        assertEquals(CapabilityStatus.NOT_FOUND, types.getValue(31).name.status)
+        assertEquals(CapabilityStatus.NOT_FOUND, types.getValue(31).semanticRole.status)
+        assertNull(types.getValue(31).name.value)
+        assertNull(types.getValue(31).semanticRole.value)
+    }
+
+    private fun assertNativeTypesRemainNumeric(fixture: Fixture, layout: ResolvedRomLayout) {
+        val types = materializeNativeTypeReferences(fixture, layout)
+        val referencedIds = fixture.expected.filterValues {
+            it.role in setOf(TypeSemanticRole.FIRE, TypeSemanticRole.WATER, TypeSemanticRole.MYSTERY)
+        }.keys + 31
+        assertEquals(fixture.codec.id, referencedIds, types.keys)
+        types.forEach { (id, type) ->
+            assertEquals(id, type.id)
+            assertEquals(CapabilityStatus.NOT_FOUND, type.name.status)
+            assertEquals(CapabilityStatus.NOT_FOUND, type.semanticRole.status)
+            assertNull(type.name.value)
+            assertNull(type.semanticRole.value)
+        }
+    }
+
+    private fun materializeNativeTypeReferences(fixture: Fixture, layout: ResolvedRomLayout): Map<Int, TypeRecord> {
+        val fireId = fixture.expected.entries.single { it.value.role == TypeSemanticRole.FIRE }.key
+        val waterId = fixture.expected.entries.single { it.value.role == TypeSemanticRole.WATER }.key
+        val mysteryId = fixture.expected.entries.single { it.value.role == TypeSemanticRole.MYSTERY }.key
+        // Separate numeric consumers establish the catalog domain, not the localized table's row count.
+        val species = mapOf(
+            1 to SpeciesRecord(
+                id = 1,
+                dexNumber = CatalogField.available(1),
+                name = CatalogField.notFound("numeric fixture"),
+                typeIds = CatalogField.available(listOf(fireId)),
+                baseStats = CatalogField.notFound("numeric fixture"),
+                sprite = CatalogField.notFound("numeric fixture"),
+            ),
+        )
+        val moves = mapOf(
+            1 to MoveRecord(
+                id = 1,
+                name = CatalogField.notFound("numeric fixture"),
+                typeId = CatalogField.available(waterId),
+                category = CatalogField.notFound("numeric fixture"),
+                power = CatalogField.notFound("numeric fixture"),
+                accuracy = CatalogField.notFound("numeric fixture"),
+                pp = CatalogField.notFound("numeric fixture"),
+            ),
+        )
+        return RecordMaterializers.types(
+            RomImage(fixture.bytes), layout, species, listOf(TypeMatchup(mysteryId, 31, 200)), moves,
+        )
+    }
+
+    private fun nativeTypeLayout(fixture: Fixture, typeNames: TableLayout? = fixture.layout): ResolvedRomLayout {
+        val codec = fixture.codec
+        return ResolvedRomLayout(
+            family = if (fixture.generation == 3) EngineFamily.EMERALD else EngineFamily.GOLD_SILVER,
+            generation = fixture.generation,
+            platform = if (fixture.generation == 3) Platform.GBA else Platform.GBC,
+            speciesCount = 1,
+            moveCount = 1,
+            tables = ProfileTables(),
+            languageManifest = RomLanguageManifest(
+                defaultLanguage = codec.language,
+                projections = listOf(
+                    RomLanguageProjection(
+                        language = codec.language,
+                        codecId = codec.id,
+                        codecVersion = codec.version,
+                        localizedTables = LocalizedTableLayout(typeNames = typeNames),
+                        evidence = emptyList(),
+                        status = LanguageResolutionStatus.RESOLVED,
+                    ),
+                ),
+                status = LanguageResolutionStatus.RESOLVED,
+            ),
+        )
     }
 
     @Test

@@ -10,6 +10,7 @@ import com.darkaxt.dualdex.battle.TargetMode
 import com.enrpau.dualscreendex.companion.battle.AppliedDamageCondition
 import com.enrpau.dualscreendex.companion.battle.CriticalRule
 import com.enrpau.dualscreendex.companion.battle.DamageForecast
+import com.enrpau.dualscreendex.companion.battle.DamageForecastConfidence
 import com.enrpau.dualscreendex.companion.battle.DamageFormulaEvidence
 import com.enrpau.dualscreendex.companion.battle.InclusiveRange
 import com.enrpau.dualscreendex.companion.battle.SemanticProof
@@ -161,6 +162,83 @@ class DamageForecastAssemblerTest {
             assembled.unboundedUnknowns,
         )
         assertTrue(DamageForecastMemoizer().forecast(assembled) is DamageForecast.Absent)
+    }
+
+    @Test
+    fun `native fire and water display strings do not change proven weather forecasts`() {
+        listOf(
+            TypeSemanticRole.FIRE to listOf("ほのお", "화염"),
+            TypeSemanticRole.WATER to listOf("みず", "물"),
+        ).forEach { (role, names) ->
+            val withoutDisplayName = requireNotNull(
+                DamageForecastAssembler.input(
+                    sample(owner = 2, target = 1),
+                    nativeTypeCatalog(31, CatalogField.notApplicable("stored in language overlay"), role),
+                    KnowledgeMode.DISCOVERED,
+                    formula(),
+                ),
+            )
+            val reference = DamageForecastMemoizer().forecast(withoutDisplayName) as DamageForecast.Available
+            assertTrue(withoutDisplayName.unboundedUnknowns.isEmpty())
+            val weather = withoutDisplayName.boundedAlternatives.single()
+            assertEquals(AppliedDamageCondition.WEATHER, weather.kind)
+            assertEquals(1, weather.minimumNumerator)
+            assertEquals(3, weather.maximumNumerator)
+            assertEquals(2, weather.denominator)
+            assertEquals(DamageForecastConfidence.BOUNDED, reference.confidence)
+            assertEquals(200, reference.effectivenessPercent)
+
+            names.forEach { name ->
+                val native = requireNotNull(
+                    DamageForecastAssembler.input(
+                        sample(owner = 2, target = 1),
+                        nativeTypeCatalog(31, CatalogField.available(name), role),
+                        KnowledgeMode.DISCOVERED,
+                        formula(),
+                    ),
+                )
+                assertEquals(name, withoutDisplayName, native)
+                assertEquals(name, reference, DamageForecastMemoizer().forecast(native))
+            }
+        }
+    }
+
+    @Test
+    fun `native type names and familiar numeric ids cannot substitute for unresolved semantics`() {
+        listOf(0, 31).forEach { typeId ->
+            listOf("ほのお", "화염", "みず", "물", "？？？", "???").forEach { name ->
+                val assembled = requireNotNull(
+                    DamageForecastAssembler.input(
+                        sample(owner = 2, target = 1),
+                        nativeTypeCatalog(typeId, CatalogField.available(name), role = null),
+                        KnowledgeMode.DISCOVERED,
+                        formula(),
+                    ),
+                )
+
+                assertEquals(typeId, assembled.move.typeId)
+                assertEquals(200, assembled.effectivenessPercent)
+                assertTrue(assembled.boundedAlternatives.isEmpty())
+                assertEquals(
+                    listOf("Weather interaction for this move's type is unresolved."),
+                    assembled.unboundedUnknowns,
+                )
+                assertTrue("typeId=$typeId name=$name", DamageForecastMemoizer().forecast(assembled) is DamageForecast.Absent)
+            }
+        }
+    }
+
+    private fun nativeTypeCatalog(typeId: Int, name: CatalogField<String>, role: TypeSemanticRole?): ParsedCatalog {
+        val base = catalog()
+        return base.copy(
+            movesById = mapOf(10 to base.movesById.getValue(10).copy(typeId = CatalogField.available(typeId))),
+            typesById = base.typesById + (typeId to TypeRecord(
+                id = typeId,
+                name = name,
+                semanticRole = role?.let { CatalogField.available(it) } ?: CatalogField.notFound("unresolved fixture role"),
+            )),
+            typeChart = listOf(TypeMatchup(typeId, 0, 200)),
+        )
     }
 
     private fun sample(owner: Int, target: Int): BattleMemorySample {
