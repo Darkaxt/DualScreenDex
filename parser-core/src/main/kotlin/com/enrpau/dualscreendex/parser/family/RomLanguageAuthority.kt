@@ -14,6 +14,7 @@ import com.enrpau.dualscreendex.parser.model.RomHeader
 import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.model.ValidationEvidence
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
+import com.enrpau.dualscreendex.parser.text.LanguageTextPlausibility
 
 /** Converts a structural probe codec into language authority only after locale-scoped corroboration. */
 internal object RomLanguageAuthority {
@@ -28,11 +29,12 @@ internal object RomLanguageAuthority {
         moveNamesLayout: TableLayout?,
         cancellation: ParserCancellationToken,
     ): RomLanguageManifest {
+        cancellation.throwIfCancellationRequested()
         if (!probeCodec.supports(generation, header.platform)) {
             return unknown("probe codec does not support the selected generation and platform")
         }
-        if (probeCodec.language !in LANGUAGE_CHARACTER_PROFILES) {
-            return unknown("probe codec language is not a ratified Western language")
+        if (probeCodec.language !in LANGUAGE_CHARACTER_PROFILES && probeCodec.language !in NATIVE_CHARACTER_PROFILES) {
+            return unknown("probe codec language has no bounded content profile")
         }
         if (!speciesNamesEvidence.compatible || speciesNamesLayout == null) {
             return unknown("selected species-name table lacks compatible structural evidence")
@@ -51,7 +53,9 @@ internal object RomLanguageAuthority {
             probeCodec,
             cancellation,
         )
-        val plausibility = moveLanguagePlausibility(
+        val plausibility = if (language in NATIVE_CHARACTER_PROFILES) {
+            nativeLanguagePlausibility(rom, speciesNamesLayout, moveNamesLayout, generation, probeCodec, cancellation)
+        } else moveLanguagePlausibility(
             rom,
             moveNamesLayout,
             generation,
@@ -127,6 +131,18 @@ internal object RomLanguageAuthority {
         )
     }
 
+    fun combine(manifests: List<RomLanguageManifest>, cancellation: ParserCancellationToken): RomLanguageManifest {
+        cancellation.throwIfCancellationRequested()
+        val authorities = manifests.filter { it.status == LanguageResolutionStatus.RESOLVED }
+            .distinctBy { it.defaultProjection()?.let { projection -> projection.codecId to projection.localizedTables } }
+        if (authorities.size > 1 || manifests.any { it.status == LanguageResolutionStatus.AMBIGUOUS }) {
+            return RomLanguageManifest(defaultLanguage = null, projections = emptyList(),
+                status = LanguageResolutionStatus.AMBIGUOUS,
+                diagnostics = listOf("conflicting independently corroborated codec/table authorities; no default or duplicate locale projection"))
+        }
+        return authorities.singleOrNull() ?: manifests.lastOrNull() ?: RomLanguageManifest.UNKNOWN
+    }
+
     private data class LanguagePlausibility(
         val sampledTrigrams: Int,
         val languageCoverage: Double,
@@ -141,6 +157,73 @@ internal object RomLanguageAuthority {
             get() = ((languageCoverage + margin.coerceAtLeast(0.0)) * 100.0)
                 .toInt()
                 .coerceIn(0, 100)
+    }
+
+    private fun nativeLanguagePlausibility(
+        rom: RomImage, species: TableLayout, moves: TableLayout, generation: Int,
+        codec: PokemonTextCodec, cancellation: ParserCancellationToken,
+    ): LanguagePlausibility {
+        val absent = LanguagePlausibility(0, 0.0, 0.0)
+        val firstIndex = if (generation == 3) 1 else 0
+        val speciesNames = sampleNativeNames(rom, species, firstIndex, generation, codec, cancellation) ?: return absent
+        val moveNames = sampleNativeNames(rom, moves, firstIndex, generation, codec, cancellation) ?: return absent
+        if (speciesNames.distinct().size < 3 || moveNames.distinct().size < 6) return absent
+        if ((speciesNames + moveNames).any { !LanguageTextPlausibility.looksLikeStandaloneFixedName(it, codec.language) }) return absent
+        val trigrams = moveNames.distinct().flatMap(::nativeTrigrams).toSet()
+        if (trigrams.isEmpty()) return absent
+        val profile = NATIVE_CHARACTER_PROFILES.getValue(codec.language)
+        val matches = trigrams.count(profile::contains)
+        if (matches < MINIMUM_PLAUSIBILITY_TRIGRAMS) return absent
+        val competing = NATIVE_CHARACTER_PROFILES.filterKeys { it != codec.language }.values
+            .maxOf { other -> trigrams.count(other::contains).toDouble() / trigrams.size }
+        return LanguagePlausibility(trigrams.size, matches.toDouble() / trigrams.size, competing)
+    }
+
+    /** Variable roots are traversed to their entire declared end: a good prefix cannot hide a tail.
+     * Fixed/pointer samples keep bounded complete records; only GB fixed-width glyphs may omit EOS.
+     */
+    private fun sampleNativeNames(
+        rom: RomImage, layout: TableLayout, firstIndex: Int, generation: Int,
+        codec: PokemonTextCodec, cancellation: ParserCancellationToken,
+    ): List<String>? {
+        cancellation.throwIfCancellationRequested()
+        if (layout.count !in 1..2048 || layout.offset !in 0 until rom.size) return null
+        val width = layout.recordSize
+        val stride = layout.stride ?: width
+        if (!layout.variableLength && (width !in 1..MAXIMUM_CONTROL_BYTES || stride < width ||
+                layout.valuesArePointers && width < 4)) return null
+        val names = mutableListOf<String>()
+        var cursor = layout.offset
+        val dataEnd = if (generation < 3) minOf(rom.size.toLong(), (layout.offset / 0x4000 + 1L) * 0x4000).toInt() else rom.size
+        val end = if (layout.variableLength) layout.count else minOf(layout.count, firstIndex + MAXIMUM_PLAUSIBILITY_RECORDS)
+        for (index in 0 until end) {
+            cancellation.throwIfCancellationRequested()
+            var offset = if (layout.variableLength) cursor.toLong() else layout.offset.toLong() + index.toLong() * stride
+            if (offset < 0 || offset >= dataEnd) return null
+            if (layout.valuesArePointers) {
+                if (offset + 4 > rom.size) return null
+                offset = (rom.gbaPointer(offset.toInt()) ?: return null).toLong()
+            }
+            val fixed = !layout.variableLength && !layout.valuesArePointers
+            val bytes = if (fixed) width else minOf(MAXIMUM_CONTROL_BYTES, dataEnd - offset.toInt())
+            if (offset + bytes > dataEnd) return null
+            val decoded = codec.decodeDetailed(rom, offset.toInt(), bytes, cancellation)
+            if (!decoded.terminated && !(fixed && generation < 3 && decoded.contentBytes == width &&
+                    decoded.validBytes == width && decoded.controlUnits == 0 && decoded.substitutionUnits == 0)) return null
+            if (layout.variableLength) cursor += decoded.consumedBytes
+            if (index < firstIndex) continue
+            if (decoded.invalidUnits != 0 || decoded.controlUnits != 0 || decoded.substitutionUnits != 0 || decoded.text.isBlank()) return null
+            if (index < firstIndex + MAXIMUM_PLAUSIBILITY_RECORDS) names += decoded.text
+        }
+        return names
+    }
+
+    /** Normalize kana only for lexical comparison, never the catalog's exact decoded spelling. */
+    private fun nativeTrigrams(value: String): List<String> {
+        val normalized = value.map { if (it in 'ァ'..'ヶ') (it.code - 0x60).toChar() else it }.joinToString("")
+        return NATIVE_WORD_PATTERN.findAll(normalized).flatMap { match ->
+            "^${match.value}$".windowed(3).asSequence()
+        }.toList()
     }
 
     private fun moveLanguagePlausibility(
@@ -419,6 +502,31 @@ internal object RomLanguageAuthority {
     private fun Double.toConfidencePercent(): Int =
         (coerceIn(0.0, 1.0) * 100.0).toInt()
 
+    private val NATIVE_WORD_PATTERN = Regex("[\\p{IsHiragana}\\p{IsKatakana}\\p{IsHangul}ー]+")
+    // Public source-derived lexical features, not ordered anchors or an exact-name acceptance list.
+    // pokered-jp 258d1a89, text/move_names.asm; pokegold-kr 7743877d, data/moves/names.asm.
+    private val NATIVE_CHARACTER_PROFILES = mapOf(
+        LanguageTag.JAPANESE to nativeTrigrams(
+            "はたく からてチョップ おうふくビンタ れんぞくパンチ メガトンパンチ ネコにこばん " +
+                "ほのおのパンチ れいとうパンチ かみなりパンチ ひっかく はさむ ハサミギロチン " +
+                "かまいたち つるぎのまい いあいぎり かぜおこし つばさでうつ ふきとばし そらをとぶ " +
+                "しめつける たたきつける つるのムチ ふみつけ にどげり メガトンキック とびげり " +
+                "まわしげり すなかけ ずつき つのでつく みだれづき つのドリル たいあたり のしかかり " +
+                "まきつく とっしん あばれる すてみタックル しっぽをふる どくばり ダブルニードル " +
+                "ミサイルばり にらみつける かみつく なきごえ ほえる うたう ちょうおんぱ ソニックブーム " +
+                "かなしばり ようかいえき ひのこ かえんほうしゃ しろいきり みずでっぽう ハイドロポンプ " +
+                "なみのり れいとうビーム ふぶき サイケこうせん バブルこうせん オーロラビーム はかいこうせん",
+        ).toSet(),
+        LanguageTag.KOREAN to nativeTrigrams(
+            "막치기 태권당수 연속 뺨치기 연속펀치 메가톤펀치 고양이돈받기 불꽃펀치 냉동펀치 번개펀치 " +
+                "할퀴기 찝기 가위자르기 칼바람 칼춤 풀베기 바람일으키기 날개치기 날려버리기 공중날기 " +
+                "조이기 힘껏치기 덩쿨채찍 짓밟기 두번치기 메가톤킥 점프킥 돌려차기 모래뿌리기 박치기 " +
+                "뿔찌르기 마구찌르기 뿔드릴 몸통박치기 누르기 김밥말이 돌진 난동부리기 이판사판태클 " +
+                "꼬리흔들기 독침 더블니들 바늘미사일 째려보기 물기 울음소리 울부짖기 노래하기 초음파 " +
+                "소닉붐 사슬묶기 용해액 불꽃세례 화염방사 흰안개 물대포 하이드로펌프 파도타기 냉동빔 " +
+                "눈보라 환상빔 거품광선 오로라 빔 파괴광선",
+        ).toSet(),
+    )
     private val NON_ENGLISH_MARKER_CHARACTERS = Regex("[^A-Z0-9]+")
     private val WORD_PATTERN = Regex("[A-Z]+")
     private val ENGLISH_MOVE_CONTROLS = listOf(

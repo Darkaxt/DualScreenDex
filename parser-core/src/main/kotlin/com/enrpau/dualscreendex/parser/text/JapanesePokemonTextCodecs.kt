@@ -253,6 +253,8 @@ object JapanesePokemonTextCodecs {
         0x76 to "ぁ",
         0x77 to "ぇ",
         0x78 to "ぉ",
+        0xEF to "♂",
+        0xF5 to "♀",
         0xF0 to "円",
         0xF2 to "．",
         0xF3 to "／",

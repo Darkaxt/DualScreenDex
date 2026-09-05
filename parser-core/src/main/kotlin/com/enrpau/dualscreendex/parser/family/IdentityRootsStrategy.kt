@@ -4,6 +4,8 @@ import com.enrpau.dualscreendex.parser.analysis.ExactProfileSnapshot
 import com.enrpau.dualscreendex.parser.analysis.ExactProfileTablesSnapshot
 import com.enrpau.dualscreendex.parser.analysis.ExactTableLayoutSnapshot
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
+import com.enrpau.dualscreendex.parser.parse.Gen3CompiledNameGeometryResolver
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.ExpandedSplitCaptureBallMetadata
 import com.enrpau.dualscreendex.parser.model.GbaCompiledReferenceIndex
@@ -54,7 +56,9 @@ internal sealed interface IdentityRootsPhaseResult {
         compiledGbaReferences: GbaCompiledReferenceIndex?,
         tableResolution: ProfileTableResolution,
         val probeCodec: PokemonTextCodec,
+        nativeNameCandidates: List<NativeNameCandidate> = emptyList(),
     ) : IdentityRootsPhaseResult {
+        val nativeNameCandidates = Collections.unmodifiableList(nativeNameCandidates.toList())
         val exactProfile = exactProfile
         val baseProfile = baseProfile?.immutableCopy()
         val scoreEvidence: List<ScoreEvidence> = Collections.unmodifiableList(scoreEvidence.toList())
@@ -121,7 +125,9 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
             ),
         )
         val generation = definition.formatGeneration
-        val probeCodec = OfficialLanguageResolver.preferredProbeCodec(
+        val nativeNameCandidates = NativeNameCandidateResolver.resolve(session, definition, baseProfile)
+        val nativeNames = nativeNameCandidates.singleOrNull()
+        val probeCodec = nativeNames?.codec ?: OfficialLanguageResolver.preferredProbeCodec(
             rom = session.rom,
             header = header,
             generation = generation,
@@ -172,8 +178,8 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
             null
         }
         val inheritedTableResolution = expansion?.let { ProfileTableResolution(it.tables) }
-            ?: resolveTables(session.rom, definition, baseProfile, probeCodec)
-        val compiledGen1Names = if (generation == 1 && exact == null) {
+            ?: resolveTables(session.rom, definition, baseProfile, probeCodec, session.cancellation)
+        val compiledGen1Names = nativeNames?.species ?: if (generation == 1 && exact == null) {
             inheritedTableResolution.tables.speciesNames?.let { inherited ->
                 Gen1CompiledNameResolver.resolve(session.rom, inherited.count, probeCodec)
             }
@@ -218,7 +224,7 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
             } == true
         val effectiveIdentityMatched = identityMatched || compiledGen1StructuralIdentity
         val compiledGen1Moves = if (generation == 1 && exact == null && effectiveIdentityMatched) {
-            Gen1CompiledMoveResolver.resolve(session.rom, probeCodec)
+            Gen1CompiledMoveResolver.resolve(session.rom, probeCodec, session.cancellation)
         } else {
             null
         }
@@ -353,8 +359,12 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
             headerlessUnifiedSpecies = headerlessUnifiedSpecies,
             expandedSplitCaptureBalls = expandedSplitCaptureBalls,
             compiledGbaReferences = compiledGbaReferences,
-            tableResolution = tableResolution,
+            tableResolution = nativeNames?.let {
+                tableResolution.copy(tables = tableResolution.tables.copy(speciesNames = it.species,
+                    moveNames = it.moves, moveData = it.moveData ?: tableResolution.tables.moveData))
+            } ?: tableResolution,
             probeCodec = probeCodec,
+            nativeNameCandidates = nativeNameCandidates,
         )
     }
 
@@ -375,6 +385,7 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
         definition: EngineFamilyDefinition,
         profile: FamilyProfileBasis?,
         probeCodec: PokemonTextCodec,
+        cancellation: ParserCancellationToken,
     ): ProfileTableResolution {
         var inherited = profile?.tables ?: ProfileTables()
         if (definition.formatGeneration != 3) return ProfileTableResolution(inherited)
@@ -383,14 +394,18 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
             definition.family == com.enrpau.dualscreendex.parser.model.EngineFamily.EMERALD ||
             definition.family == com.enrpau.dualscreendex.parser.model.EngineFamily.FIRERED_LEAFGREEN
         ) {
-            GbaPublishedHeaderResolver.resolve(rom, probeCodec)
+            GbaPublishedHeaderResolver.resolve(rom, probeCodec, cancellation)
         } else {
+            val geometry = Gen3CompiledNameGeometryResolver.resolve(rom, probeCodec, cancellation)
             val locatedNames = locateRubySapphireNames(rom)
             val expectedNames = inherited.speciesNames?.offset
-            if (locatedNames != null && expectedNames != null && locatedNames != expectedNames) {
+            if (geometry.speciesNames == null && !geometry.ambiguous && locatedNames != null && expectedNames != null && locatedNames != expectedNames) {
                 inherited = inherited.relocatedBy(locatedNames - expectedNames)
             }
-            GbaHeaderPointers(speciesNames = locatedNames)
+            val conflicting = locatedNames != null && geometry.speciesNames != null && locatedNames != geometry.speciesNames.offset
+            val selected = if (conflicting) Gen3CompiledNameGeometryResolver.Result(ambiguous = true) else geometry
+            GbaHeaderPointers(speciesNames = if (selected.ambiguous) null else selected.speciesNames?.offset ?: locatedNames,
+                moveNames = selected.moveNames?.offset, nameGeometry = selected)
         }
 
         fun publishedSemanticTable(pointer: Int?, fallback: TableLayout?, count: Int, recordSize: Int): TableLayout? =
@@ -402,16 +417,17 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
 
         return ProfileTableResolution(
             tables = ProfileTables(
-                speciesNames = headerPointers.speciesNames?.let {
-                    TableLayout(it, inherited.speciesNames?.count ?: 412, 11)
-                } ?: inherited.speciesNames,
+                speciesNames = if (headerPointers.nameGeometry.ambiguous) null else headerPointers.nameGeometry.speciesNames
+                    ?: headerPointers.speciesNames?.let {
+                        TableLayout(it, inherited.speciesNames?.count ?: 412, 11)
+                    } ?: inherited.speciesNames,
                 baseStats = publishedSemanticTable(
                     headerPointers.baseStats,
                     inherited.baseStats,
                     inherited.baseStats?.count ?: 412,
                     28,
                 ),
-                moveNames = publishedSemanticTable(
+                moveNames = if (headerPointers.nameGeometry.ambiguous) null else headerPointers.nameGeometry.moveNames ?: publishedSemanticTable(
                     headerPointers.moveNames,
                     inherited.moveNames,
                     inherited.moveNames?.count ?: 355,

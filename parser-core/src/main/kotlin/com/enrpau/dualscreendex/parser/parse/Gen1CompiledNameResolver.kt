@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
@@ -11,12 +12,29 @@ internal object Gen1CompiledNameResolver {
         rom: RomImage,
         count: Int,
         codec: PokemonTextCodec = PokemonTextCodec.gbEnglish,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
     ): TableLayout? {
+        cancellation.throwIfCancellationRequested()
         if (count !in 1..MAX_NAME_COUNT) return null
         val scanEnd = minOf(BANK_BYTES, rom.size)
         val candidates = buildList {
+            GbCompiledNameConsumer.discover(rom, 1, cancellation).forEach { root ->
+                val end = root.offset.toLong() + count.toLong() * root.width
+                if (end <= minOf(rom.size, (root.offset / BANK_BYTES + 1) * BANK_BYTES)) {
+                    var valid = 0
+                    repeat(count) { index ->
+                        cancellation.throwIfCancellationRequested()
+                        val decoded = codec.decodeDetailed(rom, root.offset + index * root.width, root.width, cancellation)
+                        if (decoded.invalidUnits == 0 && decoded.controlUnits == 0 && decoded.substitutionUnits == 0 && decoded.text.isNotBlank() &&
+                            (decoded.terminated || decoded.contentBytes == root.width && decoded.validBytes == root.width)
+                        ) valid++
+                    }
+                    if (valid.toDouble() / count >= 0.85) add(TableLayout(root.offset, count, root.width))
+                }
+            }
             var offset = 0
             while (offset + CONSUMER_BYTES <= scanEnd) {
+                cancellation.throwIfCancellationRequested()
                 parseConsumerAt(rom, offset, count, codec)?.let(::add)
                 offset++
             }

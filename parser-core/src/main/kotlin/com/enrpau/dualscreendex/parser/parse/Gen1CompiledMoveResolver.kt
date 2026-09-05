@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
@@ -15,14 +16,16 @@ internal object Gen1CompiledMoveResolver {
     fun resolve(
         rom: RomImage,
         codec: PokemonTextCodec = PokemonTextCodec.gbEnglish,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
     ): Gen1CompiledMoveResolution? {
-        val nameRoots = moveNameRoots(rom)
-        val dataRoots = moveDataRoots(rom)
+        cancellation.throwIfCancellationRequested()
+        val nameRoots = moveNameRoots(rom, cancellation)
+        val dataRoots = moveDataRoots(rom, cancellation)
         if (nameRoots.isEmpty() || dataRoots.isEmpty()) return null
 
         val candidates = buildSet {
             nameRoots.forEach { nameRoot ->
-                val count = consecutiveNameCount(rom, nameRoot, codec) ?: return@forEach
+                val count = consecutiveNameCount(rom, nameRoot, codec, cancellation) ?: return@forEach
                 dataRoots.forEach { dataRoot ->
                     val evidence = TableValidators.moveData(
                         rom = rom,
@@ -45,9 +48,9 @@ internal object Gen1CompiledMoveResolver {
         return candidates.singleOrNull()
     }
 
-    private fun moveNameRoots(rom: RomImage): Set<Int> {
-        val banks = moveNameBanks(rom)
-        val addresses = moveNameAddresses(rom)
+    private fun moveNameRoots(rom: RomImage, cancellation: ParserCancellationToken): Set<Int> {
+        val banks = moveNameBanks(rom, cancellation)
+        val addresses = moveNameAddresses(rom, cancellation)
         return buildSet {
             banks.forEach { bank ->
                 addresses.forEach { address ->
@@ -57,10 +60,11 @@ internal object Gen1CompiledMoveResolver {
         }
     }
 
-    private fun moveNameBanks(rom: RomImage): Set<Int> = buildSet {
+    private fun moveNameBanks(rom: RomImage, cancellation: ParserCancellationToken): Set<Int> = buildSet {
         val scanEnd = minOf(BANK_BYTES, rom.size)
         var offset = 0
         while (offset + MOVE_NAME_CONSUMER_BYTES <= scanEnd) {
+            cancellation.throwIfCancellationRequested()
             if (
                 rom.u8(offset) == PUSH_HL &&
                 rom.u8(offset + 1) == LOAD_A_IMMEDIATE &&
@@ -81,10 +85,11 @@ internal object Gen1CompiledMoveResolver {
         }
     }
 
-    private fun moveNameAddresses(rom: RomImage): Set<Int> = buildSet {
+    private fun moveNameAddresses(rom: RomImage, cancellation: ParserCancellationToken): Set<Int> = buildSet {
         val scanEnd = minOf(BANK_BYTES, rom.size)
         var offset = 0
         while (offset + NAME_POINTER_CONSUMER_BYTES <= scanEnd) {
+            cancellation.throwIfCancellationRequested()
             if (
                 rom.u8(offset) == LOAD_HL_IMMEDIATE &&
                 rom.u8(offset + 3) == ADD_HL_DE &&
@@ -110,9 +115,10 @@ internal object Gen1CompiledMoveResolver {
         }
     }
 
-    private fun moveDataRoots(rom: RomImage): Set<TableLayout> = buildSet {
+    private fun moveDataRoots(rom: RomImage, cancellation: ParserCancellationToken): Set<TableLayout> = buildSet {
         var offset = 0
         while (offset + MOVE_DATA_CONSUMER_BYTES <= rom.size) {
+            cancellation.throwIfCancellationRequested()
             val recordSize = rom.u16le(offset + 5)
             if (
                 rom.u8(offset) == DEC_A &&
@@ -140,22 +146,16 @@ internal object Gen1CompiledMoveResolver {
         rom: RomImage,
         root: Int,
         codec: PokemonTextCodec,
+        cancellation: ParserCancellationToken,
     ): Int? {
         var cursor = root
         var count = 0
-        while (count < MAX_MOVE_COUNT) {
-            val bytes = ArrayList<Byte>()
-            var terminated = false
-            repeat(MAX_NAME_BYTES) {
-                if (!terminated && cursor < rom.size) {
-                    val value = rom.u8(cursor++)
-                    bytes += value.toByte()
-                    terminated = value == codec.terminator
-                }
-            }
-            if (!terminated) break
-            val decoded = codec.decodeDetailed(bytes.toByteArray())
-            if (decoded.text.isBlank() || decoded.validRatio < MINIMUM_NAME_RATIO) break
+        val end = minOf(rom.size.toLong(), (root / BANK_BYTES + 1L) * BANK_BYTES).toInt()
+        while (count < MAX_MOVE_COUNT && cursor < end) {
+            cancellation.throwIfCancellationRequested()
+            val decoded = codec.decodeDetailed(rom, cursor, minOf(MAX_NAME_BYTES, end - cursor), cancellation)
+            if (!decoded.terminated || decoded.text.isBlank() || decoded.validRatio < MINIMUM_NAME_RATIO) break
+            cursor += decoded.consumedBytes
             count++
         }
         return count.takeIf { it >= MIN_MOVE_COUNT }

@@ -69,6 +69,16 @@ internal object OfficialLanguageResolver {
         }
     }
 
+    /** Header/menu metadata orders trials only; each codec must establish its own table authority. */
+    fun probeCodecs(
+        rom: RomImage, header: RomHeader, generation: Int, family: EngineFamily,
+        cancellation: ParserCancellationToken,
+    ): List<PokemonTextCodec> {
+        cancellation.throwIfCancellationRequested()
+        return (listOf(preferredProbeCodec(rom, header, generation, family, cancellation)) +
+            LanguageRegistry.candidateCodecs(generation, header.platform)).distinctBy { it.id }
+    }
+
     private fun redBlueMenuLanguage(
         rom: RomImage,
         header: RomHeader,

@@ -86,6 +86,18 @@ class JapanesePokemonTextCodecsTest {
     }
 
     @Test
+    fun generationTwoFullWidthSpeciesRetainGenderGlyphs() {
+        for ((glyph, expected) in listOf(0xef to "ニドラン♂", 0xf5 to "ニドラン♀")) {
+            val decoded = JapanesePokemonTextCodecs.gen2.decodeDetailed(bytes(0x95, 0x13, 0xa5, 0xab, glyph))
+            assertEquals(expected, decoded.text)
+            assertEquals(0, decoded.invalidUnits)
+            assertEquals(5, decoded.glyphUnits)
+            assertEquals(5, decoded.consumedBytes)
+            assertFalse(decoded.terminated)
+        }
+    }
+
+    @Test
     fun decodesGenerationThreeHiraganaKatakanaAndPunctuation() {
         assertDecodes(
             "あがアガ0！？。ー·⋯",

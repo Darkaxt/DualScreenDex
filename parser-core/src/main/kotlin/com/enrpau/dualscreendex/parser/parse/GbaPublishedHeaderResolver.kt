@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.ValidationEvidence
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
@@ -17,6 +18,7 @@ internal data class GbaHeaderPointers(
     val pokedexCount: Int? = null,
     val publishedDataState: GbaPublishedDataState = GbaPublishedDataState.ABSENT,
     val publishedDataEvidence: ValidationEvidence? = null,
+    val nameGeometry: Gen3CompiledNameGeometryResolver.Result = Gen3CompiledNameGeometryResolver.Result(),
 )
 
 internal enum class GbaPublishedDataState { RESOLVED, ABSENT, AMBIGUOUS }
@@ -34,9 +36,19 @@ internal object GbaPublishedHeaderResolver {
     fun resolve(
         rom: RomImage,
         codec: PokemonTextCodec,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
     ): GbaHeaderPointers {
-        val speciesCount = inferredNameCount(rom, SPECIES_NAMES_SLOT, SPECIES_NAME_WIDTH, 2_048, codec)
-        val moveCount = inferredNameCount(rom, MOVE_NAMES_SLOT, MOVE_NAME_WIDTH, 2_048, codec)
+        cancellation.throwIfCancellationRequested()
+        val compiledGeometry = Gen3CompiledNameGeometryResolver.resolve(rom, codec, cancellation)
+        val conflictingRoots = listOf(
+            rom.pointerOrNull(SPECIES_NAMES_SLOT) to compiledGeometry.speciesNames?.offset,
+            rom.pointerOrNull(MOVE_NAMES_SLOT) to compiledGeometry.moveNames?.offset,
+        ).any { (published, compiled) -> published != null && compiled != null && published != compiled }
+        val geometry = if (conflictingRoots) Gen3CompiledNameGeometryResolver.Result(ambiguous = true) else compiledGeometry
+        val speciesCount = geometry.speciesNames?.count
+            ?: inferredNameCount(rom, SPECIES_NAMES_SLOT, SPECIES_NAME_WIDTH, 2_048, codec)
+        val moveCount = geometry.moveNames?.count
+            ?: inferredNameCount(rom, MOVE_NAMES_SLOT, MOVE_NAME_WIDTH, 2_048, codec)
         val candidates = listOf(COMPACT_DATA_ROOT, FREE_SEEN_FLAGS_DATA_ROOT, STANDARD_DATA_ROOT)
             .map { start ->
                 PublishedBlockCandidate(
@@ -79,8 +91,8 @@ internal object GbaPublishedHeaderResolver {
             null
         }
 
-        val speciesNames = rom.pointerOrNull(SPECIES_NAMES_SLOT)
-        val moveNames = rom.pointerOrNull(MOVE_NAMES_SLOT)
+        val speciesNames = if (geometry.ambiguous) null else geometry.speciesNames?.offset ?: rom.pointerOrNull(SPECIES_NAMES_SLOT)
+        val moveNames = if (geometry.ambiguous) null else geometry.moveNames?.offset ?: rom.pointerOrNull(MOVE_NAMES_SLOT)
         val sprites = rom.pointerOrNull(SPRITES_SLOT)
         val publishedPokedexCount = if (POKEDEX_COUNT_SLOT <= rom.size - 4) {
             rom.u32le(POKEDEX_COUNT_SLOT)
@@ -101,6 +113,7 @@ internal object GbaPublishedHeaderResolver {
             pokedexCount = publishedPokedexCount,
             publishedDataState = publishedDataState,
             publishedDataEvidence = publishedDataEvidence,
+            nameGeometry = geometry,
         )
     }
 

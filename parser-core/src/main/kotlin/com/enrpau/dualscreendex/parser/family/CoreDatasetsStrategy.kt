@@ -355,7 +355,11 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
                 null
             }
 
-        val languageManifest = RomLanguageAuthority.resolve(
+        val languageManifest = RomLanguageAuthority.combine(
+            identity.nativeNameCandidates.map { it.manifest } + if (
+                probeCodec.language in setOf(com.enrpau.dualscreendex.parser.language.LanguageTag.JAPANESE,
+                    com.enrpau.dualscreendex.parser.language.LanguageTag.KOREAN) && identity.nativeNameCandidates.isEmpty()
+            ) RomLanguageManifest.UNKNOWN else RomLanguageAuthority.resolve(
             rom = rom,
             header = session.header,
             generation = generation,
@@ -365,7 +369,7 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
             speciesNamesLayout = resolvedLayout(speciesNamesLayout, names),
             moveNamesLayout = resolvedLayout(moveNamesLayout, moveNames),
             cancellation = session.cancellation,
-        )
+        ), session.cancellation)
 
         return CoreDatasetsPhaseResult.Resolved(
             candidateTables = tables,
