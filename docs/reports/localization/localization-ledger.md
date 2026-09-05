@@ -97,6 +97,14 @@ Official ROM-backed forecast-semantic acceptance is now connected to the actual 
 
 All nine earned `officialRomSemanticForecast=PASS`, while `liveBattleForecast=NOT_RUN` and `engineWeatherApplicability=NOT_TESTED` remain explicit. Complete current matrix ratification is still required for final `LNG-D005` closure. This passing boundary does not validate the separately discovered move-prose false positive or waive Tasks 385–388. Stage 4 remains open; Stage 5 remains blocked.
 
+## Verified matrix-validator tooling checkpoint
+
+`stage-04-matrix-validator-checkpoint.md` supersedes the missing-auditor portion of Task 387 / `LNG-B003`. The checked-in parameterized validator passes **62/62 independent synthetic tests in 88.505 seconds, zero failures/errors/skips**, including the coordinator-reproduced malformed-deflate escape and strict receipt-schema correction. It requires 44 exact controls across 43 cells, pinned current provenance, all 15 capability dispositions, read-only cache validation, mandatory checks and actual API evidence. It validates evidence integrity and consistency, not the semantic truth of supplied oracles.
+
+Task 373 remains responsible for current real reports/receipts/caches, normalized checks/API captures, independently reviewed field samples and complete coverage/exclusion decisions, and the pinned plan. No real matrix acceptance follows from synthetic tooling tests. Tasks 385–386 remain open. Task 388 has compiled direct-record proof for Japanese Ruby/Emerald; the bounded FireRed locator pass found no candidates and stopped. FireRed prose authority remains unresolved and mandatory, not absent or waived. No production move-prose correction has been made at this checkpoint.
+
+Stage 4 remains open; Stage 5 is blocked. No corpus rerun, device testing, signing or ROM publication was performed for this tooling checkpoint.
+
 ## Audit rule
 
 An item without a durable ID, exact spec clause, evidence, owner, target, acceptance condition, and fail-closed temporary disposition is a `STOP-CORE` blocker. Required official language-family cells in Stages 3 and 4 cannot be deferred.
