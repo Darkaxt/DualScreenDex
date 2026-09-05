@@ -13,6 +13,7 @@ import com.enrpau.dualscreendex.parser.sprite.IndexedSprite
 import com.enrpau.dualscreendex.parser.sprite.Lz3Decoder
 import com.enrpau.dualscreendex.parser.sprite.TileRenderer
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
+import java.util.concurrent.CancellationException
 
 internal object Gen2LocalMapResolver {
     fun resolve(
@@ -21,6 +22,7 @@ internal object Gen2LocalMapResolver {
         family: EngineFamily,
         codec: PokemonTextCodec?,
     ): LocalMapResolution {
+        session.cancellation.throwIfCancellationRequested()
         val label = when (family) {
             EngineFamily.GOLD_SILVER -> "Gold/Silver"
             EngineFamily.CRYSTAL -> "Crystal"
@@ -38,7 +40,7 @@ internal object Gen2LocalMapResolver {
             return LocalMapResolution.Unavailable("encounter-binding", "no encounter-bound Gen II group/map IDs")
         }
 
-        val groupAuthorities = Gen2WorldMapResolver.findMapGroupRoots(session.rom, requiredMaps)
+        val groupAuthorities = Gen2WorldMapResolver.findMapGroupRoots(session.rom, requiredMaps, session.cancellation)
         val tilesetAuthorities = findTilesetAuthorities(session.rom)
         val roofAuthorities = findRoofAuthorities(session.rom)
         val paletteAuthorities = findPaletteAuthorities(session.rom)
@@ -117,7 +119,10 @@ internal object Gen2LocalMapResolver {
                     it,
                     authority.descriptors.mapTo(linkedSetOf(), MapDescriptor::landmarkId),
                 )
-            }.getOrDefault(emptyMap())
+            }.getOrElse { failure ->
+                if (failure is CancellationException) throw failure
+                emptyMap()
+            }
         }.orEmpty()
         val namedMapCount = authority.descriptors.count { landmarkNames.containsKey(it.landmarkId) }
 

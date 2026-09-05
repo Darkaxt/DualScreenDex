@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.language.LanguageTag
 import com.enrpau.dualscreendex.parser.text.JapanesePokemonTextCodecs
@@ -16,14 +17,19 @@ internal enum class Gen2LandmarkNameEncoding {
 
 /** Decodes the copied Gen II Town Map name buffer with its actual PlaceString controls. */
 internal object Gen2LandmarkNameCodec {
-    fun decode(bytes: ByteArray, codec: PokemonTextCodec): String? =
-        decode(bytes, Gen2LandmarkNameEncoding.STANDARD, codec)
+    fun decode(
+        bytes: ByteArray,
+        codec: PokemonTextCodec,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
+    ): String? = decode(bytes, Gen2LandmarkNameEncoding.STANDARD, codec, cancellation)
 
     fun decode(
         bytes: ByteArray,
         encoding: Gen2LandmarkNameEncoding,
         codec: PokemonTextCodec,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
     ): String? {
+        cancellation.throwIfCancellationRequested()
         val usesWesternDialect = codec in WESTERN_PLACE_STRING_CODECS
         val usesEnglishDialect = codec === PokemonTextCodec.gbEnglish || codec === WesternPokemonTextCodecs.gen2English
         val usesJapaneseDialect = codec === JapanesePokemonTextCodecs.gen2
@@ -45,6 +51,7 @@ internal object Gen2LandmarkNameCodec {
         var displayDone = false
         var terminated = false
         while (cursor < rom.size) {
+            cancellation.throwIfCancellationRequested()
             val value = rom.u8(cursor)
             if (!displayDone && usesWesternDialect) {
                 when (value) {
@@ -159,6 +166,7 @@ internal object Gen2LandmarkNameCodec {
             }
 
             val token = codec.decodeToken(rom, cursor, rom.size)
+            cancellation.throwIfCancellationRequested()
             cursor += token.byteCount
             if (displayDone) {
                 if (token is PokemonTextToken.Terminator) {

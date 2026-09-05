@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
 import com.enrpau.dualscreendex.parser.catalog.WorldMapCatalog
@@ -10,6 +11,7 @@ import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.sprite.Lz3Decoder
 import com.enrpau.dualscreendex.parser.sprite.TileRenderer
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
+import java.util.concurrent.CancellationException
 
 /** Resolves the Gen II Town Map through compiled asset, map-header, and landmark consumers. */
 object Gen2WorldMapResolver {
@@ -19,27 +21,40 @@ object Gen2WorldMapResolver {
         codec: PokemonTextCodec,
         landmarkIds: Set<Int> = emptySet(),
     ): Map<Int, String> {
+        val cancellation = session.cancellation
+        cancellation.throwIfCancellationRequested()
         val requiredMaps = mapIds.filterTo(sortedSetOf()) { base ->
+            cancellation.throwIfCancellationRequested()
             val group = base ushr 8
             val map = base and 0xff
             group in 1..MAX_MAP_GROUPS && map in 1..MAX_MAPS_PER_GROUP
         }
         if (requiredMaps.isEmpty()) return emptyMap()
-        val binding = findBindingChains(session.rom, requiredMaps, codec).chains.singleOrNull() ?: return emptyMap()
-        val known = (binding.johto + binding.kanto)
-            .mapNotNull { landmark -> landmark.name?.let { landmark.id to it } }
-            .toMap()
-        val requestedIds = (known.keys + landmarkIds.filter { it in FIRST_STATIC_LANDMARK..MAX_STATIC_LANDMARK })
-            .toSet()
-        val candidates = findLandmarkAuthorities(session.rom).mapNotNull { authority ->
-            val encoding = resolveLandmarkNameEncoding(session.rom, authority, requestedIds, codec)
-                ?: return@mapNotNull null
-            val names = requestedIds.associateWith { id ->
-                decodeLandmarkName(session.rom, authority, id, encoding, codec) ?: return@mapNotNull null
-            }
-            names.takeIf { decoded -> known.all { (id, name) -> decoded[id] == name } }
+        val binding = findBindingChains(session.rom, requiredMaps, codec, cancellation).chains.singleOrNull()
+            ?: return emptyMap()
+        val boundLandmarks = binding.johto + binding.kanto
+        val known = boundLandmarks.mapNotNull { landmark -> landmark.name?.let { landmark.id to it } }.toMap()
+        val requestedIds = boundLandmarks.mapTo(sortedSetOf()) { it.id }
+        landmarkIds.filterTo(requestedIds) { id ->
+            cancellation.throwIfCancellationRequested()
+            id in FIRST_STATIC_LANDMARK..MAX_STATIC_LANDMARK
         }
-        return candidates.singleOrNull() ?: known
+        // Only sources that passed the numeric join and its whole-name dialect check can add labels.
+        // An undecodable source remains a text veto; never fall back to the first readable source.
+        val candidates = binding.nameSources.map { source ->
+            cancellation.throwIfCancellationRequested()
+            val encoding = source.encoding ?: return@map emptyMap()
+            requestedIds.mapNotNull { id ->
+                cancellation.throwIfCancellationRequested()
+                decodeLandmarkName(session.rom, source.authority, id, encoding, codec, cancellation)?.let { id to it }
+            }.toMap()
+        }
+        val names = requestedIds.mapNotNull { id ->
+            cancellation.throwIfCancellationRequested()
+            val name = candidates.map { it[id] }.distinct().singleOrNull() ?: return@mapNotNull null
+            id to name
+        }.toMap()
+        return known + names
     }
 
     fun resolve(
@@ -47,7 +62,10 @@ object Gen2WorldMapResolver {
         encounterBaseIds: Set<Int>,
         codec: PokemonTextCodec?,
     ): WorldMapResolution {
+        val cancellation = session.cancellation
+        cancellation.throwIfCancellationRequested()
         val requiredMaps = encounterBaseIds.filterTo(sortedSetOf()) { base ->
+            cancellation.throwIfCancellationRequested()
             val group = base ushr 8
             val map = base and 0xff
             group in 1..MAX_MAP_GROUPS && map in 1..MAX_MAPS_PER_GROUP
@@ -55,7 +73,7 @@ object Gen2WorldMapResolver {
         if (requiredMaps.isEmpty()) {
             return WorldMapResolution.Unavailable("encounter-binding", "no encounter-bound Gen II group/map IDs")
         }
-        val assets = findAssetChains(session.rom)
+        val assets = findAssetChains(session.rom, cancellation)
         if (assets.isEmpty()) {
             return WorldMapResolution.Unavailable(
                 "asset-loader",
@@ -65,7 +83,7 @@ object Gen2WorldMapResolver {
         if (assets.size != 1) {
             return WorldMapResolution.Ambiguous("asset-loader", "${assets.size} complete Gen II asset chains remained")
         }
-        val bindingSearch = findBindingChains(session.rom, requiredMaps, codec)
+        val bindingSearch = findBindingChains(session.rom, requiredMaps, codec, cancellation)
         val bindings = bindingSearch.chains
         if (bindings.isEmpty()) {
             return WorldMapResolution.Unavailable(
@@ -125,6 +143,7 @@ object Gen2WorldMapResolver {
                     asset.paletteTileLimit,
                     asset.paletteMap,
                     asset.palettes,
+                    cancellation,
                 )
             },
         ).validate()
@@ -138,27 +157,34 @@ object Gen2WorldMapResolver {
         )
     }
 
-    private fun findAssetChains(rom: RomImage): List<AssetChain> {
+    private fun findAssetChains(rom: RomImage, cancellation: ParserCancellationToken): List<AssetChain> {
         val bankCount = rom.size / BANK_BYTES
         val mapAuthorities = buildList {
-            for (bank in 1 until bankCount) addAll(findMapAuthorities(rom, bank))
+            for (bank in 1 until bankCount) {
+                cancellation.throwIfCancellationRequested()
+                addAll(findMapAuthorities(rom, bank, cancellation))
+            }
         }
         val graphics = buildList {
-            for (bank in 1 until bankCount) addAll(findGraphicsLoaders(rom, bank))
+            for (bank in 1 until bankCount) {
+                cancellation.throwIfCancellationRequested()
+                addAll(findGraphicsLoaders(rom, bank, cancellation))
+            }
         }
-        val palettes = findPaletteLoaders(rom)
+        val palettes = findPaletteLoaders(rom, cancellation)
         if (System.getenv("DUALDEX_MAP_TRACE") == "1") {
             println(
                 "world-map-trace gen2 assets " +
                     "maps=${mapAuthorities.map { "${it.bank}:${it.paletteLookupLimit}:${it.paletteMapOffset}" }} " +
                     "graphics=${graphics.map { "${it.loaderBank}:${it.requestedTileCount}:${it.decodedTileCount}" }} " +
                     "palettes=${palettes.map { it.count }} " +
-                    "paletteCallers=${mapAuthorities.associate { it.bank to hasPaletteSelectionCaller(rom, it.bank) }}",
+                    "paletteCallers=${mapAuthorities.associate { it.bank to hasPaletteSelectionCaller(rom, it.bank, cancellation) }}",
             )
         }
         return buildList {
             for (map in mapAuthorities) {
-                if (!hasPaletteSelectionCaller(rom, map.bank)) continue
+                cancellation.throwIfCancellationRequested()
+                if (!hasPaletteSelectionCaller(rom, map.bank, cancellation)) continue
                 for (gfx in graphics.filter { candidate ->
                     candidate.loaderBank == map.bank &&
                         candidate.requestedTileCount <= map.paletteLookupLimit &&
@@ -177,6 +203,7 @@ object Gen2WorldMapResolver {
                         gfx.requestedTileCount,
                     ) ?: continue
                     for (palette in palettes.filter { it.count >= paletteMap.requiredPaletteCount }) {
+                        cancellation.throwIfCancellationRequested()
                         add(
                             AssetChain(
                                 requestedTileCount = gfx.requestedTileCount,
@@ -196,12 +223,13 @@ object Gen2WorldMapResolver {
         }
     }
 
-    private fun findMapAuthorities(rom: RomImage, bank: Int): List<MapAuthority> {
+    private fun findMapAuthorities(rom: RomImage, bank: Int, cancellation: ParserCancellationToken): List<MapAuthority> {
         val bankStart = bank * BANK_BYTES
         val bankEnd = minOf(bankStart + BANK_BYTES, rom.size)
         return buildList {
             var offset = bankStart
             while (offset + MAP_AUTHORITY_BYTES <= bankEnd) {
+                cancellation.throwIfCancellationRequested()
                 parseMapAuthorityAt(rom, bank, offset, bankEnd)?.let(::add)
                 offset++
             }
@@ -238,7 +266,7 @@ object Gen2WorldMapResolver {
             additionalMaps = emptyList(),
             paletteMapOffset = paletteMap.offset,
         )
-    }.getOrNull()
+    }.getOrNullUnlessCancelled()
 
     private fun parseGuardedMapAuthorityAt(
         rom: RomImage,
@@ -283,7 +311,7 @@ object Gen2WorldMapResolver {
             additionalMaps = listOf(alternate),
             paletteMapOffset = paletteMap.offset,
         )
-    }.getOrNull()
+    }.getOrNullUnlessCancelled()
 
     private fun isBitTestA(opcode: Int): Boolean =
         opcode in BIT_0_A..BIT_7_A &&
@@ -378,14 +406,15 @@ object Gen2WorldMapResolver {
             )
         } + 1
         ResolvedPaletteMap(bytes, requiredPaletteCount)
-    }.getOrNull()
+    }.getOrNullUnlessCancelled()
 
-    private fun findGraphicsLoaders(rom: RomImage, bank: Int): List<GraphicsLoader> {
+    private fun findGraphicsLoaders(rom: RomImage, bank: Int, cancellation: ParserCancellationToken): List<GraphicsLoader> {
         val start = bank * BANK_BYTES
         val end = minOf(start + BANK_BYTES, rom.size)
         return buildList {
             var offset = start
             while (offset + GRAPHICS_LOADER_BYTES <= end) {
+                cancellation.throwIfCancellationRequested()
                 parseGraphicsLoaderAt(rom, bank, offset)?.let(::add)
                 offset++
             }
@@ -404,7 +433,7 @@ object Gen2WorldMapResolver {
         val compressedBank = rom.u8(offset + 8)
         val root = rom.gbBankAddress(compressedBank, rom.u16le(offset + 1)) ?: return@runCatching null
         val source = rom.slice(root, minOf(MAX_COMPRESSED_BYTES, rom.size - root))
-        val decoded = runCatching { Lz3Decoder.decode(source) }.getOrNull() ?: return@runCatching null
+        val decoded = runCatching { Lz3Decoder.decode(source) }.getOrNullUnlessCancelled() ?: return@runCatching null
         if (System.getenv("DUALDEX_MAP_TRACE") == "1") {
             println("world-map-trace gen2 graphics bank=$bank requested=$requestedTileCount decoded=${decoded.size}")
         }
@@ -412,29 +441,30 @@ object Gen2WorldMapResolver {
         val decodedTileCount = decoded.size / BYTES_PER_TILE
         if (decodedTileCount !in requestedTileCount..MAX_TILE_COUNT) return@runCatching null
         GraphicsLoader(bank, requestedTileCount, decodedTileCount, decoded)
-    }.getOrNull()
+    }.getOrNullUnlessCancelled()
 
-    private fun findPaletteLoaders(rom: RomImage): List<PaletteAuthority> = buildList {
+    private fun findPaletteLoaders(rom: RomImage, cancellation: ParserCancellationToken): List<PaletteAuthority> = buildList {
         var offset = 0
         while (offset + DYNAMIC_PALETTE_LOADER_BYTES <= rom.size) {
-            parseStaticPaletteLoaderAt(rom, offset)?.let(::add)
+            cancellation.throwIfCancellationRequested()
+            parseStaticPaletteLoaderAt(rom, offset, cancellation)?.let(::add)
             parseDynamicPaletteLoaderAt(rom, offset)?.let(::add)
             offset++
         }
     }.distinctBy { it.colors.contentHashCode() }
 
-    private fun parseStaticPaletteLoaderAt(rom: RomImage, offset: Int): PaletteAuthority? = runCatching {
+    private fun parseStaticPaletteLoaderAt(rom: RomImage, offset: Int, cancellation: ParserCancellationToken): PaletteAuthority? = runCatching {
         val paletteCopyBytes = rom.u16le(offset + 7)
         if (
             rom.u8(offset) != LOAD_HL_IMMEDIATE || rom.u8(offset + 3) != LOAD_DE_IMMEDIATE ||
             rom.u16le(offset + 4) !in WRAM_PALETTE_DESTINATIONS || rom.u8(offset + 6) != LOAD_BC_IMMEDIATE ||
             paletteCopyBytes !in MIN_PALETTE_BYTES..MAX_BG_PALETTE_BYTES ||
-            paletteCopyBytes % BYTES_PER_PALETTE != 0 || !provesPaletteJumpTableAuthority(rom, offset)
+            paletteCopyBytes % BYTES_PER_PALETTE != 0 || !provesPaletteJumpTableAuthority(rom, offset, cancellation)
         ) return@runCatching null
         val bank = offset / BANK_BYTES
         val root = rom.gbBankAddress(bank, rom.u16le(offset + 1)) ?: return@runCatching null
         parseTownMapPalettes(rom, root, paletteCopyBytes / BYTES_PER_PALETTE)
-    }.getOrNull()
+    }.getOrNullUnlessCancelled()
 
     private fun parseDynamicPaletteLoaderAt(rom: RomImage, offset: Int): PaletteAuthority? = runCatching {
         if (
@@ -459,7 +489,7 @@ object Gen2WorldMapResolver {
         val first = parseTownMapPalettes(rom, firstRoot, paletteCount) ?: return@runCatching null
         val second = parseTownMapPalettes(rom, secondRoot, paletteCount) ?: return@runCatching null
         first.takeIf { it.colors.contentEquals(second.colors) }
-    }.getOrNull()
+    }.getOrNullUnlessCancelled()
 
     /**
      * A six-to-eight-palette copy must be selected by the third entry of a compiled CGB layout jump
@@ -467,19 +497,21 @@ object Gen2WorldMapResolver {
      * joins the otherwise bank-separated palette code to the Town Map consumer without an identity
      * value; the asset join later requires every palette ID named by the compiled palette map.
      */
-    private fun provesPaletteJumpTableAuthority(rom: RomImage, paletteCopy: Int): Boolean {
+    private fun provesPaletteJumpTableAuthority(rom: RomImage, paletteCopy: Int, cancellation: ParserCancellationToken): Boolean {
         val bank = paletteCopy / BANK_BYTES
         val localCopy = (paletteCopy % BANK_BYTES) + BANK_BYTES
         val start = bank * BANK_BYTES
         val end = minOf(start + BANK_BYTES, rom.size)
         var table = start
         while (table + PALETTE_LAYOUT_INDEX * 2 + 2 <= end) {
+            cancellation.throwIfCancellationRequested()
             val entry = rom.u16le(table + PALETTE_LAYOUT_INDEX * 2)
             if (entry in (localCopy - MAX_PALETTE_ENTRY_PREFIX)..localCopy) {
                 val localTable = (table % BANK_BYTES) + BANK_BYTES
                 val dispatcherStart = maxOf(start, table - MAX_LAYOUT_DISPATCH_BYTES)
                 var cursor = dispatcherStart
                 while (cursor + 12 <= table) {
+                    cancellation.throwIfCancellationRequested()
                     if (
                         rom.u8(cursor) == LOAD_DE_IMMEDIATE && rom.u16le(cursor + 1) == localTable &&
                         provesJumpTableDispatch(rom, cursor + 3, table)
@@ -508,11 +540,12 @@ object Gen2WorldMapResolver {
         return sawAdd && sawRead && sawJump
     }
 
-    private fun hasPaletteSelectionCaller(rom: RomImage, bank: Int): Boolean {
+    private fun hasPaletteSelectionCaller(rom: RomImage, bank: Int, cancellation: ParserCancellationToken): Boolean {
         val start = bank * BANK_BYTES
         val end = minOf(start + BANK_BYTES, rom.size)
         var offset = start
         while (offset + 5 <= end) {
+            cancellation.throwIfCancellationRequested()
             if (
                 rom.u8(offset) == LOAD_B_IMMEDIATE && rom.u8(offset + 1) == PALETTE_LAYOUT_INDEX &&
                 rom.u8(offset + 2) == CALL
@@ -545,16 +578,17 @@ object Gen2WorldMapResolver {
             }.distinct().size < MIN_DISTINCT_PALETTES
         ) return@runCatching null
         PaletteAuthority(paletteCount, colors)
-    }.getOrNull()
+    }.getOrNullUnlessCancelled()
 
     private fun findBindingChains(
         rom: RomImage,
         requiredMaps: Set<Int>,
         codec: PokemonTextCodec?,
+        cancellation: ParserCancellationToken,
     ): BindingSearch {
-        val groupRoots = findMapGroupRoots(rom, requiredMaps)
-        val landmarkAuthorities = findLandmarkAuthorities(rom)
-        val classifiers = findRegionClassifiers(rom)
+        val groupRoots = findMapGroupRoots(rom, requiredMaps, cancellation)
+        val landmarkAuthorities = findLandmarkAuthorities(rom, cancellation)
+        val classifiers = findRegionClassifiers(rom, cancellation)
         if (System.getenv("DUALDEX_MAP_TRACE") == "1") {
             println(
                 "world-map-trace gen2 bindings " +
@@ -565,23 +599,44 @@ object Gen2WorldMapResolver {
         }
         val chains = buildList {
             for (groupRoot in groupRoots) {
+                cancellation.throwIfCancellationRequested()
                 for (landmarks in landmarkAuthorities) {
+                    cancellation.throwIfCancellationRequested()
                     for (classifier in classifiers) {
-                        buildBindings(rom, requiredMaps, groupRoot, landmarks, classifier, codec)?.let(::add)
+                        cancellation.throwIfCancellationRequested()
+                        buildBindings(rom, requiredMaps, groupRoot, landmarks, classifier, codec, cancellation)?.let(::add)
                     }
                 }
             }
-        }.distinctBy { chain ->
+        }.groupBy { chain ->
             chain.johto.joinToString("|") { "${it.id}:${it.x}:${it.y}:${it.baseAreaIds}" } + "/" +
                 chain.kanto.joinToString("|") { "${it.id}:${it.x}:${it.y}:${it.baseAreaIds}" }
+        }.values.map { equivalent ->
+            cancellation.throwIfCancellationRequested()
+            // Numeric agreement does not prove text agreement between different compiled roots.
+            fun consensus(select: (BindingChain) -> List<Landmark>): List<Landmark> =
+                select(equivalent.first()).mapIndexed { index, landmark ->
+                    cancellation.throwIfCancellationRequested()
+                    landmark.copy(name = equivalent.map { select(it)[index].name }.distinct().singleOrNull())
+                }
+            BindingChain(
+                johto = consensus { it.johto },
+                kanto = consensus { it.kanto },
+                nameSources = equivalent.flatMap { it.nameSources }.distinct(),
+            )
         }
         return BindingSearch(chains, groupRoots.size, landmarkAuthorities.size, classifiers.size)
     }
 
-    internal fun findMapGroupRoots(rom: RomImage, requiredMaps: Set<Int>): List<MapGroupAuthority> = buildList {
+    internal fun findMapGroupRoots(
+        rom: RomImage,
+        requiredMaps: Set<Int>,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
+    ): List<MapGroupAuthority> = buildList {
         var offset = 0
         while (offset + MAP_POINTER_CONSUMER_BYTES <= minOf(BANK_BYTES, rom.size)) {
-            val authority = parseMapPointerConsumerAt(rom, offset, requiredMaps)
+            cancellation.throwIfCancellationRequested()
+            val authority = parseMapPointerConsumerAt(rom, offset, requiredMaps, cancellation)
             if (authority != null) add(authority)
             offset++
         }
@@ -591,6 +646,7 @@ object Gen2WorldMapResolver {
         rom: RomImage,
         offset: Int,
         requiredMaps: Set<Int>,
+        cancellation: ParserCancellationToken,
     ): MapGroupAuthority? = runCatching {
         val prefix = intArrayOf(0xc5, 0x05, 0x48, 0x06, 0x00, 0x21)
         if (!prefix.indices.all { rom.u8(offset + it) == prefix[it] }) return@runCatching null
@@ -604,9 +660,10 @@ object Gen2WorldMapResolver {
             rom.u8(offset + 17) != LOAD_A_IMMEDIATE || rom.u8(offset + 18) != MAP_HEADER_BYTES ||
             !terminal
         ) return@runCatching null
-        val bank = findMapDataBank(rom, offset) ?: return@runCatching null
+        val bank = findMapDataBank(rom, offset, cancellation) ?: return@runCatching null
         val table = rom.gbBankAddress(bank, rom.u16le(offset + 6)) ?: return@runCatching null
         val invalidMaps = requiredMaps.filterNot { base ->
+            cancellation.throwIfCancellationRequested()
             val group = base ushr 8
             val map = base and 0xff
             val groupPointer = rom.u16le(table + (group - 1) * 2)
@@ -621,12 +678,13 @@ object Gen2WorldMapResolver {
         }
         if (invalidMaps.isNotEmpty()) return@runCatching null
         MapGroupAuthority(bank, table)
-    }.getOrNull()
+    }.getOrNullUnlessCancelled()
 
-    private fun findMapDataBank(rom: RomImage, consumerOffset: Int): Int? {
+    private fun findMapDataBank(rom: RomImage, consumerOffset: Int, cancellation: ParserCancellationToken): Int? {
         val banks = buildSet {
             var offset = 0
             while (offset + MAP_HEADER_MEMBER_CONSUMER_BYTES <= minOf(BANK_BYTES, rom.size)) {
+                cancellation.throwIfCancellationRequested()
                 if (
                     rom.u8(offset) == LOAD_A_HIGH &&
                     rom.u8(offset + 2) == PUSH_AF &&
@@ -648,11 +706,12 @@ object Gen2WorldMapResolver {
         return banks.singleOrNull()
     }
 
-    private fun findLandmarkAuthorities(rom: RomImage): List<LandmarkAuthority> = buildList {
+    private fun findLandmarkAuthorities(rom: RomImage, cancellation: ParserCancellationToken): List<LandmarkAuthority> = buildList {
         var offset = BANK_BYTES
         while (offset + LANDMARK_CONSUMER_BYTES <= rom.size) {
+            cancellation.throwIfCancellationRequested()
             parseStandardLandmarkConsumerAt(rom, offset)?.let(::add)
-            parseExtendedLandmarkConsumerAt(rom, offset)?.let(::add)
+            parseExtendedLandmarkConsumerAt(rom, offset, cancellation)?.let(::add)
             offset++
         }
     }.distinctBy { Triple(it.tableOffset, it.recordSize, it.namePointerOffset) }
@@ -668,9 +727,9 @@ object Gen2WorldMapResolver {
             rom.u8(offset + 13) != 0xe1 || rom.u8(offset + 14) != RETURN
         ) return@runCatching null
         LandmarkAuthority(bank, table, STANDARD_LANDMARK_BYTES, STANDARD_LANDMARK_NAME_FIELD)
-    }.getOrNull()
+    }.getOrNullUnlessCancelled()
 
-    private fun parseExtendedLandmarkConsumerAt(rom: RomImage, offset: Int): LandmarkAuthority? = runCatching {
+    private fun parseExtendedLandmarkConsumerAt(rom: RomImage, offset: Int, cancellation: ParserCancellationToken): LandmarkAuthority? = runCatching {
         if (
             rom.u8(offset) != LOAD_A_E || rom.u8(offset + 1) != AND_IMMEDIATE ||
             rom.u8(offset + 2) !in MIN_LANDMARK_MASK..MAX_LANDMARK_MASK ||
@@ -687,15 +746,16 @@ object Gen2WorldMapResolver {
         val bank = offset / BANK_BYTES
         val table = rom.gbBankAddress(bank, rom.u16le(offset + 14)) ?: return@runCatching null
         val nameRoot = table + EXTENDED_LANDMARK_NAME_FIELD
-        if (!hasExtendedLandmarkNameConsumer(rom, bank, nameRoot)) return@runCatching null
+        if (!hasExtendedLandmarkNameConsumer(rom, bank, nameRoot, cancellation)) return@runCatching null
         LandmarkAuthority(bank, table, EXTENDED_LANDMARK_BYTES, EXTENDED_LANDMARK_NAME_FIELD)
-    }.getOrNull()
+    }.getOrNullUnlessCancelled()
 
-    private fun hasExtendedLandmarkNameConsumer(rom: RomImage, bank: Int, nameRoot: Int): Boolean {
+    private fun hasExtendedLandmarkNameConsumer(rom: RomImage, bank: Int, nameRoot: Int, cancellation: ParserCancellationToken): Boolean {
         val start = bank * BANK_BYTES
         val end = minOf(start + BANK_BYTES, rom.size)
         var offset = start
         while (offset + EXTENDED_LANDMARK_NAME_CONSUMER_BYTES <= end) {
+            cancellation.throwIfCancellationRequested()
             if (
                 rom.u8(offset) == PUSH_HL && rom.u8(offset + 1) == PUSH_DE &&
                 rom.u8(offset + 2) == PUSH_BC && rom.u8(offset + 3) == LOAD_L_E &&
@@ -712,16 +772,17 @@ object Gen2WorldMapResolver {
         return false
     }
 
-    private fun findRegionClassifiers(rom: RomImage): List<RegionClassifier> {
-        val detailed = findDetailedRegionClassifiers(rom)
+    private fun findRegionClassifiers(rom: RomImage, cancellation: ParserCancellationToken): List<RegionClassifier> {
+        val detailed = findDetailedRegionClassifiers(rom, cancellation)
         if (detailed.isNotEmpty()) return detailed
-        val withShip = findOneThresholdRegionClassifiers(rom)
-        return if (withShip.isNotEmpty()) withShip else findDirectThresholdRegionClassifiers(rom)
+        val withShip = findOneThresholdRegionClassifiers(rom, cancellation)
+        return if (withShip.isNotEmpty()) withShip else findDirectThresholdRegionClassifiers(rom, cancellation)
     }
 
-    private fun findDetailedRegionClassifiers(rom: RomImage): List<RegionClassifier> = buildList {
+    private fun findDetailedRegionClassifiers(rom: RomImage, cancellation: ParserCancellationToken): List<RegionClassifier> = buildList {
         var offset = 0
         while (offset + REGION_CLASSIFIER_BYTES <= rom.size) {
+            cancellation.throwIfCancellationRequested()
             parseDetailedRegionClassifierAt(rom, offset)?.let(::add)
             offset++
         }
@@ -748,7 +809,7 @@ object Gen2WorldMapResolver {
             common.ship < secondThreshold
         ) return@runCatching null
         RegionClassifier(firstThreshold, secondThreshold, common.ship)
-    }.getOrNull()
+    }.getOrNullUnlessCancelled()
 
     /**
      * Some source-compatible Gen II builds retain the complete `IsInJohto` consumer but omit a
@@ -756,9 +817,10 @@ object Gen2WorldMapResolver {
      * the same current-map call, FAST_SHIP path, dynamic-special retry, threshold, and common
      * Johto/Kanto returns. Prefer the richer two-threshold authority whenever it is complete.
      */
-    private fun findOneThresholdRegionClassifiers(rom: RomImage): List<RegionClassifier> = buildList {
+    private fun findOneThresholdRegionClassifiers(rom: RomImage, cancellation: ParserCancellationToken): List<RegionClassifier> = buildList {
         var offset = 0
         while (offset + REGION_CLASSIFIER_BYTES <= rom.size) {
+            cancellation.throwIfCancellationRequested()
             parseOneThresholdRegionClassifierAt(rom, offset)?.let(::add)
             offset++
         }
@@ -778,11 +840,12 @@ object Gen2WorldMapResolver {
         val threshold = rom.u8(check + 1)
         if (threshold <= SPECIAL_LANDMARK || threshold > common.ship) return@runCatching null
         RegionClassifier(threshold, null, common.ship)
-    }.getOrNull()
+    }.getOrNullUnlessCancelled()
 
-    private fun findDirectThresholdRegionClassifiers(rom: RomImage): List<RegionClassifier> = buildList {
+    private fun findDirectThresholdRegionClassifiers(rom: RomImage, cancellation: ParserCancellationToken): List<RegionClassifier> = buildList {
         var offset = 0
         while (offset + DIRECT_REGION_CLASSIFIER_BYTES <= rom.size) {
+            cancellation.throwIfCancellationRequested()
             parseDirectThresholdRegionClassifierAt(rom, offset)?.let(::add)
             offset++
         }
@@ -813,7 +876,7 @@ object Gen2WorldMapResolver {
         val threshold = rom.u8(check + 1)
         if (threshold <= SPECIAL_LANDMARK) return@runCatching null
         RegionClassifier(threshold, null, null)
-    }.getOrNull()
+    }.getOrNullUnlessCancelled()
 
     private fun parseRegionClassifierPrefix(rom: RomImage, offset: Int): RegionClassifierPrefix? = runCatching {
         if (
@@ -831,7 +894,7 @@ object Gen2WorldMapResolver {
             shipTarget = branchTarget(offset + 2, rom.u8(offset + 3)),
             checkOffset = check,
         )
-    }.getOrNull()
+    }.getOrNullUnlessCancelled()
 
     private fun parseMapLocationCall(rom: RomImage, offset: Int): Int? = runCatching {
         if (
@@ -840,7 +903,7 @@ object Gen2WorldMapResolver {
             rom.u8(offset + 8) != CALL
         ) return@runCatching null
         rom.u16le(offset + 9)
-    }.getOrNull()
+    }.getOrNullUnlessCancelled()
 
     private fun provesRegionReturnE(rom: RomImage, offset: Int, region: Int): Boolean =
         rom.u8(offset) == LOAD_E_IMMEDIATE && rom.u8(offset + 1) == region && rom.u8(offset + 2) == RETURN
@@ -855,9 +918,11 @@ object Gen2WorldMapResolver {
         landmarks: LandmarkAuthority,
         classifier: RegionClassifier,
         codec: PokemonTextCodec?,
+        cancellation: ParserCancellationToken,
     ): BindingChain? = runCatching {
         val grouped = linkedMapOf<Int, MutableSet<Int>>()
         for (base in requiredMaps) {
+            cancellation.throwIfCancellationRequested()
             val group = base ushr 8
             val map = base and 0xff
             val pointer = rom.u16le(groups.tableOffset + (group - 1) * 2)
@@ -870,14 +935,15 @@ object Gen2WorldMapResolver {
         }
         val landmarkIds = grouped.keys + setOf(FIRST_STATIC_LANDMARK, classifier.kanto)
         val nameEncoding = codec?.let {
-            resolveLandmarkNameEncoding(rom, landmarks, landmarkIds, it) ?: return@runCatching null
+            resolveLandmarkNameEncoding(rom, landmarks, landmarkIds, it, cancellation)
         }
         if (
-            decodeLandmark(rom, landmarks, FIRST_STATIC_LANDMARK, emptySet(), nameEncoding, codec) == null ||
-            decodeLandmark(rom, landmarks, classifier.kanto, emptySet(), nameEncoding, codec) == null
+            decodeLandmark(rom, landmarks, FIRST_STATIC_LANDMARK, emptySet(), nameEncoding, codec, cancellation) == null ||
+            decodeLandmark(rom, landmarks, classifier.kanto, emptySet(), nameEncoding, codec, cancellation) == null
         ) return@runCatching null
         val decoded = grouped.map { (id, baseIds) ->
-            decodeLandmark(rom, landmarks, id, baseIds, nameEncoding, codec) ?: return@runCatching null
+            cancellation.throwIfCancellationRequested()
+            decodeLandmark(rom, landmarks, id, baseIds, nameEncoding, codec, cancellation) ?: return@runCatching null
         }
         BindingChain(
             johto = decoded.filter { landmark ->
@@ -890,19 +956,23 @@ object Gen2WorldMapResolver {
                     landmark.id != classifier.ship &&
                     (classifier.johtoReturn == null || landmark.id < classifier.johtoReturn)
             },
+            nameSources = listOf(LandmarkNameSource(landmarks, nameEncoding)),
         ).takeIf { decoded.isNotEmpty() }
-    }.getOrNull()
+    }.getOrNullUnlessCancelled()
 
     private fun resolveLandmarkNameEncoding(
         rom: RomImage,
         landmarks: LandmarkAuthority,
         ids: Set<Int>,
         codec: PokemonTextCodec,
+        cancellation: ParserCancellationToken,
     ): Gen2LandmarkNameEncoding? {
         val candidates = Gen2LandmarkNameEncoding.entries.mapNotNull { encoding ->
+            cancellation.throwIfCancellationRequested()
             val names = mutableListOf<String>()
             for (id in ids.sorted()) {
-                val name = decodeLandmarkName(rom, landmarks, id, encoding, codec)
+                cancellation.throwIfCancellationRequested()
+                val name = decodeLandmarkName(rom, landmarks, id, encoding, codec, cancellation)
                 if (name == null) {
                     traceBindingFailure("$encoding landmark $id has undecodable name")
                     return@mapNotNull null
@@ -927,6 +997,7 @@ object Gen2WorldMapResolver {
         id: Int,
         encoding: Gen2LandmarkNameEncoding,
         codec: PokemonTextCodec,
+        cancellation: ParserCancellationToken,
     ): String? = runCatching {
         val row = landmarks.tableOffset + id * landmarks.recordSize
         if (row + landmarks.recordSize > rom.size) return@runCatching null
@@ -936,8 +1007,9 @@ object Gen2WorldMapResolver {
             rom.slice(nameRoot, minOf(MAX_NAME_BYTES, rom.size - nameRoot)),
             encoding,
             codec,
+            cancellation,
         )
-    }.getOrNull()
+    }.getOrNullUnlessCancelled()
 
     private fun decodeLandmark(
         rom: RomImage,
@@ -946,6 +1018,7 @@ object Gen2WorldMapResolver {
         baseAreaIds: Set<Int>,
         nameEncoding: Gen2LandmarkNameEncoding?,
         codec: PokemonTextCodec?,
+        cancellation: ParserCancellationToken,
     ): Landmark? = runCatching {
         val row = landmarks.tableOffset + id * landmarks.recordSize
         if (row + landmarks.recordSize > rom.size) {
@@ -964,20 +1037,21 @@ object Gen2WorldMapResolver {
             traceBindingFailure("landmark $id has off-map cell $x,$y")
             return@runCatching null
         }
-        if ((nameEncoding == null) != (codec == null)) return@runCatching null
-        val name = if (codec == null) {
-            val namePointer = rom.u16le(row + landmarks.namePointerOffset)
-            if (rom.gbBankAddress(landmarks.bank, namePointer) == null) return@runCatching null
-            null
+        // The compiled record still requires a valid pointer, even when its localized payload fails.
+        val namePointer = rom.u16le(row + landmarks.namePointerOffset)
+        if (rom.gbBankAddress(landmarks.bank, namePointer) == null) return@runCatching null
+        val name = if (codec != null && nameEncoding != null) {
+            decodeLandmarkName(rom, landmarks, id, nameEncoding, codec, cancellation)
         } else {
-            decodeLandmarkName(rom, landmarks, id, requireNotNull(nameEncoding), codec)
-                ?: run {
-                    traceBindingFailure("landmark $id has undecodable name")
-                    return@runCatching null
-                }
+            null
         }
         Landmark(id, x, y, name, baseAreaIds.toSet())
-    }.getOrNull()
+    }.getOrNullUnlessCancelled()
+
+    private fun <T> Result<T>.getOrNullUnlessCancelled(): T? = getOrElse { failure ->
+        if (failure is CancellationException) throw failure
+        null
+    }
 
     private fun traceBindingFailure(reason: String) {
         if (System.getenv("DUALDEX_MAP_TRACE") == "1") {
@@ -991,10 +1065,12 @@ object Gen2WorldMapResolver {
         paletteTileLimit: Int,
         paletteMap: ByteArray,
         palettes: ShortArray,
+        cancellation: ParserCancellationToken,
     ): RgbaSprite {
         require(paletteMap.size * 2 == paletteTileLimit)
         val pixels = IntArray(PIXEL_WIDTH * PIXEL_HEIGHT)
         repeat(GRID_HEIGHT) { tileY ->
+            cancellation.throwIfCancellationRequested()
             repeat(GRID_WIDTH) { tileX ->
                 val tile = plane[tileY * GRID_WIDTH + tileX].toInt() and 0xff
                 val palette = if (tile < paletteTileLimit) {
@@ -1069,7 +1145,12 @@ object Gen2WorldMapResolver {
     private data class RegionClassifier(val kanto: Int, val johtoReturn: Int?, val ship: Int?)
     private data class RegionClassifierPrefix(val ship: Int, val shipTarget: Int, val checkOffset: Int)
     private data class Landmark(val id: Int, val x: Int, val y: Int, val name: String?, val baseAreaIds: Set<Int>)
-    private data class BindingChain(val johto: List<Landmark>, val kanto: List<Landmark>)
+    private data class LandmarkNameSource(val authority: LandmarkAuthority, val encoding: Gen2LandmarkNameEncoding?)
+    private data class BindingChain(
+        val johto: List<Landmark>,
+        val kanto: List<Landmark>,
+        val nameSources: List<LandmarkNameSource>,
+    )
     private data class BindingSearch(
         val chains: List<BindingChain>,
         val groupRoots: Int,
