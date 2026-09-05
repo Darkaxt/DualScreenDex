@@ -123,6 +123,16 @@ Description applicability survives text isolation in the existing serialized sha
 
 Ruby/Emerald retain 354/354 move prose. FireRed's slot gate explicitly retains **negative 0/354 move prose, overall positive BLOCKED**: Task 388 and `LNG-B002` remain open for that mandatory content. Task 389's Korean sign implementation, Task 386's other capability gaps, and Tasks 373–375's final matrix/corpus/closure are still required. Task 385's completed exclusion evidence must be included in final matrix ratification. Stage 4 remains open and Stage 5 blocked; no corpus, devices, signing or ROM publication was performed for this checkpoint.
 
+## Korean direct-sign authority stopping boundary
+
+Task 389 / `LNG-B002` remains **BLOCKED** for positive compiled-dialect implementation. The earlier two-control direct-sign proof is partial: the direct-text template invokes `opentext` before `repeattext` reloads the saved text bank/address. The initial proof did not establish preservation across that intervening call. An opcode-only or arbitrary-call acceptance would therefore overstate authority.
+
+A bounded read-only extension on both exact controls followed the selected `Script_opentext` handler, 24-byte `OpenText` body, 23-byte `ClearWindowData` body and 33-byte stack far-call dispatcher. The predeclared depth-three limit stopped before the banked target and return trampoline; other relevant OpenText branches are also unexamined. Saved text-pointer and script-state preservation is **not proved**. This is a missing proof, not evidence that the official games actually clobber the pointer.
+
+The owner retained four executed Kotlin tests: two existing controls passed and two new incomplete-witness/clobber-no-fallback regressions failed (`expected null`, actual `ABAB`), with zero errors/skips. The coordinator inspected the complete failed-run log and XML and verified all 17 frozen artifact hashes plus the current test source and non-mutating patch reverse-check. These are red design-boundary tests, not positive dialect, cache or API acceptance. Their fixture authority is subject to the bounded design assessment before implementation proceeds.
+
+No production code or parser/storage revision changed (still **51/2**). The sole local executable edit is the uncommitted test-only regression patch, preserved with private source snapshots, raw windows and receipts; failing tests are not published as a completed fix. The implementation owner released source/Gradle ownership. The next named target is a bounded authority-design assessment, not unbounded graphics/font-engine reconstruction. Acceptance remains a justified compiled producer/consumer and text-boundary contract, fail-closed conflicting/incomplete evidence, and separate Korean Gold/Silver parse/materialize/SQLite close/reopen/API sign controls. Task 389 cannot close on proof tooling alone. Stage 4 remains open and Stage 5 blocked; no corpus or device testing was performed.
+
 ## Audit rule
 
 An item without a durable ID, exact spec clause, evidence, owner, target, acceptance condition, and fail-closed temporary disposition is a `STOP-CORE` blocker. Required official language-family cells in Stages 3 and 4 cannot be deferred.
