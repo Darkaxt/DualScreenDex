@@ -7,6 +7,8 @@ import com.darkaxt.dualdex.catalog.CatalogRow
 import com.darkaxt.dualdex.catalog.CatalogSchema
 import com.enrpau.dualscreendex.parser.catalog.TypeSemanticRole
 import com.enrpau.dualscreendex.parser.model.SelectionStatus
+import com.enrpau.dualscreendex.companion.battle.AppliedDamageCondition
+import com.enrpau.dualscreendex.companion.battle.SemanticProof
 import com.darkaxt.dualdex.catalog.CatalogSourceMetadata
 import com.darkaxt.dualdex.catalog.CatalogWriteProgress
 import com.enrpau.dualscreendex.parser.catalog.AbilityMechanicKind
@@ -324,6 +326,37 @@ class WorldMapCatalogApiRealControlTest {
                 assertEquals(CatalogSchema.requiredSections + "language_overlay:${language.value}", stored.committedSections)
             }
             checks.attempt("sqlite.integrity") { assertDatabaseIntegrity(cache.fileFor(rom.sha256)) }
+            checks.attempt(OFFICIAL_FORECAST_BOUNDARY) {
+                val parsedPolicies = assertOfficialConditionalWeatherPolicies(catalog, control)
+                val reopenedPolicies = assertOfficialConditionalWeatherPolicies(reopened, control)
+                assertEquals(parsedPolicies, reopenedPolicies)
+                println("NATIVE_E2E_FORECAST_POLICY ${control.folder} referencedMoves=${reopenedPolicies.size} " +
+                    "scope=CONDITIONAL_TYPE_POLICY engineWeatherApplicability=NOT_TESTED")
+            }
+            checks.attempt(FAULT_INJECTED_FORECAST_BOUNDARY) {
+                // Deliberately altered catalogs are negative fault injections, never official positive evidence.
+                val reopenedText = reopened.defaultTextProjection()
+                control.typeSamples.keys.forEach { name ->
+                    val type = reopened.typesById.values.single { reopenedText.typeName(it.id) == name }
+                    val moves = reopened.movesById.values.filter { it.typeId.value == type.id }
+                    assertTrue("no actual move references for the fault-injected type", moves.isNotEmpty())
+                    val withoutAuthority = reopened.copy(typesById = reopened.typesById + (type.id to type.copy(
+                        semanticRole = CatalogField.notFound("fault-injected missing semantic authority"),
+                    )))
+                    assertEquals(reopened.movesById, withoutAuthority.movesById)
+                    assertEquals(reopened.localization, withoutAuthority.localization)
+                    moves.forEach { move ->
+                        val policy = DamageForecastAssembler.conditionalWeatherPolicy(
+                            withoutAuthority, requireNotNull(move.typeId.value),
+                        )
+                        assertTrue(policy.boundedAlternatives.isEmpty())
+                        assertEquals(
+                            listOf("Weather interaction for this move's type is unresolved."),
+                            policy.unboundedUnknowns,
+                        )
+                    }
+                }
+            }
             checks.attempt("api.cache-bootstrap") {
                 val parserInvocations = AtomicInteger()
                 val completion = AtomicReference<Result<Unit>?>()
@@ -402,6 +435,43 @@ class WorldMapCatalogApiRealControlTest {
         }
     }
 
+    private fun assertOfficialConditionalWeatherPolicies(
+        catalog: ParsedCatalog,
+        control: NativeControl,
+    ): Map<Int, DamageForecastAssembler.ConditionalWeatherPolicy> {
+        val text = catalog.defaultTextProjection()
+        return buildMap {
+            control.typeSamples.forEach { (name, expectedRole) ->
+                // Labels are independently pinned test oracles. IDs and move references come from this catalog.
+                val type = catalog.typesById.values.single { text.typeName(it.id) == name }
+                assertEquals(CapabilityStatus.AVAILABLE, type.semanticRole.status)
+                assertEquals(expectedRole, type.semanticRole.value)
+                val moves = catalog.movesById.values.filter { it.typeId.value == type.id }
+                assertTrue("no actual move references for the independently decoded type", moves.isNotEmpty())
+                moves.forEach { move ->
+                    assertEquals(CapabilityStatus.AVAILABLE, move.typeId.status)
+                    val policy = DamageForecastAssembler.conditionalWeatherPolicy(catalog, requireNotNull(move.typeId.value))
+                    assertTrue(policy.unboundedUnknowns.isEmpty())
+                    // This tests the forecast consumer's conditional policy, not weather existing in this engine.
+                    when (expectedRole) {
+                        TypeSemanticRole.FIRE, TypeSemanticRole.WATER -> {
+                            assertEquals(1, policy.boundedAlternatives.size)
+                            val modifier = policy.boundedAlternatives.single()
+                            assertEquals(AppliedDamageCondition.WEATHER, modifier.kind)
+                            assertEquals(1, modifier.minimumNumerator)
+                            assertEquals(3, modifier.maximumNumerator)
+                            assertEquals(2, modifier.denominator)
+                            assertEquals(SemanticProof.SOURCE_VALIDATED, modifier.proof)
+                        }
+                        TypeSemanticRole.NORMAL -> assertTrue(policy.boundedAlternatives.isEmpty())
+                        else -> error("native forecast sample needs an independent policy expectation")
+                    }
+                    put(move.id, policy)
+                }
+            }
+        }
+    }
+
     private class NativeChecks(private val control: NativeControl) {
         private val passed = mutableListOf<String>()
         private val failed = mutableListOf<String>()
@@ -415,9 +485,15 @@ class WorldMapCatalogApiRealControlTest {
             null
         }
         fun finish() {
+            val forecastStatus = when {
+                failed.any { it.startsWith("$OFFICIAL_FORECAST_BOUNDARY:") || it.startsWith("$FAULT_INJECTED_FORECAST_BOUNDARY:") } -> "FAIL"
+                OFFICIAL_FORECAST_BOUNDARY !in passed || FAULT_INJECTED_FORECAST_BOUNDARY !in passed -> "NOT_RUN"
+                failed.isNotEmpty() -> "NOT_ACCEPTED"
+                else -> "PASS"
+            }
             // Only public control labels, hashes, statuses and boundary names: never paths, payloads or exception messages.
             println("NATIVE_E2E_RESULT ${control.folder} sha256=${control.sha256} passed=${passed.joinToString(",")} failed=${failed.joinToString(",")} " +
-                "forecast=LNG-D005_NOT_RUN")
+                "officialRomSemanticForecast=$forecastStatus liveBattleForecast=NOT_RUN")
             assertTrue("${control.folder}: ${failed.joinToString(",")}", failed.isEmpty())
         }
     }
@@ -803,6 +879,9 @@ class WorldMapCatalogApiRealControlTest {
     }
 
     private companion object {
+        const val OFFICIAL_FORECAST_BOUNDARY = "LNG-D005.forecast.official-rom-semantic-policy"
+        const val FAULT_INJECTED_FORECAST_BOUNDARY = "LNG-D005.forecast.fault-injected-authority-removed"
+
         // Exact inputs match NativeOfficialLanguageLiveRomTest; hashes are test identities, never production routing.
         // Independent text oracles (not the production parser's output):
         // https://github.com/Narishma-gb/pokeyellow-jp/tree/f282e72ae26232790fdb780aa5a5db7ec8ebf572
@@ -825,7 +904,8 @@ class WorldMapCatalogApiRealControlTest {
         // Location labels: Gen I source names; JA Gen II compiled landmark names at 0x92632/0x926d7;
         // JA Gen III compiled names at Ruby 0x3becb0/Emerald 0x57c6e0 (and FireRed's native map-name table).
         // Applicable native town/description absence is LNG-B002, not waived by historical Western NOT_FOUND.
-        // This gate does not close LNG-D005 official parse-to-forecast evidence (synthetic battle/formula seam remains separate).
+        // Forecast acceptance here is ROM-only conditional type policy through actual move references and SQLite reopen.
+        // No battle sample/formula is supplied; live damage accuracy and engine weather applicability are not claimed.
         val nativeControls = listOf(
             NativeControl("ja/RED_BLUE", "3f0dc460ca8d06be1c9ac96307c939c0ea7baa366b40c2f1f4ad63242b6c4816", EngineFamily.RED_BLUE,
                 "gb-gen1-ja-red-blue", 1, "うまれたときから", "マサラ"),

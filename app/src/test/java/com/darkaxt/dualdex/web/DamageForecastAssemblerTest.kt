@@ -228,6 +228,66 @@ class DamageForecastAssemblerTest {
         }
     }
 
+    @Test
+    fun `ROM only conditional weather policy follows proven roles rather than ids or display names`() {
+        TypeSemanticRole.entries.forEach { role ->
+            listOf(0, 31).forEach { typeId ->
+                // Deliberately conflicting display text has no authority over the supplied synthetic role.
+                val catalog = nativeTypeCatalog(typeId, CatalogField.available("みず"), role)
+                val policy = DamageForecastAssembler.conditionalWeatherPolicy(catalog, typeId)
+                assertTrue("$role/$typeId", policy.unboundedUnknowns.isEmpty())
+                if (role in setOf(TypeSemanticRole.FIRE, TypeSemanticRole.WATER)) {
+                    assertEquals("$role/$typeId", 1, policy.boundedAlternatives.size)
+                    val modifier = policy.boundedAlternatives.single()
+                    assertEquals(AppliedDamageCondition.WEATHER, modifier.kind)
+                    assertEquals(1, modifier.minimumNumerator)
+                    assertEquals(3, modifier.maximumNumerator)
+                    assertEquals(2, modifier.denominator)
+                    assertEquals(SemanticProof.SOURCE_VALIDATED, modifier.proof)
+                } else {
+                    assertTrue("$role/$typeId", policy.boundedAlternatives.isEmpty())
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `ROM only conditional weather policy rejects missing type or semantic authority`() {
+        listOf(0, 31).forEach { typeId ->
+            val withoutRole = nativeTypeCatalog(typeId, CatalogField.available("ほのお"), role = null)
+            listOf(withoutRole, withoutRole.copy(typesById = withoutRole.typesById - typeId)).forEach { catalog ->
+                val policy = DamageForecastAssembler.conditionalWeatherPolicy(catalog, typeId)
+                assertTrue(policy.boundedAlternatives.isEmpty())
+                assertEquals(
+                    listOf("Weather interaction for this move's type is unresolved."),
+                    policy.unboundedUnknowns,
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `synthetic assembled forecasts propagate the ROM only conditional weather policy`() {
+        listOf(TypeSemanticRole.NORMAL, TypeSemanticRole.FIRE, TypeSemanticRole.WATER, null).forEach { role ->
+            val catalog = nativeTypeCatalog(31, CatalogField.notApplicable("stored in language overlay"), role)
+            val policy = DamageForecastAssembler.conditionalWeatherPolicy(catalog, 31)
+            val input = requireNotNull(
+                DamageForecastAssembler.input(sample(owner = 2, target = 1), catalog, KnowledgeMode.DISCOVERED, formula()),
+            )
+            assertEquals(policy.boundedAlternatives, input.boundedAlternatives)
+            assertEquals(policy.unboundedUnknowns, input.unboundedUnknowns)
+            val forecast = DamageForecastMemoizer().forecast(input)
+            if (role == null) {
+                assertTrue(forecast is DamageForecast.Absent)
+            } else {
+                assertEquals(
+                    if (role == TypeSemanticRole.NORMAL) DamageForecastConfidence.EXACT else DamageForecastConfidence.BOUNDED,
+                    (forecast as DamageForecast.Available).confidence,
+                )
+            }
+        }
+    }
+
     private fun nativeTypeCatalog(typeId: Int, name: CatalogField<String>, role: TypeSemanticRole?): ParsedCatalog {
         val base = catalog()
         return base.copy(

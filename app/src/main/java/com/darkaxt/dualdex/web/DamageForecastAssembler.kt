@@ -28,6 +28,35 @@ import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.RomCapability
 
 internal object DamageForecastAssembler {
+    data class ConditionalWeatherPolicy(
+        val boundedAlternatives: List<BoundedDamageModifier> = emptyList(),
+        val unboundedUnknowns: List<String> = emptyList(),
+    )
+
+    /**
+     * ROM-only type interpretation for the forecast's conditional weather policy. This does not
+     * establish engine weather applicability, a damage formula, or current battle/weather state.
+     */
+    fun conditionalWeatherPolicy(catalog: ParsedCatalog, typeId: Int): ConditionalWeatherPolicy =
+        when (catalog.typesById[typeId]?.semanticRole?.value) {
+            TypeSemanticRole.FIRE,
+            TypeSemanticRole.WATER,
+            -> ConditionalWeatherPolicy(
+                boundedAlternatives = listOf(BoundedDamageModifier(
+                    kind = AppliedDamageCondition.WEATHER,
+                    minimumNumerator = 1,
+                    maximumNumerator = 3,
+                    denominator = 2,
+                    proof = SemanticProof.SOURCE_VALIDATED,
+                    playerExplanation = "Weather may change this range.",
+                )),
+            )
+            null -> ConditionalWeatherPolicy(
+                unboundedUnknowns = listOf("Weather interaction for this move's type is unresolved."),
+            )
+            else -> ConditionalWeatherPolicy()
+        }
+
     fun input(
         sample: BattleMemorySample,
         catalog: ParsedCatalog,
@@ -73,22 +102,8 @@ internal object DamageForecastAssembler {
         addAttackerAbilityModifier(attacker, typeId, category, catalog, text, modifiers, unknowns)
         protectTargetAbility(target, typeId, catalog, knowledgeMode, unknowns)
 
-        val bounded = mutableListOf<BoundedDamageModifier>()
-        val moveTypeRole = catalog.typesById[typeId]?.semanticRole?.value
-        when (moveTypeRole) {
-            TypeSemanticRole.FIRE,
-            TypeSemanticRole.WATER,
-            -> bounded += BoundedDamageModifier(
-                kind = AppliedDamageCondition.WEATHER,
-                minimumNumerator = 1,
-                maximumNumerator = 3,
-                denominator = 2,
-                proof = SemanticProof.SOURCE_VALIDATED,
-                playerExplanation = "Weather may change this range.",
-            )
-            null -> unknowns += "Weather interaction for this move's type is unresolved."
-            else -> Unit
-        }
+        val weatherPolicy = conditionalWeatherPolicy(catalog, typeId)
+        unknowns += weatherPolicy.unboundedUnknowns
         if (status(attacker.status) == ForecastStatus.BURNED && category == ForecastMoveCategory.PHYSICAL) {
             unknowns += "Burn may change this move's damage."
         }
@@ -107,7 +122,7 @@ internal object DamageForecastAssembler {
             ),
             effectivenessPercent = effectiveness(catalog, typeId, target.typeIds),
             provenModifiers = modifiers,
-            boundedAlternatives = bounded,
+            boundedAlternatives = weatherPolicy.boundedAlternatives,
             unboundedUnknowns = unknowns.distinct(),
         )
     }
