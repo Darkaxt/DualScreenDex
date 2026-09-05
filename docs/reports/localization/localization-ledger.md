@@ -115,6 +115,14 @@ Resolver-null results no longer trigger reference-free catalog retries. Incomple
 
 Task 385's compiled species-slot proof still requires implementation, description-only accounting and fresh acceptance. Task 389's Korean direct-sign opcode and headline-control proof is now independently checked for two signs per exact control using bounded raw-byte/source-algorithm assertions; Kotlin implementation and parse/reopen/API tests remain pending. Task 386's other capability gaps and Tasks 373–375's current official matrix/final corpus/closure remain required. Stage 4 stays open; Stage 5 stays blocked. No corpus, devices, signing or ROM publication was performed for this checkpoint.
 
+## Verified native description-slot checkpoint
+
+`stage-04-native-description-slots-checkpoint.md` closes **Task 385's 75 disputed slot instances** under `LNG-B002`, superseding the earlier pending slot-accounting statements. Separately proven description mapping B and bounded compiled palette/background neighbor consumers establish the description-table extent. Each exact Japanese Ruby/Emerald/FireRed control excludes 25 out-of-domain slots from description-only applicability and reports **386/386**, while retaining all **412 species records**, public regional A values/statuses and independent numeric/media fields. Missing in-domain prose remains applicable and unavailable.
+
+Description applicability survives text isolation in the existing serialized shared field; it is not inferred from dimension pairs or reason strings. Parser revision **51** invalidates revision-50 placeholder semantics; storage schema remains **2**. The coordinator independently verified **207 cases: 201 passed, six existing opt-in cache skips, zero failures/errors**, including all three exact native slot controls, in 4 minutes 25 seconds. All eleven tested source hashes remained unchanged; the bounded independent review found no actionable issues. Private retained evidence includes source snapshots, logs/XML and actual SQLite reopen artifacts.
+
+Ruby/Emerald retain 354/354 move prose. FireRed's slot gate explicitly retains **negative 0/354 move prose, overall positive BLOCKED**: Task 388 and `LNG-B002` remain open for that mandatory content. Task 389's Korean sign implementation, Task 386's other capability gaps, and Tasks 373–375's final matrix/corpus/closure are still required. Task 385's completed exclusion evidence must be included in final matrix ratification. Stage 4 remains open and Stage 5 blocked; no corpus, devices, signing or ROM publication was performed for this checkpoint.
+
 ## Audit rule
 
 An item without a durable ID, exact spec clause, evidence, owner, target, acceptance condition, and fail-closed temporary disposition is a `STOP-CORE` blocker. Required official language-family cells in Stages 3 and 4 cannot be deferred.

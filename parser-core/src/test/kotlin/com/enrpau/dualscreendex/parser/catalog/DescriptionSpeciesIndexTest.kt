@@ -16,6 +16,201 @@ import org.junit.Test
 import kotlin.random.Random
 
 class DescriptionSpeciesIndexTest {
+    @Test fun compiledAdjacentPaletteExcludesOnlyDescriptionFieldsAndPreservesEveryPublicRecord() {
+        for (roots in listOf(listOf(0x1000, 0x1400, 0x1800), listOf(0x1800, 0x1000, 0x1400))) {
+            val fixture = fixture(28, descriptionCount = 8, roots = roots)
+            putPaletteNeighbor(fixture.bytes, 0x3000 + 8 * 28)
+            val before = RecordMaterializers.species(RomImage(fixture.bytes), fixture.layout)
+            val catalog = media(fixture)
+            assertEquals(before.keys, catalog.speciesById.keys)
+            for ((id, record) in catalog.speciesById) {
+                assertEquals(before.getValue(id).dexNumber, record.dexNumber)
+                assertEquals(before.getValue(id).baseStats, record.baseStats)
+                assertEquals(before.getValue(id).typeIds, record.typeIds)
+                assertEquals(before.getValue(id).navigable, record.navigable)
+                if (id > 0 && fixture.national[id - 1] >= 8) {
+                    assertEquals("species $id", CapabilityStatus.NOT_APPLICABLE, record.description.status)
+                    assertEquals(CapabilityStatus.NOT_APPLICABLE, record.height.status)
+                    assertEquals(CapabilityStatus.NOT_APPLICABLE, record.weight.status)
+                }
+            }
+            val capability = catalog.defaultLocalizedText()!!.localizedCapabilities.getValue(
+                LocalizedTextCapability.SPECIES_DESCRIPTIONS)
+            assertEquals(7, capability.coveredRecords)
+            assertEquals(7, capability.expectedRecords)
+        }
+    }
+
+    @Test fun unconsumedZeroNeighborDoesNotAuthorizeDescriptionExclusion() {
+        val fixture = fixture(28, descriptionCount = 8)
+        fixture.bytes.fill(0, 0x3000 + 8 * 28, 0x3000 + 8 * 28 + 32)
+        val catalog = media(fixture)
+        fixture.national.forEachIndexed { i, row ->
+            if (row >= 8) {
+                assertNull(catalog.defaultLocalizedText()!!.speciesDescriptions[i + 1]?.value)
+                assertEquals(CapabilityStatus.NOT_FOUND, catalog.speciesById.getValue(i + 1).height.status)
+                assertEquals(CapabilityStatus.NOT_FOUND, catalog.speciesById.getValue(i + 1).weight.status)
+            }
+        }
+    }
+
+    @Test fun malformedNeighborWitnessesAndNonAdjacentObjectsCannotExcludeDescriptions() {
+        val mutations: List<(Fixture) -> Unit> = listOf(
+            { put16(it.bytes, 0x500, 0x4907) }, // pointer clobbered/wrong argument
+            { put16(it.bytes, 0x50a, 0x2210) }, // wrong object length
+            { put16(it.bytes, 0x600 + 18, 0x0c2d) }, // wrong byte-to-halfword conversion
+            { put16(it.bytes, 0x600 + 44, 0x4708) }, // wrong saved return
+            { put16(it.bytes, 0x700, 0xdf0c) }, // unsupported service
+            { putBl(it.bytes, 0x600 + 36, 0x704) }, // conflicting copy targets
+            { put32(it.bytes, 0x520, 0x080030e4) }, // gap
+            { put32(it.bytes, 0x520, 0x080030dc) }, // overlap
+            { putBl(it.bytes, 0x50c, it.bytes.size - 20) }, // truncated callee
+            { put16(it.bytes, 0x500, 0x48ff) }, // wrong literal
+            { putCaller(it.bytes, 0x220, 0xc0) }, // conflicting B authority
+        )
+        mutations.forEachIndexed { index, mutate ->
+            val fixture = fixture(28, descriptionCount = 8)
+            putPaletteNeighbor(fixture.bytes, 0x30e0)
+            mutate(fixture)
+            val catalog = media(fixture)
+            assertEquals("mutation $index", 11, catalog.defaultLocalizedText()!!.localizedCapabilities
+                .getValue(LocalizedTextCapability.SPECIES_DESCRIPTIONS).expectedRecords)
+            assertTrue(catalog.speciesById.filterKeys { it > 0 }.values.all {
+                it.height.status != CapabilityStatus.NOT_APPLICABLE && it.weight.status != CapabilityStatus.NOT_APPLICABLE
+            })
+        }
+    }
+
+    @Test fun inDomainMissingProseRemainsApplicableAndDoesNotChangePublicRecords() {
+        val original = fixture(28, descriptionCount = 8)
+        putPaletteNeighbor(original.bytes, 0x30e0)
+        val descriptions = original.layout.resolvedDatasets.descriptions!!
+        val fixture = original.copy(layout = original.layout.copy(resolvedDatasets = ResolvedDatasetLayouts(
+            descriptions = ResolvedDescriptionLayout(descriptions.table, descriptions.rows.map { if (it.rowIndex == 3) DescriptionRowOutcome.Malformed(3, listOf("unterminated prose")) else it }))))
+        val catalog = media(fixture)
+        val id = fixture.national.indexOf(3) + 1
+        assertEquals(fixture.regional[id - 1], catalog.speciesById.getValue(id).dexNumber.value)
+        assertNull(catalog.defaultLocalizedText()!!.speciesDescriptions[id]?.value)
+        assertEquals(CapabilityStatus.NOT_FOUND, catalog.speciesById.getValue(id).height.status)
+        assertEquals(CapabilityStatus.NOT_FOUND, catalog.speciesById.getValue(id).description.status)
+        val capability = catalog.defaultLocalizedText()!!.localizedCapabilities.getValue(LocalizedTextCapability.SPECIES_DESCRIPTIONS)
+        assertEquals(6, capability.coveredRecords)
+        assertEquals(7, capability.expectedRecords)
+    }
+
+    @Test fun extentProofHonorsWorkNominationCancellationAndTruncatedObjects() {
+        val fixture = fixture(28, descriptionCount = 8)
+        putPaletteNeighbor(fixture.bytes, 0x30e0)
+        val table = fixture.layout.resolvedDatasets.descriptions!!.table
+        assertFalse(CompiledDescriptionExtentBinding.matches(RomImage(fixture.bytes), table, ResolutionLimits()) { false })
+        assertThrows(ParserCancellationException::class.java) {
+            CompiledDescriptionExtentBinding.matches(RomImage(fixture.bytes), table, ResolutionLimits()) { throw ParserCancellationException() }
+        }
+        putPaletteNeighbor(fixture.bytes, 0x30e0, site = 0x800)
+        assertFalse(CompiledDescriptionExtentBinding.matches(RomImage(fixture.bytes), table,
+            ResolutionLimits(maxNominatedGbaReferenceSites = 1)) { true })
+        assertFalse(CompiledDescriptionExtentBinding.matches(RomImage(fixture.bytes.copyOf(0x30f0)), table, ResolutionLimits()) { true })
+    }
+
+    @Test fun descriptionOnlySemanticDomainKeepsNamesAndStatsUntrimmed() {
+        val fixture = fixture(28, descriptionCount = 8)
+        putPaletteNeighbor(fixture.bytes, 0x30e0)
+        putWrapper(fixture.bytes, 0x400, 0x1000)
+        val layout = fixture.layout.copy(tables = fixture.layout.tables.copy(baseStats = TableLayout(0xa000, 12, 28)))
+        val capabilities = listOf(RomCapability.SPECIES_NAMES, RomCapability.BASE_STATS, RomCapability.POKEDEX_DESCRIPTIONS)
+            .map { CapabilityEvidence(it, true, 1.0, count = 12, validRecords = 12, totalRecords = 12) }
+        val actual = ParserOrchestrator.applySpeciesSemanticDomain(RomImage(fixture.bytes), layout, capabilities)
+        assertEquals(11, actual.single { it.capability == RomCapability.SPECIES_NAMES }.expectedRecords)
+        assertEquals(11, actual.single { it.capability == RomCapability.BASE_STATS }.expectedRecords)
+        assertEquals(7, actual.single { it.capability == RomCapability.POKEDEX_DESCRIPTIONS }.expectedRecords)
+        assertEquals(7, actual.single { it.capability == RomCapability.POKEDEX_DESCRIPTIONS }.coveredRecords)
+    }
+
+    @Test fun compiledAdjacentBackgroundTemplatesExcludeOnlyDescriptionRows() {
+        for (shift in listOf(0, 0x100)) {
+            val fixture = fixture(28, descriptionCount = 8)
+            putBackgroundNeighbor(fixture.bytes, 0x30e0, shift)
+            val catalog = media(fixture)
+            assertEquals(12, catalog.speciesById.size)
+            assertEquals(7, catalog.defaultLocalizedText()!!.localizedCapabilities
+                .getValue(LocalizedTextCapability.SPECIES_DESCRIPTIONS).expectedRecords)
+            fixture.national.forEachIndexed { i, row ->
+                assertEquals(fixture.regional[i], catalog.speciesById.getValue(i + 1).dexNumber.value)
+                if (row >= 8) assertEquals(CapabilityStatus.NOT_APPLICABLE, catalog.speciesById.getValue(i + 1).height.status)
+            }
+        }
+    }
+
+    @Test fun backgroundConsumerRequiresFullLoopAndCalleePreservation() {
+        for (offset in listOf(12, 48, 58, 100, 172, 178, 184, 188, 200,
+            0x300 + 72, 0x300 + 282, 0x600 + 16, 0x680 + 18)) {
+            val fixture = fixture(28, descriptionCount = 8)
+            putBackgroundNeighbor(fixture.bytes, 0x30e0)
+            put16(fixture.bytes, 0x600 + offset, 0)
+            val catalog = media(fixture)
+            assertEquals("body offset $offset", 11, catalog.defaultLocalizedText()!!.localizedCapabilities
+                .getValue(LocalizedTextCapability.SPECIES_DESCRIPTIONS).expectedRecords)
+        }
+    }
+
+    @Test fun conflictingTypedAdjacentObjectLengthsDoNotExcludeDescriptionRows() {
+        val fixture = fixture(28, descriptionCount = 8)
+        putBackgroundNeighbor(fixture.bytes, 0x30e0)
+        putPaletteNeighbor(fixture.bytes, 0x30e0, site = 0xe80, callee = 0xe00, cpu = 0xf00)
+        val catalog = media(fixture)
+        assertEquals(11, catalog.defaultLocalizedText()!!.localizedCapabilities
+            .getValue(LocalizedTextCapability.SPECIES_DESCRIPTIONS).expectedRecords)
+    }
+
+    private fun putBackgroundNeighbor(bytes: ByteArray, root: Int, shift: Int = 0) {
+        val site = 0x500 + shift
+        val body = 0x600 + shift
+        val setter = 0x900 + shift
+        listOf(0x4907, 0x2000, 0x2204).forEachIndexed { i, op -> put16(bytes, site + i * 2, op) }
+        putBl(bytes, site + 6, body)
+        put32(bytes, site + 32, 0x08000000 + root)
+        listOf(0x50, 0x1049, 0x206a, 0x3073).forEachIndexed { i, v -> put32(bytes, root + i * 4, v) }
+        listOf(0xb5f0, 0x4657, 0x464e, 0x4645, 0xb4e0, 0xb084, 0x1c0d, 0x600, 0xe00, 0x612, 0xe14, 0xf7ff, 0xfce7, 0xf7ff, 0xfcfb, 0x2c00, 0xd04b, 0x2700, 0x4829, 0x4681, 0x1c2e, 0x4a29, 0x4692, 0x46a0, 0x6834, 0x7a0, 0xf85, 0x2d03, 0xd838, 0x721, 0xf89, 0x5e2, 0xed2, 0x563, 0xf9b, 0x520, 0xfc0, 0x9000, 0x4a0, 0xf80, 0x9001, 0x9702, 0x9703, 0x1c28, 0xf7ff, 0xfd02, 0x12c, 0x464d, 0x1963, 0x6832, 0x212, 0xd92, 0x8818, 0x4d1a, 0x1c29, 0x4008, 0x4310, 0x8018, 0x7858, 0x223d, 0x4252, 0x1c11, 0x4008, 0x7058, 0x6818, 0x4915, 0x4008, 0x6018, 0x4648, 0x3004, 0x1820, 0x6007, 0x4648, 0x3008, 0x1820, 0x6007, 0x4d10, 0x1964, 0x6027, 0x6830, 0x700, 0xf80, 0x180, 0x4450, 0x2101, 0x7001, 0x3604, 0x2001, 0x4240, 0x4480, 0x4642, 0x2a00, 0xd1ba, 0xb004, 0xbc38, 0x4698, 0x46a1, 0x46aa, 0xbcf0, 0xbc01, 0x4700).forEachIndexed { i, op -> put16(bytes, body + i * 2, op) }
+        putBl(bytes, body + 22, 0xc00)
+        putBl(bytes, body + 26, 0xc40)
+        putBl(bytes, body + 88, setter)
+        put32(bytes, body + 204, 0x03001000)
+        put32(bytes, body + 208, 0x03001050)
+        put32(bytes, body + 212, 0xfffffc00.toInt())
+        put32(bytes, body + 216, 0x3fff)
+        put32(bytes, body + 220, 0x0300100c)
+        listOf(0xb5f0, 0x4657, 0x464e, 0x4645, 0xb4e0, 0xb084, 0x9c0c, 0x9d0d, 0x9e0e, 0x46b4, 0x9e0f, 0x46b0, 0x600, 0xe07, 0x9700, 0x609, 0xe09, 0x468a, 0x612, 0xe16, 0x61b, 0xe1b, 0x4699, 0x624, 0xe24, 0x9401, 0x62d, 0xe2d, 0x4660, 0x600, 0xe04, 0x4641, 0x609, 0xe09, 0x9103, 0x1c38, 0xf000, 0xf9ec, 0x600, 0xe00, 0x4684, 0x2800, 0xd160, 0x4a34, 0x4690, 0x4650, 0x28ff, 0xd009, 0xba, 0x4442, 0x2103, 0x4001, 0x7853, 0x2004, 0x4240, 0x4018, 0x4308, 0x7050, 0x2eff, 0xd009, 0xb9, 0x4441, 0x201f, 0x4006, 0xb3, 0x784a, 0x389c, 0x4010, 0x4318, 0x7048, 0x4649, 0x29ff, 0xd00a, 0xb9, 0x4441, 0x2003, 0x464a, 0x4002, 0x93, 0x780a, 0x3810, 0x4010, 0x4318, 0x7008, 0x9e01, 0x2eff, 0xd007, 0xb9, 0x4441, 0x1f3, 0x784a, 0x207f, 0x4010, 0x4318, 0x7048, 0x2dff, 0xd009, 0xb9, 0x4441, 0x2003, 0x4005, 0x12b, 0x780a, 0x3834, 0x4010, 0x4318, 0x7008, 0x2cff, 0xd009, 0xb9, 0x4441, 0x2001, 0x4004, 0x1a3, 0x780a, 0x3842, 0x4010, 0x4318, 0x7008, 0x9803, 0x28ff, 0xd007, 0xb9, 0x4441, 0x1c3, 0x780a, 0x207f, 0x4010, 0x4318, 0x7008, 0x9900, 0x88, 0x4440, 0x4662, 0x7082, 0x70c2, 0x7801, 0x2201, 0x4311, 0x7001, 0xb004, 0xbc38, 0x4698, 0x46a1, 0x46aa, 0xbcf0, 0xbc01, 0x4700).forEachIndexed { i, op -> put16(bytes, setter + i * 2, op) }
+        putBl(bytes, setter + 72, 0xc80)
+        put32(bytes, setter + 296, 0x03001080)
+        listOf(0x0600, 0x0e00, 0x4b03, 0x8a1a, 0x4903, 0x4011, 0x4301, 0x8219, 0x4770)
+            .forEachIndexed { i, op -> put16(bytes, 0xc00 + i * 2, op) }
+        put32(bytes, 0xc14, 0x03001080)
+        put32(bytes, 0xc18, 0xfff8)
+        listOf(0xb500, 0x4a05, 0x4805, 0x6800, 0x1c11, 0x310c, 0x6008, 0x3904, 0x4291, 0xdafb, 0xbc01, 0x4700)
+            .forEachIndexed { i, op -> put16(bytes, 0xc40 + i * 2, op) }
+        put32(bytes, 0xc58, 0x03001080)
+        put32(bytes, 0xc5c, 0x08000d00)
+        put32(bytes, 0xd00, 0)
+        listOf(0xb500, 0x0600, 0x0e00, 0x2803, 0xd801, 0x2000, 0xe000, 0x2001, 0xbc02, 0x4708)
+            .forEachIndexed { i, op -> put16(bytes, 0xc80 + i * 2, op) }
+    }
+
+    private fun putPaletteNeighbor(bytes: ByteArray, root: Int, site: Int = 0x500, callee: Int = 0x600, cpu: Int = 0x700) {
+        bytes.fill(0, root, root + 32)
+        listOf(0x4807, 0x7961, 0x0909, 0x3110, 0x0109, 0x2220).forEachIndexed { i, op -> put16(bytes, site + i * 2, op) }
+        putBl(bytes, site + 12, callee)
+        put32(bytes, site + 32, 0x08000000 + root)
+        listOf(0xb570, 0x1c06, 0x1c0c, 0x1c15, 0x0424, 0x042d, 0x0be4, 0x4908,
+            0x1861, 0x0c6d, 0x1c2a, 0, 0, 0x4806, 0x1824, 0x1c30, 0x1c21, 0x1c2a,
+            0, 0, 0xbc70, 0xbc01, 0x4700, 0).forEachIndexed { i, op -> put16(bytes, callee + i * 2, op) }
+        putBl(bytes, callee + 22, cpu)
+        putBl(bytes, callee + 36, cpu)
+        put32(bytes, callee + 48, 0x02001000)
+        put32(bytes, callee + 52, 0x02001400)
+        put16(bytes, cpu, 0xdf0b)
+        put16(bytes, cpu + 2, 0x4770)
+    }
+
     @Test fun compiledDescriptionJoinKeepsPublicRegionalNumbersForAllThreeStrides() {
         for (stride in listOf(28, 32, 36)) {
             val fixture = fixture(stride)

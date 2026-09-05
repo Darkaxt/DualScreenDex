@@ -206,6 +206,108 @@ class WorldMapCatalogApiRealControlTest {
     @Test fun nativeOfficialKoreanGold() = assertNativeRoundTrip(nativeControls[7])
     @Test fun nativeOfficialKoreanSilver() = assertNativeRoundTrip(nativeControls[8])
 
+    @Test fun nativeDescriptionSlotsJapaneseRuby() = assertNativeDescriptionSlots(nativeControls[4], 0x1cdf94)
+    @Test fun nativeDescriptionSlotsJapaneseEmerald() = assertNativeDescriptionSlots(nativeControls[5], 0x2ee2d4)
+    @Test fun nativeDescriptionSlotsJapaneseFireRed() = assertNativeDescriptionSlots(nativeControls[6], 0x209ed8)
+
+    /** Description-slot gate only; it does not replace or waive the nine-control positive gate. */
+    private fun assertNativeDescriptionSlots(control: NativeControl, publicMapRoot: Int) {
+        val root = Path.of(requireNotNull(System.getenv("DUALDEX_NATIVE_CONTROLS")) {
+            "the exact three-control description-slot gate requires DUALDEX_NATIVE_CONTROLS"
+        })
+        val path = Files.list(root.resolve(control.folder)).use { paths ->
+            paths.filter { Files.isRegularFile(it) }.toList().single()
+        }
+        val rom = RomImage(Files.readAllBytes(path))
+        assertEquals(control.sha256, rom.sha256)
+        val parsed = CatalogParser.parse(rom)
+        assertEquals(SelectionStatus.SELECTED, parsed.analysis.status)
+        val catalog = requireNotNull(parsed.catalog)
+        val layout = requireNotNull(parsed.layout)
+        val before = com.enrpau.dualscreendex.parser.catalog.RecordMaterializers.species(rom, layout)
+        val sprites = com.enrpau.dualscreendex.parser.sprite.SpriteMaterializer.pokemon(rom, layout)
+        val excluded = (252..276).toSet() // independently compiled/source-correlated exact-control oracle
+        fun assertSlots(value: ParsedCatalog) {
+            assertEquals((0..411).toSet(), value.speciesById.keys)
+            for ((id, record) in value.speciesById) {
+                assertEquals(CapabilityStatus.AVAILABLE, record.dexNumber.status)
+                assertEquals(if (id == 0) 0 else rom.u16le(publicMapRoot + (id - 1) * 2), record.dexNumber.value)
+                assertEquals(before.getValue(id).dexNumber, record.dexNumber)
+                assertEquals(before.getValue(id).baseStats, record.baseStats)
+                assertEquals(before.getValue(id).typeIds, record.typeIds)
+                assertEquals(before.getValue(id).navigable, record.navigable)
+                sprites[id]?.let { assertEquals(it, record.sprite.value) }
+                assertTrue(record.description.value == null && record.name.value == null)
+                if (id in excluded) {
+                    assertEquals(CapabilityStatus.NOT_APPLICABLE, record.description.status)
+                    assertEquals(CapabilityStatus.NOT_APPLICABLE, record.height.status)
+                    assertEquals(CapabilityStatus.NOT_APPLICABLE, record.weight.status)
+                } else if (id > 0) {
+                    assertTrue(record.description.status != CapabilityStatus.NOT_APPLICABLE)
+                    assertEquals(CapabilityStatus.AVAILABLE, record.height.status)
+                    assertEquals(CapabilityStatus.AVAILABLE, record.weight.status)
+                }
+            }
+            val overlay = requireNotNull(value.localizedText(LanguageTag.JAPANESE))
+            assertEquals((1..411).toSet() - excluded, overlay.speciesDescriptions.keys)
+            val state = overlay.localizedCapabilities.getValue(LocalizedTextCapability.SPECIES_DESCRIPTIONS)
+            assertEquals(CapabilityStatus.AVAILABLE, state.status)
+            assertEquals(386, state.coveredRecords)
+            assertEquals(386, state.expectedRecords)
+            val text = value.defaultTextProjection()
+            // Independent compiled row-1 prose oracle and source-correlated post-overflow row-252 scalars.
+            assertEquals("フシギダネ", text.speciesName(1))
+            assertTrue(requireNotNull(text.speciesDescription(1)).contains(control.dexFragment))
+            assertEquals(7, value.speciesById.getValue(1).height.value)
+            assertEquals(69, value.speciesById.getValue(1).weight.value)
+            assertEquals("キモリ", text.speciesName(277))
+            assertEquals(5, value.speciesById.getValue(277).height.value)
+            assertEquals(50, value.speciesById.getValue(277).weight.value)
+            if (control.family == EngineFamily.FIRERED_LEAFGREEN) {
+                val moves = overlay.localizedCapabilities.getValue(LocalizedTextCapability.MOVE_DESCRIPTIONS)
+                assertEquals(CapabilityStatus.NOT_FOUND, moves.status)
+                assertEquals(0, moves.coveredRecords)
+                assertEquals(354, moves.expectedRecords)
+                assertTrue(overlay.moveDescriptions.isEmpty())
+            } else assertNativeMoveProseSamples(value)
+        }
+        assertSlots(catalog)
+        val semantic = parsed.analysis.capabilities.single { it.capability == RomCapability.POKEDEX_DESCRIPTIONS }
+        assertEquals(386, semantic.coveredRecords)
+        assertEquals(386, semantic.expectedRecords)
+        val cache = CatalogCache(newRoot().toFile(), JdbcTestCatalogDatabaseFactory)
+        cache.write(catalog, CatalogSourceMetadata.direct("description-slot-control", rom.size, "NATIVE-CONTROL"), CatalogWriteProgress.complete())
+        val reopened = requireNotNull(cache.readComplete(rom.sha256)).catalog
+        assertEquals(catalog, reopened)
+        assertSlots(reopened)
+        assertDatabaseIntegrity(cache.fileFor(rom.sha256))
+        val calls = AtomicInteger()
+        val completion = AtomicReference<Result<Unit>?>()
+        val done = CountDownLatch(1)
+        ProductionCompanionRuntime(catalogRepository = cache, parseCatalogWithCancellation = { _, _, _, _ ->
+            calls.incrementAndGet(); error("description-slot cache reopen must not parse")
+        }).use { runtime ->
+            runtime.load(LoadedRom("description-slot-control", rom)) { result -> completion.set(result); done.countDown() }
+            assertTrue(done.await(30, TimeUnit.SECONDS))
+            requireNotNull(completion.get()).getOrThrow()
+            assertEquals(0, calls.get())
+            val bootstrap = runtime.bootstrap()
+            assertEquals("CACHE_REOPEN", bootstrap.state.loading.phase)
+            val api = requireNotNull(bootstrap.catalog)
+            assertEquals(reopened.navigableSpecies().map { it.id }.toSet(), api.species.map { it.id }.toSet())
+            assertEquals(386, api.species.count { it.description != null })
+            assertTrue(api.species.filter { it.id in excluded }.all { it.description == null && it.height == null && it.weight == null })
+            val state = requireNotNull(bootstrap.language).projections.single().localizedCapabilities
+                .getValue(LocalizedTextCapability.SPECIES_DESCRIPTIONS.name)
+            assertEquals(386, state.coveredRecords)
+            assertEquals(386, state.expectedRecords)
+            assertEquals("AVAILABLE", state.status)
+            if (control.family == EngineFamily.FIRERED_LEAFGREEN) assertTrue(api.moves.all { it.description == null })
+        }
+        println("NATIVE_DESCRIPTION_SLOT_GATE ${control.folder} descriptionSlots=PASS coverage=386/386 records=412 publicA=PRESERVED " +
+            if (control.family == EngineFamily.FIRERED_LEAFGREEN) "moveProse=NEGATIVE_0/354 overallPositive=BLOCKED" else "moveProse=354/354")
+    }
+
     @Test
     fun nativeOfficialJapaneseFireRedUnprovenMoveProseFailsClosed() {
         // Negative safety evidence only. nativeOfficialJapaneseFireRedLeafGreen remains the

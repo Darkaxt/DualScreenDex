@@ -125,6 +125,52 @@ import org.junit.Test
 
 class CatalogStoreTest {
     @Test
+    fun `applicable missing descriptions survive extraction close reopen and overlay validation`() {
+        val rom = RomImage(ByteArray(1024) { 0xff.toByte() })
+        val layout = com.enrpau.dualscreendex.parser.model.ResolvedRomLayout(
+            EngineFamily.GOLD_SILVER, 2, Platform.GBC, 2, 0,
+            com.enrpau.dualscreendex.parser.model.ProfileTables(speciesNames = TableLayout(0, 2, 6)),
+            languageManifest = completeCatalog("7".repeat(64)).languageManifest,
+        )
+        val analysis = com.enrpau.dualscreendex.parser.model.ParseResult(
+            com.enrpau.dualscreendex.parser.model.RomHeader(Platform.GBC, "SYNTHETIC"), rom.sha256, rom.crc32, rom.size,
+            com.enrpau.dualscreendex.parser.model.SelectionStatus.SELECTED, EngineFamily.GOLD_SILVER, null, 20, emptyList(), emptyList(),
+        )
+        var extracted: ParsedCatalog? = null
+        val stop = IllegalStateException("media captured")
+        try {
+            com.enrpau.dualscreendex.parser.catalog.CatalogMaterializer.materialize(rom, analysis, layout, onProgress = {
+                if (it.phase == com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationPhase.SPECIES_MEDIA) {
+                    extracted = it.catalog
+                    throw stop
+                }
+            })
+        } catch (failure: IllegalStateException) { if (failure !== stop) throw failure }
+        val catalog = requireNotNull(extracted)
+        assertTrue(catalog.speciesById.values.all { it.description.status == CapabilityStatus.NOT_FOUND && it.description.value == null })
+        val cache = CatalogCache(newRoot().toFile(), JdbcCatalogDatabaseFactory)
+        cache.write(catalog, CatalogSourceMetadata.direct("Synthetic.gbc", rom.size, "SYNTHETIC"), CatalogWriteProgress.complete())
+        val reopened = requireNotNull(cache.readComplete(rom.sha256)).catalog
+        assertEquals(catalog, reopened)
+        val state = requireNotNull(reopened.defaultLocalizedText()).localizedCapabilities.getValue(LocalizedTextCapability.SPECIES_DESCRIPTIONS)
+        assertEquals(0, state.coveredRecords)
+        assertEquals(2, state.expectedRecords)
+        assertEquals(CapabilityStatus.NOT_FOUND, state.status)
+    }
+
+    @Test
+    fun `revision 50 description placeholders must be reparsed`() {
+        val cache = CatalogCache(newRoot().toFile(), JdbcCatalogDatabaseFactory)
+        val catalog = completeCatalog("8".repeat(64))
+        cache.write(catalog, CatalogSourceMetadata.direct("Synthetic.gba", 32768, "SYNTHETIC"), CatalogWriteProgress.complete())
+        JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
+            database.execute("UPDATE catalog_metadata SET parser_schema_version = 50 WHERE id = 1")
+        }
+        assertNull(cache.readComplete(catalog.romSha256))
+        assertEquals(2, CatalogSchema.version)
+    }
+
+    @Test
     fun `revision 49 caches containing unproven native move prose must be reparsed`() {
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
@@ -1241,7 +1287,7 @@ class CatalogStoreTest {
         )
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(50, CatalogSchema.parserSchemaVersion)
+        assertEquals(51, CatalogSchema.parserSchemaVersion)
         assertEquals(catalog.worldMaps, reopened?.catalog?.worldMaps)
         assertEquals(catalog.localMaps.maps, reopened?.catalog?.localMaps?.maps)
         assertEquals(catalog.localMaps.scenes, reopened?.catalog?.localMaps?.scenes)
@@ -1595,7 +1641,7 @@ class CatalogStoreTest {
         cache.write(catalog, source, CatalogWriteProgress.complete())
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(50, CatalogSchema.parserSchemaVersion)
+        assertEquals(51, CatalogSchema.parserSchemaVersion)
         assertEquals(source, reopened?.source)
         assertEquals(catalog, reopened?.catalog)
         assertEquals(
@@ -1744,7 +1790,7 @@ class CatalogStoreTest {
 
     @Test
     fun `revision 42 caches are invalidated so hybrid move details are rebuilt`() {
-        assertEquals(50, CatalogSchema.parserSchemaVersion)
+        assertEquals(51, CatalogSchema.parserSchemaVersion)
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("4".repeat(64)).copy(diagnostics = listOf("pre-hybrid move output"))
@@ -1766,7 +1812,7 @@ class CatalogStoreTest {
 
     @Test
     fun `revision 43 caches are invalidated so optional relationship evidence is rebuilt`() {
-        assertEquals(50, CatalogSchema.parserSchemaVersion)
+        assertEquals(51, CatalogSchema.parserSchemaVersion)
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("5".repeat(64)).copy(diagnostics = listOf("pre-isolation relationship output"))
@@ -1788,7 +1834,7 @@ class CatalogStoreTest {
 
     @Test
     fun `revision 44 caches are invalidated so bounded detached Gen I evidence is rebuilt`() {
-        assertEquals(50, CatalogSchema.parserSchemaVersion)
+        assertEquals(51, CatalogSchema.parserSchemaVersion)
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("6".repeat(64)).copy(diagnostics = listOf("pre-bounded detached Gen I output"))
@@ -1810,7 +1856,7 @@ class CatalogStoreTest {
 
     @Test
     fun `revision 45 caches are invalidated so Gen I applicability and bounded fallbacks are rebuilt`() {
-        assertEquals(50, CatalogSchema.parserSchemaVersion)
+        assertEquals(51, CatalogSchema.parserSchemaVersion)
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("7".repeat(64)).copy(
@@ -2439,7 +2485,7 @@ class CatalogStoreTest {
             family = EngineFamily.EMERALD,
             platform = Platform.GBA,
             speciesById = mapOf(
-                6 to species.copy(name = localizedPlaceholder, description = localizedPlaceholder),
+                6 to species.copy(name = localizedPlaceholder, description = CatalogField.notFound("stored in language overlay")),
             ),
             movesById = mapOf(
                 53 to move.copy(name = localizedPlaceholder, effectText = localizedPlaceholder),

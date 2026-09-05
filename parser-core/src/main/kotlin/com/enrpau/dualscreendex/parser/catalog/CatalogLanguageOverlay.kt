@@ -238,7 +238,8 @@ class CatalogLanguageOverlay(
     internal fun validateKeys(catalog: ParsedCatalog) {
         requireSubset(speciesNames.keys, catalog.speciesById.keys, "species name", "species")
         val speciesDescriptionIds = catalog.speciesById
-            .filter { (id, record) -> id > 0 && record.dexNumber.status != CapabilityStatus.NOT_APPLICABLE }
+            .filter { (id, record) -> id > 0 && record.dexNumber.status != CapabilityStatus.NOT_APPLICABLE &&
+                record.description.status != CapabilityStatus.NOT_APPLICABLE }
             .keys
         requireSubset(
             speciesDescriptions.keys,

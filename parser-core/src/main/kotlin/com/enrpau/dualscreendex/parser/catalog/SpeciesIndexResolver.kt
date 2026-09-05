@@ -10,11 +10,17 @@ import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.resolution.BudgetKind
 
 /** Transient, immutable row authority; never changes public Pokédex numbering or persisted layouts. */
-class SpeciesDescriptionIndex(rows: Map<Int, Int>, val unavailableReason: String? = null) {
+class SpeciesDescriptionIndex(
+    rows: Map<Int, Int>,
+    val unavailableReason: String? = null,
+    excludedSpeciesIds: Set<Int> = emptySet(),
+) {
     val rows: Map<Int, Int> = Collections.unmodifiableMap(LinkedHashMap(rows))
+    val excludedSpeciesIds: Set<Int> = Collections.unmodifiableSet(LinkedHashSet(excludedSpeciesIds))
+    init { require(this.excludedSpeciesIds.all { it > 0 && it in this.rows }) }
     override fun equals(other: Any?): Boolean = other is SpeciesDescriptionIndex &&
-        rows == other.rows && unavailableReason == other.unavailableReason
-    override fun hashCode(): Int = 31 * rows.hashCode() + (unavailableReason?.hashCode() ?: 0)
+        rows == other.rows && unavailableReason == other.unavailableReason && excludedSpeciesIds == other.excludedSpeciesIds
+    override fun hashCode(): Int = 31 * (31 * rows.hashCode() + (unavailableReason?.hashCode() ?: 0)) + excludedSpeciesIds.hashCode()
 }
 
 sealed interface SpeciesIndexResolution {
@@ -174,6 +180,7 @@ object SpeciesIndexResolver {
                     compiledIndexed.descriptionValues?.let(::indexedGen3Values)
                         ?: if (compiledIndexed.requiresDescriptionProof) emptyMap() else indexedGen3Values(values),
                     compiledIndexed.descriptionFailure,
+                    compiledIndexed.excludedDescriptionSpeciesIds,
                 ),
             )
         }
@@ -285,6 +292,7 @@ object SpeciesIndexResolver {
                     compiledIndexed.descriptionValues?.let(::indexedGen3Values)
                         ?: if (compiledIndexed.requiresDescriptionProof) emptyMap() else indexedGen3Values(values),
                     compiledIndexed.descriptionFailure,
+                    compiledIndexed.excludedDescriptionSpeciesIds,
                 ),
             )
     }
@@ -403,6 +411,7 @@ object SpeciesIndexResolver {
             val description = bindDescriptionIndex(rom, layout, candidatesByRoot, wrappersByRoot, completeComposition, budget)
             return CompiledIndexSearch(values = it.values, evidenceObserved = true,
                 descriptionValues = description.values, requiresDescriptionProof = true,
+                excludedDescriptionSpeciesIds = description.excludedDescriptionSpeciesIds,
                 descriptionFailure = description.budgetFailure?.descriptionReason())
         }
         if (compositionCandidates.size >= 3) {
@@ -430,6 +439,7 @@ object SpeciesIndexResolver {
             val description = bindDescriptionIndex(rom, layout, candidatesByRoot, wrappersByRoot, tiedComposition, budget)
             CompiledIndexSearch(values = tiedComposition.candidate.values, evidenceObserved = true,
                 descriptionValues = description.values, requiresDescriptionProof = true,
+                excludedDescriptionSpeciesIds = description.excludedDescriptionSpeciesIds,
                 descriptionFailure = description.budgetFailure?.descriptionReason())
         } else {
             CompiledIndexSearch(ambiguous = true, evidenceObserved = true,
@@ -559,7 +569,16 @@ object SpeciesIndexResolver {
             bound += candidate
         }
         val selected = bound.singleOrNull()?.takeIf { it in composition.descriptionPartners }
-        return CompiledIndexSearch(values = selected?.values)
+            ?: return CompiledIndexSearch()
+        if (selected.values.none { it >= table.count }) return CompiledIndexSearch(values = selected.values)
+        var extentFailure: SpeciesBudgetFailure? = null
+        val complete = CompiledDescriptionExtentBinding.matches(rom, table, budget.limits) {
+            budget.recordWork("description adjacent-object consumer").also { extentFailure = it } == null
+        }
+        extentFailure?.let { return CompiledIndexSearch(budgetFailure = it) }
+        return CompiledIndexSearch(values = selected.values, excludedDescriptionSpeciesIds = if (complete) {
+            selected.values.indices.filter { selected.values[it] >= table.count }.mapTo(linkedSetOf()) { it + 1 }
+        } else emptySet())
     }
 
     private fun addCombinesRegisters(instruction: Int, first: Int, second: Int): Boolean {
@@ -914,6 +933,7 @@ object SpeciesIndexResolver {
         val values: IntArray? = null,
         val descriptionValues: IntArray? = null,
         val descriptionFailure: String? = null,
+        val excludedDescriptionSpeciesIds: Set<Int> = emptySet(),
         val requiresDescriptionProof: Boolean = false,
         val ambiguous: Boolean = false,
         val budgetFailure: SpeciesBudgetFailure? = null,

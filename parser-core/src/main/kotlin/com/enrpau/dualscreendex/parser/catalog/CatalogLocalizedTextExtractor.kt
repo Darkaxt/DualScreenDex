@@ -45,7 +45,8 @@ internal object CatalogLocalizedTextExtractor {
         ) { it.name }
         val speciesDescriptions = authorizedFields(
             speciesById.filter { (id, record) ->
-                id > 0 && record.dexNumber.status != CapabilityStatus.NOT_APPLICABLE
+                id > 0 && record.dexNumber.status != CapabilityStatus.NOT_APPLICABLE &&
+                    record.description.status != CapabilityStatus.NOT_APPLICABLE
             },
             capabilities[RomCapability.POKEDEX_DESCRIPTIONS],
         ) { it.description }
@@ -236,7 +237,10 @@ internal object CatalogLocalizedTextExtractor {
             speciesById = speciesById.mapValues { (_, record) ->
                 record.copy(
                     name = localizedPlaceholder("species name"),
-                    description = localizedPlaceholder("species description"),
+                    // Preserve applicability, not prose, in the existing serialized shared field.
+                    description = if (record.description.status == CapabilityStatus.NOT_APPLICABLE) {
+                        record.description.copy(value = null)
+                    } else CatalogField.notFound("species description is stored in the language overlay"),
                 )
             },
             movesById = movesById.mapValues { (_, record) ->
@@ -336,7 +340,8 @@ internal object CatalogLocalizedTextExtractor {
         return mapOf(
             LocalizedTextCapability.SPECIES_NAMES to speciesById.size,
             LocalizedTextCapability.SPECIES_DESCRIPTIONS to speciesById.count { (id, record) ->
-                id > 0 && record.dexNumber.status != CapabilityStatus.NOT_APPLICABLE
+                id > 0 && record.dexNumber.status != CapabilityStatus.NOT_APPLICABLE &&
+                    record.description.status != CapabilityStatus.NOT_APPLICABLE
             },
             LocalizedTextCapability.MOVE_NAMES to movesById.size,
             LocalizedTextCapability.MOVE_DESCRIPTIONS to movesById.keys.count { it > 0 },

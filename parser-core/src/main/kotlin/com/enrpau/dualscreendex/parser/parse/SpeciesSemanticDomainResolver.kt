@@ -24,6 +24,7 @@ internal data class SpeciesSemanticDomain(
     val coveredNameRecords: Int = expectedSpeciesIds.size,
     val activeDomainReason: String? = null,
     val source: SpeciesSemanticDomainSource = SpeciesSemanticDomainSource.NAVIGABLE_SPECIES_FALLBACK,
+    val excludedDescriptionSpeciesIds: Set<Int> = emptySet(),
 ) {
     val expectedRecords: Int = expectedSpeciesIds.size
     val incompleteRecords: Int = expectedRecords - coveredStatRecords
@@ -101,7 +102,9 @@ internal data class SpeciesSemanticDomain(
         coveredSpeciesIds: Set<Int>,
         authoritativeFallback: Boolean = false,
     ): ValidationEvidence {
-        val covered = expectedSpeciesIds.count(coveredSpeciesIds::contains)
+        val descriptionIds = expectedSpeciesIds - excludedDescriptionSpeciesIds
+        val expectedRecords = descriptionIds.size
+        val covered = descriptionIds.count(coveredSpeciesIds::contains)
         val incomplete = expectedRecords - covered
         return evidence.copy(
             coveredRecords = covered,
@@ -288,6 +291,7 @@ internal object SpeciesSemanticDomainResolver {
         }
         return SpeciesSemanticDomainResolution.Resolved(SpeciesSemanticDomain(
             expectedSpeciesIds = expected.mapTo(linkedSetOf()) { it.id },
+            excludedDescriptionSpeciesIds = materialization.indexResolution.descriptionIndex.excludedSpeciesIds,
             coveredStatRecords = covered,
             excludedStructuralRecords = (rawCount - expected.size).coerceAtLeast(0),
             coveredNameRecords = expected.count { record -> record.name.value?.any(Char::isLetterOrDigit) == true },

@@ -366,22 +366,24 @@ object CatalogMaterializer {
             }
             val description = descriptions[descriptionKey]
             val sprite = resolvedSprites[id]
-            val pokedexApplicable = record.dexNumber.status != CapabilityStatus.NOT_APPLICABLE
+            val excludedDescriptionIds = (speciesMaterialization.indexResolution as? SpeciesIndexResolution.Resolved)
+                ?.descriptionIndex?.excludedSpeciesIds.orEmpty()
+            val pokedexApplicable = record.dexNumber.status != CapabilityStatus.NOT_APPLICABLE && id !in excludedDescriptionIds
             record.copy(
                 sprite = sprite?.let { CatalogField(CapabilityStatus.AVAILABLE, it.sprite, it.reasons) }
                     ?: CatalogField.notFound("sprite could not be decoded for species $id"),
                 description = when {
-                    !pokedexApplicable -> CatalogField.notApplicable("species is outside the ROM's Pokédex domain")
+                    !pokedexApplicable -> CatalogField.notApplicable("species is outside the ROM's compiled description-table domain")
                     description?.text != null -> CatalogField.available(description.text)
                     else -> CatalogField.notFound("description could not be decoded for species $id")
                 },
                 height = when {
-                    !pokedexApplicable -> CatalogField.notApplicable("species is outside the ROM's Pokédex domain")
+                    !pokedexApplicable -> CatalogField.notApplicable("species is outside the ROM's compiled description-table domain")
                     description?.height != null -> CatalogField.available(description.height)
                     else -> CatalogField.notFound("height could not be decoded for species $id")
                 },
                 weight = when {
-                    !pokedexApplicable -> CatalogField.notApplicable("species is outside the ROM's Pokédex domain")
+                    !pokedexApplicable -> CatalogField.notApplicable("species is outside the ROM's compiled description-table domain")
                     description?.weight != null -> CatalogField.available(description.weight)
                     else -> CatalogField.notFound("weight could not be decoded for species $id")
                 },
@@ -389,7 +391,8 @@ object CatalogMaterializer {
         }
         val mediaCapabilities = initialCapabilities.toMutableMap()
         val expectedDescriptions = mediaSpecies.count { (id, record) ->
-            id > 0 && record.dexNumber.status != CapabilityStatus.NOT_APPLICABLE
+            id > 0 && record.dexNumber.status != CapabilityStatus.NOT_APPLICABLE &&
+                record.description.status != CapabilityStatus.NOT_APPLICABLE
         }
         val coveredDescriptions = mediaSpecies.count { (id, record) ->
             id > 0 && record.description.status == CapabilityStatus.AVAILABLE
