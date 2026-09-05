@@ -393,11 +393,42 @@ class TableValidatorsTest {
         )
         assertEquals(
             moveOffset,
-            TableValidators.locateVariableNameSequenceNear(
-                RomImage(bytes), moveOffset - 20, PokemonTextCodec.gbEnglish,
+            TableValidators.locateGbEnglishVariableNameSequenceNear(
+                RomImage(bytes), moveOffset - 20,
                 listOf("POUND", "KARATE CHOP", "DOUBLESLAP"), searchRadius = 64,
             ),
         )
+    }
+
+    @Test
+    fun legacyGbEnglishLocatorRejectsCanonicalSuffixInsideALongerName() {
+        val bytes = ByteArray(128)
+        bytes[9] = 0x50
+        var cursor = 10
+        listOf("XPOUND", "KARATE CHOP", "DOUBLESLAP").forEach { name ->
+            cursor = writeGbName(bytes, cursor, name, width = name.length + 1)
+        }
+        assertEquals(null, TableValidators.locateGbEnglishVariableNameSequenceNear(
+            RomImage(bytes), 11, listOf("POUND", "KARATE CHOP", "DOUBLESLAP"), searchRadius = 64,
+        ))
+    }
+
+    @Test
+    fun legacyGbEnglishLocatorPreservesCaseInsensitiveNearestAndTieSelection() {
+        val bytes = ByteArray(64)
+        for (offset in listOf(10, 30)) {
+            bytes[offset - 1] = 0x50
+            writeGbName(bytes, offset, "POUND", width = 6)
+        }
+        assertEquals(10, TableValidators.locateGbEnglishVariableNameSequenceNear(
+            RomImage(bytes), 20, listOf("pound"), searchRadius = 10,
+        ))
+        assertEquals(30, TableValidators.locateGbEnglishVariableNameSequenceNear(
+            RomImage(bytes), 25, listOf("POUND"), searchRadius = 10,
+        ))
+        assertEquals(null, TableValidators.locateGbEnglishVariableNameSequenceNear(
+            RomImage(bytes), 20, listOf("POUND"), searchRadius = 9,
+        ))
     }
 
     @Test

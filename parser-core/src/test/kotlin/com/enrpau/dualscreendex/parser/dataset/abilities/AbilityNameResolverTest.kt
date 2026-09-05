@@ -1,5 +1,7 @@
 package com.enrpau.dualscreendex.parser.dataset.abilities
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationException
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.analysis.ResolutionLimits
 import com.enrpau.dualscreendex.parser.analysis.GbaReferenceIndex
 import com.enrpau.dualscreendex.parser.model.TableRecordFormat
@@ -8,10 +10,57 @@ import com.enrpau.dualscreendex.parser.resolution.BudgetKind
 import com.enrpau.dualscreendex.parser.resolution.CandidateSource
 import com.enrpau.dualscreendex.parser.resolution.DatasetResolution
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertSame
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AbilityNameResolverTest {
+    @Test
+    fun cancellationPrecedesEmptyAndUnsupportedExactResolution() {
+        listOf(null, TableLayout(0x100, 4, 13, variableLength = true)).forEach { exact ->
+            val failure = ParserCancellationException()
+            val session = abilitySession(
+                ByteArray(0x1000),
+                exactTableOverride = exact,
+                cancellation = ParserCancellationToken { throw failure },
+            )
+
+            assertSame(failure, assertThrows(ParserCancellationException::class.java) {
+                AbilityNameResolver().resolve(session, AbilitySemanticDomain(setOf(1, 2)))
+            })
+        }
+    }
+
+    @Test
+    fun cancellationStopsDirectAndInheritedProposalsBeforeTheNextDecode() {
+        listOf(true, false).forEach { direct ->
+            val failure = ParserCancellationException()
+            var cancelled = false
+            var decodes = 0
+            val session = abilitySession(
+                ByteArray(0x1000),
+                cancellation = ParserCancellationToken { if (cancelled) throw failure },
+            )
+            val resolver = AbilityNameResolver(AbilityNameTableDecoder { _, layout, _ ->
+                decodes++
+                cancelled = true
+                AbilityNameTableOutcome.Rejected(layout, "synthetic malformed name table")
+            })
+            val layouts = listOf(AbilityNameTableLayout(0x100, 4, 13), AbilityNameTableLayout(0x200, 4, 13))
+
+            assertSame(failure, assertThrows(ParserCancellationException::class.java) {
+                resolver.resolve(
+                    session,
+                    AbilitySemanticDomain(setOf(1, 2)),
+                    directCompiledConsumerLayouts = if (direct) layouts else emptyList(),
+                    inheritedLayouts = if (direct) emptyList() else layouts,
+                )
+            })
+            assertEquals(1, decodes)
+        }
+    }
+
     @Test
     fun selectedLayoutExtendsThroughEveryValidRowRequiredByTheSemanticDomain() {
         val selected = AbilityNameTableLayout(0x100, 4, 13)

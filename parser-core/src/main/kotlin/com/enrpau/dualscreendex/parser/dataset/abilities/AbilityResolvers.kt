@@ -35,6 +35,7 @@ class AbilityNameResolver(
         compiledLayouts: Collection<AbilityNameTableLayout> = emptyList(),
         inheritedLayouts: Collection<AbilityNameTableLayout> = emptyList(),
     ): DatasetResolution<ResolvedAbilityNameLayout> {
+        session.cancellation.throwIfCancellationRequested()
         if (selectedLayout != null) {
             return resolveSelected(session, semanticDomain, selectedLayout)
         }
@@ -71,6 +72,7 @@ class AbilityNameResolver(
         var observed = 0
         val directCandidates = mutableListOf<DatasetCandidate<ResolvedAbilityNameLayout>>()
         for (layout in directCompiledConsumerLayouts) {
+            session.cancellation.throwIfCancellationRequested()
             val proposal = NameProposal(layout, CandidateSource.DIRECT_COMPILED_CONSUMER)
             observed++
             if (roots.add(proposal.layout.offset) && roots.size > session.limits.maxProbeRootsPerDataset) {
@@ -142,6 +144,7 @@ class AbilityNameResolver(
 
         val candidates = mutableListOf<DatasetCandidate<ResolvedAbilityNameLayout>>()
         for (proposal in proposals) {
+            session.cancellation.throwIfCancellationRequested()
             observed++
             if (roots.add(proposal.layout.offset) && roots.size > session.limits.maxProbeRootsPerDataset) {
                 return budget(

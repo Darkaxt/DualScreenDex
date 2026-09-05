@@ -195,34 +195,66 @@ object TableValidators {
         }.minWithOrNull(compareBy<ValidationEvidence> { abs(requireNotNull(it.offset) - approximateOffset) }.thenBy { it.offset })
     }
 
+    /**
+     * Matches only caller-established record starts; proximity and decoded text do not establish a start.
+     * Subsequent boundaries follow complete terminated records in the supplied codec, never raw bytes.
+     */
     fun locateVariableNameSequenceNear(
         rom: RomImage,
         approximateOffset: Int,
         codec: PokemonTextCodec,
         expectedNames: List<String>,
+        recordStarts: Sequence<Int>,
         searchRadius: Int = 0x10000,
         maximumWidth: Int = 24,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
     ): Int? {
-        if (expectedNames.isEmpty()) return null
-        val start = maxOf(0, approximateOffset - searchRadius)
-        val end = minOf(rom.size - 1, approximateOffset + searchRadius)
-        return (start..end).asSequence().filter { offset ->
-            offset == 0 || rom.u8(offset - 1) == codec.terminator
+        cancellation.throwIfCancellationRequested()
+        if (expectedNames.isEmpty() || expectedNames.any { it.isBlank() } || searchRadius < 0 || maximumWidth <= 0) return null
+        val start = maxOf(0L, approximateOffset.toLong() - searchRadius)
+        val end = minOf(rom.size.toLong() - 1, approximateOffset.toLong() + searchRadius)
+        return recordStarts.filter { offset ->
+            cancellation.throwIfCancellationRequested()
+            offset.toLong() in start..end
         }.filter { offset ->
             var cursor = offset
             expectedNames.all { expected ->
-                val bytes = ArrayList<Byte>()
-                var terminated = false
-                repeat(maximumWidth) {
-                    if (!terminated && cursor < rom.size) {
-                        val value = rom.u8(cursor++)
-                        bytes += value.toByte()
-                        terminated = value == codec.terminator
-                    }
+                val decoded = codec.decodeDetailed(rom, cursor, maximumWidth, cancellation)
+                if (!decoded.terminated || decoded.consumedBytes <= 0 || decoded.invalidUnits != 0) {
+                    false
+                } else {
+                    cursor += decoded.consumedBytes
+                    decoded.text.equals(expected, ignoreCase = true)
                 }
-                terminated && codec.decode(bytes.toByteArray()).equals(expected, ignoreCase = true)
             }
-        }.minWithOrNull(compareBy<Int> { abs(it - approximateOffset) }.thenBy { it })
+        }.minWithOrNull(compareBy<Int> { abs(it.toLong() - approximateOffset) }.thenBy { it })
+    }
+
+    /**
+     * Legacy single-byte GB English discovery heuristic, not structural table-root proof.
+     * Callers must corroborate canonical move data and validate the complete relocated table.
+     * This raw-byte candidate discovery must not be reused with multibyte codecs.
+     */
+    fun locateGbEnglishVariableNameSequenceNear(
+        rom: RomImage,
+        approximateOffset: Int,
+        expectedNames: List<String>,
+        searchRadius: Int = 0x10000,
+        maximumWidth: Int = 24,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
+    ): Int? {
+        cancellation.throwIfCancellationRequested()
+        if (searchRadius < 0) return null
+        val start = maxOf(0L, approximateOffset.toLong() - searchRadius)
+        val end = minOf(rom.size.toLong() - 1, approximateOffset.toLong() + searchRadius)
+        val candidates = (start..end).asSequence().map { it.toInt() }.filter { offset ->
+            cancellation.throwIfCancellationRequested()
+            offset == 0 || rom.u8(offset - 1) == PokemonTextCodec.gbEnglish.terminator
+        }
+        return locateVariableNameSequenceNear(
+            rom, approximateOffset, PokemonTextCodec.gbEnglish, expectedNames, candidates,
+            searchRadius, maximumWidth, cancellation,
+        )
     }
 
     private fun plausibleFixedName(

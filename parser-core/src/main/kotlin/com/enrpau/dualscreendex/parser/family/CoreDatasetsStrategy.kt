@@ -22,7 +22,6 @@ import com.enrpau.dualscreendex.parser.dataset.moves.ResolvedMoveDetailsLayout
 import com.enrpau.dualscreendex.parser.dataset.learnsets.EmbeddedLearnsetPointerResolver
 import com.enrpau.dualscreendex.parser.resolution.DatasetResolution
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
-import com.enrpau.dualscreendex.parser.language.LanguageTag
 import com.enrpau.dualscreendex.parser.language.RomLanguageManifest
 import com.enrpau.dualscreendex.parser.validate.TableValidators
 import java.util.Collections
@@ -256,16 +255,16 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
         var moveNames = headerlessUnifiedMoves?.moveNamesEvidence
             ?: validateNames(rom, moveNamesLayout, inferredMoveCount, probeCodec, generation)
         if (
-            generation == 2 && exact == null && probeCodec.language == LanguageTag.ENGLISH &&
+            generation == 2 && exact == null && probeCodec === PokemonTextCodec.gbEnglish &&
                 inferredMoveCount != null &&
             moveNamesLayout?.variableLength == true &&
             tables.moveData?.let { hasCanonicalGen2MovePrefix(rom, it) } == true
         ) {
-            TableValidators.locateVariableNameSequenceNear(
+            TableValidators.locateGbEnglishVariableNameSequenceNear(
                 rom = rom,
                 approximateOffset = moveNamesLayout.offset,
-                codec = probeCodec,
                 expectedNames = listOf("POUND", "KARATE CHOP", "DOUBLESLAP"),
+                cancellation = session.cancellation,
             )?.let { relocatedOffset ->
                 val relocated = TableValidators.variableNames(rom, relocatedOffset, inferredMoveCount, probeCodec)
                 if (relocated.compatible) {

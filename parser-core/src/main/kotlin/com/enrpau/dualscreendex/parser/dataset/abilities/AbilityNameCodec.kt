@@ -1,6 +1,8 @@
 package com.enrpau.dualscreendex.parser.dataset.abilities
 
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
+import com.enrpau.dualscreendex.parser.language.LanguageTag
+import com.enrpau.dualscreendex.parser.text.LanguageTextPlausibility
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 
 fun interface AbilityNameTableDecoder {
@@ -122,12 +124,9 @@ class AbilityNameCodec(
             cancellation = session.cancellation,
         )
         if (rowIndex == 0) {
-            val terminator = (0 until width).indexOfFirst { index ->
-                session.rom.u8(offset + index) == textCodec.terminator
-            }
-            val structuralNone = terminator >= 0 && decoded.invalidUnits == 0 &&
+            val structuralNone = decoded.terminated && decoded.invalidUnits == 0 &&
                 decoded.text.none(Char::isLetterOrDigit) &&
-                (terminator + 1 until width).all { index ->
+                (decoded.consumedBytes until width).all { index ->
                     val value = session.rom.u8(offset + index)
                     value == 0 || value == textCodec.terminator
                 }
@@ -140,7 +139,7 @@ class AbilityNameCodec(
                 )
             }
         }
-        val complete = decoded.terminated || decoded.contentBytes == width
+        val complete = decoded.terminated || (decoded.contentBytes == width && decoded.invalidUnits == 0)
         if (!complete || decoded.validRatio < MINIMUM_VALID_BYTE_RATIO || decoded.text.isBlank()) {
             return AbilityNameRowOutcome.Malformed(
                 rowIndex,
@@ -148,7 +147,13 @@ class AbilityNameCodec(
             )
         }
         return if (decoded.text.any(Char::isLetterOrDigit)) {
-            AbilityNameRowOutcome.Decoded(rowIndex, decoded.text)
+            if ((textCodec.language == LanguageTag.JAPANESE || textCodec.language == LanguageTag.KOREAN) &&
+                !LanguageTextPlausibility.looksLikeStandaloneFixedName(decoded.text, textCodec.language)
+            ) {
+                AbilityNameRowOutcome.Malformed(rowIndex, listOf("ability name lacks the expected native script shape"))
+            } else {
+                AbilityNameRowOutcome.Decoded(rowIndex, decoded.text)
+            }
         } else {
             AbilityNameRowOutcome.StructuralSentinel(rowIndex, decoded.text)
         }

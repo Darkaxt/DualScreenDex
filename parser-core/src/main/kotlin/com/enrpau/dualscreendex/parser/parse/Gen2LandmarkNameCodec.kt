@@ -2,8 +2,12 @@ package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.language.LanguageTag
+import com.enrpau.dualscreendex.parser.text.JapanesePokemonTextCodecs
+import com.enrpau.dualscreendex.parser.text.KoreanGen2PokemonTextCodec
+import com.enrpau.dualscreendex.parser.text.LanguageTextPlausibility
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import com.enrpau.dualscreendex.parser.text.PokemonTextToken
+import com.enrpau.dualscreendex.parser.text.WesternPokemonTextCodecs
 
 internal enum class Gen2LandmarkNameEncoding {
     STANDARD,
@@ -20,8 +24,21 @@ internal object Gen2LandmarkNameCodec {
         encoding: Gen2LandmarkNameEncoding,
         codec: PokemonTextCodec,
     ): String? {
-        val usesEnglishDialect = codec.language == LanguageTag.ENGLISH
+        val usesWesternDialect = codec in WESTERN_PLACE_STRING_CODECS
+        val usesEnglishDialect = codec === PokemonTextCodec.gbEnglish || codec === WesternPokemonTextCodecs.gen2English
+        val usesJapaneseDialect = codec === JapanesePokemonTextCodecs.gen2
+        val usesKoreanDialect = codec === KoreanGen2PokemonTextCodec.codec
         if (encoding == Gen2LandmarkNameEncoding.EXPANDED && !usesEnglishDialect) return null
+        val doneControl = when {
+            usesJapaneseDialect -> DONE
+            usesKoreanDialect -> KOREAN_DONE
+            else -> null
+        }
+        val nativeLineControls = when {
+            usesJapaneseDialect -> JAPANESE_STATIC_LINE_CONTROLS
+            usesKoreanDialect -> KOREAN_STATIC_LINE_CONTROLS
+            else -> emptySet()
+        }
         val rom = RomImage(bytes)
         val output = StringBuilder()
         var cursor = 0
@@ -29,7 +46,7 @@ internal object Gen2LandmarkNameCodec {
         var terminated = false
         while (cursor < rom.size) {
             val value = rom.u8(cursor)
-            if (!displayDone) {
+            if (!displayDone && usesWesternDialect) {
                 when (value) {
                     codec.terminator -> {
                         terminated = true
@@ -124,6 +141,23 @@ internal object Gen2LandmarkNameCodec {
                 }
             }
 
+            if (!displayDone && !usesWesternDialect) {
+                // Exact native dispatch only, at a token boundary: a Korean trail is never inspected here.
+                if (usesKoreanDialect && value in KOREAN_RUNTIME_NAMES) return null
+                when {
+                    value == doneControl -> {
+                        displayDone = true
+                        cursor++
+                        continue
+                    }
+                    value in nativeLineControls -> {
+                        output.append(' ')
+                        cursor++
+                        continue
+                    }
+                }
+            }
+
             val token = codec.decodeToken(rom, cursor, rom.size)
             cursor += token.byteCount
             if (displayDone) {
@@ -137,7 +171,8 @@ internal object Gen2LandmarkNameCodec {
                 is PokemonTextToken.Glyph -> output.append(token.text)
                 is PokemonTextToken.Whitespace -> output.append(token.text)
                 is PokemonTextToken.Substitution -> output.append(token.text)
-                is PokemonTextToken.Control -> output.append(token.replacement)
+                // Only the exact static line and DONE controls above have landmark display authority.
+                is PokemonTextToken.Control -> return null
                 is PokemonTextToken.Invalid -> return null
                 is PokemonTextToken.Terminator -> {
                     terminated = true
@@ -146,7 +181,11 @@ internal object Gen2LandmarkNameCodec {
             }
         }
         if (!terminated) return null
-        return output.toString().replace(WHITESPACE, " ").trim().takeIf(String::isNotBlank)
+        val name = output.toString().replace(WHITESPACE, " ").trim().takeIf(String::isNotBlank) ?: return null
+        if (codec.language in NATIVE_LANGUAGES &&
+            !LanguageTextPlausibility.looksLikeStandaloneFixedName(name, codec.language)
+        ) return null
+        return name
     }
 
     private fun decodeDialectGlyph(
@@ -249,5 +288,21 @@ internal object Gen2LandmarkNameCodec {
         LanguageTag.ITALIAN to "MT",
         LanguageTag.SPANISH to "MT",
     )
+    // Object identity fences these overrides to the registered, versioned dialect implementations.
+    private val WESTERN_PLACE_STRING_CODECS = setOf(
+        PokemonTextCodec.gbEnglish,
+        WesternPokemonTextCodecs.gen2English,
+        WesternPokemonTextCodecs.gen2French,
+        WesternPokemonTextCodecs.gen2German,
+        WesternPokemonTextCodecs.gen2Italian,
+        WesternPokemonTextCodecs.gen2Spanish,
+    )
+    private val NATIVE_LANGUAGES = setOf(LanguageTag.JAPANESE, LanguageTag.KOREAN)
+    private val JAPANESE_STATIC_LINE_CONTROLS = setOf(NEXT, LINE)
+    // pokegold-kr 7743877dc9fa8603f4b6eaebe904a7ba03fdb9e4: constants/charmap.asm and home/text.asm.
+    // RED, GREEN, and MOM read WRAM in PlaceString even though the general codec has default labels.
+    private val KOREAN_RUNTIME_NAMES = setOf(0x4d, 0x4e, 0x5b)
+    private val KOREAN_STATIC_LINE_CONTROLS = setOf(0x1d, 0x1e, 0x34, 0x59, 0x5a)
+    private const val KOREAN_DONE = 0x5e
     private val WHITESPACE = Regex("\\s+")
 }

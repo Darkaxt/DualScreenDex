@@ -5,6 +5,7 @@ import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.catalog.BaseStats
 import com.enrpau.dualscreendex.parser.dataset.core.basestats.Gen3BaseStatsRecord
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
+import com.enrpau.dualscreendex.parser.text.JapanesePokemonTextCodecs
 import com.enrpau.dualscreendex.parser.text.WesternPokemonTextCodecs
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
@@ -12,6 +13,76 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AbilityNameCodecTest {
+    @Test
+    fun requiresATerminatorTokenForTheJapaneseNoneSentinel() {
+        val (bytes, layout) = japaneseNameTable()
+        bytes.fill(0, 0x100, 0x100 + 13)
+        byteArrayOf(0xF7.toByte(), 0xFF.toByte()).copyInto(bytes, 0x100)
+
+        assertTrue(AbilityNameCodec(JapanesePokemonTextCodecs.gen3Later).decode(
+            abilitySession(bytes), layout, AbilitySemanticDomain(setOf(1, 2)),
+        ) is AbilityNameTableOutcome.Rejected)
+    }
+
+    @Test
+    fun checksSentinelPaddingAfterTheCompleteTerminatorToken() {
+        val (bytes, layout) = japaneseNameTable()
+        byteArrayOf(0xF7.toByte(), 0xFF.toByte(), 0xF7.toByte(), 0, 0xFF.toByte())
+            .copyInto(bytes, 0x100)
+        val codec = AbilityNameCodec(JapanesePokemonTextCodecs.gen3Later)
+        val domain = AbilitySemanticDomain(setOf(1, 2))
+
+        assertTrue(codec.decode(abilitySession(bytes), layout, domain) is AbilityNameTableOutcome.Decoded)
+        bytes[0x105] = 0x01
+        assertTrue(codec.decode(abilitySession(bytes), layout, domain) is AbilityNameTableOutcome.Rejected)
+    }
+
+    @Test
+    fun rejectsNonNativeNamesWithoutDiscardingCompiledAbilityIdentities() {
+        listOf(
+            byteArrayOf(0xBB.toByte(), 0xBC.toByte(), 0xFF.toByte()),
+            byteArrayOf(0x01, 0xA2.toByte(), 0xA3.toByte(), 0xA4.toByte(), 0xFF.toByte()),
+        ).forEach { name ->
+            val (bytes, layout) = japaneseNameTable()
+            name.copyInto(bytes, 0x100 + 13)
+            val outcome = AbilityNameCodec(JapanesePokemonTextCodecs.gen3Later).decode(
+                abilitySession(bytes), layout, AbilitySemanticDomain(setOf(1, 2)),
+            ) as AbilityNameTableOutcome.Decoded
+
+            assertTrue(outcome.resolved.rows[1] is AbilityNameRowOutcome.Malformed)
+            assertEquals(setOf(1), outcome.resolved.unresolvedActiveAbilityIds)
+            assertTrue(1 in outcome.resolved.catalogDirectAbilityIds())
+            assertEquals(CapabilityStatus.NOT_FOUND, outcome.resolved.catalogAbilities().getValue(1).name.status)
+            assertEquals("あい", (outcome.resolved.rows[2] as AbilityNameRowOutcome.Decoded).name)
+        }
+    }
+
+    @Test
+    fun distinguishesFullWidthNativeNamesFromTruncatedControls() {
+        val (bytes, layout) = japaneseNameTable()
+        bytes.fill(0x01, 0x100 + 13, 0x100 + 26)
+        val codec = AbilityNameCodec(JapanesePokemonTextCodecs.gen3Later)
+        val domain = AbilitySemanticDomain(setOf(1, 2))
+        val fullWidth = codec.decode(abilitySession(bytes), layout, domain) as AbilityNameTableOutcome.Decoded
+        assertEquals("あ".repeat(13), (fullWidth.resolved.rows[1] as AbilityNameRowOutcome.Decoded).name)
+
+        bytes[0x100 + 25] = 0xF7.toByte()
+        val truncated = codec.decode(abilitySession(bytes), layout, domain) as AbilityNameTableOutcome.Decoded
+        assertTrue(truncated.resolved.rows[1] is AbilityNameRowOutcome.Malformed)
+        assertTrue(truncated.resolved.rows[2] is AbilityNameRowOutcome.Decoded)
+        assertEquals(setOf(1), truncated.resolved.unresolvedActiveAbilityIds)
+    }
+
+    private fun japaneseNameTable(): Pair<ByteArray, AbilityNameTableLayout> {
+        val layout = AbilityNameTableLayout(0x100, 20, 13)
+        val bytes = ByteArray(0x100 + 20 * 13)
+        bytes[0x100] = 0xFF.toByte()
+        for (index in 1 until 20) {
+            byteArrayOf(0x01, 0x02, 0xFF.toByte()).copyInto(bytes, 0x100 + index * 13)
+        }
+        return bytes to layout
+    }
+
     @Test
     fun cancelsWhileDecodingAbilityNameRows() {
         val layout = AbilityNameTableLayout(0x100, 3, 13)
