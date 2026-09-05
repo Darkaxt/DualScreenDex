@@ -19,6 +19,107 @@ import org.junit.Test
 
 class AbilityDescriptionMaterializerTest {
     @Test
+    fun shortCompiledInlineNativeProseKeepsExactTokenAndPaddingSafety() {
+        val short = byteArrayOf(27, 41, 31, 21, 2, 0xFF.toByte()) // ひるまない
+        val descriptor = com.enrpau.dualscreendex.parser.parse.CompiledInlineAbilityText(0x100, 19)
+        listOf(com.enrpau.dualscreendex.parser.text.JapanesePokemonTextCodecs.gen3RubySapphire, com.enrpau.dualscreendex.parser.text.JapanesePokemonTextCodecs.gen3Later).forEach { codec ->
+            val bytes = ByteArray(0x200)
+            short.copyInto(bytes, 0x100)
+            fun decode(record: ByteArray): Map<Int, String>? {
+                bytes.fill(0, 0x113, 0x126)
+                record.copyInto(bytes, 0x113)
+                return descriptor.decode(RomImage(bytes), 2, codec, ParserCancellationToken.NONE)
+            }
+            assertEquals("ひるまない", decode(short)?.get(1))
+            assertNull(decode(byteArrayOf(0xFF.toByte()))) // empty
+            assertNull(decode(ByteArray(19) { 1 })) // unterminated, despite valid native glyphs
+            assertNull(decode(byteArrayOf(0xFA.toByte(), 0xFF.toByte()))) // controls are not prose
+            assertNull(decode(short.copyOf(5) + byteArrayOf(0xFD.toByte(), 0xFF.toByte()))) // FF is a control argument
+            assertNull(decode(byteArrayOf(0xFC.toByte(), 0x7F) + short)) // invalid extended control
+            assertNull(decode(short + byteArrayOf(1))) // post-terminator contamination
+            assertNull(decode(byteArrayOf(0xBB.toByte(), 0xBC.toByte(), 0xBD.toByte(), 0xBE.toByte(), 0xBF.toByte(), 0xFF.toByte()))) // wrong script
+        }
+    }
+
+    @Test
+    fun decodesOnlyConsumerProvenInlineDescriptionsBoundedByTheNameExtent() {
+        val bytes = ByteArray(0x1000)
+        val names = 0x400
+        val count = 11
+        val root = names + count * 8
+        repeat(count) { id ->
+            if (id == 0) bytes.fill(0xAE.toByte(), names, names + 7)
+            else byteArrayOf(1, 2).copyInto(bytes, names + id * 8)
+            bytes[names + id * 8 + if (id == 0) 7 else 2] = 0xFF.toByte()
+            val text = byteArrayOf(1, 2, 3, 0, 4, 5, 6, 0, 7, 8, 9, 0xFF.toByte())
+            text.copyInto(bytes, root + id * 19)
+        }
+        fun instruction(at: Int, op: Int) {
+            bytes[at] = op.toByte(); bytes[at + 1] = (op ushr 8).toByte()
+        }
+        // ((id << 2) + id) << 2 - id, in a different register pair than retail.
+        listOf(0x00AB, 0x195B, 0x009B, 0x1B5B, 0x491D, 0x185B).forEachIndexed { i, op ->
+            instruction(0x100 + i * 2, op)
+        }
+        putGbaPointer(bytes, 0x180, root)
+        instruction(0x200, 0x00C0); instruction(0x202, 0x491F); instruction(0x204, 0x1840)
+        putGbaPointer(bytes, 0x280, names)
+        instruction(0x240, 0x2308); instruction(0x242, 0x4358)
+        instruction(0x244, 0x491E); instruction(0x246, 0x1840)
+        putGbaPointer(bytes, 0x2C0, names) // mixed but agreeing MUL8 and LSL3 consumers
+        fun selectedNames(): com.enrpau.dualscreendex.parser.model.ValidationEvidence {
+            val session = com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession(RomImage(bytes), com.enrpau.dualscreendex.parser.model.RomHeader(Platform.GBA, "EXTENT INTEGRATION"))
+            val strategy = com.enrpau.dualscreendex.parser.family.SemanticDomainStrategy()
+            val method = strategy.javaClass.declaredMethods.single { it.name == "resolveAbilityNames" }.apply { isAccessible = true }
+            return method.invoke(strategy, session, TableLayout(names, count, 8), com.enrpau.dualscreendex.parser.text.JapanesePokemonTextCodecs.gen3Later, null, false, null, null, com.enrpau.dualscreendex.parser.dataset.abilities.AbilitySemanticDomain((1..9).toSet())) as com.enrpau.dualscreendex.parser.model.ValidationEvidence
+        }
+        assertEquals(true, selectedNames().compatible)
+        assertEquals(count, selectedNames().totalRecords)
+        fun resolved(n: Int = count): ResolvedRomLayout {
+            val session = com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession(
+                RomImage(bytes), com.enrpau.dualscreendex.parser.model.RomHeader(Platform.GBA, "INLINE TEST"),
+            )
+            return layout(names, n).copy(
+                tables = ProfileTables(abilities = TableLayout(names, n, 8)),
+                compiledGbaReferences = requireNotNull(session.gbaReferenceIndex).asLegacyCounts(),
+                languageManifest = resolvedLanguageManifest(com.enrpau.dualscreendex.parser.text.JapanesePokemonTextCodecs.gen3Later, com.enrpau.dualscreendex.parser.language.LanguageTag.JAPANESE),
+            )
+        }
+        val index = requireNotNull(resolved().compiledGbaReferences?.siteEvidence)
+        val inline = com.enrpau.dualscreendex.parser.parse.compiledInlineAbilityTexts(
+            RomImage(bytes), index, ParserCancellationToken.NONE,
+        )
+        assertEquals("consumer root and stride: $index", listOf(com.enrpau.dualscreendex.parser.parse.CompiledInlineAbilityText(root, 19)), inline)
+        val decoded = com.enrpau.dualscreendex.parser.text.JapanesePokemonTextCodecs.gen3Later.decodeDetailed(RomImage(bytes), root + 19, 19, ParserCancellationToken.NONE)
+        assertEquals("$decoded", "あいう えおか きくけ", decoded.text)
+        assertEquals("$decoded", count - 1, inline.single().decode(RomImage(bytes), count, com.enrpau.dualscreendex.parser.text.JapanesePokemonTextCodecs.gen3Later, ParserCancellationToken.NONE)?.size)
+        val session = com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession(RomImage(bytes), com.enrpau.dualscreendex.parser.model.RomHeader(Platform.GBA, "BOUNDARY TEST"))
+        assertEquals(count, com.enrpau.dualscreendex.parser.parse.compiledInlineAbilityNameCount(session, names, 8, 9, com.enrpau.dualscreendex.parser.text.JapanesePokemonTextCodecs.gen3Later, inline))
+        assertNull(com.enrpau.dualscreendex.parser.parse.compiledInlineAbilityNameCount(session, names, 8, count, com.enrpau.dualscreendex.parser.text.JapanesePokemonTextCodecs.gen3Later, inline))
+        assertNull(com.enrpau.dualscreendex.parser.parse.compiledInlineAbilityNameCount(session, names, 8, 9, com.enrpau.dualscreendex.parser.text.JapanesePokemonTextCodecs.gen3Later, emptyList()))
+        val competingRoot = names + 40 * 8
+        repeat(40) { id ->
+            byteArrayOf(1, 2, 3, 0, 4, 5, 6, 0, 7, 8, 9, 0xFF.toByte()).copyInto(bytes, competingRoot + id * 19)
+        }
+        val conflictSession = com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession(RomImage(bytes), session.header)
+        assertNull(com.enrpau.dualscreendex.parser.parse.compiledInlineAbilityNameCount(conflictSession, names, 8, 9, com.enrpau.dualscreendex.parser.text.JapanesePokemonTextCodecs.gen3Later, inline + com.enrpau.dualscreendex.parser.parse.CompiledInlineAbilityText(competingRoot, 19)))
+        listOf(0x00AB, 0x195B, 0x009B, 0x1B5B, 0x491D, 0x185B).forEachIndexed { i, op -> instruction(0x300 + i * 2, op) }
+        putGbaPointer(bytes, 0x380, competingRoot)
+        assertEquals(false, selectedNames().compatible) // competing compiled boundary cannot fall back to inherited count
+        bytes.fill(0, 0x300, 0x30C)
+        val result = AbilityDescriptionMaterializer.materialize(RomImage(bytes), resolved())
+        assertEquals("あいう えおか きくけ", result?.descriptions?.get(1))
+        assertEquals(count - 1, result?.descriptions?.size)
+        assertNull(AbilityDescriptionMaterializer.materialize(RomImage(bytes), resolved(count + 1)))
+        bytes[root + 19 + 12] = 1 // post-terminator contamination is not a next record
+        assertNull(AbilityDescriptionMaterializer.materialize(RomImage(bytes), resolved()))
+        bytes[root + 19 + 12] = 0
+        instruction(0x106, 0x1B13) // subtract wrong original-ID register
+        assertEquals(false, selectedNames().compatible) // no inferred/legacy extent fallback
+        assertNull(AbilityDescriptionMaterializer.materialize(RomImage(bytes), resolved()))
+    }
+
+    @Test
     fun unknownAndAmbiguousLanguageDisableAbilityDescriptions() {
         textUnavailableLanguageManifests.forEach { manifest ->
             assertNull(

@@ -1,5 +1,7 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
+import com.enrpau.dualscreendex.parser.text.NativeGbaDescriptionCategory
 import com.enrpau.dualscreendex.parser.analysis.GbaReferenceIndex
 import com.enrpau.dualscreendex.parser.analysis.GbaTargetReferenceEvidence
 import com.enrpau.dualscreendex.parser.analysis.ResolutionLimits
@@ -62,6 +64,7 @@ object DatasetResolvers {
         referenceCounts = session.requireGbaReferenceIndex().counts,
         referenceSites = session.requireGbaReferenceIndex(),
         limits = session.limits,
+        cancellation = session.cancellation,
     )
 
     fun gen3Descriptions(
@@ -97,7 +100,12 @@ object DatasetResolvers {
         referenceSites: GbaReferenceIndex?,
         referenceOverflowReason: String? = referenceSites?.overflowReason,
         limits: ResolutionLimits,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
     ): ValidationEvidence {
+        cancellation.throwIfCancellationRequested()
+        if (codec.language == LanguageTag.JAPANESE && speciesCount.toLong() * 28 > limits.maxDatasetExtentBytes) {
+            return missing("native Gen 3 description extent exceeds deterministic budget", reviewRecommended = true)
+        }
         if (speciesCount <= 0 || DESCRIPTION_LAYOUTS.none { speciesCount.toLong() * it.recordSize <= rom.size.toLong() }) {
             return missing("Gen 3 Pokédex description count cannot fit in the ROM")
         }
@@ -105,7 +113,9 @@ object DatasetResolvers {
         val candidates = mutableListOf<DescriptionCandidate>()
         val discoveryBudget = LegacyDescriptionDiscoveryBudget(limits)
         inherited?.let { layout ->
-            resolvedDescriptionCoverage(rom, speciesCount, layout, codec)?.let { evidence ->
+            if (layout.recordSize == 28 && (codec.language != LanguageTag.JAPANESE ||
+                    verifiedDescriptionReferenceCount(rom, referenceSites?.target(layout.offset), 28) == 0)) return@let
+            resolvedDescriptionCoverage(rom, speciesCount, layout, codec, cancellation)?.let { evidence ->
                 discoveryBudget.recordCandidate()?.let {
                     return missing(it, reviewRecommended = true)
                 }
@@ -127,11 +137,12 @@ object DatasetResolvers {
             referenceCounts = referenceCounts,
             referenceSites = referenceSites,
             discoveryBudget = discoveryBudget,
+            cancellation = cancellation,
         )
         referenced.overflowReason?.let { return missing(it, reviewRecommended = true) }
         candidates += referenced.candidates
         if (codec.language != LanguageTag.ENGLISH) return chooseDescriptions(candidates, speciesCount)
-        DESCRIPTION_LAYOUTS.forEach { layout ->
+        DESCRIPTION_LAYOUTS.filter { it.recordSize != 28 }.forEach { layout ->
             ENGLISH_DESCRIPTION_ANCHORS.forEach { anchor ->
                 patternOffsets(rom, anchor).forEach { seedOffset ->
                     val maximumAnchorIndex = minOf(speciesCount - 1, seedOffset / layout.recordSize)
@@ -200,14 +211,20 @@ object DatasetResolvers {
         referenceCounts: Map<Int, Int>,
         referenceSites: GbaReferenceIndex?,
         discoveryBudget: LegacyDescriptionDiscoveryBudget,
+        cancellation: ParserCancellationToken,
     ): ReferencedDescriptionCandidates {
         val candidates = mutableListOf<DescriptionCandidate>()
         referenceCounts.forEach { (tableOffset, _) ->
-            if (tableOffset % 4 != 0 || !validDescriptionStart(rom, tableOffset, codec)) return@forEach
+            cancellation.throwIfCancellationRequested()
+            if (tableOffset % 4 != 0 || (!validDescriptionStart(rom, tableOffset, codec) &&
+                    !validNativeDescriptionStart(rom, tableOffset, codec))) return@forEach
             discoveryBudget.recordRoot(tableOffset)?.let {
                 return ReferencedDescriptionCandidates(candidates, it)
             }
             DESCRIPTION_LAYOUTS.forEach { shape ->
+                if (shape.recordSize == 28 && (!validNativeDescriptionStart(rom, tableOffset, codec) ||
+                        verifiedDescriptionReferenceCount(rom, referenceSites?.target(tableOffset), 28) == 0)) return@forEach
+                if (shape.recordSize != 28 && !validDescriptionStart(rom, tableOffset, codec)) return@forEach
                 discoveryBudget.recordWork("compiled-reference layout validation")?.let {
                     return ReferencedDescriptionCandidates(candidates, it)
                 }
@@ -219,7 +236,7 @@ object DatasetResolvers {
                     recordSize = shape.recordSize,
                     pointerOffsets = shape.pointerOffsets,
                 )
-                resolvedDescriptionCoverage(rom, speciesCount, layout, codec)?.let { evidence ->
+                resolvedDescriptionCoverage(rom, speciesCount, layout, codec, cancellation)?.let { evidence ->
                     discoveryBudget.recordCandidate()?.let {
                         return ReferencedDescriptionCandidates(candidates, it)
                     }
@@ -299,7 +316,7 @@ object DatasetResolvers {
         references: GbaTargetReferenceEvidence?,
         recordSize: Int?,
     ): Int {
-        if (references == null || !references.siteEvidenceAvailable || recordSize !in setOf(32, 36)) {
+        if (references == null || !references.siteEvidenceAvailable || recordSize !in setOf(28, 32, 36)) {
             return 0
         }
         return references.instructionSites.count { instructionSite ->
@@ -308,7 +325,7 @@ object DatasetResolvers {
     }
 
     /**
-     * Recognizes only the bounded straight-line address shapes emitted for 32- and 36-byte
+     * Recognizes only the bounded straight-line address shapes emitted for 28-, 32-, and 36-byte
      * Pokédex rows. This deliberately does not interpret branches or general Thumb data flow.
      */
     private fun hasCompiledDescriptionRowAddressFormation(
@@ -323,6 +340,19 @@ object DatasetResolvers {
         val start = maxOf(0, instructionSite - DESCRIPTION_CONSUMER_WINDOW_BYTES)
         val end = minOf(rom.size - 2, instructionSite + DESCRIPTION_CONSUMER_WINDOW_BYTES)
         return when (recordSize) {
+            28 -> {
+                // Adjacent ((index << 3) - index) << 2; literal load; add base.
+                // No intervening instruction may clobber either live operand.
+                if (instructionSite < 6 || instructionSite + 4 > rom.size) return false
+                val timesEight = thumbImmediateShift(rom.u16le(instructionSite - 6), 3) ?: return false
+                val subtract = rom.u16le(instructionSite - 4)
+                val timesFour = thumbImmediateShift(rom.u16le(instructionSite - 2), 2) ?: return false
+                timesEight.first != timesEight.second && baseRegister != timesEight.first &&
+                    subtract and 0xfe00 == 0x1a00 && subtract and 7 == timesEight.first &&
+                    (subtract ushr 3) and 7 == timesEight.first && (subtract ushr 6) and 7 == timesEight.second &&
+                    timesFour.first == timesEight.first && timesFour.second == timesEight.first &&
+                    thumbAddCombines(rom.u16le(instructionSite + 2),baseRegister,timesEight.first)
+            }
             32 -> (start..end step 2).any { shiftOffset ->
                 val shift = thumbImmediateShift(rom.u16le(shiftOffset), amount = 5) ?: return@any false
                 val addStart = maxOf(instructionSite, shiftOffset) + 2
@@ -466,12 +496,14 @@ object DatasetResolvers {
         maximumCount: Int,
         layout: TableLayout,
         codec: PokemonTextCodec,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
     ): ValidationEvidence? {
-        val full = validateDescription(rom, maximumCount, layout, codec)
+        cancellation.throwIfCancellationRequested()
+        val full = validateDescription(rom, maximumCount, layout, codec, cancellation)
         val selected = if (full.compatible && full.validRecords == full.totalRecords) {
             full
         } else {
-            val prefix = inferDescription(rom, maximumCount, layout, codec)
+            val prefix = inferDescription(rom, maximumCount, layout, codec, cancellation)
             if (prefix.compatible && prefix.totalRecords < maximumCount && prefix.confidence > full.confidence) {
                 prefix.copy(
                     reasons = prefix.reasons +
@@ -481,6 +513,8 @@ object DatasetResolvers {
                 full.takeIf { it.compatible } ?: prefix.takeIf { it.compatible }
             }
         } ?: return null
+        // Native rows already use the typed decoder's bounded page recovery.
+        if (layout.recordSize == 28) return selected
         val recovered = Gen3DescriptionPointerRecovery.recover(
             rom,
             layout.copy(count = selected.totalRecords),
@@ -1298,12 +1332,13 @@ object DatasetResolvers {
         count: Int,
         layout: TableLayout,
         codec: PokemonTextCodec,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
     ): ValidationEvidence {
         val pointerOffsets = layout.pointerOffsets.ifEmpty {
-            if (layout.recordSize >= 36) listOf(16, 20) else listOf(16)
+            if (layout.recordSize == 28) listOf(12) else if (layout.recordSize >= 36) listOf(16, 20) else listOf(16)
         }
         return PokemonDatasetValidators.gen3Descriptions(
-            rom, layout.offset, count, layout.recordSize, pointerOffsets.toIntArray(), codec,
+            rom, layout.offset, count, layout.recordSize, pointerOffsets.toIntArray(), codec, cancellation,
         )
     }
 
@@ -1312,9 +1347,10 @@ object DatasetResolvers {
         maximumCount: Int,
         layout: TableLayout,
         codec: PokemonTextCodec,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
     ): ValidationEvidence {
         val pointerOffsets = layout.pointerOffsets.ifEmpty {
-            if (layout.recordSize >= 36) listOf(16, 20) else listOf(16)
+            if (layout.recordSize == 28) listOf(12) else if (layout.recordSize >= 36) listOf(16, 20) else listOf(16)
         }
         return PokemonDatasetValidators.inferGen3DescriptionCount(
             rom = rom,
@@ -1324,8 +1360,17 @@ object DatasetResolvers {
             recordSize = layout.recordSize,
             descriptionPointerOffsets = pointerOffsets.toIntArray(),
             codec = codec,
+            cancellation = cancellation,
         )
     }
+
+    internal fun hasNativeDescriptionConsumer(session: RomAnalysisSession, offset: Int): Boolean =
+        verifiedDescriptionReferenceCount(session.rom, session.gbaReferenceIndex?.target(offset), 28) > 0
+
+    private fun validNativeDescriptionStart(rom: RomImage, offset: Int, codec: PokemonTextCodec): Boolean =
+        offset >= 0 && offset.toLong() + 28 <= rom.size &&
+            NativeGbaDescriptionCategory.decode(rom,offset,codec) != null &&
+            rom.u16le(offset + 6) == 0 && rom.u16le(offset + 8) == 0
 
     private fun validDescriptionStart(rom: RomImage, offset: Int, codec: PokemonTextCodec): Boolean = runCatching {
         val categoryBytes = rom.slice(offset, 12)
@@ -1458,6 +1503,7 @@ object DatasetResolvers {
     )
 
     private val DESCRIPTION_LAYOUTS = listOf(
+        TableLayout(0, 0, 28, pointerOffsets = listOf(12)),
         TableLayout(0, 0, 32, pointerOffsets = listOf(16)),
         TableLayout(0, 0, 36, pointerOffsets = listOf(16)),
         TableLayout(0, 0, 36, pointerOffsets = listOf(16, 20)),

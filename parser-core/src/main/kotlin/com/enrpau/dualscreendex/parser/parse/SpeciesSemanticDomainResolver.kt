@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.catalog.RecordMaterializers
 import com.enrpau.dualscreendex.parser.catalog.SpeciesIndexResolution
 import com.enrpau.dualscreendex.parser.io.RomImage
@@ -193,10 +194,15 @@ internal object SpeciesSemanticDomainResolver {
             is SpeciesSemanticDomainResolution.BudgetExceeded -> error(resolution.reason)
         }
 
-    fun resolveWithEvidence(rom: RomImage, layout: ResolvedRomLayout): SpeciesSemanticDomainResolution {
+    fun resolveWithEvidence(
+        rom: RomImage,
+        layout: ResolvedRomLayout,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
+    ): SpeciesSemanticDomainResolution {
+        cancellation.throwIfCancellationRequested()
         require(layout.generation == 3) { "species semantic domains currently require a Gen 3 layout" }
         val rawCount = layout.speciesCount ?: layout.tables.speciesNames?.count ?: 0
-        val materialization = RecordMaterializers.speciesWithIndexResolution(rom, layout)
+        val materialization = RecordMaterializers.speciesWithIndexResolution(rom, layout, cancellation)
         when (val indexResolution = materialization.indexResolution) {
             is SpeciesIndexResolution.Resolved -> Unit
             is SpeciesIndexResolution.Unavailable -> {

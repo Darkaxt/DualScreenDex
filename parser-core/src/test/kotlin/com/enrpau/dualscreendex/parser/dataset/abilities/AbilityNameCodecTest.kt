@@ -14,6 +14,27 @@ import org.junit.Test
 
 class AbilityNameCodecTest {
     @Test
+    fun acceptsNativeDashSentinelWithoutAcceptingLettersOrMalformedPadding() {
+        listOf(JapanesePokemonTextCodecs.gen3RubySapphire, JapanesePokemonTextCodecs.gen3Later).forEach { text ->
+            val (bytes, layout) = japaneseNameTable()
+            bytes.fill(0xAE.toByte(), 0x100, 0x107)
+            bytes[0x107] = 0xFF.toByte()
+            val codec = AbilityNameCodec(text)
+            val domain = AbilitySemanticDomain(setOf(1, 2))
+            assertTrue(codec.decode(abilitySession(bytes), layout, domain) is AbilityNameTableOutcome.Decoded)
+            bytes[0x100] = 0x01 // a native letter is not a placeholder
+            assertTrue(codec.decode(abilitySession(bytes), layout, domain) is AbilityNameTableOutcome.Rejected)
+            bytes[0x100] = 0xAE.toByte()
+            bytes[0x108] = 0x01
+            assertTrue(codec.decode(abilitySession(bytes), layout, domain) is AbilityNameTableOutcome.Rejected)
+            bytes[0x108] = 0
+            bytes[0x107] = 0xF7.toByte() // argument FF is not a terminator token
+            bytes[0x108] = 0xFF.toByte()
+            assertTrue(codec.decode(abilitySession(bytes), layout, domain) is AbilityNameTableOutcome.Rejected)
+        }
+    }
+
+    @Test
     fun requiresATerminatorTokenForTheJapaneseNoneSentinel() {
         val (bytes, layout) = japaneseNameTable()
         bytes.fill(0, 0x100, 0x100 + 13)

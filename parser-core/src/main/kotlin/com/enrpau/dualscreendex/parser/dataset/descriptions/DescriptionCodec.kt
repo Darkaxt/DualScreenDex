@@ -1,5 +1,7 @@
 package com.enrpau.dualscreendex.parser.dataset.descriptions
 
+import com.enrpau.dualscreendex.parser.language.LanguageTag
+import com.enrpau.dualscreendex.parser.text.NativeGbaDescriptionCategory
 import com.enrpau.dualscreendex.parser.analysis.ExtentCheck
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
@@ -78,6 +80,8 @@ class DescriptionCodec(
             return "duplicate description pointer fields are not supported"
         }
         val canonical = when (layout.recordSize) {
+            28 -> if (textCodec.language == LanguageTag.JAPANESE)
+                setOf(listOf(12)) else return "native description ABI requires Japanese codec"
             32 -> setOf(listOf(16))
             36 -> setOf(listOf(16), listOf(16, 20))
             else -> return "unsupported Gen III description record size ${layout.recordSize}"
@@ -109,10 +113,12 @@ class DescriptionCodec(
         }
 
         val reasons = mutableListOf<String>()
-        val category = decodeInlineCategory(session, record)
+        val category = (if (layout.recordSize == 28)
+            NativeGbaDescriptionCategory.decode(rom, record, textCodec, session.cancellation)
+            else decodeInlineCategory(session, record))
             ?: "".also { reasons += "category is not terminated readable text" }
-        val height = rom.u16le(record + HEIGHT_OFFSET)
-        val weight = rom.u16le(record + WEIGHT_OFFSET)
+        val height = rom.u16le(record + if (layout.recordSize == 28) 6 else HEIGHT_OFFSET)
+        val weight = rom.u16le(record + if (layout.recordSize == 28) 8 else WEIGHT_OFFSET)
         if (height !in 0..MAX_HEIGHT) reasons += "height $height is outside the structural range"
         if (weight !in 0..MAX_WEIGHT) reasons += "weight $weight is outside the structural range"
 

@@ -23,6 +23,39 @@ import org.junit.Test
 
 class FamilyParsersAbilityResolutionTest {
     @Test
+    fun provesShiftedNameConsumersWithRegisterFlowAndCompleteReferences() {
+        val root = 0x400
+        val bytes = ByteArray(0x600)
+        fun consumer(site: Int, shift: Int, source: Int, result: Int, base: Int) {
+            writeU16(bytes, site - 2, (shift shl 6) or (source shl 3) or result)
+            val literal = site + 0x3C
+            writeU16(bytes, site, 0x4800 or (base shl 8) or ((literal - ((site + 4) and -4)) / 4))
+            writeU16(bytes, site + 2, 0x1800 or (base shl 6) or (result shl 3) or result)
+            writeU32(bytes, literal, 0x08000000 + root)
+        }
+        consumer(0x104, 3, 0, 4, 1)
+        consumer(0x124, 3, 2, 3, 5)
+        fun session() = RomAnalysisSession(RomImage(bytes), RomHeader(Platform.GBA, "SHIFT TEST"))
+        assertEquals(8, compiledAbilityNameStride(session(), root))
+        val limited = RomAnalysisSession(RomImage(bytes), RomHeader(Platform.GBA, "LIMIT TEST"), limits = com.enrpau.dualscreendex.parser.analysis.ResolutionLimits(maxCompiledReferenceSitesPerCandidate = 1))
+        assertEquals(null, compiledAbilityNameStride(limited, root))
+        writeU16(bytes, 0xA0, 0x4837) // header data can resemble LDR to the same root
+        writeU32(bytes, 0x180, 0x08000000 + root)
+        assertEquals(8, compiledAbilityNameStride(session(), root))
+        consumer(0x124, 4, 2, 3, 5)
+        assertEquals(null, compiledAbilityNameStride(session(), root))
+        consumer(0x124, 3, 2, 3, 5)
+        writeU16(bytes, 0x126, 0x1800) // add no longer consumes the root and product
+        assertEquals(null, compiledAbilityNameStride(session(), root))
+        consumer(0x104, 3, 0, 4, 1)
+        consumer(0x124, 3, 2, 3, 5)
+        bytes.fill(0, 0x100, 0x128)
+        assertEquals(null, compiledAbilityNameStride(session(), root)) // header-only reference
+        consumer(0x204, 3, 2, 4, 1)
+        assertEquals(8, compiledAbilityNameStride(session(), root)) // relocated genuine consumer
+    }
+
+    @Test
     fun provesAUniqueFixedAbilityNameStrideFromEveryCompiledRootConsumer() {
         val root = 0x400
         val bytes = ByteArray(0x600)

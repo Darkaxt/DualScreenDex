@@ -125,7 +125,9 @@ class AbilityNameCodec(
         )
         if (rowIndex == 0) {
             val structuralNone = decoded.terminated && decoded.invalidUnits == 0 &&
-                decoded.text.none(Char::isLetterOrDigit) &&
+                (decoded.text.none(Char::isLetterOrDigit) ||
+                    (textCodec.language == LanguageTag.JAPANESE &&
+                        decoded.text.isNotEmpty() && decoded.text.all { it == 'ー' })) &&
                 (decoded.consumedBytes until width).all { index ->
                     val value = session.rom.u8(offset + index)
                     value == 0 || value == textCodec.terminator

@@ -1,5 +1,7 @@
 package com.darkaxt.dualdex.catalog
 
+import com.enrpau.dualscreendex.parser.model.GbDescriptionSegment
+import com.enrpau.dualscreendex.parser.model.GbInlineDescriptionLayout
 import com.enrpau.dualscreendex.parser.analysis.ParserCancellationException
 import com.enrpau.dualscreendex.parser.analysis.ParserCancellationSource
 import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
@@ -288,6 +290,11 @@ class CatalogStoreTest {
             pointerOffsets = listOf(0x20, 0x24),
             bankRemap = mapOf(1 to 2),
         )
+        val descriptions = TableLayout(0x4800, 251, 2,
+            gbDescriptions = GbInlineDescriptionLayout(
+                GbDescriptionSegment(0x4800, 99, 1),
+                GbDescriptionSegment(0x6000, 152, 1),
+            ))
         val typeNames = TableLayout(
             offset = 0x200,
             count = 18,
@@ -302,6 +309,7 @@ class CatalogStoreTest {
                     codecVersion = PokemonTextCodec.gbaEnglish.version,
                     localizedTables = LocalizedTableLayout(
                         speciesNames = table,
+                        descriptions = descriptions,
                         typeNames = typeNames,
                     ),
                     evidence = listOf(
@@ -343,6 +351,8 @@ class CatalogStoreTest {
         }
         val reopenedTable = requireNotNull(reopened.defaultProjection()?.localizedTables?.speciesNames)
         assertEquals(typeNames, reopened.defaultProjection()?.localizedTables?.typeNames)
+        assertEquals(descriptions, reopened.defaultProjection()?.localizedTables?.descriptions)
+        assertEquals(descriptions.gbDescriptions, reopened.defaultProjection()?.localizedTables?.descriptions?.gbDescriptions)
         assertThrows(UnsupportedOperationException::class.java) {
             (reopenedTable.banks as MutableList<Int>).clear()
         }

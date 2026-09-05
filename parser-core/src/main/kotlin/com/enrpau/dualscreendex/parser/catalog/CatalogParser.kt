@@ -280,7 +280,8 @@ object CatalogMaterializer {
         }
 
         beginWork(CatalogWorkModule.CORE_RECORDS)
-        val rawSpecies = RecordMaterializers.species(rom, layout, cancellation)
+        val speciesMaterialization = RecordMaterializers.speciesWithIndexResolution(rom, layout, cancellation)
+        val rawSpecies = speciesMaterialization.records
         val baseSpecies = if (layout.generation == 3 && layout.pokeemeraldExpansion == null) {
             layout.resolvedDatasets.abilityNames?.catalogDirectAbilityIds()?.let { catalogIds ->
                 rawSpecies.mapValues { (_, species) ->
@@ -357,11 +358,10 @@ object CatalogMaterializer {
         val sprites = SpriteMaterializer.pokemon(rom, layout, cancellation = cancellation)
         val resolvedSprites = resolveSpriteAliases(baseSpecies, sprites, layout.generation)
         val mediaSpecies = baseSpecies.mapValues { (id, record) ->
-            val dex = record.dexNumber.value ?: id
             val descriptionKey = when {
                 layout.pokeemeraldExpansion != null ||
                     layout.headerlessUnifiedSpecies?.descriptionPointerOffset != null -> id
-                layout.generation == 3 -> dex
+                layout.generation == 3 -> speciesMaterialization.indexResolution.descriptionRows[id]
                 else -> id
             }
             val description = descriptions[descriptionKey]

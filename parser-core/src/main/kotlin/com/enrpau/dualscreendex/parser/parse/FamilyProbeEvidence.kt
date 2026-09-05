@@ -96,11 +96,9 @@ internal fun selectAbilityNameEvidence(
  * an ability ID by the same immediate and adds that product to the nominated table root.
  */
 internal fun compiledAbilityNameStride(session: RomAnalysisSession, root: Int): Int? {
-    val references = session.gbaReferenceIndex?.target(root) ?: return null
-    if (!references.siteEvidenceAvailable || references.instructionSites.isEmpty() ||
-        references.instructionSites.size != references.count
-    ) return null
-    val strides = references.instructionSites.map { site ->
+    val index = session.gbaReferenceIndex ?: return null
+    val sites = executableGbaTextSites(index, root) ?: return null
+    val strides = sites.map { site ->
         compiledFixedStrideConsumer(session.rom, site) ?: return null
     }
     return strides.distinct().singleOrNull()
@@ -111,6 +109,7 @@ internal fun compiledAbilityNameCandidates(session: RomAnalysisSession): Map<Int
     val index = session.gbaReferenceIndex?.takeUnless { it.overflowed } ?: return emptyMap()
     return buildMap {
         index.targets.keys.forEach { root ->
+            session.cancellation.throwIfCancellationRequested()
             compiledAbilityNameStride(session, root)?.let { stride -> put(root, stride) }
         }
     }
@@ -122,6 +121,15 @@ private fun compiledFixedStrideConsumer(rom: RomImage, rootLoadSite: Int): Int? 
     val multiply = rom.u16le(rootLoadSite - 2)
     val rootLoad = rom.u16le(rootLoadSite)
     val add = rom.u16le(rootLoadSite + 2)
+    // Strength-reduced fixed strides preserve the same root/product data flow as MUL.
+    if (multiply and 0xF800 == 0 && rootLoad and 0xF800 == 0x4800 && add and 0xFE00 == 0x1800) {
+        val shift = (multiply ushr 6) and 0x1F
+        val product = multiply and 7
+        val base = (rootLoad ushr 8) and 7
+        if (shift in 1..5 && product != base &&
+            setOf((add ushr 3) and 7, (add ushr 6) and 7) == setOf(product, base)
+        ) return 1 shl shift
+    }
     if (move and 0xF800 != 0x2000 || multiply and 0xFFC0 != 0x4340 ||
         rootLoad and 0xF800 != 0x4800 || add and 0xFE00 != 0x1800
     ) return null

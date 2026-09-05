@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.family
 
+import com.enrpau.dualscreendex.parser.parse.Gen2CompiledDescriptionResolver
 import com.enrpau.dualscreendex.parser.analysis.ExactProfileSnapshot
 import com.enrpau.dualscreendex.parser.analysis.ExactProfileTablesSnapshot
 import com.enrpau.dualscreendex.parser.analysis.ExactTableLayoutSnapshot
@@ -270,6 +271,7 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
                         candidateTables.descriptions?.count,
                     ),
                     codec = probeCodec,
+                    cancellation = session.cancellation,
                 )
             }
         } else {
@@ -328,8 +330,17 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
                 tables = compiledMoveTableResolution.tables.copy(sprites = sprites),
             )
         } ?: compiledMoveTableResolution
+        val compiledDescriptions = if (generation == 2 && exact == null) {
+            Gen2CompiledDescriptionResolver.resolve(
+                session, nativeNames?.species?.count ?: compiledSpriteTableResolution.tables.speciesNames?.count ?: 251,
+                probeCodec,
+            )
+        } else null
+        val descriptionTableResolution = compiledDescriptions?.let {
+            compiledSpriteTableResolution.copy(tables = compiledSpriteTableResolution.tables.copy(descriptions = it))
+        } ?: compiledSpriteTableResolution
         val tableResolution = headerlessUnifiedSpecies?.let { unified ->
-            compiledSpriteTableResolution.copy(
+            descriptionTableResolution.copy(
                 tables = compiledSpriteTableResolution.tables.copy(
                     speciesNames = unified.tables.speciesNames,
                     baseStats = unified.tables.baseStats,
@@ -338,7 +349,7 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
                     abilities = unified.tables.abilities ?: compiledSpriteTableResolution.tables.abilities,
                 ),
             )
-        } ?: compiledSpriteTableResolution
+        } ?: descriptionTableResolution
         return IdentityRootsPhaseResult.Resolved(
             exactProfile = exact,
             baseProfile = baseProfile,
@@ -575,4 +586,5 @@ private fun ExactTableLayoutSnapshot.toTableLayout(): TableLayout = TableLayout(
     stride = stride,
     valuesArePointers = valuesArePointers,
     format = format,
+    gbDescriptions = gbDescriptions,
 )

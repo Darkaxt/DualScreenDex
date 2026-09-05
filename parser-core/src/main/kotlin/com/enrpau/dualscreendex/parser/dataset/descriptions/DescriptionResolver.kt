@@ -1,5 +1,7 @@
 package com.enrpau.dualscreendex.parser.dataset.descriptions
 
+import com.enrpau.dualscreendex.parser.parse.DatasetResolvers
+import com.enrpau.dualscreendex.parser.text.NativeGbaDescriptionCategory
 import com.enrpau.dualscreendex.parser.analysis.GbaTargetReferenceEvidence
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.io.RomImage
@@ -229,6 +231,10 @@ class DescriptionResolver(
         probe: DescriptionProbe,
         allowPrefixTrim: Boolean,
     ): Assessment {
+        if (probe.layout.recordSize == 28 && (probe.layout.offset !in 0..Int.MAX_VALUE.toLong() ||
+                !DatasetResolvers.hasNativeDescriptionConsumer(session,probe.layout.offset.toInt()))) {
+            return Assessment.Rejected
+        }
         val decoded = when (val outcome = decoder.decode(session, probe.layout)) {
             is DescriptionTableOutcome.Decoded -> outcome
             is DescriptionTableOutcome.ExtentBudgetExceeded -> return Assessment.ExtentBudget(
@@ -439,7 +445,8 @@ class DescriptionResolver(
             )
         }
 
-    private fun canonicalShapes(): List<DescriptionShape> = listOf(
+    private fun canonicalShapes(): List<DescriptionShape> = listOfNotNull(
+        DescriptionShape(28, listOf(12)).takeIf { textCodec.language == LanguageTag.JAPANESE },
         DescriptionShape(32, listOf(16)),
         DescriptionShape(36, listOf(16)),
         DescriptionShape(36, listOf(16, 20)),
@@ -475,6 +482,10 @@ class DescriptionResolver(
         if (offset < 0 || offset.toLong() + MIN_DESCRIPTION_RECORD_BYTES > rom.size.toLong()) {
             return false
         }
+        if (textCodec.language == LanguageTag.JAPANESE &&
+            NativeGbaDescriptionCategory.decode(rom,offset,textCodec,session.cancellation) != null &&
+            rom.u16le(offset + 6) == 0 && rom.u16le(offset + 8) == 0 &&
+            DatasetResolvers.hasNativeDescriptionConsumer(session,offset)) return true
         val category = textCodec.decodeDetailed(rom, offset, CATEGORY_BYTES, session.cancellation)
         return category.terminated && category.text.any(Char::isLetterOrDigit) &&
             rom.u16le(offset + 12) == 0 &&

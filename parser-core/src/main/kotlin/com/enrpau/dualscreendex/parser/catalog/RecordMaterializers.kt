@@ -40,7 +40,7 @@ object RecordMaterializers {
         val codec = layout.defaultTextCodec()
         val firstId = if (layout.generation == 3) 0 else 1
         val indexResolution = if (names != null) {
-            SpeciesIndexResolver.resolveWithEvidence(rom, layout)
+            SpeciesIndexResolver.resolveWithEvidence(rom, layout, cancellation = cancellation)
         } else {
             SpeciesIndexResolution.Unavailable(emptyMap(), "species-name table is unavailable")
         }

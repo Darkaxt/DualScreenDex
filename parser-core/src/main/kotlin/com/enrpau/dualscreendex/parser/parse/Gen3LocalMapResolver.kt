@@ -49,12 +49,13 @@ internal object Gen3LocalMapResolver {
             )
         }
 
-        val names = Gen3MapLocationResolver.resolveDetailed(
+        val names = Gen3MapLocationResolver.resolveNamesBySection(
             session.rom,
             encounterBaseIds,
             references,
             codec,
             cancellation,
+            session.limits.maxDatasetExtentBytes,
         )
         cancellation.throwIfCancellationRequested()
         var selectedHeaders = completeHeaders
@@ -213,7 +214,7 @@ internal object Gen3LocalMapResolver {
     private fun readDescriptors(
         rom: RomImage,
         headers: Map<Int, Int>,
-        names: com.enrpau.dualscreendex.parser.catalog.Gen3MapLocationResolution?,
+        names: Map<Int, String>,
         cancellation: ParserCancellationToken,
     ): DescriptorBatch {
         val descriptors = mutableListOf<MapDescriptor>()
@@ -238,7 +239,7 @@ internal object Gen3LocalMapResolver {
         rom: RomImage,
         baseAreaId: Int,
         header: Int,
-        names: com.enrpau.dualscreendex.parser.catalog.Gen3MapLocationResolution?,
+        names: Map<Int, String>,
     ): MapDescriptor {
         val layout = requireNotNull(rom.gbaPointer(header)) { "map header has no layout" }
         val width = boundedDimension(rom.u32le(layout), "width")
@@ -252,7 +253,7 @@ internal object Gen3LocalMapResolver {
             "map cell grid is truncated"
         }
         val section = rom.u8(header + MAP_SECTION_OFFSET)
-        val displayName = names?.entriesBySection?.get(section)?.displayName
+        val displayName = names[section]
         return MapDescriptor(
             baseAreaId = baseAreaId,
             displayName = displayName,

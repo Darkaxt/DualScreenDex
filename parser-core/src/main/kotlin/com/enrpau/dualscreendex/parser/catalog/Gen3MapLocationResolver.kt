@@ -33,13 +33,29 @@ object Gen3MapLocationResolver {
         references: GbaReferenceIndex,
         codec: PokemonTextCodec,
         cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
-    ): Map<Int, String> = resolveDetailed(
-        rom,
-        encounterBaseIds,
-        references,
-        codec,
-        cancellation,
-    )?.namesByBaseArea.orEmpty()
+    ): Map<Int, String> {
+        val names = resolveNamesBySection(rom, encounterBaseIds, references, codec, cancellation)
+        return resolveHeaderByBaseArea(rom, encounterBaseIds, references, cancellation).mapNotNull { (area, header) ->
+            names[rom.u8(header + REGION_SECTION_OFFSET)]?.let { area to it }
+        }.toMap()
+    }
+
+    internal fun resolveNamesBySection(
+        rom: RomImage,
+        encounterBaseIds: Set<Int>,
+        references: GbaReferenceIndex,
+        codec: PokemonTextCodec?,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
+        extentLimit: Long = com.enrpau.dualscreendex.parser.analysis.ResolutionLimits().maxDatasetExtentBytes,
+    ): Map<Int, String> {
+        cancellation.throwIfCancellationRequested()
+        if (codec == null) return emptyMap()
+        val entries = resolveDetailed(rom, encounterBaseIds, references, codec, cancellation)?.entriesBySection
+        if (entries != null) return entries.mapNotNull { (section, entry) -> entry.displayName?.let { section to it } }.toMap()
+        val sections = resolveHeaderByBaseArea(rom, encounterBaseIds, references, cancellation).values
+            .map { rom.u8(it + REGION_SECTION_OFFSET) }.toSet()
+        return com.enrpau.dualscreendex.parser.parse.CompiledRegionSectionNames.resolve(rom, references, sections, codec, cancellation, extentLimit)
+    }
 
     internal fun resolveDetailed(
         rom: RomImage,

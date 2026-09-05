@@ -1,5 +1,10 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
+import com.enrpau.dualscreendex.parser.language.LanguageTag
+import com.enrpau.dualscreendex.parser.model.GbDescriptionSegment
+import com.enrpau.dualscreendex.parser.model.GbInlineDescriptionLayout
+import com.enrpau.dualscreendex.parser.text.GbInlineDescriptions
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
@@ -12,15 +17,17 @@ internal object Gen1CompiledDescriptionResolver {
         preferredCount: Int,
         fallbackCounts: Collection<Int>,
         codec: PokemonTextCodec = PokemonTextCodec.gbEnglish,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
     ): TableLayout? {
+        cancellation.throwIfCancellationRequested()
         if (preferredCount !in 1..MAX_SPECIES) return null
-        val roots = compiledRoots(rom)
+        val roots = compiledRoots(rom, cancellation)
         if (roots.isEmpty()) return null
         val counts = listOf(preferredCount) + fallbackCounts
             .filter { it in 1..MAX_SPECIES && it != preferredCount }
             .distinct()
         counts.forEach { count ->
-            val candidates = roots.mapNotNull { root -> validatedLayout(rom, root, count, codec) }
+            val candidates = roots.mapNotNull { root -> validatedLayout(rom, root, count, codec, cancellation) }
                 .distinct()
             if (candidates.size > 1) return null
             candidates.singleOrNull()?.let { return it }
@@ -28,9 +35,10 @@ internal object Gen1CompiledDescriptionResolver {
         return null
     }
 
-    private fun compiledRoots(rom: RomImage): Set<Int> = buildSet {
+    private fun compiledRoots(rom: RomImage, cancellation: ParserCancellationToken): Set<Int> = buildSet {
         var offset = 0
         while (offset + CONSUMER_BYTES <= rom.size) {
+            if (offset % 4096 == 0) cancellation.throwIfCancellationRequested()
             if (
                 rom.u8(offset) == LOAD_HL_IMMEDIATE &&
                 rom.u8(offset + 3) == LOAD_A_ABSOLUTE &&
@@ -60,8 +68,20 @@ internal object Gen1CompiledDescriptionResolver {
         root: Int,
         count: Int,
         codec: PokemonTextCodec,
+        cancellation: ParserCancellationToken,
     ): TableLayout? {
+        cancellation.throwIfCancellationRequested()
         val bank = root / BANK_BYTES
+        if (codec.language == LanguageTag.JAPANESE) {
+            val inline = GbInlineDescriptionLayout(
+                GbDescriptionSegment(root, count, bank),
+            )
+            val entries = GbInlineDescriptions.entries(rom, inline)
+            val valid = entries.count { it != null &&
+                GbInlineDescriptions.decode(rom, it, codec, cancellation) != null }
+            if (valid < kotlin.math.ceil(count * 0.75).toInt()) return null
+            return TableLayout(root, count, POINTER_BYTES, bank = bank, gbDescriptions = inline)
+        }
         val evidence = PokemonDatasetValidators.gen1Descriptions(
             rom = rom,
             pointerTableOffset = root,

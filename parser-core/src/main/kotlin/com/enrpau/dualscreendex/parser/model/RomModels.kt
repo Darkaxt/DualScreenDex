@@ -85,6 +85,21 @@ data class TableLayout(
     val valuesArePointers: Boolean = false,
     /** Byte-level record interpretation after structural validation. */
     val format: TableRecordFormat = TableRecordFormat.STANDARD,
+    /** Compiled GB inline Pokédex ABI; absent for Western far-text/four-byte metadata. */
+    val gbDescriptions: GbInlineDescriptionLayout? = null,
+)
+
+/** Scalar-only immutable description segments, in species-index order. */
+data class GbDescriptionSegment(
+    val pointerTableOffset: Int,
+    val count: Int,
+    val entryBank: Int,
+    val entriesPerBank: Int = count,
+)
+
+data class GbInlineDescriptionLayout(
+    val first: GbDescriptionSegment,
+    val second: GbDescriptionSegment? = null,
 )
 
 enum class TableRecordFormat {
@@ -214,6 +229,8 @@ data class HeaderlessUnifiedAbilityMetadata(
 data class GbaCompiledReferenceIndex(
     val counts: Map<Int, Int>,
     val overflowReason: String? = null,
+    /** Immutable session evidence, retained for consumers that must prove an inline text ABI. */
+    val siteEvidence: com.enrpau.dualscreendex.parser.analysis.GbaReferenceIndex? = null,
 ) {
     val overflowed: Boolean get() = overflowReason != null
 }

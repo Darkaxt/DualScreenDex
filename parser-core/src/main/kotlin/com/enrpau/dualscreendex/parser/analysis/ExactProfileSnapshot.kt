@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.analysis
 
+import com.enrpau.dualscreendex.parser.model.GbInlineDescriptionLayout
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.ProfileTables
@@ -22,6 +23,7 @@ class ExactTableLayoutSnapshot private constructor(
     val stride: Int?,
     val valuesArePointers: Boolean,
     val format: TableRecordFormat,
+    val gbDescriptions: GbInlineDescriptionLayout?,
 ) {
     val banks: List<Int> = Collections.unmodifiableList(banks.toList())
     val pointerOffsets: List<Int> = Collections.unmodifiableList(pointerOffsets.toList())
@@ -34,7 +36,8 @@ class ExactTableLayoutSnapshot private constructor(
         variableLength == other.variableLength && bank == other.bank && banks == other.banks &&
         pointerOffsets == other.pointerOffsets && elementSize == other.elementSize &&
         bankAdjustment == other.bankAdjustment && bankRemap == other.bankRemap &&
-        stride == other.stride && valuesArePointers == other.valuesArePointers && format == other.format
+        stride == other.stride && valuesArePointers == other.valuesArePointers && format == other.format &&
+        gbDescriptions == other.gbDescriptions
 
     override fun hashCode(): Int {
         var result = offset
@@ -50,6 +53,7 @@ class ExactTableLayoutSnapshot private constructor(
         result = 31 * result + (stride ?: 0)
         result = 31 * result + valuesArePointers.hashCode()
         result = 31 * result + format.hashCode()
+        result = 31 * result + (gbDescriptions?.hashCode() ?: 0)
         return result
     }
 
@@ -57,7 +61,7 @@ class ExactTableLayoutSnapshot private constructor(
         "offset=$offset, count=$count, recordSize=$recordSize, variableLength=$variableLength, " +
         "bank=$bank, banks=$banks, pointerOffsets=$pointerOffsets, elementSize=$elementSize, " +
         "bankAdjustment=$bankAdjustment, bankRemap=$bankRemap, stride=$stride, " +
-        "valuesArePointers=$valuesArePointers, format=$format)"
+        "valuesArePointers=$valuesArePointers, format=$format, gbDescriptions=$gbDescriptions)"
 
     companion object {
         internal fun from(layout: TableLayout): ExactTableLayoutSnapshot = ExactTableLayoutSnapshot(
@@ -74,6 +78,7 @@ class ExactTableLayoutSnapshot private constructor(
             stride = layout.stride,
             valuesArePointers = layout.valuesArePointers,
             format = layout.format,
+            gbDescriptions = layout.gbDescriptions,
         )
     }
 }

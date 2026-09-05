@@ -1,16 +1,32 @@
 package com.enrpau.dualscreendex.parser.catalog
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.analysis.ResolutionLimits
+import java.util.Collections
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.language.defaultTextCodec
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.resolution.BudgetKind
 
+/** Transient, immutable row authority; never changes public Pokédex numbering or persisted layouts. */
+class SpeciesDescriptionIndex(rows: Map<Int, Int>, val unavailableReason: String? = null) {
+    val rows: Map<Int, Int> = Collections.unmodifiableMap(LinkedHashMap(rows))
+    override fun equals(other: Any?): Boolean = other is SpeciesDescriptionIndex &&
+        rows == other.rows && unavailableReason == other.unavailableReason
+    override fun hashCode(): Int = 31 * rows.hashCode() + (unavailableReason?.hashCode() ?: 0)
+}
+
 sealed interface SpeciesIndexResolution {
     val values: Map<Int, Int>
+    val descriptionRows: Map<Int, Int> get() = emptyMap()
 
-    data class Resolved(override val values: Map<Int, Int>) : SpeciesIndexResolution
+    data class Resolved(
+        override val values: Map<Int, Int>,
+        val descriptionIndex: SpeciesDescriptionIndex = SpeciesDescriptionIndex(values),
+    ) : SpeciesIndexResolution {
+        override val descriptionRows: Map<Int, Int> get() = descriptionIndex.rows
+    }
 
     data class Unavailable(
         override val values: Map<Int, Int>,
@@ -41,19 +57,22 @@ object SpeciesIndexResolver {
     }
 
     fun resolve(session: RomAnalysisSession, layout: ResolvedRomLayout): SpeciesIndexResolution =
-        resolveWithEvidence(session.rom, layout, session.limits)
+        resolveWithEvidence(session.rom, layout, session.limits, session.cancellation)
 
     fun resolveWithEvidence(
         rom: RomImage,
         layout: ResolvedRomLayout,
         limits: ResolutionLimits = ResolutionLimits(),
-    ): SpeciesIndexResolution =
-        when (layout.generation) {
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
+    ): SpeciesIndexResolution {
+        cancellation.throwIfCancellationRequested()
+        return when (layout.generation) {
             1 -> SpeciesIndexResolution.Resolved(resolveGen1(rom, layout))
             2 -> SpeciesIndexResolution.Resolved((1..(layout.speciesCount ?: 0)).associateWith { it })
-            3 -> resolveGen3(rom, layout, limits)
+            3 -> resolveGen3(rom, layout, limits, cancellation)
             else -> SpeciesIndexResolution.Unavailable(emptyMap(), "unsupported species-index generation")
         }
+    }
 
     private fun resolveGen1(rom: RomImage, layout: ResolvedRomLayout): Map<Int, Int> {
         val internalCount = layout.speciesCount ?: layout.tables.speciesNames?.count ?: return emptyMap()
@@ -74,6 +93,7 @@ object SpeciesIndexResolver {
         rom: RomImage,
         layout: ResolvedRomLayout,
         limits: ResolutionLimits,
+        cancellation: ParserCancellationToken,
     ): SpeciesIndexResolution {
         val speciesCount = layout.speciesCount ?: return SpeciesIndexResolution.Unavailable(
             emptyMap(),
@@ -142,19 +162,27 @@ object SpeciesIndexResolver {
             )
         }
         val compiledReferences = referenceIndex?.counts.orEmpty()
-        val budget = SpeciesDiscoveryBudget(limits)
+        val budget = SpeciesDiscoveryBudget(limits, cancellation)
         // Compiled consumers are direct role evidence, so evaluate their finite table roots before
         // broad content discovery can spend the dataset's probe budget on incidental 1,2 prefixes.
         val compiledIndexed = findCompiledIndexedGen3Map(rom, layout, storedCount, budget)
         compiledIndexed.budgetFailure?.let { return it.toResolution(fallback) }
         compiledIndexed.values?.let { values ->
-            return SpeciesIndexResolution.Resolved(indexedGen3Values(values))
+            return SpeciesIndexResolution.Resolved(
+                indexedGen3Values(values),
+                SpeciesDescriptionIndex(
+                    compiledIndexed.descriptionValues?.let(::indexedGen3Values)
+                        ?: if (compiledIndexed.requiresDescriptionProof) emptyMap() else indexedGen3Values(values),
+                    compiledIndexed.descriptionFailure,
+                ),
+            )
         }
         val candidates = mutableListOf<Gen3IndexCandidate>()
         var prefixEvidenceObserved = false
         val lastTableStart = rom.size - storedCount * 2
         var offset = 0
         while (offset <= lastTableStart) {
+            if (offset and 0xfff == 0) cancellation.throwIfCancellationRequested()
             val prefixMatches = rom.u16le(offset) == 1 && (storedCount == 1 || rom.u16le(offset + 2) == 2)
             if (!prefixMatches) {
                 offset += 2
@@ -251,7 +279,14 @@ object SpeciesIndexResolver {
                 "Gen III species-to-National-Dex mapping is unresolved",
             )
         }
-        return SpeciesIndexResolution.Resolved(indexedGen3Values(values))
+        return SpeciesIndexResolution.Resolved(
+                indexedGen3Values(values),
+                SpeciesDescriptionIndex(
+                    compiledIndexed.descriptionValues?.let(::indexedGen3Values)
+                        ?: if (compiledIndexed.requiresDescriptionProof) emptyMap() else indexedGen3Values(values),
+                    compiledIndexed.descriptionFailure,
+                ),
+            )
     }
 
     private fun findCompiledIndexedGen3Map(
@@ -262,9 +297,13 @@ object SpeciesIndexResolver {
     ): CompiledIndexSearch {
         val candidates = mutableListOf<CompiledIndexCandidate>()
         val roots = linkedSetOf<Int>()
+        val wrappersByRoot = linkedMapOf<Int, MutableSet<Int>>()
+        // Deduplicate semantic mappings without discarding consumers of relocated equivalent tables.
+        val candidatesByRoot = linkedMapOf<Int, CompiledIndexCandidate>()
         var evidenceObserved = false
         var instructionOffset = 0
         while (instructionOffset <= rom.size - 10) {
+            if (instructionOffset and 0xfff == 0) budget.cancellation.throwIfCancellationRequested()
             val load = rom.u16le(instructionOffset)
             if (load and THUMB_LITERAL_LOAD_MASK != THUMB_LITERAL_LOAD_OPCODE) {
                 instructionOffset += 2
@@ -294,6 +333,10 @@ object SpeciesIndexResolver {
                 ?.toInt()
             if (tableOffset != null && tableOffset.toLong() + storedCount.toLong() * 2 <= rom.size) {
                 evidenceObserved = true
+                val wrapper = instructionOffset - INDEXED_LOOKUP_PROLOG_BYTES
+                if (hasIndexedLookupWrapperProlog(rom, wrapper)) {
+                    wrappersByRoot.getOrPut(tableOffset) { linkedSetOf() }.add(wrapper)
+                }
                 if (tableOffset !in roots) {
                     budget.recordRoot(tableOffset)?.let { return CompiledIndexSearch(budgetFailure = it) }
                     roots += tableOffset
@@ -301,14 +344,19 @@ object SpeciesIndexResolver {
                         return CompiledIndexSearch(budgetFailure = it)
                     }
                     val regionalOrderConsumerRole =
-                        hasRegionalOrderConsumerRole(rom, instructionOffset, budget.limits)
+                        hasRegionalOrderConsumerRole(rom, instructionOffset, budget.limits, budget.cancellation)
                     val summary = summarizeU16Values(
                         rom,
                         tableOffset,
                         storedCount,
                         maxOf(2_048, storedCount * 2),
                     )
-                    if (summary != null && candidates.none { matchesValuesAt(rom, tableOffset, it.values) }) {
+                    val equivalent = if (summary != null) candidates.firstOrNull {
+                        matchesValuesAt(rom, tableOffset, it.values)
+                    } else null
+                    if (equivalent != null) {
+                        candidatesByRoot[tableOffset] = equivalent
+                    } else if (summary != null) {
                         compiledIndexCandidateMetrics(
                             rom,
                             layout,
@@ -319,7 +367,7 @@ object SpeciesIndexResolver {
                             budget.recordCandidate()?.let {
                                 return CompiledIndexSearch(budgetFailure = it)
                             }
-                            candidates += CompiledIndexCandidate(
+                            val candidate = CompiledIndexCandidate(
                                 offset = tableOffset,
                                 values = readU16Values(rom, tableOffset, storedCount),
                                 regionalOrderConsumerRole = regionalOrderConsumerRole,
@@ -331,6 +379,8 @@ object SpeciesIndexResolver {
                                 positiveCount = summary.positiveCount,
                                 distinctDexCount = summary.distinctCount,
                             )
+                            candidates += candidate
+                            candidatesByRoot[tableOffset] = candidate
                         }
                     }
                 }
@@ -350,19 +400,25 @@ object SpeciesIndexResolver {
             return CompiledIndexSearch(budgetFailure = it, evidenceObserved = true)
         }
         completeComposition.candidate?.let {
-            return CompiledIndexSearch(values = it.values, evidenceObserved = true)
+            val description = bindDescriptionIndex(rom, layout, candidatesByRoot, wrappersByRoot, completeComposition, budget)
+            return CompiledIndexSearch(values = it.values, evidenceObserved = true,
+                descriptionValues = description.values, requiresDescriptionProof = true,
+                descriptionFailure = description.budgetFailure?.descriptionReason())
         }
         if (compositionCandidates.size >= 3) {
-            return CompiledIndexSearch(ambiguous = true, evidenceObserved = true)
+            return CompiledIndexSearch(ambiguous = true, evidenceObserved = true, requiresDescriptionProof = true)
         }
+        val requiresDescriptionProof = allRanked.size > 1 || allRanked.any { it.regionalOrderConsumerRole }
         val ranked = allRanked.filter(CompiledIndexCandidate::publicationEligible)
-        val first = ranked.firstOrNull() ?: return CompiledIndexSearch(evidenceObserved = evidenceObserved)
+        val first = ranked.firstOrNull() ?: return CompiledIndexSearch(
+            evidenceObserved = evidenceObserved, requiresDescriptionProof = requiresDescriptionProof)
         val second = ranked.getOrNull(1)
         if (second == null || !first.sameStrengthAs(second)) {
             return if (first.regionalOrderConsumerRole) {
-                CompiledIndexSearch(ambiguous = true, evidenceObserved = true)
+                CompiledIndexSearch(ambiguous = true, evidenceObserved = true, requiresDescriptionProof = true)
             } else {
-                CompiledIndexSearch(values = first.values, evidenceObserved = true)
+                CompiledIndexSearch(values = first.values, evidenceObserved = true,
+                    requiresDescriptionProof = requiresDescriptionProof)
             }
         }
         val tied = ranked.takeWhile(first::sameStrengthAs)
@@ -371,9 +427,13 @@ object SpeciesIndexResolver {
             return CompiledIndexSearch(budgetFailure = it, evidenceObserved = true)
         }
         return if (tiedComposition.candidate != null) {
-            CompiledIndexSearch(values = tiedComposition.candidate.values, evidenceObserved = true)
+            val description = bindDescriptionIndex(rom, layout, candidatesByRoot, wrappersByRoot, tiedComposition, budget)
+            CompiledIndexSearch(values = tiedComposition.candidate.values, evidenceObserved = true,
+                descriptionValues = description.values, requiresDescriptionProof = true,
+                descriptionFailure = description.budgetFailure?.descriptionReason())
         } else {
-            CompiledIndexSearch(ambiguous = true, evidenceObserved = true)
+            CompiledIndexSearch(ambiguous = true, evidenceObserved = true,
+                requiresDescriptionProof = requiresDescriptionProof)
         }
     }
 
@@ -389,6 +449,7 @@ object SpeciesIndexResolver {
     ): CompositionSearch {
         if (candidates.size < 3) return CompositionSearch()
         val winners = linkedMapOf<CompiledIndexCandidate, Int>()
+        val exactPartners = linkedMapOf<CompiledIndexCandidate, MutableSet<CompiledIndexCandidate>>()
         candidates.forEach { speciesToRegional ->
             if (!speciesToRegional.completePermutation || !speciesToRegional.publicationEligible) {
                 return@forEach
@@ -419,6 +480,11 @@ object SpeciesIndexResolver {
                                 matches.toDouble() / count >= MINIMUM_COMPOSITION_AGREEMENT
                             ) {
                                 winners[speciesToRegional] = maxOf(winners[speciesToRegional] ?: 0, matches)
+                                if (matches == count && speciesToNational.completePermutation &&
+                                    speciesToNational.publicationEligible && regionalToNational.completePermutation
+                                ) {
+                                    exactPartners.getOrPut(speciesToRegional) { linkedSetOf() }.add(speciesToNational)
+                                }
                             }
                         }
                     }
@@ -431,7 +497,69 @@ object SpeciesIndexResolver {
         val second = rankedWinners.getOrNull(1)
         return CompositionSearch(
             candidate = first.key.takeUnless { second != null && first.value == second.value },
+            descriptionPartners = exactPartners[first.key].orEmpty(),
         )
+    }
+
+    private fun bindDescriptionIndex(
+        rom: RomImage,
+        layout: ResolvedRomLayout,
+        candidatesByRoot: Map<Int, CompiledIndexCandidate>,
+        wrappersByRoot: Map<Int, Set<Int>>,
+        composition: CompositionSearch,
+        budget: SpeciesDiscoveryBudget,
+    ): CompiledIndexSearch {
+        val table = layout.resolvedDatasets.descriptions?.table ?: return CompiledIndexSearch()
+        when (val extent = budget.limits.checkTableExtent(table.offset, table.count, table.recordSize.toLong(), rom.size.toLong())) {
+            is com.enrpau.dualscreendex.parser.analysis.ExtentCheck.Invalid -> return CompiledIndexSearch()
+            is com.enrpau.dualscreendex.parser.analysis.ExtentCheck.BudgetExceeded -> return CompiledIndexSearch(
+                budgetFailure = SpeciesBudgetFailure(BudgetKind.EXTENT, extent.observedBytes, extent.limitBytes,
+                    "description-index selected table extent budget exceeded"))
+            is com.enrpau.dualscreendex.parser.analysis.ExtentCheck.Valid -> Unit
+        }
+        val wrappers = linkedMapOf<Int, CompiledIndexCandidate>()
+        for ((root, candidate) in candidatesByRoot) {
+            for (wrapper in wrappersByRoot[root].orEmpty()) {
+                if (CompiledDescriptionIndexBinding.mappingWrapperReturnsRow(rom, wrapper)) {
+                    wrappers[wrapper] = candidate
+                }
+            }
+        }
+        val bound = linkedSetOf<CompiledIndexCandidate>()
+        val sites = linkedMapOf<CompiledIndexCandidate, Int>()
+        val accessorProofs = hashMapOf<Int, Boolean>()
+        var nominated = 0
+        for (callsite in 0..rom.size - 14 step 2) {
+            if (callsite and 0xfff == 0) {
+                budget.recordWork("description-index caller scan block")?.let {
+                    return CompiledIndexSearch(budgetFailure = it)
+                }
+            }
+            val candidate = wrappers[decodeThumbBlTarget(rom, callsite)] ?: continue
+            budget.recordWork("description-index caller")?.let { return CompiledIndexSearch(budgetFailure = it) }
+            if (!hasImmediateDexNumberConsumer(rom, callsite)) continue
+            if (++nominated > budget.limits.maxNominatedGbaReferenceSites) {
+                return CompiledIndexSearch(budgetFailure = SpeciesBudgetFailure(
+                    BudgetKind.PROBE_WORK, nominated.toLong(), budget.limits.maxNominatedGbaReferenceSites.toLong(),
+                    "description-index nominated caller budget exceeded"))
+            }
+            if (rom.u16le(callsite + 8) !in 0x2100..0x2101) continue
+            val accessor = decodeThumbBlTarget(rom, callsite + 10) ?: continue
+            val matches = accessorProofs.getOrPut(accessor) {
+                CompiledDescriptionIndexBinding.matchesAccessor(rom, accessor, table)
+            }
+            if (!matches) continue
+            val count = (sites[candidate] ?: 0) + 1
+            sites[candidate] = count
+            if (count > budget.limits.maxCompiledReferenceSitesPerCandidate) {
+                return CompiledIndexSearch(budgetFailure = SpeciesBudgetFailure(
+                    BudgetKind.PROBE_WORK, count.toLong(), budget.limits.maxCompiledReferenceSitesPerCandidate.toLong(),
+                    "description-index bound caller budget exceeded"))
+            }
+            bound += candidate
+        }
+        val selected = bound.singleOrNull()?.takeIf { it in composition.descriptionPartners }
+        return CompiledIndexSearch(values = selected?.values)
     }
 
     private fun addCombinesRegisters(instruction: Int, first: Int, second: Int): Boolean {
@@ -450,6 +578,7 @@ object SpeciesIndexResolver {
         rom: RomImage,
         lookupInstructionOffset: Int,
         limits: ResolutionLimits,
+        cancellation: ParserCancellationToken,
     ): Boolean {
         val wrapperOffset = lookupInstructionOffset - INDEXED_LOOKUP_PROLOG_BYTES
         if (!hasIndexedLookupWrapperProlog(rom, wrapperOffset)) return false
@@ -458,6 +587,7 @@ object SpeciesIndexResolver {
         var ordinalDexConsumers = 0
         var callsite = 0
         while (callsite <= rom.size - 4) {
+            if (callsite and 0xfff == 0) cancellation.throwIfCancellationRequested()
             if (decodeThumbBlTarget(rom, callsite) == wrapperOffset) {
                 callers++
                 if (callers > limits.maxCompiledReferenceSitesPerCandidate) return false
@@ -627,6 +757,7 @@ object SpeciesIndexResolver {
         val byteLength = speciesCount * 2
         var selected: IntArray? = null
         for (offset in 0..rom.size - byteLength step 2) {
+            if (offset and 0xfff == 0) budget.cancellation.throwIfCancellationRequested()
             if (rom.u16le(offset) != 0) continue
             budget.recordRoot(offset)?.let { return CompletePermutationSearch(budgetFailure = it) }
             budget.recordWork("complete permutation probe")?.let {
@@ -775,11 +906,15 @@ object SpeciesIndexResolver {
 
     private data class CompositionSearch(
         val candidate: CompiledIndexCandidate? = null,
+        val descriptionPartners: Set<CompiledIndexCandidate> = emptySet(),
         val budgetFailure: SpeciesBudgetFailure? = null,
     )
 
     private data class CompiledIndexSearch(
         val values: IntArray? = null,
+        val descriptionValues: IntArray? = null,
+        val descriptionFailure: String? = null,
+        val requiresDescriptionProof: Boolean = false,
         val ambiguous: Boolean = false,
         val budgetFailure: SpeciesBudgetFailure? = null,
         val evidenceObserved: Boolean = false,
@@ -799,7 +934,10 @@ object SpeciesIndexResolver {
         val canonicalBoundary: Boolean,
     )
 
-    private class SpeciesDiscoveryBudget(val limits: ResolutionLimits) {
+    private class SpeciesDiscoveryBudget(
+        val limits: ResolutionLimits,
+        val cancellation: ParserCancellationToken,
+    ) {
         private val roots = linkedSetOf<Int>()
         private var work = 0L
         private var candidates = 0L
@@ -821,6 +959,7 @@ object SpeciesIndexResolver {
         }
 
         fun recordWork(activity: String): SpeciesBudgetFailure? {
+            cancellation.throwIfCancellationRequested()
             if (work == limits.maxProbeWorkPerDataset.toLong()) {
                 val observed = work + 1L
                 return SpeciesBudgetFailure(
@@ -857,6 +996,8 @@ object SpeciesIndexResolver {
         val limit: Long,
         val reason: String,
     ) {
+        fun descriptionReason(): String = "$reason ($kind: $observed > $limit)"
+
         fun toResolution(fallback: Map<Int, Int>) = SpeciesIndexResolution.BudgetExceeded(
             fallback,
             kind,

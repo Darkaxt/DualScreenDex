@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.catalog
 
+import com.enrpau.dualscreendex.parser.text.GbInlineDescriptions
 import com.enrpau.dualscreendex.parser.dataset.descriptions.DescriptionRowOutcome
 import com.enrpau.dualscreendex.parser.dataset.evolutions.EvolutionRowOutcome
 import com.enrpau.dualscreendex.parser.dataset.learnsets.LearnsetRowOutcome
@@ -298,6 +299,18 @@ object RelationshipMaterializers {
         codec: PokemonTextCodec,
     ): RecordMaterialization<DescriptionRecord> {
         val table = layout.tables.descriptions ?: return emptyMaterialization()
+        table.gbDescriptions?.let { inline ->
+            val entries = GbInlineDescriptions.entries(rom, inline)
+            val records = linkedMapOf<Int, DescriptionRecord>()
+            val failures = linkedMapOf<Int, String>()
+            if (entries.size != table.count) return emptyMaterialization()
+            entries.forEachIndexed { index, entry ->
+                val row = entry?.let { GbInlineDescriptions.decode(rom, it, codec) }
+                if (row == null) failures[index + 1] = "native inline description is malformed"
+                else records[index + 1] = DescriptionRecord(row.text, row.height, row.weight, row.category)
+            }
+            return RecordMaterialization(records, failures)
+        }
         return materializeRecords(table.count, firstId = 1) { id ->
             val index = id - 1
             val pointerOffset = table.offset + index * table.recordSize

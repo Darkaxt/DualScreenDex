@@ -1,5 +1,13 @@
 package com.enrpau.dualscreendex.parser.validate
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
+import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
+import com.enrpau.dualscreendex.parser.dataset.descriptions.DescriptionCodec
+import com.enrpau.dualscreendex.parser.dataset.descriptions.DescriptionRowOutcome
+import com.enrpau.dualscreendex.parser.dataset.descriptions.DescriptionTableLayout
+import com.enrpau.dualscreendex.parser.dataset.descriptions.DescriptionTableOutcome
+import com.enrpau.dualscreendex.parser.model.Platform
+import com.enrpau.dualscreendex.parser.model.RomHeader
 import com.enrpau.dualscreendex.parser.io.RomBoundsException
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.ValidationEvidence
@@ -92,7 +100,13 @@ object PokemonDatasetValidators {
         recordSize: Int,
         descriptionPointerOffsets: IntArray,
         codec: PokemonTextCodec,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
     ): ValidationEvidence = safely(offset, recordSize, count) {
+        if (recordSize == 28) {
+            val rows = nativeDescriptionRows(rom, offset, count, descriptionPointerOffsets, codec, cancellation)
+            return@safely result(rows.count { it is DescriptionRowOutcome.Decoded },
+                count, offset, recordSize, "valid native Gen 3 Pokédex entries")
+        }
         var valid = 0
         repeat(count) { index ->
             val base = offset + index * recordSize
@@ -114,13 +128,16 @@ object PokemonDatasetValidators {
         recordSize: Int,
         descriptionPointerOffsets: IntArray,
         codec: PokemonTextCodec,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
     ): ValidationEvidence = safely(offset, recordSize, maximumCount) {
         var valid = 0
         var lastValid = 0
         var consecutiveInvalid = 0
+        val nativeRows = if (recordSize == 28) nativeDescriptionRows(rom, offset, maximumCount, descriptionPointerOffsets, codec, cancellation) else null
         repeat(maximumCount) { index ->
             val base = offset + index * recordSize
-            if (validGen3DescriptionRecord(rom, base, descriptionPointerOffsets, codec)) {
+            if (if (nativeRows != null) nativeRows.getOrNull(index) is DescriptionRowOutcome.Decoded
+                else validGen3DescriptionRecord(rom, base, descriptionPointerOffsets, codec)) {
                 valid++
                 lastValid = index + 1
                 consecutiveInvalid = 0
@@ -653,6 +670,16 @@ object PokemonDatasetValidators {
             return null
         }
         return null
+    }
+
+    private fun nativeDescriptionRows(rom: RomImage, offset: Int, count: Int, pointers: IntArray, codec: PokemonTextCodec,
+        cancellation: ParserCancellationToken):
+        List<DescriptionRowOutcome> {
+        val session = RomAnalysisSession(rom,
+            RomHeader(Platform.GBA, ""), cancellation = cancellation)
+        val outcome = DescriptionCodec(codec).decode(session,
+            DescriptionTableLayout(offset.toLong(),count.toLong(),28,pointers.toList()))
+        return (outcome as? DescriptionTableOutcome.Decoded)?.rows ?: emptyList()
     }
 
     private fun validGen3DescriptionRecord(

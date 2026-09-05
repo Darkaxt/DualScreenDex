@@ -23,6 +23,74 @@ import org.junit.Test
 
 /** SHA-bound authority for selected-layout-only ordinary Gen III ability names. */
 class AbilityNameLiveRomTest {
+    /** Supply Ruby/Emerald/FireRed paths in order and the independently retained numeric ability domain. */
+    @Test fun tracesNativeCompiledAbilityTextWithoutCatalogReparse() {
+        val paths = System.getenv("DUALDEX_NATIVE_ABILITY_TRACE")?.split('|').orEmpty()
+        assumeTrue("bounded native ability inputs were not supplied", paths.isNotEmpty())
+        val activeIds = requireNotNull(System.getenv("DUALDEX_NATIVE_ABILITY_ACTIVE_IDS")) { "supply independently retained numeric ability IDs" }
+            .split(',').map(String::toInt).toSet()
+        paths.forEachIndexed { ordinal, path ->
+            val rom = RomImage(Files.readAllBytes(Path.of(path)))
+            val session = RomAnalysisSession(rom, RomHeaderReader.read(rom))
+            val codec = if (ordinal == 0) com.enrpau.dualscreendex.parser.text.JapanesePokemonTextCodecs.gen3RubySapphire else com.enrpau.dualscreendex.parser.text.JapanesePokemonTextCodecs.gen3Later
+            val index = requireNotNull(session.gbaReferenceIndex)
+            val inline = com.enrpau.dualscreendex.parser.parse.compiledInlineAbilityTexts(rom, index, session.cancellation)
+            val names = com.enrpau.dualscreendex.parser.parse.compiledAbilityNameCandidates(session).filter { (root, width) ->
+                width in 8..32 && codec.decodeDetailed(rom, root, width, session.cancellation).text.let { it.isNotEmpty() && it.all { c -> c == 'ー' } }
+            }
+            if (ordinal == 2) {
+                val sectionNames = com.enrpau.dualscreendex.parser.parse.CompiledRegionSectionNames.resolve(rom, index, setOf(88), codec, session.cancellation)
+                assertEquals("マサラタウン", sectionNames[88])
+                println("NATIVE_MAP_VERIFIED protected biased lookup retained section 88")
+            }
+            println("NATIVE_ABILITY_TRACE input=$path names=$names inline=$inline")
+            assertEquals("unique native name consumer root", 1, names.size)
+            assertEquals("unique compiled inline description root", 1, inline.size)
+            names.forEach { (root, width) ->
+                inline.forEach { description ->
+                    assertTrue(description.offset > root && (description.offset - root) % width == 0)
+                    val count = (description.offset - root) / width
+                    assertEquals(count, com.enrpau.dualscreendex.parser.parse.compiledInlineAbilityNameCount(session, root, width, activeIds.max(), codec, inline))
+                    val strategy = com.enrpau.dualscreendex.parser.family.SemanticDomainStrategy()
+                    val method = strategy.javaClass.declaredMethods.single { it.name == "resolveAbilityNames" }.apply { isAccessible = true }
+                    val table = com.enrpau.dualscreendex.parser.model.TableLayout(root, count, width)
+                    val evidence = method.invoke(strategy, session, table, codec, null, false, null, null, AbilitySemanticDomain(activeIds)) as com.enrpau.dualscreendex.parser.model.ValidationEvidence
+                    assertTrue("bounded native semantic ability selection: $evidence", evidence.compatible)
+                    assertEquals(count, evidence.totalRecords)
+                    val decodedNames = AbilityNameCodec(codec).decode(session, AbilityNameTableLayout(root, count, width), AbilitySemanticDomain(activeIds)) as AbilityNameTableOutcome.Decoded
+                    assertTrue(decodedNames.resolved.decodedDirectAbilityIds().containsAll(activeIds))
+                    assertEquals("しんりょく", (decodedNames.resolved.baseRows[65] as AbilityNameRowOutcome.Decoded).name)
+                    val layout = com.enrpau.dualscreendex.parser.model.ResolvedRomLayout(
+                        family = when (ordinal) {
+                            0 -> com.enrpau.dualscreendex.parser.model.EngineFamily.RUBY_SAPPHIRE
+                            1 -> com.enrpau.dualscreendex.parser.model.EngineFamily.EMERALD
+                            else -> com.enrpau.dualscreendex.parser.model.EngineFamily.FIRERED_LEAFGREEN
+                        },
+                        generation = 3, platform = com.enrpau.dualscreendex.parser.model.Platform.GBA,
+                        speciesCount = null, moveCount = null,
+                        tables = com.enrpau.dualscreendex.parser.model.ProfileTables(abilities = table),
+                        compiledGbaReferences = index.asLegacyCounts(),
+                        languageManifest = com.enrpau.dualscreendex.parser.language.resolvedLanguageManifest(codec, com.enrpau.dualscreendex.parser.language.LanguageTag.JAPANESE),
+                    )
+                    val descriptions = requireNotNull(com.enrpau.dualscreendex.parser.catalog.AbilityDescriptionMaterializer.materialize(rom, layout)).descriptions
+                    assertTrue(descriptions.keys.containsAll(activeIds))
+                    assertEquals("ひるまない", descriptions[39])
+                    assertEquals("ねむらない", descriptions[72])
+                    assertEquals("ピンチに くさの いりょくが あがる", descriptions[65])
+                    println("NATIVE_ABILITY_VERIFIED numericCoverage=${activeIds.size} names=$count descriptions=${descriptions.size} semantic=${evidence.compatible}")
+                    println("NATIVE_ABILITY_TRACE count=$count names0=${root.toString(16)} desc0=${description.offset.toString(16)} decoded=${description.decode(rom, count, codec, session.cancellation)?.size}")
+                    repeat(count) { id ->
+                        val offset = description.offset + id * description.stride
+                        val decoded = codec.decodeDetailed(rom, offset, description.stride, session.cancellation)
+                        val padding = (decoded.consumedBytes until description.stride).all { rom.u8(offset + it) == 0 }
+                        val legacyNatural = id == 0 || com.enrpau.dualscreendex.parser.text.LanguageTextPlausibility.looksLikeNaturalDescription(decoded.text, codec.language, 8, 2)
+                        if (!decoded.terminated || decoded.invalidUnits != 0 || !padding || !legacyNatural) println("NATIVE_ABILITY_TRACE row=$id decoded=$decoded padding=$padding legacyMinimum8=$legacyNatural")
+                    }
+                }
+            }
+        }
+    }
+
     @Test fun offendersRestoreTheirExactSparseDirectAbilityCatalogs() {
         listOf(
             LiveAbilityCase(

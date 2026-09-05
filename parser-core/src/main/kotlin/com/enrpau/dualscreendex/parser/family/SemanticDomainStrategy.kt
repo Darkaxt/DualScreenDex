@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.family
 
+import com.enrpau.dualscreendex.parser.text.GbInlineDescriptions
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.HeaderlessUnifiedAbilityMetadata
@@ -142,6 +143,23 @@ internal class SemanticDomainStrategy : FamilyProbePhaseStrategy {
     ): ValidationEvidence {
         val rom = session.rom
         val tables = core.candidateTables
+        tables.descriptions?.takeIf { definition.formatGeneration in 1..2 }?.let { table ->
+            table.gbDescriptions?.let { inline ->
+                val entries = GbInlineDescriptions.entries(rom, inline)
+                val valid = entries.count { it != null &&
+                    GbInlineDescriptions.decode(rom, it, textCodec, session.cancellation) != null }
+                val expected = if (definition.formatGeneration == 1)
+                    core.baseStats.expectedRecords ?: core.baseStats.totalRecords else table.count
+                return ValidationEvidence(
+                    compatible = entries.size == table.count && valid >= kotlin.math.ceil(expected * 0.75).toInt(),
+                    validRecords = valid, totalRecords = table.count,
+                    confidence = minOf(valid, expected).toDouble() / expected.coerceAtLeast(1),
+                    reasons = listOf("validated compiled native inline description segments"),
+                    offset = table.offset, recordSize = 2,
+                    coveredRecords = minOf(valid, expected), expectedRecords = expected,
+                )
+            }
+        }
         return when (definition.formatGeneration) {
             1 -> tables.descriptions?.let {
                 PokemonDatasetValidators.gen1Descriptions(
@@ -186,6 +204,7 @@ internal class SemanticDomainStrategy : FamilyProbePhaseStrategy {
         val legacyEvidence = validateDescriptions(session, definition, identity, core, textCodec)
         if (legacyEvidence.compatible) {
             val selected = resolvedLayout(core.candidateTables.descriptions, legacyEvidence)
+                ?.let { if (legacyEvidence.recordSize == 28) it.copy(pointerOffsets = listOf(12)) else it }
                 ?.toDescriptionTableLayout()
                 ?: return ResolvedDescriptionEvidence(
                     legacyEvidence.copy(
@@ -253,6 +272,7 @@ internal class SemanticDomainStrategy : FamilyProbePhaseStrategy {
     private fun TableLayout.toDescriptionTableLayout(): DescriptionTableLayout? {
         val pointers = pointerOffsets.ifEmpty {
             when (recordSize) {
+                28 -> listOf(12)
                 32 -> listOf(16)
                 36 -> listOf(16, 20)
                 else -> return null
@@ -580,7 +600,28 @@ internal class SemanticDomainStrategy : FamilyProbePhaseStrategy {
                     .forEach(::put)
             }
         }
+        val inlineDescriptions = session.gbaReferenceIndex?.let {
+            com.enrpau.dualscreendex.parser.parse.compiledInlineAbilityTexts(rom, it, session.cancellation)
+        }.orEmpty()
+        val unboundedShiftRoots = mutableSetOf<Int>()
         val dynamicCandidates = candidateRoots.flatMap { (root, consumerStride) ->
+            session.cancellation.throwIfCancellationRequested()
+            val boundedCount = consumerStride?.let { width ->
+                com.enrpau.dualscreendex.parser.parse.compiledInlineAbilityNameCount(
+                    session, root, width, semanticDomain.maximumDirectAbilityId, codec, inlineDescriptions,
+                )
+            }
+            if (boundedCount != null) {
+                return@flatMap listOf(TableValidators.fixedNames(rom, root, boundedCount, requireNotNull(consumerStride), codec) to consumerStride)
+            }
+            // Strength-reduced names need an independently proven extent; adjacent prose is not a name boundary.
+            val shiftConsumers = session.gbaReferenceIndex?.let { index ->
+                com.enrpau.dualscreendex.parser.parse.executableGbaTextSites(index, root)
+            }?.any { it >= 2 && rom.u16le(it - 2) and 0xF800 == 0 } == true
+            if (consumerStride != null && shiftConsumers) {
+                unboundedShiftRoots += root
+                return@flatMap emptyList()
+            }
             val widths = consumerStride?.let(::listOf) ?: (8..32).toList()
             widths.flatMap { recordSize ->
                 val inferredCount = TableValidators.inferFixedNameCount(
@@ -643,6 +684,10 @@ internal class SemanticDomainStrategy : FamilyProbePhaseStrategy {
                                 "${resolved.table.nameWidth}x${resolved.table.count}/base${resolved.baseRowCount}"
                             }
                         ),
+            )
+            layout.offset in unboundedShiftRoots -> inherited.copy(
+                compatible = false,
+                reasons = inherited.reasons + "compiled shift-based ability names lack a unique independently proven inline boundary",
             )
             else -> selectAbilityNameEvidence(exact, inherited) {
                 dynamicCandidates.map { it.first }

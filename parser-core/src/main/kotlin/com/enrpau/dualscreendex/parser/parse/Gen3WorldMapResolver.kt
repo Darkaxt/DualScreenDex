@@ -81,6 +81,8 @@ object Gen3WorldMapResolver {
                 functionIndex,
                 text,
                 cancellation,
+                codec,
+                session.limits.maxDatasetExtentBytes,
             )
             else -> WorldMapResolution.Unavailable(
                 "asset-loader",
@@ -256,6 +258,8 @@ object Gen3WorldMapResolver {
         functionIndex: ThumbFunctionIndex,
         candidates: List<TextAssetCandidate>,
         cancellation: ParserCancellationToken,
+        codec: PokemonTextCodec?,
+        extentLimit: Long,
     ): WorldMapResolution {
         val winnerGroups = authoritativeText(candidates)
         if (winnerGroups.size != 1) {
@@ -319,9 +323,10 @@ object Gen3WorldMapResolver {
         )
         val regions = mutableListOf<WorldMapRegion>()
         val assets = linkedMapOf<String, com.enrpau.dualscreendex.parser.catalog.RgbaSprite>()
+        val namesBySection = Gen3MapLocationResolver.resolveNamesBySection(rom, encounterBaseIds, references, codec, cancellation, extentLimit)
         winner.regions.zip(layoutWinner).forEach { (regionAsset, layout) ->
             val index = regionAsset.slot
-            val normalized = textLocations(layout, baseAreasBySection)
+            val normalized = textLocations(layout, baseAreasBySection, namesBySection)
             if (normalized.isEmpty()) {
                 return WorldMapResolution.Unavailable(
                     "encounter-binding",
@@ -374,13 +379,14 @@ object Gen3WorldMapResolver {
     private fun textLocations(
         layout: SemanticLayout,
         baseAreasBySection: Map<Int, List<Int>>,
+        namesBySection: Map<Int, String> = emptyMap(),
     ): List<WorldMapLocation> = baseAreasBySection.entries.sortedBy { it.key }.mapNotNull { (section, baseAreas) ->
         val cells = layout.primaryCellsBySection[section]
             ?: layout.secondaryCellsBySection[section]
             ?: return@mapNotNull null
         WorldMapLocation(
             key = "section-$section",
-            displayName = null,
+            displayName = namesBySection[section],
             baseAreaIds = baseAreas.toSet(),
             geometry = cells,
         )
@@ -882,10 +888,28 @@ object Gen3WorldMapResolver {
         functionStart: Int,
         site: Int,
     ): BranchArm? {
+        val literalHalfwords = mutableSetOf<Int>()
+        var cursor = functionStart
+        while (cursor + 2 <= site) {
+            if (cursor !in literalHalfwords) {
+                val instruction = rom.u16le(cursor)
+                if (instruction and 0xF800 == 0x4800) {
+                    val literal = ((cursor + 4) and -4) + (instruction and 0xFF) * 4
+                    if (literal >= cursor + 2 && literal + 4 <= rom.size) {
+                        // A forward jump over an actually loaded word proves inline data, not an arm.
+                        val skip = (cursor + 2 until minOf(literal, site) step 2).any { at ->
+                            at !in literalHalfwords && unconditionalBranchDestination(rom, at)?.let { it >= literal + 4 } == true
+                        }
+                        if (skip) { literalHalfwords += literal; literalHalfwords += literal + 2 }
+                    }
+                }
+            }
+            cursor += 2
+        }
         var branchOffset = functionStart
         var owner: BranchArm? = null
         while (branchOffset + 2 <= site) {
-            val target = branchDestination(rom, branchOffset)
+            val target = if (branchOffset in literalHalfwords) null else branchDestination(rom, branchOffset)
             if (target != null && target > branchOffset + 2) {
                 val fallthroughEnd = forwardUnconditionalBranchBefore(
                     rom,

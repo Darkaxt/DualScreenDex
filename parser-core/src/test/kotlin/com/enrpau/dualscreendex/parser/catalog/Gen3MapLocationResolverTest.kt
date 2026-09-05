@@ -12,6 +12,73 @@ import org.junit.Test
 
 class Gen3MapLocationResolverTest {
     @Test
+    fun resolvesOnlyBoundedBiasedSectionNamesAndRejectsConflictingRoots() {
+        val bytes = ByteArray(0x1000)
+        fun op(at: Int, value: Int) { bytes[at] = value.toByte(); bytes[at + 1] = (value ushr 8).toByte() }
+        fun consumer(start: Int, root: Int) {
+            op(start, 0xB570)
+            op(start + 2, 0x0409)
+            op(start + 4, 0x4A1E)
+            op(start + 6, 0x1889)
+            op(start + 8, 0x0C0D)
+            op(start + 10, 0x2D02)
+            op(start + 12, 0xD818)
+            op(start + 0x20, 0x4818)
+            op(start + 0x22, 0x00A9)
+            op(start + 0x24, 0x1809)
+            op(start + 0x26, 0x6809)
+            op(start + 0x80, 0); op(start + 0x82, 0xFFF9) // bias 7, not a family constant
+            putPointer(bytes, start + 0x84, root)
+        }
+        consumer(0x200, 0x600)
+        writeIndexedU16CompactConsumer(bytes, 0x100, 0x400)
+        putPointer(bytes, 0x400, 0x420)
+        repeat(3) { id ->
+            putPointer(bytes, 0x420 + id * 4, 0x440 + id * 28)
+            writeMapHeader(bytes, 0x440 + id * 28, 7 + id)
+        }
+        repeat(3) { id ->
+            putPointer(bytes, 0x600 + id * 4, 0x800 + id * 16)
+            byteArrayOf(1, 2, 3, 0xFF.toByte()).copyInto(bytes, 0x800 + id * 16)
+        }
+        fun names(extentLimit: Long = 64L * 1024 * 1024, countsOnly: Boolean = false): Map<Int, String> {
+            val session = com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession(RomImage(bytes), com.enrpau.dualscreendex.parser.model.RomHeader(com.enrpau.dualscreendex.parser.model.Platform.GBA, "BIAS TEST"))
+            val index = requireNotNull(session.gbaReferenceIndex)
+            val refs = if (countsOnly) GbaReferenceIndex.countsOnlyForTesting(index.counts) else index
+            return com.enrpau.dualscreendex.parser.parse.CompiledRegionSectionNames.resolve(session.rom, refs, setOf(6, 7, 8, 9, 10), com.enrpau.dualscreendex.parser.text.JapanesePokemonTextCodecs.gen3Later, session.cancellation, extentLimit)
+        }
+        fun joinedNames(): Map<Int, String> {
+            val session = com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession(RomImage(bytes), com.enrpau.dualscreendex.parser.model.RomHeader(com.enrpau.dualscreendex.parser.model.Platform.GBA, "JOIN TEST"))
+            val refs = requireNotNull(session.gbaReferenceIndex)
+            assertEquals(mapOf(0 to 7, 1 to 8, 2 to 9), Gen3MapLocationResolver.resolveSectionByBaseArea(session.rom, setOf(0, 1, 2), refs))
+            return Gen3MapLocationResolver.resolve(session.rom, setOf(0, 1, 2), refs, com.enrpau.dualscreendex.parser.text.JapanesePokemonTextCodecs.gen3Later)
+        }
+        assertEquals(mapOf(0 to "あいう", 1 to "あいう", 2 to "あいう"), joinedNames())
+        assertEquals(mapOf(7 to "あいう", 8 to "あいう", 9 to "あいう"), names())
+        assertTrue(names(extentLimit = 11).isEmpty())
+        assertTrue(names(countsOnly = true).isEmpty())
+        op(0x210, 0x4801); op(0x218, 0x2503) // referenced but reachable MOV r5,#3 is not pool data
+        assertTrue("reachable index clobber must not be hidden by LDR reference", names().isEmpty())
+        op(0x216, 0xE001) // now execution really jumps over the loaded word to 0x21C
+        assertEquals(3, names().size)
+        op(0x210, 0); op(0x216, 0); op(0x218, 0)
+        op(0x220, 0x4D18); op(0x224, 0x1949) // root load overwrites the bounded index register
+        assertTrue(names().isEmpty())
+        op(0x220, 0x4818); op(0x224, 0x1809)
+        bytes[0x810] = 0xBB.toByte(); bytes[0x811] = 0xBC.toByte(); bytes[0x812] = 0xBD.toByte()
+        assertEquals(setOf(7, 9), names().keys) // wrong-language row leaves other numeric sections alone
+        assertEquals(setOf(0, 2), joinedNames().keys)
+        op(0x20C, 0xD800) // bound no longer protects lookup
+        assertTrue(names().isEmpty())
+        assertTrue(joinedNames().isEmpty())
+        op(0x20C, 0xD818)
+        consumer(0x300, 0x620)
+        repeat(3) { putPointer(bytes, 0x620 + it * 4, 0x800) }
+        assertTrue(names().isEmpty())
+        assertTrue(joinedNames().isEmpty())
+    }
+
+    @Test
     fun resolvesEveryMapNameFromTheEncounterProvenMapGroupsAndRegionTable() {
         val bytes = ByteArray(0x1000)
         putPointer(bytes, 0x20C, 0x200)

@@ -34,6 +34,16 @@ object AbilityDescriptionMaterializer {
         if (pointerTableBytes > rom.size.toLong() || nameStride <= 0 ||
             names.offset.toLong() + names.count.toLong() * nameStride > rom.size.toLong()
         ) return null
+        val inlineRoot = names.offset.toLong() + names.count.toLong() * nameStride
+        val inlineCandidates = layout.compiledGbaReferences?.takeUnless { it.overflowed }?.siteEvidence?.let { index ->
+            com.enrpau.dualscreendex.parser.parse.compiledInlineAbilityTexts(rom, index, cancellation)
+                .filter { it.offset.toLong() == inlineRoot }
+        }.orEmpty()
+        if (inlineCandidates.isNotEmpty()) {
+            val inline = inlineCandidates.singleOrNull() ?: return null
+            val decoded = inline.decode(rom, names.count, codec, cancellation) ?: return null
+            return AbilityDescriptionResult(inline.offset, 1.0, decoded)
+        }
         val embeddedDescription = layout.pokeemeraldExpansion?.let { expansion ->
             expansion.abilityRecordSize to expansion.abilityDescriptionPointerOffset
         } ?: layout.headerlessUnifiedSpecies?.abilities?.let { abilities ->

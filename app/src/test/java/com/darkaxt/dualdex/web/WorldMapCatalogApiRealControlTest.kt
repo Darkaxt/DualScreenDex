@@ -4,6 +4,9 @@ import com.darkaxt.dualdex.catalog.CatalogCache
 import com.darkaxt.dualdex.catalog.CatalogDatabase
 import com.darkaxt.dualdex.catalog.CatalogDatabaseFactory
 import com.darkaxt.dualdex.catalog.CatalogRow
+import com.darkaxt.dualdex.catalog.CatalogSchema
+import com.enrpau.dualscreendex.parser.catalog.TypeSemanticRole
+import com.enrpau.dualscreendex.parser.model.SelectionStatus
 import com.darkaxt.dualdex.catalog.CatalogSourceMetadata
 import com.darkaxt.dualdex.catalog.CatalogWriteProgress
 import com.enrpau.dualscreendex.parser.catalog.AbilityMechanicKind
@@ -187,6 +190,235 @@ class WorldMapCatalogApiRealControlTest {
             }
         } finally {
             deleteTree(root)
+        }
+    }
+
+    // Separate JUnit cases deliberately attempt all nine exact inputs even when an earlier cell is red.
+    @Test fun nativeOfficialJapaneseRedBlue() = assertNativeRoundTrip(nativeControls[0])
+    @Test fun nativeOfficialJapaneseYellow() = assertNativeRoundTrip(nativeControls[1])
+    @Test fun nativeOfficialJapaneseGoldSilver() = assertNativeRoundTrip(nativeControls[2])
+    @Test fun nativeOfficialJapaneseCrystal() = assertNativeRoundTrip(nativeControls[3])
+    @Test fun nativeOfficialJapaneseRubySapphire() = assertNativeRoundTrip(nativeControls[4])
+    @Test fun nativeOfficialJapaneseEmerald() = assertNativeRoundTrip(nativeControls[5])
+    @Test fun nativeOfficialJapaneseFireRedLeafGreen() = assertNativeRoundTrip(nativeControls[6])
+    @Test fun nativeOfficialKoreanGold() = assertNativeRoundTrip(nativeControls[7])
+    @Test fun nativeOfficialKoreanSilver() = assertNativeRoundTrip(nativeControls[8])
+
+    private fun assertNativeRoundTrip(control: NativeControl) {
+        val configured = System.getenv("DUALDEX_NATIVE_CONTROLS")
+        assumeTrue("set DUALDEX_NATIVE_CONTROLS for the nine exact native controls", !configured.isNullOrBlank())
+        val checks = NativeChecks(control)
+        try {
+            val rom = checks.attempt("input.sha256") {
+                val directory = Path.of(requireNotNull(configured)).resolve(control.folder)
+                val path = Files.list(directory).use { paths ->
+                    paths.filter { Files.isRegularFile(it) }.toList().single()
+                }
+                RomImage(Files.readAllBytes(path)).also { assertEquals(control.sha256, it.sha256) }
+            } ?: return
+            val attempt = checks.attempt("parse") { CatalogParser.parseCatching(rom) } ?: return
+            checks.attempt("selection") {
+                assertEquals(SelectionStatus.SELECTED, attempt.analysis.status)
+                assertEquals(control.family, attempt.analysis.selectedFamily)
+            }
+            val catalog = checks.attempt("materialize") { requireNotNull(attempt.catalog).getOrThrow() } ?: return
+            val language = if (control.folder.startsWith("ja/")) LanguageTag.JAPANESE else LanguageTag.KOREAN
+            checks.attempt("authority.exact-overlay") {
+                assertEquals(control.family, catalog.family)
+                assertEquals(LanguageResolutionStatus.RESOLVED, catalog.languageManifest.status)
+                assertEquals(language, catalog.languageManifest.defaultLanguage)
+                val projection = catalog.languageManifest.projections.single()
+                assertEquals(language, projection.language)
+                assertEquals(control.codecId, projection.codecId)
+                assertEquals(1, projection.codecVersion)
+                assertEquals(LanguageResolutionStatus.RESOLVED, projection.status)
+                assertEquals(setOf(language), catalog.localization.overlays.keys)
+                assertTrue(catalog.localizedText(LanguageTag.ENGLISH) == null)
+            }
+            val overlay = catalog.localizedText(language)
+            val text = catalog.defaultTextProjection()
+            // Gen III dexNumber can be regional: source SPECIES_BULBASAUR and the compiled name row are 1.
+            // Selecting dexNumber == 1 there would test Treecko, not the independently pinned Bulbasaur sample.
+            val bulbasaur = if (control.generation == 3) catalog.speciesById[1]
+                else catalog.speciesById.values.singleOrNull { it.dexNumber.value == 1 }
+            val speciesId = bulbasaur?.id
+            println("NATIVE_E2E_COUNTS ${control.folder} species=${catalog.speciesById.size} moves=${catalog.movesById.size} " +
+                "types=${catalog.typesById.size} semanticTypes=${catalog.typesById.values.count { it.semanticRole.value != null }} " +
+                "worldLocations=${catalog.worldMaps.regions.sumOf { it.locations.size }} localMaps=${catalog.localMaps.maps.size}")
+            checks.attempt("capabilities.inventory") {
+                assertEquals(15, LocalizedTextCapability.entries.size)
+                assertEquals(LocalizedTextCapability.entries.toSet(), requireNotNull(overlay).localizedCapabilities.keys)
+            }
+            LocalizedTextCapability.entries.forEach { capability ->
+                val state = overlay?.localizedCapabilities?.get(capability)
+                println("NATIVE_E2E_CAPABILITY ${control.folder} $capability ${state?.status} ${state?.coveredRecords}/${state?.expectedRecords}")
+                checks.attempt("capability.$capability") {
+                    requireNotNull(state)
+                    assertTrue(state.coveredRecords in 0..state.expectedRecords)
+                    if (state.status in setOf(CapabilityStatus.NOT_FOUND, CapabilityStatus.NOT_APPLICABLE, CapabilityStatus.AMBIGUOUS)) {
+                        assertEquals(0, state.coveredRecords)
+                    }
+                    if (control.generation == 1 && capability == LocalizedTextCapability.MOVE_DESCRIPTIONS ||
+                        control.generation < 3 && capability in setOf(LocalizedTextCapability.ABILITY_NAMES, LocalizedTextCapability.ABILITY_DESCRIPTIONS)) {
+                        assertEquals(CapabilityStatus.NOT_APPLICABLE, state.status)
+                    }
+                }
+            }
+            checks.attempt("sample.species-name") { assertEquals(control.speciesName, text.speciesName(requireNotNull(speciesId))) }
+            checks.attempt("sample.move-name") { assertEquals(control.moveName, text.moveName(1)) }
+            checks.attempt("LNG-B002.sample.species-description") {
+                assertTrue(requireNotNull(text.speciesDescription(requireNotNull(speciesId))).contains(control.dexFragment))
+            }
+            if (control.generation >= 2) checks.attempt("LNG-B002.move-description") {
+                assertTrue(!text.moveDescription(1).isNullOrBlank())
+                if (language == LanguageTag.KOREAN) assertTrue(requireNotNull(text.moveDescription(1)).contains("손과 꼬리 등을 사용해서"))
+            }
+            if (control.generation == 3) {
+                checks.attempt("LNG-B002.sample.species-dimensions") {
+                    // Independently decoded native row 1 dimensions; regional row 203 is 15/415.
+                    assertEquals(7, requireNotNull(bulbasaur).height.value)
+                    assertEquals(69, bulbasaur.weight.value)
+                }
+                checks.attempt("LNG-B002.ability-description") {
+                    val abilityIds = requireNotNull(bulbasaur).abilityIds.value.orEmpty().filter { it > 0 }
+                    assertTrue(abilityIds.isNotEmpty())
+                    assertTrue(abilityIds.all { !text.abilityName(it).isNullOrBlank() && !text.abilityDescription(it).isNullOrBlank() })
+                    assertEquals("しんりょく", text.abilityName(65))
+                    assertEquals("ピンチに くさの いりょくが あがる", text.abilityDescription(65))
+                }
+            }
+            checks.attempt("LNG-D005.complete-type-semantics") {
+                assertEquals(if (control.generation == 1) 15 else 18, catalog.typesById.size)
+                assertTrue(catalog.typesById.values.all { it.semanticRole.status == CapabilityStatus.AVAILABLE && !text.typeName(it.id).isNullOrBlank() })
+                // Resolve IDs from independently expected labels, never from presumed numeric type order.
+                control.typeSamples.forEach { (name, role) ->
+                    val type = catalog.typesById.values.single { text.typeName(it.id) == name }
+                    assertEquals(role, type.semanticRole.value)
+                }
+            }
+            checks.attempt("LNG-B002.sample.world-location") {
+                assertTrue(requireNotNull(overlay).worldLocationNames.values.any { it.value == control.worldLocationName })
+            }
+            checks.attempt("LNG-B002.sample.local-location") {
+                assertTrue(requireNotNull(overlay).localMapNames.values.any { it.value == control.locationName })
+            }
+            checks.attempt("isolation.shared-text") {
+                assertTrue(catalog.speciesById.values.all { it.name.value == null && it.description.value == null })
+                assertTrue(catalog.movesById.values.all { it.name.value == null && it.effectText.value == null })
+                assertTrue(catalog.typesById.values.all { it.name.value == null })
+                assertTrue(catalog.abilitiesById.values.all { it.name.value == null && it.description.value == null })
+                assertTrue(catalog.localMaps.maps.all { it.displayName == null })
+                assertTrue(catalog.worldMaps.regions.all { region -> region.locations.all { it.displayName == null } })
+            }
+
+            // This opt-in diagnostic retains its private SQLite artifacts; it never copies a ROM to the repository.
+            val cache = checks.attempt("sqlite.create") { CatalogCache(newRoot().toFile(), JdbcTestCatalogDatabaseFactory) } ?: return
+            checks.attempt("sqlite.write-close") {
+                cache.write(catalog, CatalogSourceMetadata.direct("native-control", rom.size, "NATIVE-CONTROL"), CatalogWriteProgress.complete())
+            } ?: return
+            // CatalogCache opens and closes a JDBC connection for each operation; this is not an in-memory round trip.
+            val stored = checks.attempt("sqlite.reopen-close") { requireNotNull(cache.readComplete(rom.sha256)) } ?: return
+            val reopened = stored.catalog
+            checks.attempt("sqlite.whole-catalog-equality") { assertTrue("whole catalog differs", catalog == reopened) }
+            checks.attempt("sqlite.sections") {
+                assertEquals(CatalogSchema.requiredSections + "language_overlay:${language.value}", stored.committedSections)
+            }
+            checks.attempt("sqlite.integrity") { assertDatabaseIntegrity(cache.fileFor(rom.sha256)) }
+            checks.attempt("api.cache-bootstrap") {
+                val parserInvocations = AtomicInteger()
+                val completion = AtomicReference<Result<Unit>?>()
+                val completed = CountDownLatch(1)
+                ProductionCompanionRuntime(
+                    catalogRepository = cache,
+                    parseCatalogWithCancellation = { _, _, _, _ ->
+                        parserInvocations.incrementAndGet()
+                        error("native cache bootstrap must not reparse")
+                    },
+                ).use { runtime ->
+                    runtime.load(LoadedRom("native-control", rom)) { result ->
+                        completion.set(result)
+                        completed.countDown()
+                    }
+                    assertTrue("native cache reopen timed out", completed.await(30, TimeUnit.SECONDS))
+                    requireNotNull(completion.get()).getOrThrow()
+                    val bootstrap = runtime.bootstrap()
+                    checks.attempt("api.authority") {
+                        assertEquals(0, parserInvocations.get())
+                        assertTrue(bootstrap.state.catalogReady)
+                        assertEquals("CACHE_REOPEN", bootstrap.state.loading.phase)
+                        assertEquals(rom.sha256, bootstrap.catalog?.hash)
+                        assertEquals("ROM_DEFAULT", bootstrap.language?.authority)
+                        assertEquals(language.value, bootstrap.language?.defaultLanguage)
+                        assertEquals(language.value, bootstrap.language?.activeLanguage)
+                        assertEquals(overlay?.overlayVersion, bootstrap.language?.activeOverlayVersion)
+                        assertEquals(listOf(language.value), bootstrap.language?.projections?.map { it.language })
+                    }
+                    val api = requireNotNull(bootstrap.catalog)
+                    checks.attempt("api.sample.species") {
+                        val species = api.species.single { it.id == speciesId }
+                        assertEquals(control.speciesName, species.name)
+                        assertTrue(requireNotNull(species.description).contains(control.dexFragment))
+                        assertEquals(reopened.defaultTextProjection().speciesDescription(requireNotNull(speciesId)), species.description)
+                        if (control.generation == 3) {
+                            assertEquals(7, species.height)
+                            assertEquals(69, species.weight)
+                            val ability = species.abilities.single { it.id == 65 }
+                            assertEquals("しんりょく", ability.name)
+                            assertEquals("ピンチに くさの いりょくが あがる", ability.description)
+                        }
+                    }
+                    checks.attempt("api.sample.move") {
+                        val move = api.moves.single { it.id == 1 }
+                        assertEquals(control.moveName, move.name)
+                        assertEquals(reopened.defaultTextProjection().moveDescription(1), move.description)
+                        if (control.generation >= 2) assertTrue(!move.description.isNullOrBlank())
+                    }
+                    checks.attempt("api.sample.types") {
+                        control.typeSamples.keys.forEach { name -> assertTrue(api.types.any { it.name == name }) }
+                    }
+                    checks.attempt("api.LNG-B002.sample.world-location") {
+                        assertTrue(api.worldMaps.flatMap { it.locations }.any { it.displayName == control.worldLocationName })
+                    }
+                    checks.attempt("api.LNG-B002.sample.local-location") {
+                        assertTrue(api.localMaps.any { it.displayName == control.locationName })
+                    }
+                    checks.attempt("api.capabilities") {
+                        val summary = requireNotNull(bootstrap.language).projections.single().localizedCapabilities
+                        assertEquals(LocalizedTextCapability.entries.map { it.name }.toSet(), summary.keys)
+                        requireNotNull(overlay).localizedCapabilities.forEach { (capability, state) ->
+                            assertEquals(state.status.name, summary.getValue(capability.name).status)
+                            assertEquals(state.coveredRecords, summary.getValue(capability.name).coveredRecords)
+                            assertEquals(state.expectedRecords, summary.getValue(capability.name).expectedRecords)
+                        }
+                    }
+                    // Equality checks every projected optional field, including unavailable text, against the reopened catalog.
+                    checks.attempt("api.reopened-projection-parity") {
+                        assertTrue(api == com.enrpau.dualscreendex.companion.api.ApiViewBuilder.catalog(reopened))
+                    }
+                }
+            }
+        } finally {
+            checks.finish()
+        }
+    }
+
+    private class NativeChecks(private val control: NativeControl) {
+        private val passed = mutableListOf<String>()
+        private val failed = mutableListOf<String>()
+        fun <T> attempt(boundary: String, block: () -> T): T? = try {
+            block().also { passed += boundary }
+        } catch (failure: AssertionError) {
+            failed += "$boundary:${failure.javaClass.simpleName}"
+            null
+        } catch (failure: Exception) {
+            failed += "$boundary:${failure.javaClass.simpleName}"
+            null
+        }
+        fun finish() {
+            // Only public control labels, hashes, statuses and boundary names: never paths, payloads or exception messages.
+            println("NATIVE_E2E_RESULT ${control.folder} sha256=${control.sha256} passed=${passed.joinToString(",")} failed=${failed.joinToString(",")} " +
+                "forecast=LNG-D005_NOT_RUN")
+            assertTrue("${control.folder}: ${failed.joinToString(",")}", failed.isEmpty())
         }
     }
 
@@ -550,7 +782,70 @@ class WorldMapCatalogApiRealControlTest {
 
     private data class ThemeControl(val environmentVariable: String, val romSha256: String)
 
+    private data class NativeControl(
+        val folder: String,
+        val sha256: String,
+        val family: EngineFamily,
+        val codecId: String,
+        val generation: Int,
+        val dexFragment: String,
+        val locationName: String,
+    ) {
+        // Gen I World is an encounter-point domain: the town sample belongs to Local, not World.
+        val worldLocationName = if (generation == 1) "トキワのもり" else locationName
+        val speciesName = if (folder.startsWith("ko/")) "이상해씨" else "フシギダネ"
+        val moveName = if (folder.startsWith("ko/")) "막치기" else "はたく"
+        val typeSamples = if (folder.startsWith("ko/")) mapOf(
+            "노말" to TypeSemanticRole.NORMAL, "화염" to TypeSemanticRole.FIRE, "물" to TypeSemanticRole.WATER,
+        ) else mapOf(
+            "ノーマル" to TypeSemanticRole.NORMAL, "ほのお" to TypeSemanticRole.FIRE, "みず" to TypeSemanticRole.WATER,
+        )
+    }
+
     private companion object {
+        // Exact inputs match NativeOfficialLanguageLiveRomTest; hashes are test identities, never production routing.
+        // Independent text oracles (not the production parser's output):
+        // https://github.com/Narishma-gb/pokeyellow-jp/tree/f282e72ae26232790fdb780aa5a5db7ec8ebf572
+        //   data/{pokemon/names,pokemon/dex_entries,moves/names,types/names,maps/names}.asm
+        // https://github.com/Narishma-gb/pokegold-kr/tree/7743877dc9fa8603f4b6eaebe904a7ba03fdb9e4
+        //   data/{pokemon/names,moves/names,moves/descriptions,types/names,maps/landmarks}.asm
+        //   data/pokemon/dex_entries/{gold,silver}/bulbasaur.asm (distinct descriptions).
+        // JA compiled-control snippets were independently decoded with pinned public charmaps, without parser imports:
+        // https://github.com/luckytyphlosion/pokered-jp/blob/258d1a89ec49a2a0ccfbdd232ac0e5d96d00899a/charmap.asm
+        // https://github.com/scr-trees/pokegold_jpcrystalvc/blob/f2b5db1deb0b8f2009d7e9d50b3bcb05ef8a9f53/charmap.asm
+        // https://github.com/pret/pokeruby/blob/63a8cbf0016b351a4e68f7036fa0b77e23d2f2c1/charmap.txt
+        // https://github.com/pret/pokeruby/blob/63a8cbf0016b351a4e68f7036fa0b77e23d2f2c1/include/constants/species.h
+        //   SPECIES_BULBASAUR = 1, independently corroborated in all three six-byte compiled name tables.
+        // Bulbasaur description starts: RB 0x421a2; Yellow 0x4061f; Gold 0x443e7; Crystal 0x44403;
+        // Ruby 0x37db9c; Emerald 0x539c70; FireRed 0x404f1c. These are evidence metadata, never lookup code.
+        // Native row 1 height/weight = 7/69 at roots Ruby 0x38474c, Emerald 0x54069c, FireRed 0x409c00.
+        // Native ability row 65 independently decoded from paired 8-byte names / 19-byte prose tables:
+        // Ruby 0x1cbc44/0x1cbeb4; Emerald 0x2ebdc4/0x2ec034; FireRed 0x207a8c/0x207cfc.
+        // Gen II charmap checkout's English game text is NOT used as a Japanese description oracle.
+        // Location labels: Gen I source names; JA Gen II compiled landmark names at 0x92632/0x926d7;
+        // JA Gen III compiled names at Ruby 0x3becb0/Emerald 0x57c6e0 (and FireRed's native map-name table).
+        // Applicable native town/description absence is LNG-B002, not waived by historical Western NOT_FOUND.
+        // This gate does not close LNG-D005 official parse-to-forecast evidence (synthetic battle/formula seam remains separate).
+        val nativeControls = listOf(
+            NativeControl("ja/RED_BLUE", "3f0dc460ca8d06be1c9ac96307c939c0ea7baa366b40c2f1f4ad63242b6c4816", EngineFamily.RED_BLUE,
+                "gb-gen1-ja-red-blue", 1, "うまれたときから", "マサラ"),
+            NativeControl("ja/YELLOW", "1349408f328f633b33e059e654edabd19810530df9c883eda03a85d5bb10161a", EngineFamily.YELLOW,
+                "gb-gen1-ja-yellow", 1, "なんにちだって", "マサラ"),
+            NativeControl("ja/GOLD_SILVER", "27a07a1d3faf9c6a0b1b60d5e88ee3a4159a751a47b4c46ab09f1202d52bac3e", EngineFamily.GOLD_SILVER,
+                "gb-gen2-ja", 2, "たっぷり。たねは", "ワカバタウン"),
+            NativeControl("ja/CRYSTAL", "136ada06cb68656b7de475fa4b278d37dbeff8f5257e7dfdf7f4a4aec19a90f3", EngineFamily.CRYSTAL,
+                "gb-gen2-ja", 2, "うまれて しばらく", "ワカバタウン"),
+            NativeControl("ja/RUBY_SAPPHIRE", "a7ea012b67a27da2893bfdfcb5f64915607b26904b4fc635a1055e8e40e692ab", EngineFamily.RUBY_SAPPHIRE,
+                "gba-gen3-ja-ruby-sapphire", 3, "ひなたで ひるねを", "ミシロタウン"),
+            NativeControl("ja/EMERALD", "33f5610b9186b4add09fef68895deb00f552b997b3d133b5a961e5123506343c", EngineFamily.EMERALD,
+                "gba-gen3-ja-emerald-frlg", 3, "ひなたで ひるねを", "ミシロタウン"),
+            NativeControl("ja/FIRERED_LEAFGREEN", "cec5fc4dbe38cd8026bd6664a1a041d9dc91e8d4249bab04e7bde70c3cdf4e06", EngineFamily.FIRERED_LEAFGREEN,
+                "gba-gen3-ja-emerald-frlg", 3, "うまれたときから", "マサラタウン"),
+            NativeControl("ko/GOLD", "9c273e86e6120c6a038160ccb0153b8b20425b84fc08a496281c1d1bcac492f6", EngineFamily.GOLD_SILVER,
+                "gb-gen2-ko", 2, "등의 씨앗 안에는", "연두마을"),
+            NativeControl("ko/SILVER", "ebbac63c0c4309c82dbb6723e7163369784f962b4fd3e2f486075307c3008a22", EngineFamily.GOLD_SILVER,
+                "gb-gen2-ko", 2, "태어날 때부터 등에 씨앗을", "연두마을"),
+        )
         val themeControls = listOf(
             ThemeControl("DUALDEX_POKERED_ROM", "5ca7ba01642a3b27b0cc0b5349b52792795b62d3ed977e98a09390659af96b7b"),
             ThemeControl("DUALDEX_POKECRYSTAL_ROM", "fdcc3c8c43813cf8731fc037d2a6d191bac75439c34b24ba1c27526e6acdc8a2"),

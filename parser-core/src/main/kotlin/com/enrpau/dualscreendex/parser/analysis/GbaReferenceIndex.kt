@@ -75,6 +75,7 @@ class GbaReferenceIndex private constructor(
     internal fun asLegacyCounts(): GbaCompiledReferenceIndex = GbaCompiledReferenceIndex(
         counts = counts,
         overflowReason = overflowReason,
+        siteEvidence = this,
     )
 
     companion object {

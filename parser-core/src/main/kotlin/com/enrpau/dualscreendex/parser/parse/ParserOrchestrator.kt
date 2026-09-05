@@ -189,7 +189,7 @@ object ParserOrchestrator {
             select(probes)
         }
         val capabilities = applySpeciesSemanticDomain(
-            rom,
+            session,
             selection.winner?.resolvedLayout,
             resolveCapabilities(selection, probes),
         )
@@ -225,14 +225,22 @@ object ParserOrchestrator {
     )
 
     internal fun applySpeciesSemanticDomain(
+        session: RomAnalysisSession,
+        layout: ResolvedRomLayout?,
+        capabilities: List<CapabilityEvidence>,
+    ): List<CapabilityEvidence> = applySpeciesSemanticDomain(session.rom, layout, capabilities, session.cancellation)
+
+    internal fun applySpeciesSemanticDomain(
         rom: RomImage,
         layout: com.enrpau.dualscreendex.parser.model.ResolvedRomLayout?,
         capabilities: List<CapabilityEvidence>,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
     ): List<CapabilityEvidence> {
+        cancellation.throwIfCancellationRequested()
         if (layout?.generation != 3 || layout.tables.speciesNames == null || layout.tables.baseStats == null) {
             return capabilities
         }
-        val domain = when (val resolution = SpeciesSemanticDomainResolver.resolveWithEvidence(rom, layout)) {
+        val domain = when (val resolution = SpeciesSemanticDomainResolver.resolveWithEvidence(rom, layout, cancellation)) {
             is SpeciesSemanticDomainResolution.Resolved -> resolution.domain
             is SpeciesSemanticDomainResolution.Unavailable -> {
                 return speciesIndexUnavailableCapabilities(
@@ -285,8 +293,10 @@ object ParserOrchestrator {
                 domain.source == SpeciesSemanticDomainSource.PUBLISHED_POKEDEX_COUNT -> {
                 byCapability[RomCapability.POKEDEX_DESCRIPTIONS]?.toValidationEvidence()?.let { evidence ->
                     val byDex = layout.resolvedDatasets.descriptions?.catalogDescriptions().orEmpty()
-                    val coveredSpeciesIds = RecordMaterializers.species(rom, layout).values
-                        .filter { species -> species.dexNumber.value in byDex }
+                    val materialization = RecordMaterializers.speciesWithIndexResolution(rom, layout, cancellation)
+                    val descriptionRows = materialization.indexResolution.descriptionRows
+                    val coveredSpeciesIds = materialization.records.values
+                        .filter { species -> descriptionRows[species.id] in byDex }
                         .mapTo(linkedSetOf()) { it.id }
                     domain.applyToDescriptions(evidence, coveredSpeciesIds)
                 }
