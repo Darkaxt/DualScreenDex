@@ -165,6 +165,15 @@ class ResolvedDatasetLayouts(
     }
 }
 
+/** Original published-block outcome only; a nominated pointer is not item-name role authority. */
+sealed interface GbaItemRootNomination {
+    data object Absent : GbaItemRootNomination
+    data object Ambiguous : GbaItemRootNomination
+    data class Nominated(val offset: Int) : GbaItemRootNomination {
+        init { require(offset >= 0) }
+    }
+}
+
 data class ResolvedRomLayout(
     val family: EngineFamily,
     val generation: Int,
@@ -180,6 +189,7 @@ data class ResolvedRomLayout(
     val learnsetSelector: Gen3LearnsetSelectorEvidence? = null,
     val resolvedDatasets: ResolvedDatasetLayouts = ResolvedDatasetLayouts(),
     val languageManifest: RomLanguageManifest = RomLanguageManifest.UNKNOWN,
+    val itemRootNomination: GbaItemRootNomination = GbaItemRootNomination.Absent,
 )
 
 /** Compiled-authorized expanded capture-ball tables and their ROM-native item relationship. */

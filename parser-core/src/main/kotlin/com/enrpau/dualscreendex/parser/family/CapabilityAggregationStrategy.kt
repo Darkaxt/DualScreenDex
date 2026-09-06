@@ -118,6 +118,7 @@ internal class CapabilityAggregationStrategy : FamilyProbePhaseStrategy {
                     speciesCount = core.speciesCount,
                     moveCount = core.moveCount,
                     tables = resolvedTables,
+                    itemRootNomination = identity.tableResolution.itemRootNomination,
                     pokeemeraldExpansion = expansion?.metadata,
                     headerlessUnifiedSpecies = identity.headerlessUnifiedSpecies?.metadata,
                     expandedSplitCaptureBalls = identity.expandedSplitCaptureBalls,

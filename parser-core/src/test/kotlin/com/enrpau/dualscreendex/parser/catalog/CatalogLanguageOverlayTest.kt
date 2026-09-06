@@ -18,6 +18,22 @@ import org.junit.Test
 
 class CatalogLanguageOverlayTest {
     @Test
+    fun resolvedSecondaryProjectionNeverBorrowsOrdinaryItemNames() {
+        val extraction = CatalogLocalizedTextExtractor.extract(
+            manifest = resolvedManifest(), speciesById = emptyMap(), movesById = emptyMap(),
+            abilitiesById = emptyMap(), naturesById = emptyMap(), capabilities = emptyMap(),
+            captureBallsById = mapOf(4 to CaptureBallRecord(4, CatalogField.available("native ball"), CatalogField.notFound("sprite"))),
+        )
+        val english = requireNotNull(extraction.localization.overlay(LanguageTag.ENGLISH))
+        val french = requireNotNull(extraction.localization.overlay(LanguageTag.FRENCH))
+        assertEquals("native ball", english.itemNames.getValue(4).value)
+        assertEquals(emptyMap<Int, CatalogField<String>>(), french.itemNames)
+        assertEquals(CapabilityStatus.NOT_FOUND, french.localizedCapabilities.getValue(LocalizedTextCapability.ITEM_NAMES).status)
+        assertEquals(1, french.localizedCapabilities.getValue(LocalizedTextCapability.ITEM_NAMES).expectedRecords)
+        assertNull(extraction.captureBallsById.getValue(4).name.value)
+    }
+
+    @Test
     fun snapshotsLocalizedTextAndNeverFallsBackAcrossLanguages() {
         val englishNames = linkedMapOf(1 to CatalogField.available("Bulbasaur"))
         val english = overlay(LanguageTag.ENGLISH, 11, englishNames)

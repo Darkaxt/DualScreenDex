@@ -12,6 +12,23 @@ import org.junit.Test
 
 class GbaPublishedHeaderResolverTest {
     @Test
+    fun itemNominationUsesSameSharedSelectionAndNeverBreaksAnAmbiguousTie() {
+        for (start in listOf(0x1AC, 0x1B4, 0x1BC)) {
+            val bytes = ByteArray(0x20000)
+            repeat(7) { writePointer(bytes, start + it * 4, 0x8000 + it * 0x1000) }
+            val rom = RomImage(bytes)
+            val original = GbaPublishedHeaderResolver.resolve(rom, PokemonTextCodec.gbaEnglish)
+            assertEquals(0xB000, original.itemRoot)
+        }
+        val bytes = ByteArray(0x20000)
+        repeat(11) { writePointer(bytes, 0x1AC + it * 4, 0x8000 + it * 0x1000) }
+        encodeGbaName(bytes, 0xB000, "READABLE")
+        val original = GbaPublishedHeaderResolver.resolve(RomImage(bytes), PokemonTextCodec.gbaEnglish)
+        assertEquals(GbaPublishedDataState.AMBIGUOUS, original.publishedDataState)
+        assertNull(original.itemRoot)
+    }
+
+    @Test
     fun resolvesPublishedPokedexCountOnlyWithTheFixedHeaderPointerRoles() {
         val bytes = ByteArray(0x30000)
         writePointer(bytes, 0x128, 0x8000)
@@ -111,6 +128,7 @@ class GbaPublishedHeaderResolverTest {
 
         assertEquals(stats, resolved.baseStats)
         assertEquals(moves, resolved.moveData)
+        assertEquals(0x12000, resolved.itemRoot)
     }
 
     @Test

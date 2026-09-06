@@ -244,6 +244,7 @@ object CatalogParser {
                     resolveMoveDescriptions = context.resolveMoveDescriptions,
                     resolveAbilityMechanics = context.resolveAbilityMechanics,
                     resolveNatures = context.resolveNatures,
+                    resolveItemNames = context.resolveItemNames,
                     cancellation = cancellation,
                 )
             },
@@ -264,6 +265,7 @@ object CatalogMaterializer {
         resolveMoveDescriptions: ((ResolvedRomLayout) -> MoveDescriptionResult?)? = null,
         resolveAbilityMechanics: ((ResolvedRomLayout, Map<Int, AbilityRecord>, Map<Int, TypeRecord>, AbilityDescriptionResult?) -> AbilityMechanicsResult?)? = null,
         resolveNatures: ((ResolvedRomLayout) -> NatureResolution)? = null,
+        resolveItemNames: ((ResolvedRomLayout, Set<Int>) -> Map<Int, CatalogField<String>>)? = null,
         cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
         materializeTheme: ((Map<CatalogThemeAssetClass, List<RgbaSprite>>, List<DirectCatalogThemePalette>) -> CatalogTheme) =
             RomThemeMaterializer::materialize,
@@ -904,6 +906,10 @@ object CatalogMaterializer {
         }.getOrElse { CatalogTheme.neutral() }
         cancellation.throwIfCancellationRequested()
         beginWork(CatalogWorkModule.CATALOG_STORAGE)
+        val referencedItemIds = balls.keys + localMaps.pois.mapNotNull { it.item?.itemId }
+        val itemNames = resolveItemNames?.invoke(layout, referencedItemIds).orEmpty()
+        cancellation.throwIfCancellationRequested()
+        val namedItems = ItemNameMaterializer.join(itemNames, balls, localMaps)
         val finalText = CatalogLocalizedTextExtractor.extract(
             manifest = layout.languageManifest,
             speciesById = species,
@@ -912,10 +918,10 @@ object CatalogMaterializer {
             abilitiesById = enrichedAbilities,
             naturesById = natures,
             encounterAreas = encounters,
-            captureBallsById = balls,
+            captureBallsById = namedItems.balls,
             runtimeMetadata = finalRuntimeMetadata,
             worldMaps = worldMaps,
-            localMaps = localMaps,
+            localMaps = namedItems.localMaps,
             capabilities = capabilities,
         )
         val catalog = ParsedCatalog(

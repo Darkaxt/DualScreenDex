@@ -33,6 +33,8 @@ import com.enrpau.dualscreendex.parser.model.RomProfile
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.SelectionStatus
 import com.enrpau.dualscreendex.parser.profile.KnownProfiles
+import com.enrpau.dualscreendex.parser.catalog.CatalogField
+import com.enrpau.dualscreendex.parser.catalog.ItemNameMaterializer
 import com.enrpau.dualscreendex.parser.sprite.SpriteMaterializer
 
 internal data class CatalogAnalysisContext(
@@ -43,6 +45,7 @@ internal data class CatalogAnalysisContext(
     val resolveLocalMaps: (ResolvedRomLayout, Set<Int>) -> LocalMapResolution,
     val resolveAbilityMechanics: (ResolvedRomLayout, Map<Int, AbilityRecord>, Map<Int, TypeRecord>, AbilityDescriptionResult?) -> AbilityMechanicsResult?,
     val resolveNatures: (ResolvedRomLayout) -> NatureResolution,
+    val resolveItemNames: (ResolvedRomLayout, Set<Int>) -> Map<Int, CatalogField<String>>,
 )
 
 object ParserOrchestrator {
@@ -70,8 +73,10 @@ object ParserOrchestrator {
             newSession(analyzedRom, header, exactProfile, cancellation).also { sharedSession = it }
         }
         cancellation.throwIfCancellationRequested()
+        val itemNames = ItemNameMaterializer(sharedSession)
         return CatalogAnalysisContext(
             analysis = analysis,
+            resolveItemNames = itemNames::materialize,
             resolveMoveDescriptions = { layout ->
                 sharedSession.cancellation.throwIfCancellationRequested()
                 MoveDescriptionMaterializer.materialize(

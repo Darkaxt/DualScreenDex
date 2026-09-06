@@ -10,6 +10,7 @@ import com.enrpau.dualscreendex.parser.parse.Gen3CompiledNameGeometryResolver
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.ExpandedSplitCaptureBallMetadata
 import com.enrpau.dualscreendex.parser.model.GbaCompiledReferenceIndex
+import com.enrpau.dualscreendex.parser.model.GbaItemRootNomination
 import com.enrpau.dualscreendex.parser.model.ParserProbe
 import com.enrpau.dualscreendex.parser.model.ProfileTables
 import com.enrpau.dualscreendex.parser.model.RomHeader
@@ -464,6 +465,12 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
                     13,
                 ),
             ),
+            itemRootNomination = when (headerPointers.publishedDataState) {
+                GbaPublishedDataState.ABSENT -> GbaItemRootNomination.Absent
+                GbaPublishedDataState.AMBIGUOUS -> GbaItemRootNomination.Ambiguous
+                GbaPublishedDataState.RESOLVED -> headerPointers.itemRoot?.let(GbaItemRootNomination::Nominated)
+                    ?: GbaItemRootNomination.Absent
+            },
             publishedDataEvidence = headerPointers.publishedDataEvidence,
             publishedBaseStatsRoot = headerPointers.baseStats.takeIf {
                 headerPointers.publishedDataState == GbaPublishedDataState.RESOLVED
@@ -511,6 +518,7 @@ internal data class ProfileTableResolution(
     val tables: ProfileTables,
     val publishedDataEvidence: ValidationEvidence? = null,
     val publishedBaseStatsRoot: Int? = null,
+    val itemRootNomination: GbaItemRootNomination = GbaItemRootNomination.Absent,
 )
 
 private fun FamilyProfileBasis.immutableCopy(): FamilyProfileBasis = copy(tables = tables.immutableCopy())

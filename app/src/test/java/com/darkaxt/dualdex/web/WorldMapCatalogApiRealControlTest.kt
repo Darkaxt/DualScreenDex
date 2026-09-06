@@ -201,7 +201,7 @@ class WorldMapCatalogApiRealControlTest {
     @Test fun nativeOfficialJapaneseGoldSilver() = assertNativeRoundTrip(nativeControls[2])
     @Test fun nativeOfficialJapaneseCrystal() = assertNativeRoundTrip(nativeControls[3])
     @Test fun nativeOfficialJapaneseRubySapphire() = assertNativeRoundTrip(nativeControls[4])
-    @Test fun nativeOfficialJapaneseEmerald() = assertNativeRoundTrip(nativeControls[5])
+    @Test fun nativeOfficialJapaneseEmerald() = assertNativeRoundTrip(nativeControls[5], requireItemNames = true)
     @Test fun nativeOfficialJapaneseFireRedLeafGreen() = assertNativeRoundTrip(nativeControls[6])
     @Test fun nativeOfficialKoreanGold() = assertNativeRoundTrip(nativeControls[7], requireDeclaredSigns = true)
     @Test fun nativeOfficialKoreanSilver() = assertNativeRoundTrip(nativeControls[8], requireDeclaredSigns = true)
@@ -342,9 +342,38 @@ class WorldMapCatalogApiRealControlTest {
         }
     }
 
-    private fun assertNativeRoundTrip(control: NativeControl, requireDeclaredSigns: Boolean = false) {
+    // Independent exact-control charmap digests; test oracles, never production selectors.
+    private val emeraldItemNameHashes = mapOf(
+        4 to "17981b51d17e17dcdf00165263590a279e1ac9102280ad78d7920282b5fb2f4c",
+        13 to "c71124a78727996d3f44f4c3c02933cc1dedd48148766855fa1d1ccac6e0cc60",
+        281 to "7bb69b57655d52e67befc277975ab176d274c5b4d8a1d0be2f179acfbc324785",
+        289 to "1f6251027f8cadd39f481ba94f80a49dfb1287c9e7efb6fc4fa3f7c73669f48f",
+        336 to "6453dce84b755437be6a19e6dc5d665d729e8829c7a356a68213ecbfad4658d3",
+    )
+
+    private fun assertEmeraldItemNames(catalog: ParsedCatalog) {
+        val overlay = requireNotNull(catalog.defaultLocalizedText())
+        val state = overlay.localizedCapabilities.getValue(LocalizedTextCapability.ITEM_NAMES)
+        assertEquals(104, state.expectedRecords)
+        assertEquals(104, state.coveredRecords)
+        assertEquals(CapabilityStatus.AVAILABLE, state.status)
+        val ids = catalog.captureBallsById.keys + catalog.localMaps.pois.mapNotNull { it.item?.itemId }
+        assertEquals(ids, overlay.itemNames.keys)
+        assertTrue(catalog.captureBallsById.values.all { it.name.value == null })
+        assertTrue(catalog.localMaps.pois.all { it.item?.displayName == null })
+        val text = catalog.defaultTextProjection()
+        emeraldItemNameHashes.forEach { (id, hash) ->
+            assertEquals("independent item-name digest $id", hash, sha256(requireNotNull(text.itemName(id)).toByteArray(StandardCharsets.UTF_8)))
+        }
+        catalog.localMaps.pois.forEach { poi -> poi.item?.itemId?.let { id ->
+            assertEquals(text.itemName(id), text.poiItemName(poi.key, id))
+        } }
+        assertTrue(catalog.textProjection(LanguageTag.ENGLISH) == null)
+    }
+
+    private fun assertNativeRoundTrip(control: NativeControl, requireDeclaredSigns: Boolean = false, requireItemNames: Boolean = false) {
         val configured = System.getenv("DUALDEX_NATIVE_CONTROLS")
-        if (requireDeclaredSigns) require(!configured.isNullOrBlank()) { "exact Korean sign gate requires DUALDEX_NATIVE_CONTROLS" }
+        if (requireDeclaredSigns || requireItemNames) require(!configured.isNullOrBlank()) { "exact native sign/item gate requires DUALDEX_NATIVE_CONTROLS" }
         assumeTrue("set DUALDEX_NATIVE_CONTROLS for the nine exact native controls", !configured.isNullOrBlank())
         val checks = NativeChecks(control)
         try {
@@ -361,6 +390,23 @@ class WorldMapCatalogApiRealControlTest {
                 assertEquals(control.family, attempt.analysis.selectedFamily)
             }
             val catalog = checks.attempt("materialize") { requireNotNull(attempt.catalog).getOrThrow() } ?: return
+            if (requireItemNames) {
+                checks.attempt("item-names.materialize.104.independent-samples") { assertEmeraldItemNames(catalog) }
+                checks.attempt("item-names.direct-boundary.zero-last-dynamic") {
+                    val session = com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession(rom, attempt.analysis.header)
+                    val names = com.enrpau.dualscreendex.parser.catalog.ItemNameMaterializer(session)
+                        .materialize(requireNotNull(attempt.layout), setOf(0, 175, 376, 377, 65535))
+                    for ((id, expected) in mapOf(
+                        0 to "19413c8b7affaeeec861dadb1a640d163f4ec6b2ae4b38feb0e9f8c835641a8f",
+                        376 to "285f476bfcdcacc123e141dc1cec947a029de43b6bccd14af4f927d778ef90da",
+                    )) assertEquals(expected, sha256(requireNotNull(names.getValue(id).value).toByteArray(StandardCharsets.UTF_8)))
+                    for (id in listOf(175, 377, 65535)) {
+                        assertEquals(CapabilityStatus.NOT_FOUND, names.getValue(id).status)
+                        assertTrue(names.getValue(id).value == null)
+                    }
+                    assertTrue(names.getValue(175).reasons.any { it.contains("dynamic") })
+                }
+            }
             if (requireDeclaredSigns) checks.attempt("declared-sign.materialize.independent-samples") { assertKoreanDeclaredSigns(catalog) }
             val language = if (control.folder.startsWith("ja/")) LanguageTag.JAPANESE else LanguageTag.KOREAN
             checks.attempt("authority.exact-overlay") {
@@ -463,17 +509,22 @@ class WorldMapCatalogApiRealControlTest {
             // CatalogCache opens and closes a JDBC connection for each operation; this is not an in-memory round trip.
             val stored = checks.attempt("sqlite.reopen-close") { requireNotNull(cache.readComplete(rom.sha256)) } ?: return
             val reopened = stored.catalog
+            if (requireItemNames) checks.attempt("item-names.sqlite.104.independent-samples") {
+                assertEmeraldItemNames(reopened)
+                assertEquals(catalog.defaultLocalizedText(), reopened.defaultLocalizedText())
+                println("ITEM_NAME_CACHE ${control.folder} database=${cache.fileFor(rom.sha256).absolutePath} expected=104")
+            }
             if (requireDeclaredSigns) checks.attempt("declared-sign.sqlite.independent-samples") {
                 assertKoreanDeclaredSigns(reopened)
                 assertEquals(catalog.localMaps.pois, reopened.localMaps.pois)
-                assertEquals(53, CatalogSchema.parserSchemaVersion)
+                assertEquals(54, CatalogSchema.parserSchemaVersion)
                 assertEquals(2, CatalogSchema.version)
                 println("DECLARED_SIGN_CACHE ${control.folder} sha256=${rom.sha256} database=${cache.fileFor(rom.sha256).absolutePath}")
             }
             if (directMoveProseControl) checks.attempt("sqlite.move-prose.independent-samples") {
                 assertNativeMoveProseSamples(reopened, control)
                 JdbcTestCatalogDatabaseFactory.open(cache.fileFor(rom.sha256)).use { database ->
-                    assertEquals(listOf(53L to 2L), database.query(
+                    assertEquals(listOf(54L to 2L), database.query(
                         "SELECT parser_schema_version, schema_version FROM catalog_metadata WHERE id = 1",
                     ) { row -> row.long("parser_schema_version") to row.long("schema_version") })
                 }
@@ -519,7 +570,7 @@ class WorldMapCatalogApiRealControlTest {
                 val completion = AtomicReference<Result<Unit>?>()
                 val completed = CountDownLatch(1)
                 ProductionCompanionRuntime(
-                    initialSettings = if (requireDeclaredSigns) com.enrpau.dualscreendex.companion.model.CompanionSettings(
+                    initialSettings = if (requireDeclaredSigns || requireItemNames) com.enrpau.dualscreendex.companion.model.CompanionSettings(
                         knowledgeMode = com.enrpau.dualscreendex.companion.model.KnowledgeMode.DISCOVERED,
                     ) else com.enrpau.dualscreendex.companion.model.CompanionSettings(),
                     catalogRepository = cache,
@@ -562,6 +613,20 @@ class WorldMapCatalogApiRealControlTest {
                         println("DECLARED_SIGN_API ${control.folder} samples=2 staticDeclaration=PASS zeroReparse=PASS")
                     }
                     val api = requireNotNull(bootstrap.catalog)
+                    if (requireItemNames) checks.attempt("item-names.api.104.independent-samples") {
+                        val apiItems = (api.balls.map { it.id to it.name } + runtime.stateView().localMapPois.mapNotNull { poi ->
+                            poi.itemId?.let { it to poi.itemName }
+                        }).groupBy({ it.first }, { it.second })
+                        val nativeNames = requireNotNull(reopened.defaultLocalizedText()).itemNames.mapValues { it.value.value }
+                        assertEquals(104, nativeNames.size)
+                        assertEquals(nativeNames.keys, apiItems.keys)
+                        apiItems.forEach { (id, names) -> assertEquals(setOf(nativeNames.getValue(id)), names.toSet()) }
+                        emeraldItemNameHashes.forEach { (id, hash) ->
+                            assertEquals(hash, sha256(requireNotNull(apiItems.getValue(id).first()).toByteArray(StandardCharsets.UTF_8)))
+                        }
+                        assertEquals(0, parserInvocations.get())
+                        println("ITEM_NAME_API ${control.folder} names=104/104 independentSamples=5 zeroReparse=PASS")
+                    }
                     if (directMoveProseControl) checks.attempt("api.move-prose.independent-samples") {
                         nativeMoveProseHashes(control).forEach { (id, expected) ->
                             val prose = requireNotNull(api.moves.single { it.id == id }.description)

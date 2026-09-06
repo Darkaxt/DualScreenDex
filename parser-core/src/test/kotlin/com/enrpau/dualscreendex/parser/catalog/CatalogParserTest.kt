@@ -49,6 +49,41 @@ import org.junit.Test
 
 class CatalogParserTest {
     @Test
+    fun itemNameResolverReceivesUniqueFinalIdsOnceAndUnavailableIsTerminal() {
+        val (rom, analysis, layout) = moveDescriptionCallerFixture()
+        val maps = LocalMapCatalog(
+            maps = listOf(LocalMap("m", "map", 1, 16, 16, 1, 1, "a")),
+            assets = mapOf("a" to PngMapAsset(byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10))),
+            pois = listOf(4, 4, 175).mapIndexed { index, id ->
+                LocalMapPoi("item$index", "m", 1, 0, 0, LocalMapPoiKind.VISIBLE_ITEM, item = LocalMapPoiItem(id))
+            },
+        )
+        for (available in listOf(true, false)) {
+            var calls = 0
+            val catalog = CatalogMaterializer.materialize(rom, analysis, layout,
+                resolveLocalMaps = { _, _ -> LocalMapResolution.Resolved(maps, reasons = listOf("fixture")) },
+                resolveItemNames = { selected, ids ->
+                    calls++
+                    assertSame(layout, selected)
+                    assertEquals(setOf(4, 175), ids)
+                    if (available) mapOf(4 to CatalogField.available("native item")) else emptyMap()
+                })
+            assertEquals(1, calls)
+            assertEquals(if (available) "native item" else null, catalog.defaultTextProjection().itemName(4))
+            assertNull(catalog.defaultTextProjection().itemName(175))
+            assertTrue(catalog.localMaps.pois.all { it.item?.displayName == null })
+        }
+        var calls = 0
+        assertThrows(ParserCancellationException::class.java) {
+            CatalogMaterializer.materialize(rom, analysis, layout, resolveItemNames = { _, _ ->
+                calls++
+                throw ParserCancellationException()
+            })
+        }
+        assertEquals(1, calls)
+    }
+
+    @Test
     fun moveDescriptionResolverNullIsAuthoritative() {
         val (rom, analysis, layout) = moveDescriptionCallerFixture()
         var calls = 0
