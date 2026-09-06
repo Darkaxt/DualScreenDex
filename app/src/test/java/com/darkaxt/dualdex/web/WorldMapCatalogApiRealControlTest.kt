@@ -263,13 +263,7 @@ class WorldMapCatalogApiRealControlTest {
             assertEquals("キモリ", text.speciesName(277))
             assertEquals(5, value.speciesById.getValue(277).height.value)
             assertEquals(50, value.speciesById.getValue(277).weight.value)
-            if (control.family == EngineFamily.FIRERED_LEAFGREEN) {
-                val moves = overlay.localizedCapabilities.getValue(LocalizedTextCapability.MOVE_DESCRIPTIONS)
-                assertEquals(CapabilityStatus.NOT_FOUND, moves.status)
-                assertEquals(0, moves.coveredRecords)
-                assertEquals(354, moves.expectedRecords)
-                assertTrue(overlay.moveDescriptions.isEmpty())
-            } else assertNativeMoveProseSamples(value)
+            assertNativeMoveProseSamples(value, control)
         }
         assertSlots(catalog)
         val semantic = parsed.analysis.capabilities.single { it.capability == RomCapability.POKEDEX_DESCRIPTIONS }
@@ -302,59 +296,28 @@ class WorldMapCatalogApiRealControlTest {
             assertEquals(386, state.coveredRecords)
             assertEquals(386, state.expectedRecords)
             assertEquals("AVAILABLE", state.status)
-            if (control.family == EngineFamily.FIRERED_LEAFGREEN) assertTrue(api.moves.all { it.description == null })
+            assertEquals(354, api.moves.count { it.description != null })
+            nativeMoveProseHashes(control).forEach { (id, expected) ->
+                assertEquals(expected, sha256(requireNotNull(api.moves.single { it.id == id }.description)
+                    .toByteArray(StandardCharsets.UTF_8)))
+            }
         }
-        println("NATIVE_DESCRIPTION_SLOT_GATE ${control.folder} descriptionSlots=PASS coverage=386/386 records=412 publicA=PRESERVED " +
-            if (control.family == EngineFamily.FIRERED_LEAFGREEN) "moveProse=NEGATIVE_0/354 overallPositive=BLOCKED" else "moveProse=354/354")
+        println("NATIVE_DESCRIPTION_SLOT_GATE ${control.folder} descriptionSlots=PASS coverage=386/386 records=412 publicA=PRESERVED moveProse=354/354")
     }
 
-    @Test
-    fun nativeOfficialJapaneseFireRedUnprovenMoveProseFailsClosed() {
-        // Negative safety evidence only. nativeOfficialJapaneseFireRedLeafGreen remains the
-        // mandatory positive acceptance case and must stay red until its real prose ABI is proved.
-        val control = nativeControls[6]
-        val configured = System.getenv("DUALDEX_NATIVE_CONTROLS")
-        assumeTrue("set DUALDEX_NATIVE_CONTROLS for the exact native control", !configured.isNullOrBlank())
-        val path = Files.list(Path.of(requireNotNull(configured)).resolve(control.folder)).use { paths ->
-            paths.filter { Files.isRegularFile(it) }.toList().single()
-        }
-        val rom = RomImage(Files.readAllBytes(path))
-        assertEquals(control.sha256, rom.sha256)
-        val parsed = requireNotNull(CatalogParser.parse(rom).catalog)
-        fun assertUnavailable(catalog: ParsedCatalog) {
-            assertEquals(EngineFamily.FIRERED_LEAFGREEN, catalog.family)
-            val overlay = requireNotNull(catalog.localizedText(LanguageTag.JAPANESE))
-            val state = overlay.localizedCapabilities.getValue(LocalizedTextCapability.MOVE_DESCRIPTIONS)
-            assertEquals(CapabilityStatus.NOT_FOUND, state.status)
-            assertEquals(354, state.expectedRecords)
-            assertEquals(0, state.coveredRecords)
-            assertTrue(overlay.moveDescriptions.isEmpty())
-            assertTrue(catalog.movesById.values.all { it.effectText.value == null })
-        }
-        assertUnavailable(parsed)
-        val cache = CatalogCache(newRoot().toFile(), JdbcTestCatalogDatabaseFactory)
-        cache.write(parsed, CatalogSourceMetadata.direct("native-control", rom.size, "NATIVE-CONTROL"), CatalogWriteProgress.complete())
-        val reopened = requireNotNull(cache.readComplete(rom.sha256)).catalog
-        assertUnavailable(reopened)
-        assertEquals(parsed, reopened)
-        ProductionCompanionRuntime().use { runtime ->
-            runtime.loadCatalog("native-control", reopened)
-            val api = requireNotNull(runtime.bootstrap().catalog)
-            assertTrue(api.moves.isNotEmpty())
-            assertTrue(api.moves.all { it.description == null })
-        }
-        assertDatabaseIntegrity(cache.fileFor(rom.sha256))
-        println("NATIVE_MOVE_PROSE_NEGATIVE ${control.folder} sha256=${control.sha256} failClosed=PASS requiredPositive=BLOCKED")
-    }
+    // Missing/invalid native witnesses remain synthetic negative tests in MoveDescriptionMaterializerTest.
+    // The exact FireRed control is now required positive, never an applicability waiver.
+    private fun nativeMoveProseHashes(control: NativeControl): Map<Int, String> =
+        if (control.family == EngineFamily.FIRERED_LEAFGREEN) fireRedMoveProseHashes else rubyEmeraldMoveProseHashes
 
-    private fun assertNativeMoveProseSamples(catalog: ParsedCatalog) {
+    private fun assertNativeMoveProseSamples(catalog: ParsedCatalog, control: NativeControl) {
         val overlay = requireNotNull(catalog.localizedText(LanguageTag.JAPANESE))
         val state = overlay.localizedCapabilities.getValue(LocalizedTextCapability.MOVE_DESCRIPTIONS)
         assertEquals(CapabilityStatus.AVAILABLE, state.status)
         assertEquals(354, state.expectedRecords)
         assertEquals(354, state.coveredRecords)
         assertEquals((1..354).toSet(), overlay.moveDescriptions.keys)
-        nativeMoveProseHashes.forEach { (id, expected) ->
+        nativeMoveProseHashes(control).forEach { (id, expected) ->
             val prose = requireNotNull(catalog.defaultTextProjection().moveDescription(id))
             assertEquals("independent move-prose digest for move $id", expected, sha256(prose.toByteArray(StandardCharsets.UTF_8)))
         }
@@ -414,9 +377,9 @@ class WorldMapCatalogApiRealControlTest {
             }
             val overlay = catalog.localizedText(language)
             val text = catalog.defaultTextProjection()
-            val directMoveProseControl = control.family in setOf(EngineFamily.RUBY_SAPPHIRE, EngineFamily.EMERALD)
+            val directMoveProseControl = control.generation == 3 && language == LanguageTag.JAPANESE
             if (directMoveProseControl) checks.attempt("LNG-B002.move-prose.independent-samples") {
-                assertNativeMoveProseSamples(catalog)
+                assertNativeMoveProseSamples(catalog, control)
             }
             // Gen III dexNumber can be regional: source SPECIES_BULBASAUR and the compiled name row are 1.
             // Selecting dexNumber == 1 there would test Treecko, not the independently pinned Bulbasaur sample.
@@ -503,12 +466,17 @@ class WorldMapCatalogApiRealControlTest {
             if (requireDeclaredSigns) checks.attempt("declared-sign.sqlite.independent-samples") {
                 assertKoreanDeclaredSigns(reopened)
                 assertEquals(catalog.localMaps.pois, reopened.localMaps.pois)
-                assertEquals(52, CatalogSchema.parserSchemaVersion)
+                assertEquals(53, CatalogSchema.parserSchemaVersion)
                 assertEquals(2, CatalogSchema.version)
                 println("DECLARED_SIGN_CACHE ${control.folder} sha256=${rom.sha256} database=${cache.fileFor(rom.sha256).absolutePath}")
             }
             if (directMoveProseControl) checks.attempt("sqlite.move-prose.independent-samples") {
-                assertNativeMoveProseSamples(reopened)
+                assertNativeMoveProseSamples(reopened, control)
+                JdbcTestCatalogDatabaseFactory.open(cache.fileFor(rom.sha256)).use { database ->
+                    assertEquals(listOf(53L to 2L), database.query(
+                        "SELECT parser_schema_version, schema_version FROM catalog_metadata WHERE id = 1",
+                    ) { row -> row.long("parser_schema_version") to row.long("schema_version") })
+                }
             }
             checks.attempt("sqlite.whole-catalog-equality") { assertTrue("whole catalog differs", catalog == reopened) }
             checks.attempt("sqlite.sections") {
@@ -595,7 +563,7 @@ class WorldMapCatalogApiRealControlTest {
                     }
                     val api = requireNotNull(bootstrap.catalog)
                     if (directMoveProseControl) checks.attempt("api.move-prose.independent-samples") {
-                        nativeMoveProseHashes.forEach { (id, expected) ->
+                        nativeMoveProseHashes(control).forEach { (id, expected) ->
                             val prose = requireNotNull(api.moves.single { it.id == id }.description)
                             assertEquals("independent API move-prose digest for move $id", expected,
                                 sha256(prose.toByteArray(StandardCharsets.UTF_8)))
@@ -1096,7 +1064,16 @@ class WorldMapCatalogApiRealControlTest {
         // UTF-8 digests of independently decoded, whitespace-normalized compiled Ruby/Emerald
         // move records using the pinned pokeruby charmap below; not production-parser baselines.
         // Covers first/last moves plus short-learnset false negatives. No raw ROM prose is retained here.
-        val nativeMoveProseHashes = mapOf(
+        // Independently decoded 60-byte records; FireRed wording differs from Ruby/Emerald.
+        // IDs 1/11/72/253/354 at first-record 0x423774 + (id-1)*60, pinned charmap below.
+        val fireRedMoveProseHashes = mapOf(
+            1 to "dd61cbb075f20d1d136adba5a49d464c548a95251d13fcd3603e36f97e6aa9eb",
+            11 to "1185d3d939d338294c25ab93aa7fbf34969f92f9f2851cae405ff51c0c89823d",
+            72 to "7145c56b3d8c848f62d615fa36dea6b214da6b24bbfbaadf3e9ccb173051dcf1",
+            253 to "92212a09a5983b448e5d77ed4bd697308969c062b1238e4e069d0d893c32fb72",
+            354 to "9c0f32ef838f1b80e3fec5cb8f770d90fddccd436d37ff75322547d87c3b8fae",
+        )
+        val rubyEmeraldMoveProseHashes = mapOf(
             1 to "6a560e56dbc81ff4d54a063ea1f3a39346aa1cd1667e62f8be962c72ec67edad",
             11 to "d67892aff9e60a4434cc332043dd0dd17490d9ab44a06d83b0ba04811c097379",
             72 to "5a90513a9d1c5eaba24fed32f8707e28538d9c8d2aee0cb642668a4bac5b1ff6",

@@ -120,9 +120,12 @@ object MoveDescriptionMaterializer {
             moves.offset < 0 || moves.offset.toLong() + (count.toLong() + 1) * 12 > rom.size
         ) return unavailable(DescriptionSearchFailure.NO_AUTHORITY)
         return try {
-            val consumer = DirectMoveConsumer(rom, moves.offset, budget, cancellation)
             val recoveredSites = recoverIncompleteDirectSites(rom, references, cancellation, budget)
-            var selectedBase: Int? = null
+            val numericEvidence = references.targets[moves.offset]
+            val numericSites = if (numericEvidence?.siteEvidenceAvailable == true) numericEvidence.instructionSites
+                else recoveredSites[moves.offset].orEmpty()
+            val consumer = DirectMoveConsumer(rom, moves.offset, budget, cancellation, numericSites)
+            var selected: DirectRecordWitness? = null
             for ((base, evidence) in references.targets) {
                 cancellation.throwIfCancellationRequested()
                 budget.recordWork()
@@ -130,17 +133,17 @@ object MoveDescriptionMaterializer {
                     else recoveredSites[base] ?: return unavailable(DescriptionSearchFailure.INCOMPLETE_REFERENCE)
                 for (site in sites) {
                     budget.recordWork()
-                    if (!consumer.proves(site, base)) continue
+                    val witness = consumer.proves(site, base) ?: continue
                     budget.recordRoot(base)
                     budget.recordCandidate()
-                    if (selectedBase != null && selectedBase != base) {
+                    if (selected != null && selected != witness) {
                         return unavailable(DescriptionSearchFailure.CONFLICT)
                     }
-                    selectedBase = base
+                    selected = witness
                 }
             }
-            val base = selectedBase ?: return unavailable(DescriptionSearchFailure.NO_AUTHORITY)
-            val result = decodeDirectRecords(rom, codec, base, count, cancellation, budget)
+            val witness = selected ?: return unavailable(DescriptionSearchFailure.NO_AUTHORITY)
+            val result = decodeDirectRecords(rom, codec, witness, count, cancellation, budget)
                 ?: return unavailable(DescriptionSearchFailure.NO_AUTHORITY)
             DescriptionSearchOutcome.Resolved(result)
         } catch (_: IncompleteMoveDescriptionReferencesException) {
@@ -192,7 +195,7 @@ object MoveDescriptionMaterializer {
                             budget.recordRecoveredReference(count)
                             if (count > expected.count) throw IncompleteMoveDescriptionReferencesException()
                             observed[root] = count
-                            if (directConsumerShape(rom, site) != null) {
+                            if (directConsumerShape(rom, site) != null || stateNumericShape(rom, site)) {
                                 budget.recordRetainedReference()
                                 sites.getValue(root) += site
                             }
@@ -209,13 +212,20 @@ object MoveDescriptionMaterializer {
         return sites
     }
 
-    private enum class DirectConsumerShape { MENU, WINDOW }
+    private data class DirectRecordWitness(val biasedBase: Int, val stride: Int)
+
+    private enum class DirectConsumerShape { MENU, WINDOW, STATE_BUFFER }
+
+    /** Locator only, shared with incomplete-site recovery; numeric role is proved separately. */
+    private fun stateNumericShape(rom: RomImage, site: Int): Boolean =
+        site >= 4 && site <= rom.size - 2 && rom.u16le(site - 4) == 0x1844 && rom.u16le(site - 2) == 0x444C
 
     private fun directConsumerShape(rom: RomImage, site: Int): DirectConsumerShape? {
         if (site < 6 || site > rom.size) return null
         return when (rom.u16le(site - 6)) {
             0x00C8 -> if (rom.u16le(site - 4) == 0x1A40 && rom.u16le(site - 2) == 0x00C0) DirectConsumerShape.MENU else null
             0x00E1 -> if (rom.u16le(site - 4) == 0x1B09 && rom.u16le(site - 2) == 0x00C9) DirectConsumerShape.WINDOW else null
+            0x0111 -> if (rom.u16le(site - 4) == 0x1A89 && rom.u16le(site - 2) == 0x0089) DirectConsumerShape.STATE_BUFFER else null
             else -> null
         }
     }
@@ -223,33 +233,36 @@ object MoveDescriptionMaterializer {
     private fun decodeDirectRecords(
         rom: RomImage,
         codec: PokemonTextCodec,
-        biasedBase: Int,
+        witness: DirectRecordWitness,
         count: Int,
         cancellation: ParserCancellationToken,
         budget: MoveDescriptionBudget,
     ): MoveDescriptionResult? {
-        val first = biasedBase.toLong() + DIRECT_RECORD_BYTES
-        val length = count.toLong() * DIRECT_RECORD_BYTES
+        val (biasedBase, stride) = witness
+        val first = biasedBase.toLong() + stride
+        val length = count.toLong() * stride
         if (count < 3 || biasedBase < 0 || first + length > rom.size) return null
         budget.recordScanBytes(length)
         val descriptions = linkedMapOf<Int, String>()
         repeat(count) { index ->
             checkCancellation(index, cancellation)
             budget.recordWork()
-            val record = rom.slice((first + index.toLong() * DIRECT_RECORD_BYTES).toInt(), DIRECT_RECORD_BYTES)
+            val record = rom.slice((first + index.toLong() * stride).toInt(), stride)
             val decoded = codec.decodeDetailed(record)
             val text = decoded.text.replace(Regex("\\s+"), " ").trim()
             // decodeDetailed owns token boundaries; FF occurring inside a control is not a terminator.
-            if (!decoded.terminated || decoded.validRatio < 0.85 || text.length < 5) return null
+            // An unknown/truncated token cannot be dropped merely because surrounding prose is
+            // readable. Keep this strict rule local to structurally proven native direct records.
+            if (!decoded.terminated || decoded.invalidUnits != 0 || text.length < 5) return null
             descriptions[index + 1] = text
         }
         return MoveDescriptionResult(first.toInt(), 1.0, descriptions)
     }
 
     /**
-     * Two source-defined summary-screen ABIs, recognized through relocated instructions, not ROM
-     * identities. A u16 move is shared with the selected 12-byte numeric table's power consumer;
-     * its printer must be the same source-defined text wrapper as the direct prose printer.
+     * Source-defined summary-screen ABIs, recognized through relocated instructions, not ROM
+     * identities. A u16 move is shared with the selected 12-byte numeric table's consumer;
+     * its text role must be proved separately from stride and record readability.
      * Exact supported instruction paths deliberately reject unknown/clobbering variants.
      * Role oracles: pokeruby@63a8cbf0016b351a4e68f7036fa0b77e23d2f2c1
      * and pokeemerald@5eff78649e7170a877b961ef0b3da13b81a16038, pokemon_summary_screen.c.
@@ -260,15 +273,155 @@ object MoveDescriptionMaterializer {
         private val numericRoot: Int,
         private val budget: MoveDescriptionBudget,
         private val cancellation: ParserCancellationToken,
+        private val numericSites: List<Int>,
     ) {
-        fun proves(site: Int, base: Int): Boolean {
-            if (site < 6 || site % 2 != 0 || literalPointer(site) != base) return false
-            return when (directConsumerShape(rom, site)) {
-                DirectConsumerShape.MENU -> menuConsumer(site)
-                DirectConsumerShape.WINDOW -> windowConsumer(site)
-                null -> false
-            }
+        fun proves(site: Int, base: Int): DirectRecordWitness? {
+            if (site < 6 || site % 2 != 0 || literalPointer(site) != base) return null
+            val stride = when (directConsumerShape(rom, site)) {
+                DirectConsumerShape.MENU -> if (menuConsumer(site)) 56 else null
+                DirectConsumerShape.WINDOW -> if (windowConsumer(site)) 56 else null
+                DirectConsumerShape.STATE_BUFFER -> if (stateBufferConsumer(site)) 60 else null
+                null -> null
+            } ?: return null
+            return DirectRecordWitness(base, stride)
         }
+
+        /**
+         * Static source-role proof for the state-buffer summary ABI (pokefirered
+         * c75f352304d529f6ba92d4f74b9cf8b5c3810788, pokemon_summary_screen.c/menu2.c/text_printer.c).
+         * The compiled arithmetic, not the Western source's pointer-array declaration, proves 60.
+         * The same RAM pointer declaration + u16 slot is used by the selected numeric type consumer.
+         * Only its call-free nonzero branch is needed: PP/formatting calls are not interpreted and
+         * no live RAM values or graphics execution are claimed. The numeric text wrapper's two
+         * pre-template font calls separately require the bounded read-only leaf proof below.
+         */
+        private fun stateBufferConsumer(site: Int): Boolean {
+            val e = site - 0x98
+            if (!words(e, 0xB5F0, 0x4647, 0xB480, 0xB085) ||
+                !literalLoad(e + 8, 0) || !isRam(literalValue(e + 8)) ||
+                !words(e + 0x0A, 0x4680, 0x7801, 0x2904, 0xD84A) ||
+                !literalLoad(e + 0x12, 7) || word(e + 0x14) != 0x683B ||
+                !literalLoad(e + 0x16, 2) || literalValue(e + 0x16) != 0x31B4L ||
+                !words(e + 0x18, 0x1898, 0x7800, 0x2802, 0xD001, 0x2904, 0xD041) ||
+                !literalLoad(e + 0x24, 4) || literalValue(e + 0x24) != 0x3004L ||
+                !words(e + 0x26, 0x1918, 0x7800) ||
+                !literalLoad(e + 0x2A, 6) || literalPointer(e + 0x2A) == null ||
+                !words(e + 0x2C, 0x9600, 0x2501, 0x426D, 0x9501, 0x4641, 0x780A,
+                    0x0091, 0x1889, 0x22C5, 0x0192, 0x1889, 0x1859, 0x9102, 0x2102, 0x2232, 0x2301) ||
+                !words(e + 0x50, 0x683B, 0x1918, 0x7800, 0x9600, 0x9501, 0x4641,
+                    0x780A, 0x0091, 0x1889) ||
+                !literalLoad(e + 0x62, 2) || literalValue(e + 0x62) != 0x315CL ||
+                !words(e + 0x64, 0x1889, 0x185B, 0x9302, 0x2102, 0x2232, 0x230F) ||
+                !words(e + 0x74, 0x683A, 0x1914, 0x7820, 0x2100, 0x9100, 0x9101,
+                    0x9602, 0x9503, 0x4643, 0x7819, 0x0049) ||
+                !literalLoad(e + 0x8A, 3) ||
+                !words(e + 0x8C, 0x18D2, 0x1852, 0x8812, 0x0111, 0x1A89, 0x0089) ||
+                !literalLoad(site, 2) ||
+                !words(e + 0x9A, 0x1889, 0x9104, 0x2102, 0x2205, 0x2327) ||
+                !words(e + 0xA8, 0xB005, 0xBC08, 0x4698, 0xBCF0, 0xBC01, 0x4700)
+            ) return false
+            val state = literalValue(e + 0x12) ?: return false
+            val field = literalValue(e + 0x8A) ?: return false
+            if (!isRam(state) || state % 4 != 0L || state == literalValue(e + 8) ||
+                field !in 10L..0xFFE0L || field % 2 != 0L
+            ) return false
+            val proseWrapper = call(e + 0xA4) ?: return false
+            val printer = stateProseTextSink(proseWrapper) ?: return false
+            val numericWrapper = call(e + 0x4C) ?: return false
+            if (call(e + 0x70) != numericWrapper || !stateNumericTextSink(numericWrapper, printer) ||
+                !templatePrinter(printer)
+            ) return false
+            for (numericSite in numericSites) {
+                cancellation.throwIfCancellationRequested()
+                budget.recordWork()
+                if (stateNumericConsumer(numericSite, state, field)) return true
+            }
+            return false
+        }
+
+        private fun stateNumericConsumer(site: Int, state: Long, field: Long): Boolean {
+            if (!stateNumericShape(rom, site) || !literalLoad(site, 5) || literalPointer(site) != numericRoot) return false
+            val e = site - 0xD6
+            // At this block's entry r7 is a slot parameter. It is doubled once and used both for
+            // the nonzero test and the subsequent selected-table type lookup; no call intervenes.
+            return literalLoad(e + 0x2A, 6) && literalValue(e + 0x2A) == state &&
+                words(e + 0x2C, 0x6832, 0x0078) &&
+                literalLoad(e + 0x30, 1) && literalValue(e + 0x30) == field &&
+                words(e + 0x32, 0x4688, 0x1851, 0x1809, 0x8809, 0x4681, 0x2900, 0xD141) &&
+                literalLoad(e + 0xC4, 0) && literalValue(e + 0xC4) == field + 12 &&
+                words(e + 0xC6, 0x1811, 0x7808, 0x3001, 0x7008, 0x6830) &&
+                literalLoad(e + 0xD0, 1) && literalValue(e + 0xD0) == field - 10 &&
+                words(e + 0xD2, 0x1844, 0x444C) &&
+                literalLoad(e + 0xD8, 2) && literalValue(e + 0xD8) == field &&
+                words(e + 0xDA, 0x1883, 0x444B, 0x881A, 0x0051, 0x1889, 0x0089,
+                    0x1949, 0x7889, 0x8021)
+        }
+
+        private fun stateProseTextSink(e: Int): Int? {
+            if (!words(e, 0xB570, 0x464E, 0x4645, 0xB460, 0xB084, 0x1C0D,
+                    0x990A, 0x4688, 0x990B, 0x4689, 0x9E0C, 0x990D, 0x9C0E, 0x9400,
+                    0x466C, 0x7120, 0x4668, 0x7145, 0x7182, 0x71C3, 0x466A, 0x7980,
+                    0x7210, 0x4668, 0x79C0, 0x7250, 0x4668, 0x4642, 0x7282, 0x464A,
+                    0x72C2, 0x7B23, 0x2210, 0x4252, 0x1C10, 0x4018, 0x7320, 0x466B,
+                    0x7870, 0x0100, 0x250F, 0x7318, 0x7833, 0x1C28, 0x4018, 0x7B63,
+                    0x401A, 0x4302, 0x7362, 0x466B, 0x78B0, 0x0100, 0x402A, 0x4302,
+                    0x735A, 0x0609, 0x0E09, 0x4668, 0x2200) ||
+                !words(e + 0x7A, 0xB004, 0xBC18, 0x4698, 0x46A1, 0xBC70, 0xBC01, 0x4700)
+            ) return null
+            return call(e + 0x76)
+        }
+
+        private fun stateNumericTextSink(e: Int, printer: Int): Boolean {
+            if (!words(e, 0xB570, 0xB084, 0x1C0C, 0x9E08, 0x9D09, 0x990A, 0x0624,
+                    0x0E24, 0x062D, 0x0E2D, 0x9100, 0x4669, 0x7108, 0x4668, 0x7144,
+                    0x7182, 0x71C3, 0x7980, 0x7208, 0x4668, 0x79C0, 0x7248, 0x1C20, 0x2102) ||
+                !words(e + 0x34, 0x4669, 0x7288, 0x1C20, 0x2103) ||
+                !words(e + 0x40, 0x4669, 0x72C8, 0x466B, 0x7B1A, 0x2110, 0x4249,
+                    0x1C08, 0x4010, 0x7318, 0x466A, 0x7870, 0x0100, 0x240F, 0x7310,
+                    0x7832, 0x1C20, 0x4010, 0x7B5A, 0x4011, 0x4301, 0x7359, 0x466A,
+                    0x78B0, 0x0100, 0x4021, 0x4301, 0x7351, 0x4668, 0x1C29, 0x2200) ||
+                !words(e + 0x80, 0xB004, 0xBC70, 0xBC01, 0x4700)
+            ) return false
+            // currentChar is already stored at sp0: equal BL targets alone do not preserve it.
+            val fontAttributes = call(e + 0x30) ?: return false
+            return call(e + 0x3C) == fontAttributes && call(e + 0x7C) == printer &&
+                stateFontSpacingLeaf(fontAttributes)
+        }
+
+        /**
+         * GetFontAttribute's supported compiled leaf (pokefirered c75f352, new_menu_helpers.c).
+         * The checked caller passes exactly attributes 2 and 3. Bind their jump-table entries,
+         * entire read-only paths and return; other switch arms are unreachable for these calls.
+         * PUSH LR writes below caller SP; no selected instruction can overwrite currentChar,
+         * change callee-saved registers or call an unchecked descendant. POP/BX restores SP/LR.
+         * Fixed relative instruction/literal extents stay within 226 bytes; all ROM roots relocate.
+         */
+        private fun stateFontSpacingLeaf(e: Int): Boolean {
+            if (e < 0 || e % 4 != 0 || e.toLong() + 0xE2 > rom.size ||
+                !words(e, 0xB500, 0x0600, 0x0E02, 0x0609, 0x0E09, 0x2000,
+                    0x2907, 0xD866, 0x0088, 0x4902, 0x1840, 0x6800, 0x4687) ||
+                literalPointer(e + 0x12) != e + 0x20 ||
+                !words(e + 0x68, 0x4903, 0x0050, 0x1880, 0x0080, 0x1840, 0x7980, 0xE033) ||
+                !words(e + 0x7C, 0x4903, 0x0050, 0x1880, 0x0080, 0x1840, 0x79C0, 0xE029) ||
+                !words(e + 0xDE, 0xBC02, 0x4708)
+            ) return false
+            budget.recordWork()
+            if (rom.u32le(e + 0x28) != 0x08000000L + e + 0x68) return false
+            budget.recordWork()
+            if (rom.u32le(e + 0x2C) != 0x08000000L + e + 0x7C) return false
+            val fonts = literalPointer(e + 0x68) ?: return false
+            return literalPointer(e + 0x7C) == fonts
+        }
+
+        private fun templatePrinter(e: Int): Boolean =
+            words(e, 0xB5F0, 0x1C06, 0x4694, 0x0609, 0x0E0D) &&
+                literalLoad(e + 0x0A, 0) && isRam(literalValue(e + 0x0A)) &&
+                words(e + 0x0C, 0x6800, 0x2800, 0xD104, 0x2000, 0xE05C) &&
+                literalLoad(e + 0x1C, 0) && isRam(literalValue(e + 0x1C)) &&
+                words(e + 0x1E, 0x2200, 0x2101, 0x76C1, 0x7702, 0x7745, 0x7782,
+                    0x77C2, 0x1C04, 0x2106, 0x301A, 0x7002, 0x3801, 0x3901, 0x2900,
+                    0xDAFA, 0x1C21, 0x1C30, 0xC88C, 0xC18C, 0x6800, 0x6008, 0x4660, 0x6120) &&
+                words(e + 0xD0, 0xBCF0, 0xBC02, 0x4708)
 
         private fun menuConsumer(site: Int): Boolean {
             val entry = site - 0x12
@@ -719,7 +872,6 @@ object MoveDescriptionMaterializer {
 
     private data class Gen2TableReference(val bank: Int, val address: Int)
 
-    private const val DIRECT_RECORD_BYTES = 56
     private val WESTERN_POINTER_LANGUAGES = setOf(
         LanguageTag.ENGLISH, LanguageTag.FRENCH, LanguageTag.GERMAN, LanguageTag.ITALIAN, LanguageTag.SPANISH,
     )

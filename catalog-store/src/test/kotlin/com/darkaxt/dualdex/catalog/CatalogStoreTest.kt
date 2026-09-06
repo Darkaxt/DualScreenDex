@@ -159,6 +159,21 @@ class CatalogStoreTest {
     }
 
     @Test
+    fun `revision 52 caches missing proven sixty byte move prose must be reparsed`() {
+        val cache = CatalogCache(newRoot().toFile(), JdbcCatalogDatabaseFactory)
+        val catalog = completeCatalog("5".repeat(64))
+        val source = CatalogSourceMetadata.direct("Synthetic.gba", 32768, "SYNTHETIC")
+        cache.write(catalog, source, CatalogWriteProgress.complete())
+        JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
+            database.execute("UPDATE catalog_metadata SET parser_schema_version = 52 WHERE id = 1")
+        }
+        assertNull(cache.readComplete(catalog.romSha256))
+        cache.write(catalog, source, CatalogWriteProgress.complete())
+        assertEquals(catalog, cache.readComplete(catalog.romSha256)?.catalog)
+        assertEquals(2, CatalogSchema.version)
+    }
+
+    @Test
     fun `revision 51 caches without declared sign semantics must be reparsed`() {
         val cache = CatalogCache(newRoot().toFile(), JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("6".repeat(64))
@@ -1302,7 +1317,7 @@ class CatalogStoreTest {
         )
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(52, CatalogSchema.parserSchemaVersion)
+        assertEquals(53, CatalogSchema.parserSchemaVersion)
         assertEquals(catalog.worldMaps, reopened?.catalog?.worldMaps)
         assertEquals(catalog.localMaps.maps, reopened?.catalog?.localMaps?.maps)
         assertEquals(catalog.localMaps.scenes, reopened?.catalog?.localMaps?.scenes)
@@ -1656,7 +1671,7 @@ class CatalogStoreTest {
         cache.write(catalog, source, CatalogWriteProgress.complete())
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(52, CatalogSchema.parserSchemaVersion)
+        assertEquals(53, CatalogSchema.parserSchemaVersion)
         assertEquals(source, reopened?.source)
         assertEquals(catalog, reopened?.catalog)
         assertEquals(
@@ -1805,7 +1820,7 @@ class CatalogStoreTest {
 
     @Test
     fun `revision 42 caches are invalidated so hybrid move details are rebuilt`() {
-        assertEquals(52, CatalogSchema.parserSchemaVersion)
+        assertEquals(53, CatalogSchema.parserSchemaVersion)
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("4".repeat(64)).copy(diagnostics = listOf("pre-hybrid move output"))
@@ -1827,7 +1842,7 @@ class CatalogStoreTest {
 
     @Test
     fun `revision 43 caches are invalidated so optional relationship evidence is rebuilt`() {
-        assertEquals(52, CatalogSchema.parserSchemaVersion)
+        assertEquals(53, CatalogSchema.parserSchemaVersion)
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("5".repeat(64)).copy(diagnostics = listOf("pre-isolation relationship output"))
@@ -1849,7 +1864,7 @@ class CatalogStoreTest {
 
     @Test
     fun `revision 44 caches are invalidated so bounded detached Gen I evidence is rebuilt`() {
-        assertEquals(52, CatalogSchema.parserSchemaVersion)
+        assertEquals(53, CatalogSchema.parserSchemaVersion)
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("6".repeat(64)).copy(diagnostics = listOf("pre-bounded detached Gen I output"))
@@ -1871,7 +1886,7 @@ class CatalogStoreTest {
 
     @Test
     fun `revision 45 caches are invalidated so Gen I applicability and bounded fallbacks are rebuilt`() {
-        assertEquals(52, CatalogSchema.parserSchemaVersion)
+        assertEquals(53, CatalogSchema.parserSchemaVersion)
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("7".repeat(64)).copy(
