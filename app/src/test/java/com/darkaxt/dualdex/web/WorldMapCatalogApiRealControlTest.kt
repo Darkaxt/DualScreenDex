@@ -202,7 +202,7 @@ class WorldMapCatalogApiRealControlTest {
     @Test fun nativeOfficialJapaneseCrystal() = assertNativeRoundTrip(nativeControls[3])
     @Test fun nativeOfficialJapaneseRubySapphire() = assertNativeRoundTrip(nativeControls[4])
     @Test fun nativeOfficialJapaneseEmerald() = assertNativeRoundTrip(nativeControls[5], requireItemNames = true)
-    @Test fun nativeOfficialJapaneseFireRedLeafGreen() = assertNativeRoundTrip(nativeControls[6])
+    @Test fun nativeOfficialJapaneseFireRedLeafGreen() = assertNativeRoundTrip(nativeControls[6], requireItemNames = true)
     @Test fun nativeOfficialKoreanGold() = assertNativeRoundTrip(nativeControls[7], requireDeclaredSigns = true)
     @Test fun nativeOfficialKoreanSilver() = assertNativeRoundTrip(nativeControls[8], requireDeclaredSigns = true)
 
@@ -351,18 +351,47 @@ class WorldMapCatalogApiRealControlTest {
         336 to "6453dce84b755437be6a19e6dc5d665d729e8829c7a356a68213ecbfad4658d3",
     )
 
-    private fun assertEmeraldItemNames(catalog: ParsedCatalog) {
+    private data class ItemNameExpectation(
+        val count: Int,
+        val samples: Map<Int, String>,
+        val publishedRoot: Int,
+        val lastId: Int,
+        val lastNameHash: String,
+        val zeroReferenced: Boolean,
+    )
+
+    private fun itemNameExpectation(control: NativeControl): ItemNameExpectation = when (control.folder) {
+        "ja/EMERALD" -> ItemNameExpectation(
+            104, emeraldItemNameHashes, 0x55CEE8, 376,
+            "285f476bfcdcacc123e141dc1cec947a029de43b6bccd14af4f927d778ef90da", false,
+        )
+        "ja/FIRERED_LEAFGREEN" -> ItemNameExpectation(
+            127, mapOf(
+                0 to "19413c8b7affaeeec861dadb1a640d163f4ec6b2ae4b38feb0e9f8c835641a8f",
+                4 to "17981b51d17e17dcdf00165263590a279e1ac9102280ad78d7920282b5fb2f4c",
+                13 to "c71124a78727996d3f44f4c3c02933cc1dedd48148766855fa1d1ccac6e0cc60",
+                289 to "1f6251027f8cadd39f481ba94f80a49dfb1287c9e7efb6fc4fa3f7c73669f48f",
+                345 to "b8fd2b23dd1d7b4acf797f820148fdb18f3e30cbbd1003d8b8640c911148c365",
+                355 to "ed5b45f5017bc190305d711e5edc595725bde9260f887511d8fec73d614db203",
+            ), 0x39BEB8, 374,
+            "415bbe120e29e7b716547bc4f42cccfa74efec69f2632f37d886553c177f0c27", true,
+        )
+        else -> error("No independently ratified item-name expectation for ${control.folder}")
+    }
+
+    private fun assertNativeItemNames(catalog: ParsedCatalog, expected: ItemNameExpectation) {
         val overlay = requireNotNull(catalog.defaultLocalizedText())
         val state = overlay.localizedCapabilities.getValue(LocalizedTextCapability.ITEM_NAMES)
-        assertEquals(104, state.expectedRecords)
-        assertEquals(104, state.coveredRecords)
+        assertEquals(expected.count, state.expectedRecords)
+        assertEquals(expected.count, state.coveredRecords)
         assertEquals(CapabilityStatus.AVAILABLE, state.status)
         val ids = catalog.captureBallsById.keys + catalog.localMaps.pois.mapNotNull { it.item?.itemId }
         assertEquals(ids, overlay.itemNames.keys)
+        assertEquals(expected.zeroReferenced, 0 in ids)
         assertTrue(catalog.captureBallsById.values.all { it.name.value == null })
         assertTrue(catalog.localMaps.pois.all { it.item?.displayName == null })
         val text = catalog.defaultTextProjection()
-        emeraldItemNameHashes.forEach { (id, hash) ->
+        expected.samples.forEach { (id, hash) ->
             assertEquals("independent item-name digest $id", hash, sha256(requireNotNull(text.itemName(id)).toByteArray(StandardCharsets.UTF_8)))
         }
         catalog.localMaps.pois.forEach { poi -> poi.item?.itemId?.let { id ->
@@ -376,6 +405,7 @@ class WorldMapCatalogApiRealControlTest {
         if (requireDeclaredSigns || requireItemNames) require(!configured.isNullOrBlank()) { "exact native sign/item gate requires DUALDEX_NATIVE_CONTROLS" }
         assumeTrue("set DUALDEX_NATIVE_CONTROLS for the nine exact native controls", !configured.isNullOrBlank())
         val checks = NativeChecks(control)
+        val itemExpectation = if (requireItemNames) itemNameExpectation(control) else null
         try {
             val rom = checks.attempt("input.sha256") {
                 val directory = Path.of(requireNotNull(configured)).resolve(control.folder)
@@ -390,17 +420,22 @@ class WorldMapCatalogApiRealControlTest {
                 assertEquals(control.family, attempt.analysis.selectedFamily)
             }
             val catalog = checks.attempt("materialize") { requireNotNull(attempt.catalog).getOrThrow() } ?: return
-            if (requireItemNames) {
-                checks.attempt("item-names.materialize.104.independent-samples") { assertEmeraldItemNames(catalog) }
+            if (itemExpectation != null) {
+                checks.attempt("item-names.materialize.${itemExpectation.count}.independent-samples") { assertNativeItemNames(catalog, itemExpectation) }
                 checks.attempt("item-names.direct-boundary.zero-last-dynamic") {
                     val session = com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession(rom, attempt.analysis.header)
+                    val itemLayout = requireNotNull(attempt.layout)
+                    assertEquals(
+                        com.enrpau.dualscreendex.parser.model.GbaItemRootNomination.Nominated(itemExpectation.publishedRoot),
+                        itemLayout.itemRootNomination,
+                    )
                     val names = com.enrpau.dualscreendex.parser.catalog.ItemNameMaterializer(session)
-                        .materialize(requireNotNull(attempt.layout), setOf(0, 175, 376, 377, 65535))
+                        .materialize(itemLayout, setOf(0, 175, itemExpectation.lastId, itemExpectation.lastId + 1, 65535))
                     for ((id, expected) in mapOf(
                         0 to "19413c8b7affaeeec861dadb1a640d163f4ec6b2ae4b38feb0e9f8c835641a8f",
-                        376 to "285f476bfcdcacc123e141dc1cec947a029de43b6bccd14af4f927d778ef90da",
+                        itemExpectation.lastId to itemExpectation.lastNameHash,
                     )) assertEquals(expected, sha256(requireNotNull(names.getValue(id).value).toByteArray(StandardCharsets.UTF_8)))
-                    for (id in listOf(175, 377, 65535)) {
+                    for (id in listOf(175, itemExpectation.lastId + 1, 65535)) {
                         assertEquals(CapabilityStatus.NOT_FOUND, names.getValue(id).status)
                         assertTrue(names.getValue(id).value == null)
                     }
@@ -509,10 +544,10 @@ class WorldMapCatalogApiRealControlTest {
             // CatalogCache opens and closes a JDBC connection for each operation; this is not an in-memory round trip.
             val stored = checks.attempt("sqlite.reopen-close") { requireNotNull(cache.readComplete(rom.sha256)) } ?: return
             val reopened = stored.catalog
-            if (requireItemNames) checks.attempt("item-names.sqlite.104.independent-samples") {
-                assertEmeraldItemNames(reopened)
+            if (itemExpectation != null) checks.attempt("item-names.sqlite.${itemExpectation.count}.independent-samples") {
+                assertNativeItemNames(reopened, itemExpectation)
                 assertEquals(catalog.defaultLocalizedText(), reopened.defaultLocalizedText())
-                println("ITEM_NAME_CACHE ${control.folder} database=${cache.fileFor(rom.sha256).absolutePath} expected=104")
+                println("ITEM_NAME_CACHE ${control.folder} database=${cache.fileFor(rom.sha256).absolutePath} expected=${itemExpectation.count}")
             }
             if (requireDeclaredSigns) checks.attempt("declared-sign.sqlite.independent-samples") {
                 assertKoreanDeclaredSigns(reopened)
@@ -613,19 +648,19 @@ class WorldMapCatalogApiRealControlTest {
                         println("DECLARED_SIGN_API ${control.folder} samples=2 staticDeclaration=PASS zeroReparse=PASS")
                     }
                     val api = requireNotNull(bootstrap.catalog)
-                    if (requireItemNames) checks.attempt("item-names.api.104.independent-samples") {
+                    if (itemExpectation != null) checks.attempt("item-names.api.${itemExpectation.count}.independent-samples") {
                         val apiItems = (api.balls.map { it.id to it.name } + runtime.stateView().localMapPois.mapNotNull { poi ->
                             poi.itemId?.let { it to poi.itemName }
                         }).groupBy({ it.first }, { it.second })
                         val nativeNames = requireNotNull(reopened.defaultLocalizedText()).itemNames.mapValues { it.value.value }
-                        assertEquals(104, nativeNames.size)
+                        assertEquals(itemExpectation.count, nativeNames.size)
                         assertEquals(nativeNames.keys, apiItems.keys)
                         apiItems.forEach { (id, names) -> assertEquals(setOf(nativeNames.getValue(id)), names.toSet()) }
-                        emeraldItemNameHashes.forEach { (id, hash) ->
+                        itemExpectation.samples.forEach { (id, hash) ->
                             assertEquals(hash, sha256(requireNotNull(apiItems.getValue(id).first()).toByteArray(StandardCharsets.UTF_8)))
                         }
                         assertEquals(0, parserInvocations.get())
-                        println("ITEM_NAME_API ${control.folder} names=104/104 independentSamples=5 zeroReparse=PASS")
+                        println("ITEM_NAME_API ${control.folder} names=${itemExpectation.count}/${itemExpectation.count} independentSamples=${itemExpectation.samples.size} zeroReparse=PASS")
                     }
                     if (directMoveProseControl) checks.attempt("api.move-prose.independent-samples") {
                         nativeMoveProseHashes(control).forEach { (id, expected) ->
