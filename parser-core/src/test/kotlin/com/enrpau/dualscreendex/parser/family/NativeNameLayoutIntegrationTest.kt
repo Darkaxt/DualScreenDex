@@ -10,6 +10,18 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class NativeNameLayoutIntegrationTest {
+    @Test fun genOneOriginalIdentityFreezesOnlyCompiledItemMechanics() {
+        val fixture = com.enrpau.dualscreendex.parser.parse.Gen1ItemFixture()
+        val session = fixture.session()
+        val definition = EngineFamilyDefinitions.byFamily.getValue(EngineFamily.RED_BLUE)
+        IdentityRootsStrategy().execute(session, definition, FamilyProbeState.empty())
+        val authority = session.gen1ItemNameAuthority
+        assertTrue(authority is com.enrpau.dualscreendex.parser.model.GbItemNameAuthority.Available)
+        assertTrue(session.gen1ItemReferences.isEmpty())
+        IdentityRootsStrategy().execute(session, definition, FamilyProbeState.empty())
+        assertSame(authority, session.gen1ItemNameAuthority)
+    }
+
     @Test fun originalItemRouteRecordsExistingBranchAndCopiesNeverRediscover() {
         val fixture = com.enrpau.dualscreendex.parser.parse.ItemConsumerFixture()
         val session = RomAnalysisSession(RomImage(fixture.bytes), RomHeader(Platform.GBA, "CUSTOM"))

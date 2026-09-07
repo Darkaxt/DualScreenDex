@@ -59,6 +59,29 @@ class RomAnalysisSession(
         com.enrpau.dualscreendex.parser.parse.Gen3CompiledItemNameResolver(this)
     }
 
+    private val gen1ItemNameResolver by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        com.enrpau.dualscreendex.parser.parse.Gen1CompiledItemNameResolver(this)
+    }
+    var gen1ItemNameAuthority: com.enrpau.dualscreendex.parser.model.GbItemNameAuthority =
+        com.enrpau.dualscreendex.parser.model.GbItemNameAuthority.Unavailable()
+        private set
+
+    internal fun freezeGen1ItemNameAuthority() {
+        cancellation.throwIfCancellationRequested()
+        gen1ItemNameAuthority = gen1ItemNameResolver.original()
+    }
+
+    var gen1ItemReferences: List<Gen1ItemReference> = emptyList()
+        private set
+
+    internal fun recordGen1ItemReferences(references: List<Gen1ItemReference>) {
+        cancellation.throwIfCancellationRequested()
+        val accepted = if (references.size <= 32768 && references.all {
+                it.itemId in 1..255 && it.operandOffset in 0 until rom.size && rom.u8(it.operandOffset) == it.itemId
+            }) references else emptyList()
+        gen1ItemReferences = java.util.Collections.unmodifiableList(accepted.toList())
+    }
+
     private val nominatedGbaReferenceSiteCache = mutableMapOf<Int, GbaTargetReferenceEvidence?>()
     val exactProfileIdentity: ExactProfileIdentity? = exactProfile?.let {
         ExactProfileIdentity.derive(it, rom, header)

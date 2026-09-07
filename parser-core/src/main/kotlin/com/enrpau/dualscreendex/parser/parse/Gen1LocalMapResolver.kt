@@ -107,7 +107,9 @@ internal object Gen1LocalMapResolver {
         val poiResolution = runCatching {
             Gen1LocalMapPoiResolver.resolve(
                 rom = session.rom,
-                sources = authority.descriptors.map(MapDescriptor::toPoiSource),
+                sources = authority.descriptors.map {
+                    it.toPoiSource(authority.bankAuthority.root, authority.pointerAuthority.root)
+                },
                 maps = maps,
                 codec = codec,
             ).also { resolution ->
@@ -125,6 +127,7 @@ internal object Gen1LocalMapResolver {
             )
         }
 
+        session.recordGen1ItemReferences(poiResolution.itemReferences)
         return LocalMapResolution.Resolved(
             catalog = LocalMapCatalog(
                 maps = maps,
@@ -521,10 +524,12 @@ internal object Gen1LocalMapResolver {
             blocks = blocks,
         )
 
-        fun toPoiSource(): Gen1LocalMapPoiResolver.Source = Gen1LocalMapPoiResolver.Source(
+        fun toPoiSource(bankTable: Int, pointerTable: Int): Gen1LocalMapPoiResolver.Source = Gen1LocalMapPoiResolver.Source(
             baseAreaId = mapId,
             headerBank = headerBank,
             header = header,
+            mapBankTable = bankTable,
+            mapPointerTable = pointerTable,
         )
 
         fun toLocalMap(displayName: String?): LocalMap = LocalMap(

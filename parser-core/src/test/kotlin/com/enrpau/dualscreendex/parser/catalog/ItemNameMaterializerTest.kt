@@ -151,6 +151,128 @@ class ItemNameMaterializerTest {
         }
     }
 
+    @Test fun genOneOnlyCurrentStructuralReferencesReceiveOrdinaryOrGeneratedLabels() {
+        for (yellow in listOf(false, true)) {
+            val f = genOneFixture(yellow)
+            val session = f.session(); session.freezeGen1ItemNameAuthority()
+            session.recordGen1ItemReferences(listOf(1, 2, 201).map { genOneReference(it) })
+            val names = ItemNameMaterializer(session).materialize(genOneLayout(yellow), setOf(-1, 0, 1, 2, 196, 201, 202, 255, 256))
+            assertEquals("ア", names.getValue(1).value)
+            assertEquals("イ", names.getValue(2).value)
+            assertEquals(if (yellow) "あいうえお０１" else "あいうえお01", names.getValue(201).value)
+            for (id in listOf(-1, 0, 196, 202, 255, 256)) assertNull("unrequested/invalid $id", names.getValue(id).value)
+        }
+    }
+
+    @Test fun genOneReadablePayloadCannotAcquireOriginalOrReferenceAuthority() {
+        val f = genOneFixture(false)
+        val missingOriginal = f.session(); missingOriginal.recordGen1ItemReferences(listOf(genOneReference(201)))
+        assertNull(ItemNameMaterializer(missingOriginal).materialize(genOneLayout(false), setOf(201)).getValue(201).value)
+        val missingReference = f.session(); missingReference.freezeGen1ItemNameAuthority()
+        assertNull(ItemNameMaterializer(missingReference).materialize(genOneLayout(false), setOf(201)).getValue(201).value)
+    }
+
+    @Test fun genOneRejectsEmbeddedPrefixTerminationBadTokensAndCopyOverflowLocally() {
+        for (token in listOf(0x50, 0x4e, 0x54, 0x00)) {
+            val f = genOneFixture(true); f.bytes[f.prefix + 8] = token.toByte()
+            val session = f.session(); session.freezeGen1ItemNameAuthority()
+            session.recordGen1ItemReferences(listOf(1, 201).map { genOneReference(it) })
+            val names = ItemNameMaterializer(session).materialize(genOneLayout(true), setOf(1, 201))
+            assertEquals("ア", names.getValue(1).value)
+            assertNull("prefix token $token", names.getValue(201).value)
+        }
+        val f = genOneFixture(false)
+        f.bytes.fill(0x80.toByte(), f.root, f.root + 21); f.bytes[f.root + 21] = 0x50
+        val session = f.session(); session.freezeGen1ItemNameAuthority()
+        session.recordGen1ItemReferences(listOf(1, 201).map { genOneReference(it) })
+        val names = ItemNameMaterializer(session).materialize(genOneLayout(false), setOf(1, 201))
+        assertNull(names.getValue(1).value)
+        assertEquals("あいうえお01", names.getValue(201).value)
+    }
+
+    @Test fun genOneSharedWalkBudgetAndCancellationDoNotCreateNames() {
+        val f = genOneFixture(false)
+        f.bytes.fill(0x80.toByte(), f.root, f.root + 4097)
+        val session = f.session(); session.freezeGen1ItemNameAuthority()
+        session.recordGen1ItemReferences(listOf(genOneReference(1)))
+        assertNull(ItemNameMaterializer(session).materialize(genOneLayout(false), setOf(1)).getValue(1).value)
+        var cancelled = false
+        val cancel = f.session(cancellation = com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken {
+            if (cancelled) throw com.enrpau.dualscreendex.parser.analysis.ParserCancellationException()
+        })
+        cancel.freezeGen1ItemNameAuthority(); cancelled = true
+        assertThrows(com.enrpau.dualscreendex.parser.analysis.ParserCancellationException::class.java) {
+            ItemNameMaterializer(cancel).materialize(genOneLayout(false), setOf(201))
+        }
+    }
+
+    @Test fun genOneTraversalDoesNotDecodeUnrequestedRowsAndCopyCannotCrossMappedBank() {
+        val f = genOneFixture(false)
+        f.bytes[f.root] = 0 // invalid unrequested row, with a structurally usable delimiter
+        val session = f.session(); session.freezeGen1ItemNameAuthority()
+        session.recordGen1ItemReferences(listOf(genOneReference(2)))
+        val names = ItemNameMaterializer(session).materialize(genOneLayout(false), setOf(2))
+        assertEquals(setOf(2), names.keys)
+        assertEquals("イ", names.getValue(2).value)
+
+        f.bytes[f.directory + 10] = 0xf6.toByte(); f.bytes[f.directory + 11] = 0x7f
+        f.bytes[0xbff6] = 0x80.toByte(); f.bytes[0xbff7] = 0x50
+        val boundary = f.session(); boundary.freezeGen1ItemNameAuthority()
+        boundary.recordGen1ItemReferences(listOf(1, 201).map { genOneReference(it) })
+        val result = ItemNameMaterializer(boundary).materialize(genOneLayout(false), setOf(1, 201))
+        assertNull("full 20-byte copy, not merely its terminator, must fit the bank", result.getValue(1).value)
+        assertEquals("あいうえお01", result.getValue(201).value)
+    }
+
+    @Test fun genOneMaterializerNeverReentersOriginalResolverAndReferencesAreSnapshots() {
+        val f = genOneFixture(false)
+        f.bytes[0x5000 + 196] = 196.toByte()
+        var forbidOriginal = false
+        val session = f.session(cancellation = com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken {
+            check(!forbidOriginal || Thread.currentThread().stackTrace.none { it.className.endsWith("Gen1CompiledItemNameResolver") })
+        })
+        session.freezeGen1ItemNameAuthority()
+        val refs = mutableListOf(genOneReference(196))
+        session.recordGen1ItemReferences(refs); refs.clear()
+        assertEquals(1, session.gen1ItemReferences.size)
+        assertThrows(UnsupportedOperationException::class.java) {
+            (session.gen1ItemReferences as MutableList).clear()
+        }
+        forbidOriginal = true
+        val names = ItemNameMaterializer(session).materialize(genOneLayout(false), setOf(0, 196, 201))
+        assertNull(names.getValue(0).value)
+        assertNull(names.getValue(201).value)
+        assertEquals("あいうえおか01", names.getValue(196).value)
+    }
+
+    @Test fun genOneMismatchedOperandAndUnknownProjectionCannotAcquireNames() {
+        val f = genOneFixture(false)
+        f.bytes[0x5000 + 201] = 202.toByte()
+        val session = f.session(); session.freezeGen1ItemNameAuthority()
+        session.recordGen1ItemReferences(listOf(genOneReference(201)))
+        assertTrue(session.gen1ItemReferences.isEmpty())
+        assertNull(ItemNameMaterializer(session).materialize(genOneLayout(false), setOf(201)).getValue(201).value)
+        session.recordGen1ItemReferences(listOf(genOneReference(1)))
+        assertNull(ItemNameMaterializer(session).materialize(
+            genOneLayout(false).copy(languageManifest = RomLanguageManifest.UNKNOWN), setOf(1)).getValue(1).value)
+    }
+
+    private fun genOneReference(id: Int) = com.enrpau.dualscreendex.parser.analysis.Gen1ItemReference(
+        "item/$id", id, 0x5000 + id, com.enrpau.dualscreendex.parser.analysis.Gen1ItemReference.Kind.VISIBLE_OBJECT,
+        1, 1, 0x5000,
+    )
+    private fun genOneFixture(yellow: Boolean) = com.enrpau.dualscreendex.parser.parse.Gen1ItemFixture(yellow).also { f ->
+        byteArrayOf(0x80.toByte(), 0x50, 0x81.toByte(), 0x50).copyInto(f.bytes, f.root)
+        byteArrayOf(0xb1.toByte(), 0xb2.toByte(), 0xb3.toByte(), 0xb4.toByte(), 0xb5.toByte(), 0xb6.toByte()).copyInto(f.bytes, f.prefix)
+        byteArrayOf(0xb1.toByte(), 0xb2.toByte(), 0xb3.toByte(), 0xb4.toByte(), 0xb5.toByte()).copyInto(f.bytes, f.prefix + 8)
+        for (id in listOf(1, 2, 201)) f.bytes[0x5000 + id] = id.toByte()
+    }
+    private fun genOneLayout(yellow: Boolean): ResolvedRomLayout {
+        val codec = if (yellow) JapanesePokemonTextCodecs.gen1Yellow else JapanesePokemonTextCodecs.gen1RedBlue
+        return layout(codec).copy(family = if (yellow) EngineFamily.YELLOW else EngineFamily.RED_BLUE,
+            generation = 1, platform = Platform.GB)
+    }
+
     private fun fixture() = ItemConsumerFixture().also { f ->
         listOf(0x2800, 0x2900, 0x2A00, f.root, 0x2B00, 0x2C00, 0x2D00)
             .forEachIndexed { i, root -> f.pointer(0x1BC + i * 4, root) }

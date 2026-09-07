@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.analysis.Gen1ItemReference
 import com.enrpau.dualscreendex.parser.catalog.LocalMap
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoi
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiItem
@@ -20,20 +21,23 @@ internal object Gen1LocalMapPoiResolver {
         val mapsByBaseArea = maps.associateBy(LocalMap::baseAreaId)
         val sourcesByBaseArea = sources.associateBy(Source::baseAreaId)
         val pois = mutableListOf<LocalMapPoi>()
+        val references = mutableListOf<Gen1ItemReference>()
         val skipped = mutableListOf<String>()
         mapsByBaseArea.toSortedMap().forEach { (baseAreaId, map) ->
             val source = sourcesByBaseArea[baseAreaId] ?: return@forEach
-            runCatching { readMapPois(rom, source, map, mapsByBaseArea.keys, codec) }
-                .onSuccess(pois::addAll)
+            val mapReferences = mutableListOf<Gen1ItemReference>()
+            runCatching { readMapPois(rom, source, map, mapsByBaseArea.keys, codec, mapReferences) }
+                .onSuccess { pois += it; references += mapReferences }
                 .onFailure { failure -> skipped += "map 0x${baseAreaId.hex4()} POIs: ${failure.message}" }
         }
         runCatching { readHiddenItems(rom, mapsByBaseArea) }
             .onSuccess { resolution ->
                 pois += resolution.pois
+                references += resolution.itemReferences
                 skipped += resolution.skippedReasons
             }
             .onFailure { failure -> skipped += "Gen I hidden items: ${failure.message}" }
-        return Resolution(pois.sortedBy(LocalMapPoi::key), skipped)
+        return Resolution(pois.sortedBy(LocalMapPoi::key), skipped, references.toList())
     }
 
     private fun readMapPois(
@@ -42,6 +46,7 @@ internal object Gen1LocalMapPoiResolver {
         map: LocalMap,
         acceptedAreaIds: Set<Int>,
         codec: PokemonTextCodec?,
+        references: MutableList<Gen1ItemReference>,
     ): List<LocalMapPoi> {
         val bankLimit = bankEnd(rom, source.headerBank)
         val connectionCount = Integer.bitCount(rom.u8(source.header + CONNECTION_FLAGS_OFFSET) and CONNECTION_MASK)
@@ -106,6 +111,7 @@ internal object Gen1LocalMapPoiResolver {
                 x = rom.u8(cursor + 2) - OBJECT_COORDINATE_BIAS,
                 y = rom.u8(cursor + 1) - OBJECT_COORDINATE_BIAS,
                 itemId = if (typeBits == OBJECT_TYPE_ITEM) rom.u8(cursor + 6) else null,
+                operandOffset = cursor + 6,
             )
             cursor += recordBytes
         }
@@ -118,6 +124,13 @@ internal object Gen1LocalMapPoiResolver {
             objects.forEach { objectEvent ->
                 val itemId = objectEvent.itemId ?: return@forEach
                 if (!objectEvent.inside(map) || itemId == 0) return@forEach
+                references += Gen1ItemReference(
+                    poiKey = "${map.key}/object/${objectEvent.index}", itemId = itemId,
+                    operandOffset = objectEvent.operandOffset, kind = Gen1ItemReference.Kind.VISIBLE_OBJECT,
+                    baseAreaId = map.baseAreaId, sourceBank = source.headerBank, recordRoot = objectRoot,
+                    mapHeader = source.header, objectPointerField = objectPointerField,
+                    mapBankTable = source.mapBankTable, mapPointerTable = source.mapPointerTable,
+                )
                 add(
                     LocalMapPoi(
                         key = "${map.key}/object/${objectEvent.index}",
@@ -258,6 +271,7 @@ internal object Gen1LocalMapPoiResolver {
         val items = itemAuthorities.single()
         val coordinateIndexes = items.coordinates.withIndex().groupBy { it.value }
         val pois = mutableListOf<LocalMapPoi>()
+        val references = mutableListOf<Gen1ItemReference>()
         val skipped = mutableListOf<String>()
         events.entries.forEach { entry ->
             val baseAreaId = entry.baseAreaId
@@ -282,6 +296,13 @@ internal object Gen1LocalMapPoiResolver {
                         if (coordinateIndex == null) {
                             skipped += "map 0x${baseAreaId.hex4()} hidden item $eventIndex has no unique flag coordinate"
                         } else if (itemId != 0) {
+                            references += Gen1ItemReference(
+                                poiKey = "${map.key}/hidden/$coordinateIndex", itemId = itemId,
+                                operandOffset = cursor + 2, kind = Gen1ItemReference.Kind.HIDDEN_EVENT,
+                                baseAreaId = baseAreaId, sourceBank = events.bank, recordRoot = entry.root,
+                                hiddenHandler = items.function, coordinateRoot = items.coordinateRoot,
+                                coordinateIndex = coordinateIndex,
+                            )
                             pois += LocalMapPoi(
                                 key = "${map.key}/hidden/$coordinateIndex",
                                 localMapKey = map.key,
@@ -301,7 +322,7 @@ internal object Gen1LocalMapPoiResolver {
                 skipped += "map 0x${baseAreaId.hex4()} hidden items: ${failure.message}"
             }
         }
-        return HiddenResolution(pois, skipped)
+        return HiddenResolution(pois, skipped, references.toList())
     }
 
     private fun findHiddenEventAuthorities(rom: RomImage): List<HiddenEventAuthority> = buildList {
@@ -444,16 +465,20 @@ internal object Gen1LocalMapPoiResolver {
         val baseAreaId: Int,
         val headerBank: Int,
         val header: Int,
+        val mapBankTable: Int? = null,
+        val mapPointerTable: Int? = null,
     )
 
     data class Resolution(
         val pois: List<LocalMapPoi>,
         val skippedReasons: List<String>,
+        val itemReferences: List<Gen1ItemReference> = emptyList(),
     )
 
     private data class HiddenResolution(
         val pois: List<LocalMapPoi>,
         val skippedReasons: List<String>,
+        val itemReferences: List<Gen1ItemReference> = emptyList(),
     )
 
     private data class WarpRecord(
@@ -480,7 +505,7 @@ internal object Gen1LocalMapPoiResolver {
         fun inside(map: LocalMap): Boolean = x in 0 until map.gridWidth && y in 0 until map.gridHeight
     }
 
-    private data class ObjectRecord(val index: Int, val x: Int, val y: Int, val itemId: Int?) {
+    private data class ObjectRecord(val index: Int, val x: Int, val y: Int, val itemId: Int?, val operandOffset: Int) {
         fun inside(map: LocalMap): Boolean = x in 0 until map.gridWidth && y in 0 until map.gridHeight
     }
 

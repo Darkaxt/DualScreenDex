@@ -13,6 +13,9 @@ class ItemNameMaterializer(private val session: RomAnalysisSession) {
         session.cancellation.throwIfCancellationRequested()
         fun unavailable(reason: String): Map<Int, CatalogField<String>> = referencedIds.associateWith { CatalogField.notFound(reason) }
         if (referencedIds.isEmpty()) return emptyMap()
+        if (layout.generation == 1 && layout.platform in setOf(Platform.GB, Platform.GBC)) {
+            return materializeGenOne(layout, referencedIds)
+        }
         if (layout.generation != 3 || layout.platform != Platform.GBA) return unavailable("compiled item-name ABI unavailable")
         val codec = layout.defaultTextCodec() ?: return unavailable("exact item-name projection unavailable")
         if (codec.terminator != 0xFF) return unavailable("item copier terminator disagrees with projection")
@@ -33,6 +36,80 @@ class ItemNameMaterializer(private val session: RomAnalysisSession) {
                 }
             }
         }.also { session.cancellation.throwIfCancellationRequested() }
+    }
+
+    private fun materializeGenOne(layout: ResolvedRomLayout, requested: Set<Int>): Map<Int, CatalogField<String>> {
+        val result = requested.associateWith { CatalogField.notFound<String>("original consumer or current structural reference unavailable") }.toMutableMap()
+        val authority = session.gen1ItemNameAuthority as? com.enrpau.dualscreendex.parser.model.GbItemNameAuthority.Available
+            ?: return result
+        val codec = layout.defaultTextCodec() ?: return result
+        if (!codec.supports(1, layout.platform) || codec.terminator != authority.terminator) return result
+        val authorized = session.gen1ItemReferences.mapNotNull { reference ->
+            session.cancellation.throwIfCancellationRequested()
+            reference.itemId.takeIf { it in 1..255 && it in requested }
+        }.toSet()
+        if (authorized.isEmpty()) return result
+        fun decode(bytes: ByteArray): CatalogField<String> {
+            val text = codec.decodeDetailed(com.enrpau.dualscreendex.parser.io.RomImage(bytes), 0, bytes.size, session.cancellation)
+            return if (text.terminated && text.invalidUnits == 0 && text.controlUnits == 0 &&
+                text.substitutionUnits == 0 && text.text.isNotBlank()) CatalogField.available(text.text)
+            else CatalogField.notFound("item name lacks exact tokens and bounded termination")
+        }
+
+        // A single shared walk; traversed but unrequested ordinals gain no semantic authority.
+        // The buffer is also the copy source, so no packed byte is read twice from the ROM.
+        val ordinary = authorized.filter { it < authority.machineThreshold }.toSet()
+        if (ordinary.isNotEmpty()) {
+            val capacity = minOf(4096L, session.limits.maxDatasetExtentBytes,
+                (authority.bankEnd - authority.root).toLong()).coerceAtLeast(0).toInt()
+            val packed = ByteArray(capacity)
+            var loaded = 0
+            fun ensure(end: Int): Boolean {
+                if (end !in 0..capacity) return false
+                while (loaded < end) {
+                    session.cancellation.throwIfCancellationRequested()
+                    packed[loaded] = session.rom.u8(authority.root + loaded).toByte()
+                    loaded++
+                }
+                return true
+            }
+            var cursor = 0
+            for (id in 1..ordinary.max()) {
+                val start = cursor
+                var terminated = false
+                while (ensure(cursor + 1)) {
+                    if ((packed[cursor++].toInt() and 255) == authority.terminator) { terminated = true; break }
+                }
+                if (!terminated) break
+                if (id in ordinary && cursor - start <= authority.copyBytes && ensure(start + authority.copyBytes)) {
+                    result[id] = decode(packed.copyOfRange(start, start + authority.copyBytes))
+                }
+            }
+        }
+
+        // Generated labels use an evaluator-owned output, never ambient RAM or a global item domain.
+        val prefixes = mutableMapOf<Boolean, ByteArray?>()
+        for (id in authorized.filter { it >= authority.machineThreshold }.sorted()) {
+            session.cancellation.throwIfCancellationRequested()
+            val lower = id < authority.machineSplit
+            if (!prefixes.containsKey(lower)) prefixes[lower] = run {
+                val start = if (lower) authority.lowerPrefix else authority.upperPrefix
+                val count = if (lower) authority.lowerPrefixBytes else authority.upperPrefixBytes
+                if (count.toLong() + 3 > session.limits.maxDatasetExtentBytes) null
+                else ByteArray(count) { index ->
+                    session.cancellation.throwIfCancellationRequested()
+                    session.rom.u8(start + index).toByte()
+                }.takeUnless { bytes -> bytes.any { (it.toInt() and 255) == authority.terminator } }
+            }
+            val prefix = prefixes[lower] ?: continue
+            val number = ((id + if (lower) authority.lowerAdjustment else 0) and 255) - authority.numberSubtract
+            if (number !in 0..99) continue
+            val output = prefix + byteArrayOf((authority.digitOrigin + number / 10).toByte(),
+                (authority.digitOrigin + number % 10).toByte(), authority.terminator.toByte())
+            result[id] = decode(output)
+        }
+        session.cancellation.throwIfCancellationRequested()
+        return result
     }
 
     internal data class Joined(val balls: Map<Int, CaptureBallRecord>, val localMaps: LocalMapCatalog)
