@@ -10,6 +10,21 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class NativeNameLayoutIntegrationTest {
+    @Test fun genTwoOriginalIdentityFreezesOnlyCompiledItemMechanics() {
+        for (family in listOf(EngineFamily.GOLD_SILVER, EngineFamily.CRYSTAL)) {
+            val fixture = com.enrpau.dualscreendex.parser.parse.Gen2ItemFixture()
+            val session = fixture.session()
+            val definition = EngineFamilyDefinitions.byFamily.getValue(family)
+            IdentityRootsStrategy().execute(session, definition, FamilyProbeState.empty())
+            val authority = session.gen2ItemNameAuthority
+            assertTrue(authority is com.enrpau.dualscreendex.parser.model.Gen2ItemNameAuthority.Available)
+            assertTrue(session.gen2ItemReferences.isEmpty())
+            assertTrue(session.gen1ItemNameAuthority is com.enrpau.dualscreendex.parser.model.GbItemNameAuthority.Unavailable)
+            IdentityRootsStrategy().execute(session, definition, FamilyProbeState.empty())
+            assertSame(authority, session.gen2ItemNameAuthority)
+        }
+    }
+
     @Test fun genOneOriginalIdentityFreezesOnlyCompiledItemMechanics() {
         val fixture = com.enrpau.dualscreendex.parser.parse.Gen1ItemFixture()
         val session = fixture.session()

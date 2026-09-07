@@ -130,6 +130,7 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
         )
         val generation = definition.formatGeneration
         if (generation == 1) session.freezeGen1ItemNameAuthority()
+        if (generation == 2) session.freezeGen2ItemNameAuthority()
         val nativeNameCandidates = NativeNameCandidateResolver.resolve(session, definition, baseProfile)
         val nativeNames = nativeNameCandidates.singleOrNull()
         val probeCodec = nativeNames?.codec ?: OfficialLanguageResolver.preferredProbeCodec(

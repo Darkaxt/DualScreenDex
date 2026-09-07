@@ -198,8 +198,8 @@ class WorldMapCatalogApiRealControlTest {
     // Separate JUnit cases deliberately attempt all nine exact inputs even when an earlier cell is red.
     @Test fun nativeOfficialJapaneseRedBlue() = assertNativeRoundTrip(nativeControls[0], requireItemNames = true)
     @Test fun nativeOfficialJapaneseYellow() = assertNativeRoundTrip(nativeControls[1], requireItemNames = true)
-    @Test fun nativeOfficialJapaneseGoldSilver() = assertNativeRoundTrip(nativeControls[2])
-    @Test fun nativeOfficialJapaneseCrystal() = assertNativeRoundTrip(nativeControls[3])
+    @Test fun nativeOfficialJapaneseGoldSilver() = assertNativeRoundTrip(nativeControls[2], requireItemNames = true)
+    @Test fun nativeOfficialJapaneseCrystal() = assertNativeRoundTrip(nativeControls[3], requireItemNames = true)
     @Test fun nativeOfficialJapaneseRubySapphire() = assertNativeRoundTrip(nativeControls[4], requireItemNames = true)
     @Test fun nativeOfficialJapaneseEmerald() = assertNativeRoundTrip(nativeControls[5], requireItemNames = true)
     @Test fun nativeOfficialJapaneseFireRedLeafGreen() = assertNativeRoundTrip(nativeControls[6], requireItemNames = true)
@@ -367,6 +367,10 @@ class WorldMapCatalogApiRealControlTest {
             ItemNameExpectation(62, names.mapValues { sha256(it.value.toByteArray(StandardCharsets.UTF_8)) },
                 0, 0, "", false, allNames = names)
         }
+        "ja/GOLD_SILVER", "ja/CRYSTAL" -> genTwoItemOracle(control).let { names ->
+            ItemNameExpectation(names.size, names.mapValues { sha256(it.value.toByteArray(StandardCharsets.UTF_8)) },
+                0, 0, "", false, allNames = names)
+        }
         "ja/RUBY_SAPPHIRE" -> ItemNameExpectation(
             101, mapOf(
                 4 to "17981b51d17e17dcdf00165263590a279e1ac9102280ad78d7920282b5fb2f4c",
@@ -465,6 +469,109 @@ class WorldMapCatalogApiRealControlTest {
         assertEquals(if (control.family == EngineFamily.YELLOW) "０１" else "01", codec.decode(byteArrayOf(0xf6.toByte(), 0xf7.toByte(), 0x50)))
     }
 
+    // Preimplementation two-control proof; independent Japanese declarations at
+    // f2b5db1deb0b8f2009d7e9d50b3bcb05ef8a9f53/charmap.asm. Primary Hiragana aliases,
+    // fullwidth digits; no disabled English expansions or production-decoded oracle.
+    private fun genTwoItemOracle(control: NativeControl): Map<Int, String> {
+        val common = """
+            2 ハイパーボール
+            4 スーパーボール
+            5 モンスターボール
+            8 つきのいし
+            9 どくけし
+            10 やけどなおし
+            11 こおりなおし
+            12 ねむけざまし
+            13 まひなおし
+            14 かいふくのくすり
+            15 まんたんのくすり
+            16 すごいキズぐすり
+            17 いいキズぐすり
+            18 キズぐすり
+            19 あなぬけのヒモ
+            21 ピーピーマックス
+            26 マックスアップ
+            27 タウりン
+            28 ブロムへキシン
+            29 インドメタシン
+            31 りゾチウム
+            32 ふしぎなアメ
+            33 ヨクアタール
+            36 きんのたま
+            38 なんでもなおし
+            39 げんきのかけら
+            40 げんきのかたまり
+            41 エフェクトガード
+            43 ゴールドスプレー
+            44 クりティカッター
+            49 プラスパワー
+            51 ディフェンダー
+            52 スピーダー
+            53 スぺシャルアップ
+            54 コインケース
+            62 ポイントアップ
+            63 ピーピーエイド
+            64 ピーピーりカバー
+            65 ピーピーエイダー
+            91 おまもりこばん
+            106 けむりだま
+            107 とけないこおり
+            119 きあいのハチマキ
+            128 きかいのぶひん
+            151 りゅうのウロコ
+            152 はかいのいでんし
+            194 わざマシン０４
+            204 わざマシン１３
+            209 わざマシン１８
+            211 わざマシン２０
+            213 わざマシン２２
+            217 わざマシン２６
+            219 わざマシン２８
+            226 わざマシン３４
+            227 わざマシン３５
+            231 わざマシン３９
+            232 わざマシン４０
+            235 わざマシン４３
+            236 わざマシン４４
+            238 わざマシン４６
+            239 わざマシン４７
+            249 ひでんマシン０７
+        """.trimIndent().lines().associate { it.substringBefore(' ').toInt() to it.substringAfter(' ') }
+        val extra = """
+            20 むしよけスプレー
+            42 シルバースプレー
+            74 どくけしのみ
+            95 しんぴのしずく
+            121 ちからのこな
+            122 ちからのねっこ
+            123 ばんのうごな
+            124 ふっかつそう
+            131 ほしのすな
+            132 ほしのかけら
+            138 もくたん
+            150 ふしぎなきのみ
+            173 きのみ
+            174 おうごんのみ
+        """.trimIndent().lines().associate { it.substringBefore(' ').toInt() to it.substringAfter(' ') }
+        assertEquals(62, common.size)
+        assertEquals(14, extra.size)
+        return if (control.family == EngineFamily.CRYSTAL) common + extra else common
+    }
+
+    private fun assertGenTwoConsumedTokens(control: NativeControl) {
+        val codec = com.enrpau.dualscreendex.parser.text.JapanesePokemonTextCodecs.gen2
+        val tokens = "05:ガ 09:ゴ 0c:ズ 0e:ゾ 0f:ダ 12:デ 13:ド 19:バ 1b:ブ 1c:ボ 27:ぎ 28:ぐ 29:げ 2a:ご 2b:ざ 30:だ 33:で 34:ど 3a:ば 3c:ぶ 40:パ 41:ピ 42:プ 43:ポ 47:ぺ 80:ア 81:イ 82:ウ 83:エ 85:カ 86:キ 87:ク 88:ケ 89:コ 8b:シ 8c:ス 8f:タ 90:チ 92:テ 93:ト 99:ハ 9a:ヒ 9b:フ 9d:マ 9f:ム a0:メ a1:モ a4:ヨ a5:ラ a6:ル a7:レ a8:ロ a9:ワ ab:ン ac:ッ ad:ャ b0:ィ b1:あ b2:い b3:う b5:お b6:か b7:き b8:く b9:け ba:こ bc:し bd:す c0:た c2:つ c4:と c5:な c7:ぬ c8:ね c9:の ca:は cb:ひ cc:ふ cd:へ cf:ま d1:む d3:も d4:や d7:ら d8:り dc:わ de:ん e1:ゅ e3:ー eb:ェ f6:０ f7:１ f8:２ f9:３ fa:４ fb:５ fc:６ fd:７ fe:８ ff:９"
+            .split(' ').associate { it.substringBefore(':').toInt(16) to it.substringAfter(':') } +
+            (if (control.family == EngineFamily.CRYSTAL) "2d:ず 45:ぴ bf:そ c1:ち ce:ほ d0:み d6:よ df:っ"
+                .split(' ').associate { it.substringBefore(':').toInt(16) to it.substringAfter(':') } else emptyMap())
+        assertEquals(if (control.family == EngineFamily.CRYSTAL) 108 else 100, tokens.size)
+        tokens.forEach { (byte, glyph) ->
+            val decoded = codec.decodeDetailed(byteArrayOf(byte.toByte(), 0x50))
+            assertEquals("independent token $byte for ${codec.id}", glyph, decoded.text)
+            assertTrue(decoded.terminated && decoded.invalidUnits == 0 && decoded.controlUnits == 0 && decoded.substitutionUnits == 0)
+        }
+    }
+
     private fun assertNativeItemNames(catalog: ParsedCatalog, expected: ItemNameExpectation) {
         val overlay = requireNotNull(catalog.defaultLocalizedText())
         val state = overlay.localizedCapabilities.getValue(LocalizedTextCapability.ITEM_NAMES)
@@ -509,8 +616,8 @@ class WorldMapCatalogApiRealControlTest {
             val catalog = checks.attempt("materialize") { requireNotNull(attempt.catalog).getOrThrow() } ?: return
             if (itemExpectation != null) {
                 checks.attempt("item-names.materialize.${itemExpectation.count}.independent-samples") { assertNativeItemNames(catalog, itemExpectation) }
-                if (control.generation == 1) checks.attempt("item-names.exact-consumed-tokens-and-reference-gate") {
-                    assertGenOneConsumedTokens(control)
+                if (control.generation in 1..2) checks.attempt("item-names.exact-consumed-tokens-and-reference-gate") {
+                    if (control.generation == 1) assertGenOneConsumedTokens(control) else assertGenTwoConsumedTokens(control)
                     val session = com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession(rom, attempt.analysis.header)
                     val queried = setOf(-1, 0, 2, 196, 201, 250, 255, 256)
                     val denied = com.enrpau.dualscreendex.parser.catalog.ItemNameMaterializer(session)
@@ -654,14 +761,14 @@ class WorldMapCatalogApiRealControlTest {
             if (requireDeclaredSigns) checks.attempt("declared-sign.sqlite.independent-samples") {
                 assertKoreanDeclaredSigns(reopened)
                 assertEquals(catalog.localMaps.pois, reopened.localMaps.pois)
-                assertEquals(56, CatalogSchema.parserSchemaVersion)
+                assertEquals(57, CatalogSchema.parserSchemaVersion)
                 assertEquals(2, CatalogSchema.version)
                 println("DECLARED_SIGN_CACHE ${control.folder} sha256=${rom.sha256} database=${cache.fileFor(rom.sha256).absolutePath}")
             }
             if (directMoveProseControl) checks.attempt("sqlite.move-prose.independent-samples") {
                 assertNativeMoveProseSamples(reopened, control)
                 JdbcTestCatalogDatabaseFactory.open(cache.fileFor(rom.sha256)).use { database ->
-                    assertEquals(listOf(56L to 2L), database.query(
+                    assertEquals(listOf(57L to 2L), database.query(
                         "SELECT parser_schema_version, schema_version FROM catalog_metadata WHERE id = 1",
                     ) { row -> row.long("parser_schema_version") to row.long("schema_version") })
                 }

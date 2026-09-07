@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.analysis.Gen2ItemReference
 import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.analysis.ResolutionLimits
 import com.enrpau.dualscreendex.parser.catalog.LocalMap
@@ -30,15 +31,28 @@ internal object Gen2LocalMapPoiResolver {
         val mapsByBaseArea = maps.associateBy(LocalMap::baseAreaId)
         val sourcesByBaseArea = sources.associateBy(Source::baseAreaId)
         val pois = mutableListOf<LocalMapPoi>()
+        val references = mutableListOf<Gen2ItemReference>()
+        var referenceBudgetExceeded = false
         val skipped = mutableListOf<String>()
         mapsByBaseArea.toSortedMap().forEach { (baseAreaId, map) ->
             val source = sourcesByBaseArea[baseAreaId] ?: return@forEach
             cancellation.throwIfCancellationRequested()
             runCatching { readMapPois(rom, source, map, mapsByBaseArea.keys, family, codec, declaration, cancellation) }
-                .onSuccess(pois::addAll)
-                .onFailure { failure -> cancellation.throwIfCancellationRequested(); skipped += "map 0x${baseAreaId.hex4()} POIs: ${failure.message}" }
+                .onSuccess { result ->
+                    pois.addAll(result.pois)
+                    if (!referenceBudgetExceeded) {
+                        if (references.size + result.itemReferences.size <= MAX_ITEM_REFERENCES) references.addAll(result.itemReferences)
+                        else { references.clear(); referenceBudgetExceeded = true }
+                    }
+                }
+                .onFailure { failure ->
+                    if (failure is java.util.concurrent.CancellationException) throw failure
+                    cancellation.throwIfCancellationRequested()
+                    skipped += "map 0x${baseAreaId.hex4()} POIs: ${failure.message}"
+                }
         }
-        return Resolution(pois.sortedBy(LocalMapPoi::key), skipped)
+        cancellation.throwIfCancellationRequested()
+        return Resolution(pois.sortedBy(LocalMapPoi::key), skipped, references.sortedBy(Gen2ItemReference::poiKey))
     }
 
     private fun readMapPois(
@@ -50,7 +64,8 @@ internal object Gen2LocalMapPoiResolver {
         codec: PokemonTextCodec?,
         declaration: Gen2DeclaredSignAbi.Resolution,
         cancellation: ParserCancellationToken,
-    ): List<LocalMapPoi> {
+    ): Resolution {
+        val references = mutableListOf<Gen2ItemReference>()
         val scriptsBank = rom.u8(source.attributes + SCRIPTS_BANK_OFFSET)
         val events = requireNotNull(
             rom.gbBankAddress(scriptsBank, rom.u16le(source.attributes + EVENTS_POINTER_OFFSET)),
@@ -93,6 +108,7 @@ internal object Gen2LocalMapPoiResolver {
         val backgrounds = List(backgroundCount) { index ->
             val row = cursor + index * BACKGROUND_RECORD_BYTES
             BackgroundRecord(
+                row = row,
                 index = index,
                 x = rom.u8(row + 1),
                 y = rom.u8(row),
@@ -114,6 +130,7 @@ internal object Gen2LocalMapPoiResolver {
             val row = cursor + index * OBJECT_RECORD_BYTES
             val type = rom.u8(row + 7) and OBJECT_TYPE_MASK
             ObjectRecord(
+                row = row,
                 index = index,
                 x = rom.u8(row + 2) - OBJECT_COORDINATE_BIAS,
                 y = rom.u8(row + 1) - OBJECT_COORDINATE_BIAS,
@@ -141,8 +158,9 @@ internal object Gen2LocalMapPoiResolver {
         val declaredTextRoots = signs.mapNotNull { background ->
             declaredSignText(rom, scriptsBank, background.data, background.kind, declaration, forbidden)?.first
         }.distinct().sorted()
-        return buildList {
+        val pois = buildList {
             objects.forEach { objectEvent ->
+                cancellation.throwIfCancellationRequested()
                 if (objectEvent.type != OBJECT_TYPE_ITEMBALL || !objectEvent.inside(map)) return@forEach
                 val data = objectEvent.data ?: return@forEach
                 require(data + ITEMBALL_DATA_BYTES <= bankEnd(rom, scriptsBank)) {
@@ -151,6 +169,10 @@ internal object Gen2LocalMapPoiResolver {
                 val itemId = rom.u8(data)
                 val quantity = rom.u8(data + 1)
                 if (itemId == 0 || quantity == 0) return@forEach
+                references += Gen2ItemReference("${map.key}/object/${objectEvent.index}", itemId, data,
+                    Gen2ItemReference.Kind.VISIBLE_OBJECT, map.baseAreaId, source.mapGroupTable, source.mapGroupBank,
+                    source.mapHeader, source.attributesBank, source.attributes, scriptsBank, events, objectEvent.row,
+                    objectEvent.row + 9, objectEvent.x, objectEvent.y, quantity, objectEvent.eventFlag)
                 add(
                     LocalMapPoi(
                         key = "${map.key}/object/${objectEvent.index}",
@@ -168,6 +190,7 @@ internal object Gen2LocalMapPoiResolver {
             }
             validWarps.filter { it.index !in representedWarpIndexes }.forEach { warp -> add(warp.toPoi(map)) }
             validBackgrounds.forEach { background ->
+                cancellation.throwIfCancellationRequested()
                 if (background.kind == BGEVENT_ITEM) {
                     require(background.data + HIDDEN_ITEM_DATA_BYTES <= bankEnd(rom, scriptsBank)) {
                         "hidden item ${background.index} data is truncated"
@@ -175,6 +198,10 @@ internal object Gen2LocalMapPoiResolver {
                     val collectionFlag = rom.u16le(background.data)
                     val itemId = rom.u8(background.data + 2)
                     if (collectionFlag != NO_EVENT_FLAG && itemId != 0) {
+                        references += Gen2ItemReference("${map.key}/bg/${background.index}", itemId, background.data + 2,
+                            Gen2ItemReference.Kind.HIDDEN_EVENT, map.baseAreaId, source.mapGroupTable, source.mapGroupBank,
+                            source.mapHeader, source.attributesBank, source.attributes, scriptsBank, events, background.row,
+                            background.row + 3, background.x, background.y, null, collectionFlag)
                         add(
                             LocalMapPoi(
                                 key = "${map.key}/bg/${background.index}",
@@ -219,6 +246,7 @@ internal object Gen2LocalMapPoiResolver {
                 }
             }
         }
+        return Resolution(pois, emptyList(), references)
     }
 
     private fun associateBackgroundsWithWarps(
@@ -370,11 +398,15 @@ internal object Gen2LocalMapPoiResolver {
         val baseAreaId: Int,
         val attributesBank: Int,
         val attributes: Int,
+        val mapGroupTable: Int? = null,
+        val mapGroupBank: Int? = null,
+        val mapHeader: Int? = null,
     )
 
     data class Resolution(
         val pois: List<LocalMapPoi>,
         val skippedReasons: List<String>,
+        val itemReferences: List<Gen2ItemReference> = emptyList(),
     )
 
     private data class WarpRecord(
@@ -398,6 +430,7 @@ internal object Gen2LocalMapPoiResolver {
     }
 
     private data class BackgroundRecord(
+        val row: Int,
         val index: Int,
         val x: Int,
         val y: Int,
@@ -408,6 +441,7 @@ internal object Gen2LocalMapPoiResolver {
     }
 
     private data class ObjectRecord(
+        val row: Int,
         val index: Int,
         val x: Int,
         val y: Int,
@@ -428,6 +462,7 @@ internal object Gen2LocalMapPoiResolver {
 
     private fun Int.hex4(): String = toString(16).padStart(4, '0')
 
+    private const val MAX_ITEM_REFERENCES = 32768
     private const val BANK_BYTES = 0x4000
     private const val SCRIPTS_BANK_OFFSET = 6
     private const val EVENTS_POINTER_OFFSET = 9

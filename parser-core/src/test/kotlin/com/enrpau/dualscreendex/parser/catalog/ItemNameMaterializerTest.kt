@@ -257,6 +257,110 @@ class ItemNameMaterializerTest {
             genOneLayout(false).copy(languageManifest = RomLanguageManifest.UNKNOWN), setOf(1)).getValue(1).value)
     }
 
+    @Test fun genTwoCurrentReferencesGateBothSkippedIdArithmeticAndOrdinaryWalk() {
+        val f = genTwoFixture()
+        val session = f.session(); freezeGenTwo(session)
+        val ids = listOf(1, 2, 181, 184, 185, 186, 209, 210, 211, 232, 233)
+        session.recordGen2ItemReferences(ids.map(::genTwoReference))
+        val queries = ids.toSet() + setOf(-1, 0, 182, 234, 255, 256)
+        val names = ItemNameMaterializer(session).materialize(genTwoLayout(), queries)
+        assertEquals(queries, names.keys)
+        assertEquals("ア", names.getValue(1).value)
+        assertEquals("イ", names.getValue(2).value)
+        for ((id, number) in mapOf(181 to "０１", 184 to "０４", 185 to "０４", 186 to "０５",
+            209 to "２８", 210 to "２８", 211 to "２９", 232 to "５０")) {
+            assertEquals("あいうえお$number", names.getValue(id).value)
+        }
+        assertEquals("あいうえおか０１", names.getValue(233).value)
+        for (id in listOf(-1, 0, 182, 234, 255, 256)) assertNull("unbound $id", names.getValue(id).value)
+    }
+
+    @Test fun genTwoOriginalReferenceSnapshotsAndDecodeOnlyBoundaryAreIndependent() {
+        val f = genTwoFixture()
+        val uninvoked = f.session(); uninvoked.recordGen2ItemReferences(listOf(genTwoReference(181)))
+        assertNull(ItemNameMaterializer(uninvoked).materialize(genTwoLayout(), setOf(181)).getValue(181).value)
+        var denyDiscovery = false
+        val session = f.session(cancellation = com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken {
+            check(!denyDiscovery || Thread.currentThread().stackTrace.none { it.className.endsWith("Gen2CompiledItemNameResolver") })
+        })
+        freezeGenTwo(session)
+        val refs = mutableListOf(genTwoReference(181)); session.recordGen2ItemReferences(refs); refs.clear()
+        assertThrows(UnsupportedOperationException::class.java) { (session.gen2ItemReferences as MutableList).clear() }
+        denyDiscovery = true
+        assertEquals("あいうえお０１", ItemNameMaterializer(session).materialize(genTwoLayout(), setOf(181)).getValue(181).value)
+        session.recordGen2ItemReferences(listOf(genTwoReference(182))) // mismatched ROM operand
+        assertTrue(session.gen2ItemReferences.isEmpty())
+        assertNull(ItemNameMaterializer(session).materialize(genTwoLayout(), setOf(181)).getValue(181).value)
+    }
+
+    @Test fun genTwoBadPayloadIsLocalAndUnrequestedRowsHaveNoSemanticOutput() {
+        for (token in listOf(0, 0x50, 0x4e, 0x37)) {
+            val f = genTwoFixture(); f.bytes[f.at("tmPrefix")] = token.toByte()
+            f.bytes[f.root] = 0 // invalid first ordinal is not requested
+            val session = f.session(); freezeGenTwo(session)
+            session.recordGen2ItemReferences(listOf(2, 181, 233).map(::genTwoReference))
+            val result = ItemNameMaterializer(session).materialize(genTwoLayout(), setOf(2, 181, 233))
+            assertEquals("イ", result.getValue(2).value)
+            assertNull(result.getValue(181).value)
+            assertEquals("あいうえおか０１", result.getValue(233).value)
+        }
+    }
+
+    @Test fun genTwoUnknownProjectionIncompleteProvenanceAndReferenceOverflowStayUnavailable() {
+        val f = genTwoFixture()
+        val session = f.session(); session.freezeGen2ItemNameAuthority()
+        session.recordGen2ItemReferences(listOf(genTwoReference(181)))
+        assertNull(ItemNameMaterializer(session).materialize(genTwoLayout().copy(languageManifest = RomLanguageManifest.UNKNOWN), setOf(181)).getValue(181).value)
+        session.recordGen2ItemReferences(listOf(genTwoReference(181).copy(mapHeader = null)))
+        assertNull(ItemNameMaterializer(session).materialize(genTwoLayout(), setOf(181)).getValue(181).value)
+        session.recordGen2ItemReferences(List(32769) { genTwoReference(181) })
+        assertTrue(session.gen2ItemReferences.isEmpty())
+        assertNull(ItemNameMaterializer(session).materialize(genTwoLayout(), setOf(181)).getValue(181).value)
+    }
+
+    @Test fun genTwoPackedBudgetFullCopyAndCancellationCannotPublishPartialNames() {
+        val f = genTwoFixture()
+        f.bytes.fill(0x80.toByte(), f.root, f.root + 4097)
+        val session = f.session(); session.freezeGen2ItemNameAuthority()
+        session.recordGen2ItemReferences(listOf(1, 181).map(::genTwoReference))
+        val names = ItemNameMaterializer(session).materialize(genTwoLayout(), setOf(1, 181))
+        assertNull(names.getValue(1).value)
+        assertEquals("あいうえお０１", names.getValue(181).value)
+        val bounded = genTwoFixture()
+        bounded.word(bounded.at("directory") + 16, 0x7ffa)
+        byteArrayOf(0x80.toByte(), 0x50).copyInto(bounded.bytes, 0x13ffa)
+        val short = bounded.session(); short.freezeGen2ItemNameAuthority()
+        short.recordGen2ItemReferences(listOf(genTwoReference(1)))
+        assertNull(ItemNameMaterializer(short).materialize(genTwoLayout(), setOf(1)).getValue(1).value)
+        var remaining = 12
+        var armed = false
+        val cancel = genTwoFixture().session(cancellation = com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken {
+            if (armed && --remaining == 0) throw com.enrpau.dualscreendex.parser.analysis.ParserCancellationException()
+        })
+        cancel.freezeGen2ItemNameAuthority()
+        cancel.recordGen2ItemReferences(listOf(1, 2, 181).map(::genTwoReference)); armed = true
+        assertThrows(com.enrpau.dualscreendex.parser.analysis.ParserCancellationException::class.java) {
+            ItemNameMaterializer(cancel).materialize(genTwoLayout(), setOf(1, 2, 181))
+        }
+    }
+
+    private fun freezeGenTwo(session: com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession) {
+        val freeze = session.javaClass.declaredMethods.singleOrNull { it.name.startsWith("freezeGen2ItemNameAuthority") }
+        assertNotNull("original GenII authority must be frozen in the session", freeze)
+        freeze!!.invoke(session)
+    }
+    private fun genTwoReference(id: Int) = com.enrpau.dualscreendex.parser.analysis.Gen2ItemReference(
+        "item/$id", id, 0x6000 + id, com.enrpau.dualscreendex.parser.analysis.Gen2ItemReference.Kind.VISIBLE_OBJECT,
+        0x101, 0x5000, 1, 0x5100, 1, 0x5200, 1, 0x5300, 0x5400, 0x5409, 1, 1, 1, null)
+    private fun genTwoFixture() = com.enrpau.dualscreendex.parser.parse.Gen2ItemFixture().also { f ->
+        byteArrayOf(0x80.toByte(), 0x50, 0x81.toByte(), 0x50).copyInto(f.bytes, f.root)
+        byteArrayOf(0xb1.toByte(), 0xb2.toByte(), 0xb3.toByte(), 0xb4.toByte(), 0xb5.toByte()).copyInto(f.bytes, f.at("tmPrefix"))
+        byteArrayOf(0xb1.toByte(), 0xb2.toByte(), 0xb3.toByte(), 0xb4.toByte(), 0xb5.toByte(), 0xb6.toByte()).copyInto(f.bytes, f.at("hmPrefix"))
+        for (id in listOf(1, 2, 181, 184, 185, 186, 209, 210, 211, 232, 233)) f.bytes[0x6000 + id] = id.toByte()
+    }
+    private fun genTwoLayout() = layout(JapanesePokemonTextCodecs.gen2).copy(family = EngineFamily.CRYSTAL,
+        generation = 2, platform = Platform.GBC)
+
     private fun genOneReference(id: Int) = com.enrpau.dualscreendex.parser.analysis.Gen1ItemReference(
         "item/$id", id, 0x5000 + id, com.enrpau.dualscreendex.parser.analysis.Gen1ItemReference.Kind.VISIBLE_OBJECT,
         1, 1, 0x5000,

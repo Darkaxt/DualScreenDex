@@ -23,6 +23,7 @@ internal object Gen2LocalMapResolver {
         codec: PokemonTextCodec?,
     ): LocalMapResolution {
         session.cancellation.throwIfCancellationRequested()
+        session.recordGen2ItemReferences(emptyList())
         val label = when (family) {
             EngineFamily.GOLD_SILVER -> "Gold/Silver"
             EngineFamily.CRYSTAL -> "Crystal"
@@ -185,7 +186,7 @@ internal object Gen2LocalMapResolver {
         val poiResolution = runCatching {
             Gen2LocalMapPoiResolver.resolve(
                 rom = session.rom,
-                sources = authority.descriptors.map(MapDescriptor::toPoiSource),
+                sources = authority.descriptors.map { it.toPoiSource(authority.groups) },
                 maps = maps,
                 family = family,
                 codec = codec,
@@ -207,6 +208,7 @@ internal object Gen2LocalMapResolver {
             )
         }
 
+        session.recordGen2ItemReferences(poiResolution.itemReferences)
         return LocalMapResolution.Resolved(
             catalog = LocalMapCatalog(
                 maps = maps,
@@ -504,6 +506,7 @@ internal object Gen2LocalMapResolver {
         val pixelCount = blockCount.toLong() * BLOCK_PIXELS * BLOCK_PIXELS
         require(pixelCount <= MAX_MAP_PIXELS)
         MapDescriptor(
+            header = row,
             group = group,
             map = map,
             attributesBank = attributesBank,
@@ -756,6 +759,7 @@ internal object Gen2LocalMapResolver {
     private data class TilesetVariant(val tilesetId: Int, val roofIndex: Int?)
 
     private data class MapDescriptor(
+        val header: Int,
         val group: Int,
         val map: Int,
         val attributesBank: Int,
@@ -794,10 +798,13 @@ internal object Gen2LocalMapResolver {
             blocks = blocks,
         )
 
-        fun toPoiSource(): Gen2LocalMapPoiResolver.Source = Gen2LocalMapPoiResolver.Source(
+        fun toPoiSource(groups: Gen2WorldMapResolver.MapGroupAuthority): Gen2LocalMapPoiResolver.Source = Gen2LocalMapPoiResolver.Source(
             baseAreaId = baseAreaId,
             attributesBank = attributesBank,
             attributes = attributes,
+            mapGroupTable = groups.tableOffset,
+            mapGroupBank = groups.bank,
+            mapHeader = header,
         )
 
         fun toLocalMap(displayName: String?): LocalMap = LocalMap(

@@ -16,6 +16,9 @@ class ItemNameMaterializer(private val session: RomAnalysisSession) {
         if (layout.generation == 1 && layout.platform in setOf(Platform.GB, Platform.GBC)) {
             return materializeGenOne(layout, referencedIds)
         }
+        if (layout.generation == 2 && layout.platform in setOf(Platform.GB, Platform.GBC)) {
+            return materializeGenTwo(layout, referencedIds)
+        }
         if (layout.generation != 3 || layout.platform != Platform.GBA) return unavailable("compiled item-name ABI unavailable")
         val codec = layout.defaultTextCodec() ?: return unavailable("exact item-name projection unavailable")
         if (codec.terminator != 0xFF) return unavailable("item copier terminator disagrees with projection")
@@ -103,6 +106,85 @@ class ItemNameMaterializer(private val session: RomAnalysisSession) {
             }
             val prefix = prefixes[lower] ?: continue
             val number = ((id + if (lower) authority.lowerAdjustment else 0) and 255) - authority.numberSubtract
+            if (number !in 0..99) continue
+            val output = prefix + byteArrayOf((authority.digitOrigin + number / 10).toByte(),
+                (authority.digitOrigin + number % 10).toByte(), authority.terminator.toByte())
+            result[id] = decode(output)
+        }
+        session.cancellation.throwIfCancellationRequested()
+        return result
+    }
+
+    private fun materializeGenTwo(layout: ResolvedRomLayout, requested: Set<Int>): Map<Int, CatalogField<String>> {
+        val result = requested.associateWith { CatalogField.notFound<String>("original consumer or current structural reference unavailable") }.toMutableMap()
+        val authority = session.gen2ItemNameAuthority as? com.enrpau.dualscreendex.parser.model.Gen2ItemNameAuthority.Available
+            ?: return result
+        val codec = layout.defaultTextCodec() ?: return result
+        if (!codec.supports(2, layout.platform) || codec.terminator != authority.terminator) return result
+        val authorized = session.gen2ItemReferences.mapNotNull { reference ->
+            session.cancellation.throwIfCancellationRequested()
+            reference.itemId.takeIf { it in 1..255 && it in requested &&
+                reference.mapGroupTable != null && reference.mapGroupBank != null && reference.mapHeader != null }
+        }.toSet()
+        if (authorized.isEmpty()) return result
+        fun decode(bytes: ByteArray): CatalogField<String> {
+            val text = codec.decodeDetailed(com.enrpau.dualscreendex.parser.io.RomImage(bytes), 0, bytes.size, session.cancellation)
+            return if (text.terminated && text.invalidUnits == 0 && text.controlUnits == 0 &&
+                text.substitutionUnits == 0 && text.text.isNotBlank()) CatalogField.available(text.text)
+            else CatalogField.notFound("item name lacks exact tokens and bounded termination")
+        }
+
+        // Walk each packed byte once, including the compiled full-copy lookahead. Unrequested rows
+        // are only delimiters; their undecodable tokens do not invalidate a later requested row.
+        val ordinary = authorized.filter { it < authority.machineThreshold }.toSet()
+        if (ordinary.isNotEmpty()) {
+            val capacity = minOf(4096L, session.limits.maxDatasetExtentBytes,
+                (authority.bankEnd - authority.root).toLong()).coerceAtLeast(0).toInt()
+            val packed = ByteArray(capacity)
+            var loaded = 0
+            fun ensure(end: Int): Boolean {
+                if (end !in 0..capacity) return false
+                while (loaded < end) {
+                    session.cancellation.throwIfCancellationRequested()
+                    val at = authority.root + loaded
+                    if (at in authority.codeOffsets) return false
+                    packed[loaded++] = session.rom.u8(at).toByte()
+                }
+                return true
+            }
+            var cursor = 0
+            for (id in 1..ordinary.max()) {
+                val start = cursor
+                var terminated = false
+                while (ensure(cursor + 1)) {
+                    if ((packed[cursor++].toInt() and 255) == authority.terminator) { terminated = true; break }
+                }
+                if (!terminated) break
+                if (id in ordinary && cursor - start <= authority.copyBytes && ensure(start + authority.copyBytes)) {
+                    result[id] = decode(packed.copyOfRange(start, start + authority.copyBytes))
+                }
+            }
+        }
+
+        // Gen II owns separate TM-first/HM-later classification and two skipped-ID adjustments.
+        // Hole IDs are not rejected or invented here: only the current typed references authorize IDs.
+        val prefixes = mutableMapOf<Boolean, ByteArray?>()
+        for (id in authorized.filter { it >= authority.machineThreshold }.sorted()) {
+            session.cancellation.throwIfCancellationRequested()
+            val tm = id < authority.machineSplit
+            if (!prefixes.containsKey(tm)) prefixes[tm] = run {
+                val start = if (tm) authority.tmPrefix else authority.hmPrefix
+                val count = if (tm) authority.tmPrefixBytes else authority.hmPrefixBytes
+                if (count.toLong() + 3 > session.limits.maxDatasetExtentBytes) null
+                else ByteArray(count) { index ->
+                    session.cancellation.throwIfCancellationRequested()
+                    session.rom.u8(start + index).toByte()
+                }.takeUnless { bytes -> bytes.any { (it.toInt() and 255) == authority.terminator } }
+            }
+            val prefix = prefixes[tm] ?: continue
+            var number = (id - (if (id >= authority.skipFirst) 1 else 0) -
+                (if (id >= authority.skipSecond) 1 else 0) - authority.numberSubtract + 1) and 255
+            if (!tm) number = (number - authority.hmSubtract) and 255
             if (number !in 0..99) continue
             val output = prefix + byteArrayOf((authority.digitOrigin + number / 10).toByte(),
                 (authority.digitOrigin + number % 10).toByte(), authority.terminator.toByte())

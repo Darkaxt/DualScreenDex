@@ -264,6 +264,132 @@ class Gen2LocalMapPoiResolverTest {
         }
     }
 
+    @Test
+    fun retainsTypedVisibleAndHiddenOperandsWithoutChangingAcceptance() {
+        val bytes = itemReferenceFixture()
+        val result = resolveItemReferences(bytes)
+        assertEquals(setOf(7, 8), result.pois.mapNotNull { it.item?.itemId }.toSet())
+        val references = reflectedReferences(result)
+        assertEquals(2, references.size)
+        val byId = references.associateBy { field(it, "ItemId") }
+        val hidden = byId.getValue(7)
+        val visible = byId.getValue(8)
+        assertEquals(0x4202, field(hidden, "OperandOffset"))
+        assertEquals(0x4210, field(visible, "OperandOffset"))
+        assertEquals(EVENTS_1 + 5, field(hidden, "EventRow"))
+        assertEquals(EVENTS_1 + 11, field(visible, "EventRow"))
+        assertEquals(0x2345, field(hidden, "CollectionFlag"))
+        assertEquals(1, field(visible, "Quantity"))
+        for (reference in references) {
+            assertEquals(ATTRIBUTES_1, field(reference, "Attributes"))
+            assertEquals(EVENTS_1, field(reference, "EventsRoot"))
+            assertEquals(1, field(reference, "ScriptsBank"))
+        }
+        for (operand in listOf(0x4202, 0x4210, 0x4211)) {
+            val malformed = bytes.copyOf().also { it[operand] = 0 }
+            val rejected = resolveItemReferences(malformed)
+            assertEquals(1, rejected.pois.count { it.item != null })
+            assertEquals(1, reflectedReferences(rejected).size)
+        }
+        // Hidden item is encountered after the visible one; its truncated data rejects the whole map.
+        val truncated = bytes.copyOf().also { putU16(it, EVENTS_1 + 8, 0x7fff) }
+        assertTrue(resolveItemReferences(truncated).pois.isEmpty())
+        assertTrue(reflectedReferences(resolveItemReferences(truncated)).isEmpty())
+    }
+
+    @Test fun oneShotItemTraversalCancellationCannotBecomeSkippedMap() {
+        val cancelled = ParserCancellationException()
+        var thrown = false
+        val token = ParserCancellationToken {
+            if (!thrown && Thread.currentThread().stackTrace.any { it.methodName == "readMapPois" }) {
+                thrown = true
+                throw cancelled
+            }
+        }
+        org.junit.Assert.assertSame(cancelled, org.junit.Assert.assertThrows(ParserCancellationException::class.java) {
+            Gen2LocalMapPoiResolver.resolve(RomImage(itemReferenceFixture()),
+                listOf(Gen2LocalMapPoiResolver.Source(1, 1, ATTRIBUTES_1)), listOf(localMap(1)),
+                EngineFamily.GOLD_SILVER, null, cancellation = token)
+        })
+        assertTrue(thrown)
+    }
+
+    @Test fun exactJapaneseGoldSilverReferenceEvidence() = nativeItemReferences("GOLD_SILVER",
+        "27a07a1d3faf9c6a0b1b60d5e88ee3a4159a751a47b4c46ab09f1202d52bac3e")
+
+    @Test fun exactJapaneseCrystalReferenceEvidence() = nativeItemReferences("CRYSTAL",
+        "136ada06cb68656b7de475fa4b278d37dbeff8f5257e7dfdf7f4a4aec19a90f3")
+
+    private fun reflectedReferences(value: Any): List<Any> {
+        val getter = value.javaClass.methods.singleOrNull { it.name == "getItemReferences" || it.name == "getGen2ItemReferences" }
+        assertTrue("accepted GenII items must retain current typed operand/root provenance", getter != null)
+        @Suppress("UNCHECKED_CAST")
+        return getter!!.invoke(value) as List<Any>
+    }
+
+    private fun field(value: Any, name: String): Any? = value.javaClass.getMethod("get$name").invoke(value)
+
+    private fun itemReferenceFixture() = ByteArray(0x8000).also { bytes ->
+        writeAttributes(bytes, ATTRIBUTES_1, EVENTS_1_ADDRESS)
+        byteArrayOf(0, 0, 0, 0, 1, 2, 3, 7, 0, 0x42, 1,
+            1, 6, 7, 0, 0, 0, 0, 1, 0, 0x10, 0x42, 0x34, 0x12).copyInto(bytes, EVENTS_1)
+        byteArrayOf(0x45, 0x23, 7).copyInto(bytes, 0x4200)
+        byteArrayOf(8, 1).copyInto(bytes, 0x4210)
+    }
+
+    private fun resolveItemReferences(bytes: ByteArray) = Gen2LocalMapPoiResolver.resolve(RomImage(bytes),
+        listOf(Gen2LocalMapPoiResolver.Source(1, 1, ATTRIBUTES_1)), listOf(localMap(1)), EngineFamily.GOLD_SILVER, null)
+
+    private fun nativeItemReferences(family: String, sha: String) {
+        val directory = java.io.File(requireNotNull(System.getenv("DUALDEX_NATIVE_CONTROLS")), "ja/$family")
+        val file = requireNotNull(directory.listFiles()).single { it.isFile }
+        val rom = RomImage(file.readBytes())
+        assertEquals(sha, rom.sha256)
+        lateinit var session: com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
+        val analysis = ParserOrchestrator.analyze(rom) { image, header, profile ->
+            com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession(image, header, profile).also { session = it }
+        }
+        assertEquals(com.enrpau.dualscreendex.parser.model.SelectionStatus.SELECTED, analysis.status)
+        val layout = requireNotNull(analysis.probes.single { it.family == analysis.selectedFamily }.resolvedLayout)
+        val catalog = com.enrpau.dualscreendex.parser.catalog.CatalogMaterializer.materialize(rom, analysis, layout,
+            resolveLocalMaps = { selected, ids -> ParserOrchestrator.resolveLocalMaps(session, selected, analysis.selectedFamily, ids) })
+        val refs = reflectedReferences(session)
+        val items = catalog.localMaps.pois.filter { it.item != null }.associateBy { it.key }
+        assertEquals(items.keys, refs.map { field(it, "PoiKey") }.toSet())
+        assertEquals(items.size, refs.size)
+        assertTrue(refs.isNotEmpty())
+        val columns = listOf("PoiKey", "ItemId", "OperandOffset", "Kind", "BaseAreaId", "MapGroupTable", "MapGroupBank",
+            "MapHeader", "AttributesBank", "Attributes", "ScriptsBank", "EventsRoot", "EventRow", "PointerField", "TileX", "TileY", "Quantity", "CollectionFlag")
+        refs.forEach { ref ->
+            val id = field(ref, "ItemId") as Int
+            assertEquals(items.getValue(field(ref, "PoiKey") as String).item!!.itemId, id)
+            assertEquals(id, rom.u8(field(ref, "OperandOffset") as Int))
+            val groupTable = field(ref, "MapGroupTable") as Int
+            val groupBank = field(ref, "MapGroupBank") as Int
+            val base = field(ref, "BaseAreaId") as Int
+            val groupRoot = requireNotNull(rom.gbBankAddress(groupBank, rom.u16le(groupTable + ((base ushr 8) - 1) * 2)))
+            val header = field(ref, "MapHeader") as Int
+            assertEquals(groupRoot + ((base and 255) - 1) * 9, header)
+            val attributes = field(ref, "Attributes") as Int
+            assertEquals(attributes, rom.gbBankAddress(rom.u8(header), rom.u16le(header + 3)))
+            assertEquals(field(ref, "EventsRoot"), rom.gbBankAddress(rom.u8(attributes + 6), rom.u16le(attributes + 9)))
+            val row = field(ref, "EventRow") as Int
+            val hidden = field(ref, "Kind").toString() == "HIDDEN_EVENT"
+            assertEquals(if (hidden) 7 else 1, rom.u8(row + if (hidden) 2 else 7) and if (hidden) 255 else 15)
+            val pointer = field(ref, "PointerField") as Int
+            assertEquals(row + if (hidden) 3 else 9, pointer)
+            assertEquals((field(ref, "OperandOffset") as Int) - if (hidden) 2 else 0,
+                rom.gbBankAddress(field(ref, "ScriptsBank") as Int, rom.u16le(pointer)))
+        }
+        val output = java.io.File(requireNotNull(System.getenv("DUALDEX_TEST_TEMP_ROOT")), "$family-references.tsv")
+        output.parentFile.mkdirs()
+        output.writeText("sha256\t$sha\ncodec\t${layout.languageManifest.projections.single().codecId}\n" +
+            columns.joinToString("\t") + "\n" + refs.joinToString("\n", postfix = "\n") { ref ->
+                columns.joinToString("\t") { field(ref, it)?.toString().orEmpty() }
+            })
+        println("GEN2_REFERENCE_EVIDENCE $family records=${refs.size} ids=${refs.map { field(it, "ItemId") }.toSet().size} file=$output")
+    }
+
     private fun declaredTokenCodec() = PokemonTextCodec(
         id = "test-declared-width", version = 1, language = LanguageTag.KOREAN,
         applicableGenerations = setOf(2), applicablePlatforms = setOf(Platform.GBC), terminator = 0x50,
