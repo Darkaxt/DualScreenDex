@@ -55,6 +55,10 @@ class RomAnalysisSession(
     private val gbaReferenceIndexFactory: GbaReferenceIndexFactory = DefaultGbaReferenceIndexFactory,
     val cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
 ) {
+    internal val itemNameResolver by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        com.enrpau.dualscreendex.parser.parse.Gen3CompiledItemNameResolver(this)
+    }
+
     private val nominatedGbaReferenceSiteCache = mutableMapOf<Int, GbaTargetReferenceEvidence?>()
     val exactProfileIdentity: ExactProfileIdentity? = exactProfile?.let {
         ExactProfileIdentity.derive(it, rom, header)
@@ -85,6 +89,7 @@ class RomAnalysisSession(
      */
     @Synchronized
     internal fun nominatedGbaReferenceSites(targetOffset: Int): GbaTargetReferenceEvidence? {
+        cancellation.throwIfCancellationRequested()
         if (header.platform != Platform.GBA || targetOffset !in 0 until rom.size) return null
         if (nominatedGbaReferenceSiteCache.containsKey(targetOffset)) {
             return nominatedGbaReferenceSiteCache[targetOffset]
@@ -109,6 +114,7 @@ class RomAnalysisSession(
                 cancellation = cancellation,
             )
         }
+        cancellation.throwIfCancellationRequested()
         nominatedGbaReferenceSiteCache[targetOffset] = resolved
         return resolved
     }

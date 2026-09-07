@@ -10,6 +10,23 @@ import org.junit.Test
 
 class ItemNameMaterializerTest {
     @Test
+    fun `default unavailable authority never discovers readable published records`() {
+        val f = fixture()
+        val names = ItemNameMaterializer(f.session()).materialize(layout(), setOf(4))
+        assertNull(names.getValue(4).value)
+    }
+
+    @Test
+    fun `frozen compiled authority decodes without rediscovering instructions or published root`() {
+        val f = fixture()
+        val authority = f.session().itemNameResolver.original(GbaItemPublishedRoute.NotInvoked)
+        assertTrue(authority is GbaItemNameAuthority.Available)
+        f.bytes.fill(0, 0, f.root)
+        val frozen = layout().copy(itemRootNomination = GbaItemRootNomination.Absent, itemNameAuthority = authority)
+        assertEquals("A", ItemNameMaterializer(f.session()).materialize(frozen, setOf(4)).getValue(4).value)
+    }
+
+    @Test
     fun `original absent or ambiguous nomination survives differing layout counts without retry`() {
         val f = fixture()
         val producer = ItemNameMaterializer(f.session())
@@ -27,7 +44,7 @@ class ItemNameMaterializerTest {
     fun `only referenced exact u16 IDs decode including zero and final row`() {
         val f = fixture()
         val ids = setOf(-1, 0, 4, 175, 376, 377, 65535, 65536)
-        val names = ItemNameMaterializer(f.session()).materialize(layout(), ids)
+        val names = ItemNameMaterializer(f.session()).materialize(provedLayout(f), ids)
         assertEquals(ids, names.keys)
         for (id in listOf(0, 4, 376)) assertEquals("A", names.getValue(id).value)
         for (id in listOf(-1, 175, 377, 65535, 65536)) {
@@ -47,7 +64,7 @@ class ItemNameMaterializerTest {
             "substitution" to { f -> f.bytes[f.root + 40] = 0xFD.toByte(); f.bytes[f.root + 41] = 1; f.bytes[f.root + 42] = 0xFF.toByte() },
         )) {
             val f = fixture(); mutate(f)
-            val names = ItemNameMaterializer(f.session()).materialize(layout(JapanesePokemonTextCodecs.gen3Later), setOf(1, 4))
+            val names = ItemNameMaterializer(f.session()).materialize(provedLayout(f, JapanesePokemonTextCodecs.gen3Later), setOf(1, 4))
             assertNull(label, names.getValue(1).value)
             assertNotNull("ordinary record remains available", names.getValue(4).value)
         }
@@ -57,7 +74,7 @@ class ItemNameMaterializerTest {
     fun `compiled zero row punctuation is native text not a guessed placeholder`() {
         val f = fixture()
         repeat(8) { f.bytes[f.root + it] = 0xAC.toByte() }; f.bytes[f.root + 8] = 0xFF.toByte()
-        val names = ItemNameMaterializer(f.session()).materialize(layout(JapanesePokemonTextCodecs.gen3Later), setOf(0))
+        val names = ItemNameMaterializer(f.session()).materialize(provedLayout(f, JapanesePokemonTextCodecs.gen3Later), setOf(0))
         assertEquals("？？？？？？？？", names.getValue(0).value)
     }
 
@@ -75,7 +92,7 @@ class ItemNameMaterializerTest {
     @Test
     fun `join gives ball and POI parity strips shared names and preserves unrelated prose`() {
         val f = fixture()
-        val names = ItemNameMaterializer(f.session()).materialize(layout(), setOf(4, 175))
+        val names = ItemNameMaterializer(f.session()).materialize(provedLayout(f), setOf(4, 175))
         val balls = mapOf(4 to CaptureBallRecord(4, CatalogField.notFound("name"), CatalogField.notFound("sprite")))
         val maps = LocalMapCatalog(
             maps = listOf(LocalMap("m", "map", 1, 16, 16, 1, 1, "a")),
@@ -107,10 +124,41 @@ class ItemNameMaterializerTest {
         assertNull(extracted.localization.overlay(LanguageTag.FRENCH))
     }
 
+    @Test
+    fun `Ruby exact arrows and B0 differ from later invalid and control tokens`() {
+        val f = fixture()
+        byteArrayOf(0xF7.toByte(), 0xF8.toByte(), 0xF9.toByte(), 0xB0.toByte(), 0xFF.toByte())
+            .copyInto(f.bytes, f.root + 40)
+        val frozen = provedLayout(f, JapanesePokemonTextCodecs.gen3RubySapphire)
+        val names = ItemNameMaterializer(f.session()).materialize(frozen, setOf(1))
+        assertEquals("↑↓←⋯", names.getValue(1).value)
+        assertNull(ItemNameMaterializer(f.session()).materialize(
+            provedLayout(f, JapanesePokemonTextCodecs.gen3Later), setOf(1)).getValue(1).value)
+        for (token in listOf(0xFA, 0xFB, 0xFC, 0xFD, 0xFE)) {
+            f.bytes.fill(0, f.root + 40, f.root + 50)
+            f.bytes[f.root + 40] = token.toByte()
+            f.bytes[f.root + 48] = 0xFF.toByte()
+            assertNull("Ruby token $token", ItemNameMaterializer(f.session()).materialize(frozen, setOf(1)).getValue(1).value)
+        }
+        // Ruby maps every ordinary byte; an unknown extended-control unit is invalid instead.
+        f.bytes[f.root + 40] = 0xFC.toByte()
+        f.bytes[f.root + 41] = 0xFF.toByte()
+        assertNull(ItemNameMaterializer(f.session()).materialize(frozen, setOf(1)).getValue(1).value)
+        for (terminator in listOf(50, 80)) {
+            f.bytes.fill(0xBB.toByte(), f.root + 40, f.root + 81)
+            f.bytes[f.root + terminator] = 0xFF.toByte()
+            assertNull(ItemNameMaterializer(f.session()).materialize(frozen, setOf(1)).getValue(1).value)
+        }
+    }
+
     private fun fixture() = ItemConsumerFixture().also { f ->
         listOf(0x2800, 0x2900, 0x2A00, f.root, 0x2B00, 0x2C00, 0x2D00)
             .forEachIndexed { i, root -> f.pointer(0x1BC + i * 4, root) }
     }
+    private fun provedLayout(f: ItemConsumerFixture, codec: PokemonTextCodec = PokemonTextCodec.gbaEnglish) =
+        layout(codec).copy(itemNameAuthority = f.session().itemNameResolver.original(
+            GbaItemPublishedRoute.Invoked(GbaItemRootNomination.Nominated(f.root))))
+
     private fun layout(codec: PokemonTextCodec = PokemonTextCodec.gbaEnglish) = ResolvedRomLayout(
         EngineFamily.EMERALD, 3, Platform.GBA, 0, 0, ProfileTables(),
         itemRootNomination = GbaItemRootNomination.Nominated(0x4000),

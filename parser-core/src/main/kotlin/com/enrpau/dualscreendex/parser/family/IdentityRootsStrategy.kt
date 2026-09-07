@@ -11,6 +11,8 @@ import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.ExpandedSplitCaptureBallMetadata
 import com.enrpau.dualscreendex.parser.model.GbaCompiledReferenceIndex
 import com.enrpau.dualscreendex.parser.model.GbaItemRootNomination
+import com.enrpau.dualscreendex.parser.model.GbaItemNameAuthority
+import com.enrpau.dualscreendex.parser.model.GbaItemPublishedRoute
 import com.enrpau.dualscreendex.parser.model.ParserProbe
 import com.enrpau.dualscreendex.parser.model.ProfileTables
 import com.enrpau.dualscreendex.parser.model.RomHeader
@@ -179,8 +181,10 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
         } else {
             null
         }
-        val inheritedTableResolution = expansion?.let { ProfileTableResolution(it.tables) }
-            ?: resolveTables(session.rom, definition, baseProfile, probeCodec, session.cancellation)
+        val inheritedTableResolution = (expansion?.let { ProfileTableResolution(it.tables) }
+            ?: resolveTables(session.rom, definition, baseProfile, probeCodec, session.cancellation)).let { original ->
+            original.copy(itemNameAuthority = session.itemNameResolver.original(original.itemPublishedRoute))
+        }
         val compiledGen1Names = nativeNames?.species ?: if (generation == 1 && exact == null) {
             inheritedTableResolution.tables.speciesNames?.let { inherited ->
                 Gen1CompiledNameResolver.resolve(session.rom, inherited.count, probeCodec)
@@ -402,12 +406,15 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
         var inherited = profile?.tables ?: ProfileTables()
         if (definition.formatGeneration != 3) return ProfileTableResolution(inherited)
 
+        val publishedInvoked: Boolean
         val headerPointers = if (
             definition.family == com.enrpau.dualscreendex.parser.model.EngineFamily.EMERALD ||
             definition.family == com.enrpau.dualscreendex.parser.model.EngineFamily.FIRERED_LEAFGREEN
         ) {
+            publishedInvoked = true
             GbaPublishedHeaderResolver.resolve(rom, probeCodec, cancellation)
         } else {
+            publishedInvoked = false
             val geometry = Gen3CompiledNameGeometryResolver.resolve(rom, probeCodec, cancellation)
             val locatedNames = locateRubySapphireNames(rom)
             val expectedNames = inherited.speciesNames?.offset
@@ -427,7 +434,15 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
                 GbaPublishedDataState.AMBIGUOUS -> null
             }
 
+        val itemNomination = when (headerPointers.publishedDataState) {
+            GbaPublishedDataState.ABSENT -> GbaItemRootNomination.Absent
+            GbaPublishedDataState.AMBIGUOUS -> GbaItemRootNomination.Ambiguous
+            GbaPublishedDataState.RESOLVED -> headerPointers.itemRoot?.let(GbaItemRootNomination::Nominated)
+                ?: GbaItemRootNomination.Absent
+        }
         return ProfileTableResolution(
+            itemPublishedRoute = if (publishedInvoked) GbaItemPublishedRoute.Invoked(itemNomination)
+                else GbaItemPublishedRoute.NotInvoked,
             tables = ProfileTables(
                 speciesNames = if (headerPointers.nameGeometry.ambiguous) null else headerPointers.nameGeometry.speciesNames
                     ?: headerPointers.speciesNames?.let {
@@ -465,12 +480,7 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
                     13,
                 ),
             ),
-            itemRootNomination = when (headerPointers.publishedDataState) {
-                GbaPublishedDataState.ABSENT -> GbaItemRootNomination.Absent
-                GbaPublishedDataState.AMBIGUOUS -> GbaItemRootNomination.Ambiguous
-                GbaPublishedDataState.RESOLVED -> headerPointers.itemRoot?.let(GbaItemRootNomination::Nominated)
-                    ?: GbaItemRootNomination.Absent
-            },
+            itemRootNomination = itemNomination,
             publishedDataEvidence = headerPointers.publishedDataEvidence,
             publishedBaseStatsRoot = headerPointers.baseStats.takeIf {
                 headerPointers.publishedDataState == GbaPublishedDataState.RESOLVED
@@ -519,6 +529,8 @@ internal data class ProfileTableResolution(
     val publishedDataEvidence: ValidationEvidence? = null,
     val publishedBaseStatsRoot: Int? = null,
     val itemRootNomination: GbaItemRootNomination = GbaItemRootNomination.Absent,
+    val itemPublishedRoute: GbaItemPublishedRoute = GbaItemPublishedRoute.NotEvaluated,
+    val itemNameAuthority: GbaItemNameAuthority = GbaItemNameAuthority.Unavailable(),
 )
 
 private fun FamilyProfileBasis.immutableCopy(): FamilyProfileBasis = copy(tables = tables.immutableCopy())

@@ -10,10 +10,190 @@ import com.enrpau.dualscreendex.parser.analysis.GbaTargetReferenceEvidence
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.RomHeader
+import com.enrpau.dualscreendex.parser.model.GbaItemNameAuthority
+import com.enrpau.dualscreendex.parser.model.GbaItemNameProvenance
+import com.enrpau.dualscreendex.parser.model.GbaItemPublishedRoute
+import com.enrpau.dualscreendex.parser.model.GbaItemRootNomination
 import org.junit.Assert.*
 import org.junit.Test
 
 class Gen3CompiledItemNameResolverTest {
+    @Test
+    fun `original not invoked route proves relocated nonreadable headerless consumer`() {
+        val f = ItemConsumerFixture(root = 0x7000, sanitizer = 0x1800, nameGetter = 0x2000,
+            wrapper = 0x2200, copier = 0x2400, maximumHalf = 200, firstShift = 3, nameBytes = 8, excluded = 31)
+        f.bytes.fill(0xFC.toByte(), f.root, f.root + 401 * f.stride)
+        val resolver = f.session().itemNameResolver
+        val result = resolver.original(GbaItemPublishedRoute.NotInvoked)
+        assertEquals(GbaItemNameAuthority.Available(f.root, 72, 401, 8, 31,
+            GbaItemNameProvenance.COMPILED_CONSUMER), result)
+        assertSame(result, resolver.original(GbaItemPublishedRoute.NotInvoked))
+    }
+
+    @Test
+    fun `original invoked published root is preserved and never replaced`() {
+        val f = ItemConsumerFixture(); val resolver = f.session().itemNameResolver
+        val published = GbaItemPublishedRoute.Invoked(GbaItemRootNomination.Nominated(f.root))
+        val result = resolver.original(published)
+        assertEquals(GbaItemNameAuthority.Available(f.root, 40, 377, 10, 175,
+            GbaItemNameProvenance.PUBLISHED_ROOT), result)
+        assertSame(result, resolver.original(published))
+        assertTrue(resolver.original(GbaItemPublishedRoute.Invoked(GbaItemRootNomination.Nominated(f.root + 4)))
+            is GbaItemNameAuthority.Unavailable)
+        for (route in listOf(GbaItemPublishedRoute.NotEvaluated,
+            GbaItemPublishedRoute.Invoked(GbaItemRootNomination.Absent),
+            GbaItemPublishedRoute.Invoked(GbaItemRootNomination.Ambiguous))) {
+            assertTrue(resolver.original(route) is GbaItemNameAuthority.Unavailable)
+        }
+    }
+
+    @Test
+    fun `competing original root and incomplete second root cannot disappear`() {
+        for (broken in listOf(false, true)) {
+            val f = twoConsumers()
+            if (broken) f.half(0x2900 + 24, 0)
+            val resolver = f.session().itemNameResolver
+            for (route in listOf(GbaItemPublishedRoute.NotInvoked,
+                GbaItemPublishedRoute.Invoked(GbaItemRootNomination.Nominated(f.root)))) {
+                val result = resolver.original(route)
+                assertTrue("competing or incomplete root", result is GbaItemNameAuthority.Unavailable)
+                assertSame(result, resolver.original(route))
+            }
+        }
+    }
+
+    @Test
+    fun `original aggregate candidate root site caller and scan budgets fail closed`() {
+        val limits = listOf(
+            ResolutionLimits(maxCandidatesPerDataset = 1),
+            ResolutionLimits(maxProbeRootsPerDataset = 1),
+            ResolutionLimits(maxNominatedGbaReferenceSites = 20),
+            ResolutionLimits(maxProbeWorkPerDataset = 3),
+            ResolutionLimits(maxDatasetExtentBytes = 0x10000),
+        )
+        for (limit in limits) {
+            val resolver = twoConsumers().session(limits = limit).itemNameResolver
+            assertTrue(resolver.original(GbaItemPublishedRoute.NotInvoked) is GbaItemNameAuthority.Unavailable)
+        }
+        val f = ItemConsumerFixture()
+        repeat(129) { f.bl(0x2000 + it * 4, f.nameGetter) }
+        assertTrue(f.session().itemNameResolver.original(GbaItemPublishedRoute.NotInvoked) is GbaItemNameAuthority.Unavailable)
+    }
+
+    @Test
+    fun `original headerless work uses one shared index and one target set scan`() {
+        val f = ItemConsumerFixture()
+        val index = requireNotNull(f.session().gbaReferenceIndex)
+        var builds = 0
+        val session = RomAnalysisSession(RomImage(f.bytes), RomHeader(Platform.GBA, "SYNTHETIC"),
+            limits = ResolutionLimits(maxDatasetExtentBytes = f.bytes.size.toLong() * 2),
+            gbaReferenceIndexFactory = GbaReferenceIndexFactory { _, _ -> builds++; index })
+        val original = session.itemNameResolver.original(GbaItemPublishedRoute.NotInvoked)
+        assertTrue(original is GbaItemNameAuthority.Available)
+        assertTrue(session.itemNameResolver.original(GbaItemPublishedRoute.Invoked(GbaItemRootNomination.Nominated(f.root)))
+            is GbaItemNameAuthority.Available)
+        assertSame(original, session.itemNameResolver.original(GbaItemPublishedRoute.NotInvoked))
+        assertEquals(1, builds)
+    }
+
+    @Test
+    fun `counts only original hints and truncated evidence grant no discovery permission`() {
+        val f = ItemConsumerFixture()
+        val incomplete = GbaReferenceIndex.countsOnlyForTesting(mapOf(f.root to f.rootSites.size))
+        val session = RomAnalysisSession(RomImage(f.bytes), RomHeader(Platform.GBA, "SYNTHETIC"),
+            gbaReferenceIndexFactory = GbaReferenceIndexFactory { _, _ -> incomplete })
+        assertTrue(session.itemNameResolver.original(GbaItemPublishedRoute.NotInvoked) is GbaItemNameAuthority.Unavailable)
+    }
+
+    @Test
+    fun `original cancellation precedes cached available and unavailable outcomes`() {
+        val f = ItemConsumerFixture(); var stop = false
+        val resolver = f.session(cancellation = ParserCancellationToken { if (stop) throw ParserCancellationException() }).itemNameResolver
+        assertTrue(resolver.original(GbaItemPublishedRoute.NotInvoked) is GbaItemNameAuthority.Available)
+        resolver.original(GbaItemPublishedRoute.Invoked(GbaItemRootNomination.Absent))
+        stop = true
+        for (route in listOf(GbaItemPublishedRoute.NotInvoked, GbaItemPublishedRoute.Invoked(GbaItemRootNomination.Absent))) {
+            assertThrows(ParserCancellationException::class.java) { resolver.original(route) }
+        }
+    }
+
+    @Test
+    fun `original batch recovery is charged once and retains competing truncated candidates`() {
+        for (passes in listOf(2, 3)) {
+            val f = ItemConsumerFixture()
+            val resolver = f.session(limits = ResolutionLimits(maxCompiledReferenceSitesPerCandidate = 1,
+                maxDatasetExtentBytes = f.bytes.size.toLong() * passes)).itemNameResolver
+            val result = resolver.original(GbaItemPublishedRoute.NotInvoked)
+            assertEquals(passes == 3, result is GbaItemNameAuthority.Available)
+            assertSame(result, resolver.original(GbaItemPublishedRoute.NotInvoked))
+            assertEquals(passes == 3, resolver.original(GbaItemPublishedRoute.Invoked(GbaItemRootNomination.Nominated(f.root)))
+                is GbaItemNameAuthority.Available)
+        }
+        for (broken in listOf(false, true)) {
+            val f = twoConsumers()
+            if (broken) f.half(0x2600 + 8, 0x0800) // hinted candidate with incomplete sanitizer
+            val session = f.session(limits = ResolutionLimits(maxCompiledReferenceSitesPerCandidate = 1))
+            assertEquals(2, requireNotNull(session.gbaReferenceIndex?.itemConsumerHints).observedSites)
+            assertTrue(session.itemNameResolver.original(GbaItemPublishedRoute.NotInvoked) is GbaItemNameAuthority.Unavailable)
+        }
+    }
+
+    @Test
+    fun `terminal original routes never build an index and cached outcomes survive other probes`() {
+        var builds = 0
+        val f = ItemConsumerFixture()
+        val session = RomAnalysisSession(RomImage(f.bytes), RomHeader(Platform.GBA, "SYNTHETIC"),
+            gbaReferenceIndexFactory = GbaReferenceIndexFactory { _, _ -> builds++; error("no discovery permission") })
+        for (route in listOf(GbaItemPublishedRoute.NotEvaluated,
+            GbaItemPublishedRoute.Invoked(GbaItemRootNomination.Absent),
+            GbaItemPublishedRoute.Invoked(GbaItemRootNomination.Ambiguous))) {
+            val first = session.itemNameResolver.original(route)
+            assertTrue(first is GbaItemNameAuthority.Unavailable)
+            assertSame(first, session.itemNameResolver.original(route))
+        }
+        assertEquals(0, builds)
+    }
+
+    @Test
+    fun `original cancellation during batch work never publishes an outcome`() {
+        val f = ItemConsumerFixture()
+        var checks = 0
+        val session = f.session(cancellation = ParserCancellationToken { if (++checks > 40) throw ParserCancellationException() })
+        assertThrows(ParserCancellationException::class.java) { session.itemNameResolver.original(GbaItemPublishedRoute.NotInvoked) }
+        assertThrows(ParserCancellationException::class.java) { session.itemNameResolver.original(GbaItemPublishedRoute.NotInvoked) }
+    }
+
+    private fun twoConsumers(): ItemConsumerFixture {
+        val first = ItemConsumerFixture()
+        val second = ItemConsumerFixture(root = 0x9000, sanitizer = 0x2600, nameGetter = 0x2800,
+            scalarStart = 0x2900, wrapper = 0x3200, copier = 0x3400)
+        second.bytes.copyInto(first.bytes, 0x2600, 0x2600, 0x3600)
+        return first
+    }
+
+    @Test
+    fun `dynamic arm cannot branch into literal pool or fall through ordinary getter`() {
+        for (branch in listOf(0xE7FF, 0xE001)) {
+            val f = ItemConsumerFixture()
+            f.half(f.wrapper + 34, branch)
+            assertNull("reachable dynamic branch ${branch.toString(16)} must fail closed",
+                Gen3CompiledItemNameResolver(f.session()).resolve(f.root).table)
+        }
+    }
+
+    @Test
+    fun `distinct complete wrappers with the same excluded id remain conflicting`() {
+        val f = ItemConsumerFixture()
+        val other = 0x2000
+        f.bytes.copyInto(f.bytes, other, f.wrapper, f.wrapper + 58)
+        f.bl(other + 14, 0x1600)
+        f.bl(other + 22, f.copier)
+        f.bl(other + 30, 0x1700)
+        f.bl(other + 40, f.nameGetter)
+        f.bl(other + 48, f.copier)
+        assertNull(Gen3CompiledItemNameResolver(f.session()).resolve(f.root).table)
+    }
+
     @Test
     fun `relocated complete consumer proves inline geometry before decoding`() {
         val fixture = ItemConsumerFixture()
@@ -168,6 +348,7 @@ internal class ItemConsumerFixture(
     val finalShift: Int = 3,
     val nameBytes: Int = 10,
     val excluded: Int = 175,
+    val scalarStart: Int = 0x900,
 ) {
     val bytes = ByteArray(0x10000)
     val scalarEntries = mutableListOf<Int>()
@@ -185,7 +366,7 @@ internal class ItemConsumerFixture(
         rootSites += nameGetter + 22
         listOf(nameBytes to 2, nameBytes + 2 to 2, nameBytes + 4 to 1, nameBytes + 5 to 1, 16 to 4,
             20 to 1, 21 to 1, 22 to 1, 23 to 1, 24 to 4, 28 to 1, 32 to 4, 36 to 1)
-            .forEachIndexed { index, (offset, width) -> scalar(0x900 + index * 0x40, offset, width) }
+            .forEachIndexed { index, (offset, width) -> scalar(scalarStart + index * 0x40, offset, width) }
         // The unequal branch skips a synthetic dynamic block. Its callees are deliberately unproved.
         emit(wrapper, 0xB510, 0x1C0C, 0x0400, 0x0C00, 0x2800 or excluded, 0xD10D)
         emit(wrapper + 12, 0x202B)

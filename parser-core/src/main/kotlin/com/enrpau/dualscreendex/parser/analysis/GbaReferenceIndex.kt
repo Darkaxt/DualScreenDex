@@ -47,6 +47,16 @@ class GbaTargetReferenceEvidence internal constructor(
         "siteEvidenceUnavailableReason=$siteEvidenceUnavailableReason)"
 }
 
+/** Small nomination hints captured before target-site truncation; never text or role authority. */
+class GbaItemConsumerHints internal constructor(sites: List<Int>, val observedSites: Int, val limitSites: Int) {
+    val sites: List<Int> = Collections.unmodifiableList(sites.toList())
+    val complete: Boolean get() = observedSites <= limitSites && sites.size == observedSites
+    override fun equals(other: Any?): Boolean = other is GbaItemConsumerHints &&
+        sites == other.sites && observedSites == other.observedSites && limitSites == other.limitSites
+    override fun hashCode(): Int = 31 * (31 * sites.hashCode() + observedSites) + limitSites
+    override fun toString(): String = "GbaItemConsumerHints(sites=$sites, observedSites=$observedSites, limitSites=$limitSites)"
+}
+
 /** Immutable session-owned bounded compiled GBA target-reference evidence. */
 class GbaReferenceIndex private constructor(
     targets: Map<Int, GbaTargetReferenceEvidence>,
@@ -54,6 +64,7 @@ class GbaReferenceIndex private constructor(
     val observedTargets: Int,
     val limitTargets: Int,
     val siteEvidenceStatus: GbaSiteEvidenceStatus,
+    val itemConsumerHints: GbaItemConsumerHints? = null,
 ) {
     val targets: Map<Int, GbaTargetReferenceEvidence> = Collections.unmodifiableMap(
         linkedMapOf<Int, GbaTargetReferenceEvidence>().apply {
@@ -125,8 +136,10 @@ class GbaReferenceIndex private constructor(
         internal fun fromTargets(
             targets: Map<Int, GbaTargetReferenceEvidence>,
             limitTargets: Int,
+            itemConsumerHints: GbaItemConsumerHints? = null,
         ): GbaReferenceIndex = GbaReferenceIndex(
             targets = targets,
+            itemConsumerHints = itemConsumerHints,
             overflowReason = null,
             observedTargets = targets.size,
             limitTargets = limitTargets,
@@ -143,7 +156,8 @@ class GbaReferenceIndex private constructor(
         overflowReason == other.overflowReason &&
         observedTargets == other.observedTargets &&
         limitTargets == other.limitTargets &&
-        siteEvidenceStatus == other.siteEvidenceStatus
+        siteEvidenceStatus == other.siteEvidenceStatus &&
+        itemConsumerHints == other.itemConsumerHints
 
     override fun hashCode(): Int {
         var result = targets.hashCode()
@@ -151,12 +165,13 @@ class GbaReferenceIndex private constructor(
         result = 31 * result + observedTargets
         result = 31 * result + limitTargets
         result = 31 * result + siteEvidenceStatus.hashCode()
+        result = 31 * result + (itemConsumerHints?.hashCode() ?: 0)
         return result
     }
 
     override fun toString(): String = "GbaReferenceIndex(" +
         "targets=$targets, overflowReason=$overflowReason, observedTargets=$observedTargets, " +
-        "limitTargets=$limitTargets, siteEvidenceStatus=$siteEvidenceStatus)"
+        "limitTargets=$limitTargets, siteEvidenceStatus=$siteEvidenceStatus, itemConsumerHints=$itemConsumerHints)"
 }
 
 fun interface GbaReferenceIndexFactory {
@@ -175,6 +190,9 @@ internal object SafeGbaReferenceIndexBuilder {
         cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
     ): GbaReferenceIndex {
         val targets = linkedMapOf<Int, TargetAccumulator>()
+        val itemHints = mutableListOf<Int>()
+        var observedItemHints = 0
+        val itemHintLimit = minOf(64, limits.maxCandidatesPerDataset)
         val romSize = rom.size.toLong()
         var instructionOffset = 0L
         while (instructionOffset <= romSize - THUMB_INSTRUCTION_BYTES) {
@@ -190,6 +208,16 @@ internal object SafeGbaReferenceIndexBuilder {
                     val targetOffset = rawTarget - GBA_ROM_BASE
                     if (targetOffset >= 0 && targetOffset < romSize) {
                         val target = targetOffset.toInt()
+                        // Collect all observed hint counts even after the bounded item list fills.
+                        // This item-only overflow does not invalidate unrelated numeric references.
+                        val site = instructionOffset.toInt()
+                        if (instruction and 0xFF00 == 0x4900 && site >= 22 && site <= rom.size - 8 &&
+                            rom.u16le(site - 22) == 0xB500 && rom.u16le(site - 20) == 0x0400 &&
+                            rom.u16le(site - 18) == 0x0C00 && rom.u16le(site + 2) == 0x1840 &&
+                            rom.u16le(site + 4) == 0xBC02 && rom.u16le(site + 6) == 0x4708) {
+                            observedItemHints++
+                            if (itemHints.size < itemHintLimit) itemHints += site
+                        }
                         var accumulator = targets[target]
                         if (accumulator == null) {
                             if (targets.size == limits.maxDistinctGbaReferenceTargets) {
@@ -221,6 +249,7 @@ internal object SafeGbaReferenceIndexBuilder {
         return GbaReferenceIndex.fromTargets(
             targets = published,
             limitTargets = limits.maxDistinctGbaReferenceTargets,
+            itemConsumerHints = GbaItemConsumerHints(itemHints, observedItemHints, itemHintLimit),
         )
     }
 

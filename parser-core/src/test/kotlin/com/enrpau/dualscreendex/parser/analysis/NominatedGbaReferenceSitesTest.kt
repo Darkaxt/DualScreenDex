@@ -11,6 +11,22 @@ import org.junit.Test
 
 class NominatedGbaReferenceSitesTest {
     @Test
+    fun cancellationPrecedesCachedAvailableAndNullSiteEvidence() {
+        val bytes = ByteArray(0x200)
+        putU16(bytes, 0x20, 0x4800)
+        putU32(bytes, 0x24, 0x08000100)
+        var stop = false
+        val session = RomAnalysisSession(RomImage(bytes), RomHeader(Platform.GBA, ""),
+            cancellation = ParserCancellationToken { if (stop) throw ParserCancellationException() })
+        session.nominatedGbaReferenceSites(0x100)
+        session.nominatedGbaReferenceSites(0x180)
+        stop = true
+        for (target in listOf(0x100, 0x180)) org.junit.Assert.assertThrows(ParserCancellationException::class.java) {
+            session.nominatedGbaReferenceSites(target)
+        }
+    }
+
+    @Test
     fun enumeratesAnOverflowedHotTargetOncePerSessionAndFailsClosedWhenIncomplete() {
         val target = 0x300
         val bytes = ByteArray(0x500)

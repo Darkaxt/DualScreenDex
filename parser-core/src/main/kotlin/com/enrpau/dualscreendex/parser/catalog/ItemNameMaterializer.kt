@@ -4,13 +4,10 @@ import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.language.defaultTextCodec
 import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
-import com.enrpau.dualscreendex.parser.model.GbaItemRootNomination
-import com.enrpau.dualscreendex.parser.parse.Gen3CompiledItemNameResolver
+import com.enrpau.dualscreendex.parser.model.GbaItemNameAuthority
 
 /** One catalog-session producer; only the exact resolved projection may interpret native name bytes. */
 class ItemNameMaterializer(private val session: RomAnalysisSession) {
-    private val resolver = Gen3CompiledItemNameResolver(session)
-
     @Synchronized
     fun materialize(layout: ResolvedRomLayout, referencedIds: Set<Int>): Map<Int, CatalogField<String>> {
         session.cancellation.throwIfCancellationRequested()
@@ -19,18 +16,15 @@ class ItemNameMaterializer(private val session: RomAnalysisSession) {
         if (layout.generation != 3 || layout.platform != Platform.GBA) return unavailable("compiled item-name ABI unavailable")
         val codec = layout.defaultTextCodec() ?: return unavailable("exact item-name projection unavailable")
         if (codec.terminator != 0xFF) return unavailable("item copier terminator disagrees with projection")
-        val root = when (val nomination = layout.itemRootNomination) {
-            GbaItemRootNomination.Absent -> return unavailable("original published item nomination absent")
-            GbaItemRootNomination.Ambiguous -> return unavailable("original published item nomination ambiguous")
-            is GbaItemRootNomination.Nominated -> nomination.offset
+        val table = when (val authority = layout.itemNameAuthority) {
+            is GbaItemNameAuthority.Unavailable -> return unavailable(authority.reason)
+            is GbaItemNameAuthority.Available -> authority
         }
-        val proof = resolver.resolve(root)
-        val table = proof.table ?: return unavailable(proof.reason)
         return referencedIds.sorted().associateWith { id ->
             session.cancellation.throwIfCancellationRequested()
             when {
                 id !in 0..0xFFFF || id >= table.count -> CatalogField.notFound("item ID outside compiled u16 domain")
-                id in table.excludedIds -> CatalogField.notFound("compiled item name requires unproved dynamic state")
+                id == table.excludedId -> CatalogField.notFound("compiled item name requires unproved dynamic state")
                 else -> {
                     val text = codec.decodeDetailed(session.rom, table.root + table.stride * id, table.nameBytes, session.cancellation)
                     if (text.terminated && text.invalidUnits == 0 && text.controlUnits == 0 && text.substitutionUnits == 0 && text.text.isNotBlank()) {
@@ -38,7 +32,7 @@ class ItemNameMaterializer(private val session: RomAnalysisSession) {
                     } else CatalogField.notFound("item name lacks exact tokens and termination before numeric field")
                 }
             }
-        }
+        }.also { session.cancellation.throwIfCancellationRequested() }
     }
 
     internal data class Joined(val balls: Map<Int, CaptureBallRecord>, val localMaps: LocalMapCatalog)

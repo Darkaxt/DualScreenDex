@@ -174,6 +174,28 @@ sealed interface GbaItemRootNomination {
     }
 }
 
+/** Applicability is recorded at the original strategy branch, never inferred from missing data. */
+sealed interface GbaItemPublishedRoute {
+    data object NotEvaluated : GbaItemPublishedRoute
+    data object NotInvoked : GbaItemPublishedRoute
+    data class Invoked(val nomination: GbaItemRootNomination) : GbaItemPublishedRoute
+}
+
+enum class GbaItemNameProvenance { PUBLISHED_ROOT, COMPILED_CONSUMER }
+
+/** Immutable terminal consumer authority; a bare published nomination cannot authorize decoding. */
+sealed interface GbaItemNameAuthority {
+    data class Unavailable(val reason: String = "original item authority unavailable") : GbaItemNameAuthority
+    data class Available(
+        val root: Int,
+        val stride: Int,
+        val count: Int,
+        val nameBytes: Int,
+        val excludedId: Int,
+        val provenance: GbaItemNameProvenance,
+    ) : GbaItemNameAuthority
+}
+
 data class ResolvedRomLayout(
     val family: EngineFamily,
     val generation: Int,
@@ -190,6 +212,7 @@ data class ResolvedRomLayout(
     val resolvedDatasets: ResolvedDatasetLayouts = ResolvedDatasetLayouts(),
     val languageManifest: RomLanguageManifest = RomLanguageManifest.UNKNOWN,
     val itemRootNomination: GbaItemRootNomination = GbaItemRootNomination.Absent,
+    val itemNameAuthority: GbaItemNameAuthority = GbaItemNameAuthority.Unavailable(),
 )
 
 /** Compiled-authorized expanded capture-ball tables and their ROM-native item relationship. */

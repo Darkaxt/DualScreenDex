@@ -10,6 +10,32 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class NativeNameLayoutIntegrationTest {
+    @Test fun originalItemRouteRecordsExistingBranchAndCopiesNeverRediscover() {
+        val fixture = com.enrpau.dualscreendex.parser.parse.ItemConsumerFixture()
+        val session = RomAnalysisSession(RomImage(fixture.bytes), RomHeader(Platform.GBA, "CUSTOM"))
+        for (family in listOf(EngineFamily.EMERALD, EngineFamily.RUBY_SAPPHIRE, EngineFamily.FIRERED_LEAFGREEN)) {
+            val identity = IdentityRootsStrategy().execute(session, EngineFamilyDefinitions.byFamily.getValue(family),
+                FamilyProbeState.empty()).identityRoots as IdentityRootsPhaseResult.Resolved
+            val original = identity.tableResolution
+            assertEquals(com.enrpau.dualscreendex.parser.model.GbaItemRootNomination.Absent, original.itemRootNomination)
+            if (family == EngineFamily.RUBY_SAPPHIRE) {
+                assertEquals(com.enrpau.dualscreendex.parser.model.GbaItemPublishedRoute.NotInvoked, original.itemPublishedRoute)
+                assertTrue(original.itemNameAuthority is com.enrpau.dualscreendex.parser.model.GbaItemNameAuthority.Available)
+            } else {
+                assertEquals(com.enrpau.dualscreendex.parser.model.GbaItemPublishedRoute.Invoked(
+                    com.enrpau.dualscreendex.parser.model.GbaItemRootNomination.Absent), original.itemPublishedRoute)
+                assertTrue(original.itemNameAuthority is com.enrpau.dualscreendex.parser.model.GbaItemNameAuthority.Unavailable)
+            }
+            val copied = original.copy(tables = com.enrpau.dualscreendex.parser.model.ProfileTables())
+            assertSame(original.itemNameAuthority, copied.itemNameAuthority)
+            assertSame(original.itemRootNomination, copied.itemRootNomination)
+            assertSame(original.itemPublishedRoute, copied.itemPublishedRoute)
+        }
+        val unevaluated = ProfileTableResolution(com.enrpau.dualscreendex.parser.model.ProfileTables())
+        assertEquals(com.enrpau.dualscreendex.parser.model.GbaItemPublishedRoute.NotEvaluated, unevaluated.itemPublishedRoute)
+        assertTrue(unevaluated.itemNameAuthority is com.enrpau.dualscreendex.parser.model.GbaItemNameAuthority.Unavailable)
+    }
+
     @Test fun carriesCompiledSixAndEightByteGeometryIntoEveryGenThreeFamily() {
         for ((family, code) in listOf(EngineFamily.RUBY_SAPPHIRE to "AXVJ", EngineFamily.EMERALD to "BPEJ", EngineFamily.FIRERED_LEAFGREEN to "BPRJ")) {
             val session = RomAnalysisSession(RomImage(nativeGbaNameGeometry()), RomHeader(Platform.GBA, "CUSTOM", code))

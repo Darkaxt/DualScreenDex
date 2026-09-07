@@ -1,12 +1,129 @@
 package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.analysis.ExtentCheck
+import com.enrpau.dualscreendex.parser.analysis.GbaReferenceIndex
+import com.enrpau.dualscreendex.parser.analysis.GbaTargetReferenceEvidence
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
+import com.enrpau.dualscreendex.parser.model.GbaItemNameAuthority
+import com.enrpau.dualscreendex.parser.model.GbaItemNameProvenance
+import com.enrpau.dualscreendex.parser.model.GbaItemPublishedRoute
+import com.enrpau.dualscreendex.parser.model.GbaItemRootNomination
 
 /** Static inline names only. Every accepted instruction path is complete; unsupported ABIs stay absent. */
 internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSession) {
     data class Table(val root: Int, val stride: Int, val count: Int, val nameBytes: Int, val excludedIds: Set<Int>)
     data class Result(val table: Table? = null, val reason: String, val scannedBytes: Long = 0, val probeWords: Int = 0)
+
+    private val originalResults = mutableMapOf<GbaItemPublishedRoute, GbaItemNameAuthority>()
+    private var originalProof: Result? = null
+
+    /** Composed once in identity/root resolution; defaults and invoked absence never grant discovery. */
+    @Synchronized
+    fun original(route: GbaItemPublishedRoute): GbaItemNameAuthority {
+        session.cancellation.throwIfCancellationRequested()
+        originalResults[route]?.let { return it }
+        val terminal = when (route) {
+            GbaItemPublishedRoute.NotEvaluated -> "original item route not evaluated"
+            is GbaItemPublishedRoute.Invoked -> when (route.nomination) {
+                GbaItemRootNomination.Absent -> "original published item nomination absent"
+                GbaItemRootNomination.Ambiguous -> "original published item nomination ambiguous"
+                is GbaItemRootNomination.Nominated -> null
+            }
+            GbaItemPublishedRoute.NotInvoked -> null
+        }
+        val authority = if (terminal != null) GbaItemNameAuthority.Unavailable(terminal) else {
+            val proof = originalProof ?: proveOriginal().also {
+                session.cancellation.throwIfCancellationRequested()
+                originalProof = it.copy(scannedBytes = scannedBytes, probeWords = probeWords)
+            }
+            val table = proof.table
+            val published = (route as? GbaItemPublishedRoute.Invoked)?.nomination as? GbaItemRootNomination.Nominated
+            when {
+                table == null -> GbaItemNameAuthority.Unavailable(proof.reason)
+                published != null && published.offset != table.root ->
+                    GbaItemNameAuthority.Unavailable("compiled item authority conflicts with original published root")
+                else -> GbaItemNameAuthority.Available(table.root, table.stride, table.count, table.nameBytes,
+                    table.excludedIds.single(), if (published == null) GbaItemNameProvenance.COMPILED_CONSUMER
+                    else GbaItemNameProvenance.PUBLISHED_ROOT)
+            }
+        }
+        session.cancellation.throwIfCancellationRequested()
+        originalResults[route] = authority
+        return authority
+    }
+
+    private fun proveOriginal(): Result {
+        if (!scan(rom.size)) return unavailable("original item reference nomination budget")
+        val index = session.gbaReferenceIndex ?: return unavailable("original item references unavailable")
+        if (index.overflowed) return unavailable("original item reference inventory overflow")
+        val hints = index.itemConsumerHints ?: return unavailable("original item candidate hints incomplete")
+        if (!hints.complete || hints.observedSites > minOf(64, session.limits.maxCandidatesPerDataset)) {
+            return unavailable("original item candidate inventory overflow")
+        }
+        if (hints.sites.isEmpty()) return unavailable("no original compiled item candidates")
+        val roots = linkedSetOf<Int>()
+        val targets = linkedSetOf<Int>()
+        for (site in hints.sites) {
+            session.cancellation.throwIfCancellationRequested()
+            val root = literal(site) ?: return unavailable("incomplete original item candidate literal")
+            val getter = pointerGetter(site, root) ?: return unavailable("incomplete original item getter candidate")
+            roots += root
+            targets += getter.entry
+        }
+        if (roots.size > minOf(8, session.limits.maxProbeRootsPerDataset)) return unavailable("original item root budget")
+        var siteCount = 0L
+        val evidence = linkedMapOf<Int, GbaTargetReferenceEvidence>()
+        for (root in roots) {
+            for (field in 1..MAX_FIELD_NOMINATION) {
+                session.cancellation.throwIfCancellationRequested()
+                if (index.referenceCount(root + field) > 0) return unavailable("unreconciled original item field-root witness")
+            }
+            val references = index.target(root) ?: return unavailable("missing original item root inventory")
+            siteCount += references.count
+            evidence[root] = references
+        }
+        if (siteCount > minOf(128, session.limits.maxNominatedGbaReferenceSites)) return unavailable("aggregate original item site budget")
+        if (evidence.values.any { !it.siteEvidenceAvailable }) {
+            if (evidence.values.any { !it.siteEvidenceAvailable && it.instructionSites.isNotEmpty() }) {
+                return unavailable("partial original item root inventory")
+            }
+            val recovered = recoverOriginalSites(evidence) ?: return unavailable("original item batch recovery unavailable")
+            evidence.putAll(recovered)
+        }
+        val calls = callers(targets) ?: return unavailable("original item caller inventory unavailable")
+        val tables = mutableListOf<Table>()
+        for (root in roots) {
+            session.cancellation.throwIfCancellationRequested()
+            val result = prove(root, index, evidence.getValue(root), calls)
+            tables += result.table ?: return result // unsupported witnesses never vanish via mapNotNull
+        }
+        if (tables.size != 1) return unavailable("competing complete original item roots")
+        return Result(tables.single(), "complete original compiled item authority")
+    }
+
+    /** One bounded target-set recovery, shared by every original root and family probe. */
+    private fun recoverOriginalSites(expected: Map<Int, GbaTargetReferenceEvidence>): Map<Int, GbaTargetReferenceEvidence>? {
+        if (!scan(rom.size)) return null
+        val sites = expected.keys.associateWith { mutableListOf<Int>() }
+        val observed = expected.keys.associateWith { 0 }.toMutableMap()
+        var total = 0
+        for (at in 0..rom.size - 2 step 2) {
+            if (at and 4095 == 0) session.cancellation.throwIfCancellationRequested()
+            val op = rom.u16le(at)
+            if (op and 0xF800 != 0x4800) continue
+            val slot = ((at + 4) and -4).toLong() + (op and 255) * 4L
+            if (slot !in 0..rom.size.toLong() - 4) continue
+            val root = rom.gbaPointer(slot.toInt()) ?: continue
+            val list = sites[root] ?: continue
+            observed[root] = observed.getValue(root) + 1
+            total++
+            if (total <= minOf(128, session.limits.maxNominatedGbaReferenceSites)) list += at
+        }
+        if (total > minOf(128, session.limits.maxNominatedGbaReferenceSites) ||
+            expected.any { (root, value) -> observed.getValue(root) != value.count }) return null
+        return expected.mapValues { (root, value) -> GbaTargetReferenceEvidence(value.count,
+            sites.getValue(root), value.count, session.limits.maxNominatedGbaReferenceSites, null) }
+    }
 
     private val results = mutableMapOf<Int, Result>()
     private val rom = session.rom
@@ -40,6 +157,12 @@ internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSess
                 !scan(rom.size)) return unavailable("incomplete item reference inventory")
             session.nominatedGbaReferenceSites(root) ?: return unavailable("item reference recovery unavailable")
         }
+        return prove(root, index, references, null)
+    }
+
+    private fun prove(root: Int, index: GbaReferenceIndex, references: GbaTargetReferenceEvidence,
+                      batchCalls: Map<Int, List<Int>>?): Result {
+        if (root !in 0 until rom.size || index.overflowed) return unavailable("invalid item root inventory")
         val sites = references.instructionSites
         if (!references.siteEvidenceAvailable || references.siteBudgetExceeded || sites.isEmpty() ||
             sites.size != references.count || sites.distinct().size != sites.size ||
@@ -77,11 +200,19 @@ internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSess
             is ExtentCheck.Valid -> Unit
             else -> return unavailable("item record extent unavailable")
         }
-        val calls = callers(pointer.entry) ?: return unavailable("item copier caller scan unavailable")
-        val contracts = calls.mapNotNull { ordinaryWrapper(it, pointer.entry) }.distinct()
+        val calls = (if (batchCalls == null) callers(setOf(pointer.entry))?.get(pointer.entry)
+            else batchCalls[pointer.entry]) ?: return unavailable("item copier caller scan unavailable")
+        val contracts = mutableListOf<CopyContract>()
+        for (call in calls) {
+            if (matches(call - 40, 0xB510, 0x1C0C, 0x0400, 0x0C00) &&
+                word(call - 32) and 0xFF00 == 0x2800) {
+                contracts += ordinaryWrapper(call, pointer.entry)
+                    ?: return unavailable("incomplete static item copy contract")
+            }
+        }
         if (exhausted) return unavailable("item wrapper budget")
-        if (contracts.size != 1) return unavailable("missing or conflicting static item copy contracts")
-        return Result(Table(root, pointer.stride, pointer.count, width, setOf(contracts.single())), "complete compiled static item-name consumer")
+        if (contracts.distinct().size != 1) return unavailable("missing or conflicting static item copy contracts")
+        return Result(Table(root, pointer.stride, pointer.count, width, setOf(contracts.single().excludedId)), "complete compiled static item-name consumer")
     }
 
     private data class Getter(val entry: Int, val stride: Int, val count: Int, val field: Int?, val width: Int = 0)
@@ -133,24 +264,26 @@ internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSess
     private fun shift(opcode: Int, source: Int, destination: Int): Int? =
         if (opcode >= 0 && opcode and 0xF83F == ((source shl 3) or destination)) (opcode ushr 6) and 31 else null
 
-    /** One target-bound BL nomination pass; no recursive call graph or general second reference index. */
-    private fun callers(target: Int): List<Int>? {
+    /** One finite target-set BL nomination pass; overflow counts remain complete, never sampled. */
+    private fun callers(targets: Set<Int>): Map<Int, List<Int>>? {
         if (!scan(rom.size)) return null
-        val sites = mutableListOf<Int>()
+        val sites = targets.associateWith { mutableListOf<Int>() }
+        var observed = 0
+        val limit = minOf(session.limits.maxNominatedGbaReferenceSites, MAX_CALLERS)
         for (at in 0..rom.size - 4 step 2) {
             if (at and 4095 == 0) session.cancellation.throwIfCancellationRequested()
-            if (rawBl(at) == target) {
-                if (sites.size == minOf(session.limits.maxNominatedGbaReferenceSites, MAX_CALLERS)) {
-                    exhausted = true
-                    return null
-                }
-                sites += at
-            }
+            val list = sites[rawBl(at)] ?: continue
+            observed++
+            if (observed <= limit) list += at
         }
+        session.cancellation.throwIfCancellationRequested()
+        if (observed > limit) { exhausted = true; return null }
         return sites
     }
 
-    private fun ordinaryWrapper(call: Int, getter: Int): Int? {
+    private data class CopyContract(val entry: Int, val getter: Int, val copier: Int, val excludedId: Int)
+
+    private fun ordinaryWrapper(call: Int, getter: Int): CopyContract? {
         val entry = call - 40
         if (!matches(entry, 0xB510, 0x1C0C, 0x0400, 0x0C00) ||
             word(entry + 8) and 0xFF00 != 0x2800 || word(entry + 10) != 0xD10D || bl(call) != getter ||
@@ -159,7 +292,13 @@ internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSess
         val copier = bl(call + 8) ?: return null
         if (!matches(copier, 0xB500, 0x1C03, 0xE002, 0x701A, 0x3301, 0x3101, 0x780A,
                 0x1C10, 0x28FF, 0xD1F8, 0x20FF, 0x7018, 0x1C18, 0xBC02, 0x4708)) return null
-        return word(entry + 8) and 255
+        // The equal arm must leave across its literal pool and the entire ordinary path.
+        // Its helper bodies remain opaque; only the wrapper's data/control flow is claimed.
+        if (word(entry + 12) and 0xFF00 != 0x2000 || bl(entry + 14) == null ||
+            !matches(entry + 18, 0x1C01, 0x1C20) || bl(entry + 22) != copier ||
+            !matches(entry + 26, 0x4902, 0x1C20) || bl(entry + 30) == null ||
+            word(entry + 34) != 0xE007) return null
+        return CopyContract(entry, getter, copier, word(entry + 8) and 255)
     }
 
     private fun scan(bytes: Int): Boolean {

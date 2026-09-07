@@ -3,9 +3,47 @@ package com.enrpau.dualscreendex.parser.parse
 import com.enrpau.dualscreendex.parser.io.RomImage
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import com.enrpau.dualscreendex.parser.analysis.GbaItemConsumerHints
+import com.enrpau.dualscreendex.parser.analysis.GbaReferenceIndex
+import com.enrpau.dualscreendex.parser.analysis.ResolutionLimits
+import org.junit.Assert.*
 import org.junit.Test
 
 class GbaReferenceIndexTest {
+    @Test
+    fun itemHintsAreImmutableValueEvidenceIncludedInIndexEquality() {
+        val sites = mutableListOf(22)
+        val hints = GbaItemConsumerHints(sites, 1, 64)
+        sites.clear()
+        assertEquals(listOf(22), hints.sites)
+        assertThrows(UnsupportedOperationException::class.java) { (hints.sites as MutableList<Int>).clear() }
+        assertEquals(hints, GbaItemConsumerHints(listOf(22), 1, 64))
+        val original = GbaReferenceIndex.fromTargets(emptyMap(), 16, hints)
+        assertEquals(original, GbaReferenceIndex.fromTargets(emptyMap(), 16, GbaItemConsumerHints(listOf(22), 1, 64)))
+        assertEquals(original.hashCode(), GbaReferenceIndex.fromTargets(emptyMap(), 16, GbaItemConsumerHints(listOf(22), 1, 64)).hashCode())
+        assertNotEquals(original, GbaReferenceIndex.fromTargets(emptyMap(), 16))
+        assertNotEquals(original, GbaReferenceIndex.fromTargets(emptyMap(), 16, GbaItemConsumerHints(listOf(22), 2, 1)))
+    }
+
+    @Test
+    fun itemHintsPrecedeTargetTruncationAndOverflowCountsDoNotPoisonNumericIndex() {
+        val f = ItemConsumerFixture()
+        repeat(65) { n ->
+            val entry = 0x2000 + n * 40
+            f.bytes.copyInto(f.bytes, entry, f.nameGetter, f.nameGetter + 36)
+            f.bl(entry + 6, f.sanitizer)
+        }
+        val index = requireNotNull(f.session(limits = ResolutionLimits(maxCompiledReferenceSitesPerCandidate = 1)).gbaReferenceIndex)
+        val hints = requireNotNull(index.itemConsumerHints)
+        assertFalse(index.overflowed)
+        assertEquals(66, hints.observedSites)
+        assertEquals(64, hints.sites.size)
+        assertFalse(hints.complete)
+        assertEquals(79, index.referenceCount(f.root))
+        assertFalse(requireNotNull(index.target(f.root)).siteEvidenceAvailable)
+        assertTrue(requireNotNull(index.target(f.root)).instructionSites.isEmpty())
+    }
+
     @Test
     fun countsCompiledLiteralReferencesThroughOneBoundedIndex() {
         val bytes = ByteArray(0x200)

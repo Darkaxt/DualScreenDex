@@ -200,7 +200,7 @@ class WorldMapCatalogApiRealControlTest {
     @Test fun nativeOfficialJapaneseYellow() = assertNativeRoundTrip(nativeControls[1])
     @Test fun nativeOfficialJapaneseGoldSilver() = assertNativeRoundTrip(nativeControls[2])
     @Test fun nativeOfficialJapaneseCrystal() = assertNativeRoundTrip(nativeControls[3])
-    @Test fun nativeOfficialJapaneseRubySapphire() = assertNativeRoundTrip(nativeControls[4])
+    @Test fun nativeOfficialJapaneseRubySapphire() = assertNativeRoundTrip(nativeControls[4], requireItemNames = true)
     @Test fun nativeOfficialJapaneseEmerald() = assertNativeRoundTrip(nativeControls[5], requireItemNames = true)
     @Test fun nativeOfficialJapaneseFireRedLeafGreen() = assertNativeRoundTrip(nativeControls[6], requireItemNames = true)
     @Test fun nativeOfficialKoreanGold() = assertNativeRoundTrip(nativeControls[7], requireDeclaredSigns = true)
@@ -354,13 +354,24 @@ class WorldMapCatalogApiRealControlTest {
     private data class ItemNameExpectation(
         val count: Int,
         val samples: Map<Int, String>,
-        val publishedRoot: Int,
+        val authorityRoot: Int,
         val lastId: Int,
         val lastNameHash: String,
         val zeroReferenced: Boolean,
+        val compiledOnly: Boolean = false,
     )
 
     private fun itemNameExpectation(control: NativeControl): ItemNameExpectation = when (control.folder) {
+        "ja/RUBY_SAPPHIRE" -> ItemNameExpectation(
+            101, mapOf(
+                4 to "17981b51d17e17dcdf00165263590a279e1ac9102280ad78d7920282b5fb2f4c",
+                13 to "c71124a78727996d3f44f4c3c02933cc1dedd48148766855fa1d1ccac6e0cc60",
+                289 to "1f6251027f8cadd39f481ba94f80a49dfb1287c9e7efb6fc4fa3f7c73669f48f",
+                336 to "6453dce84b755437be6a19e6dc5d665d729e8829c7a356a68213ecbfad4658d3",
+                346 to "b8b36facd0037ea26ff0e2ffea4c55580748bbb4df6af1f72378f1dc2eaf6caf",
+            ), 0x39A648, 348,
+            "19413c8b7affaeeec861dadb1a640d163f4ec6b2ae4b38feb0e9f8c835641a8f", false, true,
+        )
         "ja/EMERALD" -> ItemNameExpectation(
             104, emeraldItemNameHashes, 0x55CEE8, 376,
             "285f476bfcdcacc123e141dc1cec947a029de43b6bccd14af4f927d778ef90da", false,
@@ -426,9 +437,15 @@ class WorldMapCatalogApiRealControlTest {
                     val session = com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession(rom, attempt.analysis.header)
                     val itemLayout = requireNotNull(attempt.layout)
                     assertEquals(
-                        com.enrpau.dualscreendex.parser.model.GbaItemRootNomination.Nominated(itemExpectation.publishedRoot),
+                        if (itemExpectation.compiledOnly) com.enrpau.dualscreendex.parser.model.GbaItemRootNomination.Absent
+                        else com.enrpau.dualscreendex.parser.model.GbaItemRootNomination.Nominated(itemExpectation.authorityRoot),
                         itemLayout.itemRootNomination,
                     )
+                    val authority = itemLayout.itemNameAuthority as com.enrpau.dualscreendex.parser.model.GbaItemNameAuthority.Available
+                    assertEquals(itemExpectation.authorityRoot, authority.root)
+                    assertEquals(if (itemExpectation.compiledOnly)
+                        com.enrpau.dualscreendex.parser.model.GbaItemNameProvenance.COMPILED_CONSUMER
+                        else com.enrpau.dualscreendex.parser.model.GbaItemNameProvenance.PUBLISHED_ROOT, authority.provenance)
                     val names = com.enrpau.dualscreendex.parser.catalog.ItemNameMaterializer(session)
                         .materialize(itemLayout, setOf(0, 175, itemExpectation.lastId, itemExpectation.lastId + 1, 65535))
                     for ((id, expected) in mapOf(
@@ -552,14 +569,14 @@ class WorldMapCatalogApiRealControlTest {
             if (requireDeclaredSigns) checks.attempt("declared-sign.sqlite.independent-samples") {
                 assertKoreanDeclaredSigns(reopened)
                 assertEquals(catalog.localMaps.pois, reopened.localMaps.pois)
-                assertEquals(54, CatalogSchema.parserSchemaVersion)
+                assertEquals(55, CatalogSchema.parserSchemaVersion)
                 assertEquals(2, CatalogSchema.version)
                 println("DECLARED_SIGN_CACHE ${control.folder} sha256=${rom.sha256} database=${cache.fileFor(rom.sha256).absolutePath}")
             }
             if (directMoveProseControl) checks.attempt("sqlite.move-prose.independent-samples") {
                 assertNativeMoveProseSamples(reopened, control)
                 JdbcTestCatalogDatabaseFactory.open(cache.fileFor(rom.sha256)).use { database ->
-                    assertEquals(listOf(54L to 2L), database.query(
+                    assertEquals(listOf(55L to 2L), database.query(
                         "SELECT parser_schema_version, schema_version FROM catalog_metadata WHERE id = 1",
                     ) { row -> row.long("parser_schema_version") to row.long("schema_version") })
                 }
