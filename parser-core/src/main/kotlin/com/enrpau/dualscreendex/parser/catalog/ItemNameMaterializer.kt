@@ -5,6 +5,7 @@ import com.enrpau.dualscreendex.parser.language.defaultTextCodec
 import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.GbaItemNameAuthority
+import com.enrpau.dualscreendex.parser.text.PokemonTextToken
 
 /** One catalog-session producer; only the exact resolved projection may interpret native name bytes. */
 class ItemNameMaterializer(private val session: RomAnalysisSession) {
@@ -179,7 +180,19 @@ class ItemNameMaterializer(private val session: RomAnalysisSession) {
                 else ByteArray(count) { index ->
                     session.cancellation.throwIfCancellationRequested()
                     session.rom.u8(start + index).toByte()
-                }.takeUnless { bytes -> bytes.any { (it.toInt() and 255) == authority.terminator } }
+                }.takeIf { bytes ->
+                    // The literal span must be complete before generated digits can become input.
+                    session.cancellation.throwIfCancellationRequested()
+                    val literal = com.enrpau.dualscreendex.parser.io.RomImage(bytes)
+                    var cursor = 0
+                    while (cursor < bytes.size) {
+                        session.cancellation.throwIfCancellationRequested()
+                        val token = codec.decodeToken(literal, cursor, bytes.size)
+                        if (token !is PokemonTextToken.Glyph && token !is PokemonTextToken.Whitespace) return@takeIf false
+                        cursor += token.byteCount
+                    }
+                    true
+                }
             }
             val prefix = prefixes[tm] ?: continue
             var number = (id - (if (id >= authority.skipFirst) 1 else 0) -

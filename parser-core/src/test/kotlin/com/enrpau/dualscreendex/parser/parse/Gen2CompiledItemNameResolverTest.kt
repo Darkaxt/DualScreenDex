@@ -95,7 +95,7 @@ class Gen2CompiledItemNameResolverTest {
     }
 }
 
-internal class Gen2ItemFixture(hram: Boolean = false, shift: Int = 0) {
+internal class Gen2ItemFixture(hram: Boolean = false, shift: Int = 0, korean: Boolean = false) {
     val bytes = ByteArray(0x14000)
     val symbols = mutableMapOf("wrapper" to 0x400 + shift, "getName" to 0x800 + shift, "nth" to 0xc00 + shift,
         "copier" to 0x1000 + shift, "generated" to 0x1400 + shift, "farCall" to 0x1800 + shift,
@@ -107,10 +107,10 @@ internal class Gen2ItemFixture(hram: Boolean = false, shift: Int = 0) {
     val root = 0x11000 + shift
     init {
         emit("wrapper", "E5 C5 FA @object FE B5 30 ~genBranch EA @index 3E 06 EA @selectorSlot CD @getName 18 ~copied :genBranch CD @generated :copied 11 @destination C1 E1 C9")
-        emit("getName", "F0 A0 F5 E5 C5 D5 FA @selectorSlot FE 01 20 ~ordinary 00 00 00 :ordinary FA @selectorSlot 3D 5F 16 00 21 @directory 19 19 19 2A D7 2A 66 6F FA @index 3D CD @nth 11 @destination 01 0B 00 CD @copier 7B EA @returnLow 7A EA @returnHigh D1 C1 E1 F1 D7 C9")
+        emit("getName", "F0 A0 F5 E5 C5 D5 FA @selectorSlot FE 01 20 ~ordinary 00 00 00 :ordinary FA @selectorSlot 3D 5F 16 00 21 @directory 19 19 19 2A D7 2A 66 6F FA @index 3D CD @nth 11 @destination 01 ${if (korean) "15" else "0B"} 00 CD @copier 7B EA @returnLow 7A EA @returnHigh D1 C1 E1 F1 D7 C9")
         emit("nth", "A7 C8 C5 47 0E 50 2A B9 20 FC 05 20 F9 C1 C9")
         emit("copier", "04 0C 18 03 2A 12 13 0D 20 FA 05 20 F7 C9")
-        emit("generated", "E5 D5 C5 FA @object F5 FE E9 F5 38 ~tmBranch 21 @hmPrefix 01 06 00 18 ~prefixJoin :tmBranch 21 @tmPrefix 01 05 00 :prefixJoin 11 @destination CD @copier D5 FA @object 4F 21 @helperAddress 3E 02 CF D1 F1 79 38 ~notHM D6 32 :notHM 06 F6 D6 0A 38 03 04 18 F9 C6 0A F5 78 12 13 F1 06 F6 80 12 13 3E 50 12 F1 EA @object C1 D1 E1 C9")
+        emit("generated", "E5 D5 C5 FA @object F5 FE E9 F5 38 ~tmBranch 21 @hmPrefix 01 ${if (korean) "08" else "06"} 00 18 ~prefixJoin :tmBranch 21 @tmPrefix 01 ${if (korean) "08" else "05"} 00 :prefixJoin 11 @destination CD @copier D5 FA @object 4F 21 @helperAddress 3E 02 CF D1 F1 79 38 ~notHM D6 32 :notHM 06 F6 D6 0A 38 03 04 18 F9 C6 0A F5 78 12 13 F1 06 F6 80 12 13 3E 50 12 F1 EA @object C1 D1 E1 C9")
         emit("helper", "79 FE B9 38 ~skipDone FE D2 38 ~skipOne 3D :skipOne 3D :skipDone D6 B5 3C 4F C9")
         symbols["farRst"] = 8
         emit("farRst", "C3 @farCall")

@@ -320,6 +320,12 @@ class Gen2LocalMapPoiResolverTest {
     @Test fun exactJapaneseCrystalReferenceEvidence() = nativeItemReferences("CRYSTAL",
         "136ada06cb68656b7de475fa4b278d37dbeff8f5257e7dfdf7f4a4aec19a90f3")
 
+    @Test fun exactKoreanGoldItemEvidence() = nativeItemReferences("GOLD",
+        "9c273e86e6120c6a038160ccb0153b8b20425b84fc08a496281c1d1bcac492f6", "ko")
+
+    @Test fun exactKoreanSilverItemEvidence() = nativeItemReferences("SILVER",
+        "ebbac63c0c4309c82dbb6723e7163369784f962b4fd3e2f486075307c3008a22", "ko")
+
     private fun reflectedReferences(value: Any): List<Any> {
         val getter = value.javaClass.methods.singleOrNull { it.name == "getItemReferences" || it.name == "getGen2ItemReferences" }
         assertTrue("accepted GenII items must retain current typed operand/root provenance", getter != null)
@@ -340,8 +346,8 @@ class Gen2LocalMapPoiResolverTest {
     private fun resolveItemReferences(bytes: ByteArray) = Gen2LocalMapPoiResolver.resolve(RomImage(bytes),
         listOf(Gen2LocalMapPoiResolver.Source(1, 1, ATTRIBUTES_1)), listOf(localMap(1)), EngineFamily.GOLD_SILVER, null)
 
-    private fun nativeItemReferences(family: String, sha: String) {
-        val directory = java.io.File(requireNotNull(System.getenv("DUALDEX_NATIVE_CONTROLS")), "ja/$family")
+    private fun nativeItemReferences(family: String, sha: String, language: String = "ja") {
+        val directory = java.io.File(requireNotNull(System.getenv("DUALDEX_NATIVE_CONTROLS")), "$language/$family")
         val file = requireNotNull(directory.listFiles()).single { it.isFile }
         val rom = RomImage(file.readBytes())
         assertEquals(sha, rom.sha256)
@@ -387,6 +393,45 @@ class Gen2LocalMapPoiResolverTest {
             columns.joinToString("\t") + "\n" + refs.joinToString("\n", postfix = "\n") { ref ->
                 columns.joinToString("\t") { field(ref, it)?.toString().orEmpty() }
             })
+        if (language == "ko") {
+            // Private witnesses accompany the typed inventory; names are observations, not an oracle.
+            val raw = java.io.File(output.parentFile, "$family-reference-witnesses.tsv")
+            raw.bufferedWriter().use { writer ->
+                writer.appendLine("PoiKey\tRole\tOffset\tHex")
+                fun witness(ref: Any, role: String, at: Int, count: Int) {
+                    require(at >= 0 && at.toLong() + count <= rom.size)
+                    writer.appendLine("${field(ref, "PoiKey")}\t$role\t$at\t" +
+                        (0 until count).joinToString("") { "%02x".format(rom.u8(at + it)) })
+                }
+                refs.forEach { ref ->
+                    val base = field(ref, "BaseAreaId") as Int
+                    val hidden = field(ref, "Kind").toString() == "HIDDEN_EVENT"
+                    val operand = field(ref, "OperandOffset") as Int
+                    witness(ref, "groupPointer", (field(ref, "MapGroupTable") as Int) + ((base ushr 8) - 1) * 2, 2)
+                    witness(ref, "mapHeader", field(ref, "MapHeader") as Int, 9)
+                    witness(ref, "attributes", field(ref, "Attributes") as Int, 11)
+                    witness(ref, "eventRow", field(ref, "EventRow") as Int, if (hidden) 5 else 13)
+                    witness(ref, "itemData", operand - if (hidden) 2 else 0, if (hidden) 3 else 2)
+                }
+            }
+            val ids = items.values.mapTo(sortedSetOf()) { requireNotNull(requireNotNull(it.item).itemId) }
+            val names = com.enrpau.dualscreendex.parser.catalog.ItemNameMaterializer(session).materialize(layout, ids)
+            assertEquals(ids, names.keys)
+            assertEquals(225, refs.size)
+            assertEquals(62, ids.size)
+            assertEquals(ids, session.gen2ItemReferences.map { it.itemId }.toSet())
+            assertTrue(session.gen2ItemNameAuthority is com.enrpau.dualscreendex.parser.model.Gen2ItemNameAuthority.Available)
+            assertTrue(names.values.all { it.value != null && it.status == com.enrpau.dualscreendex.parser.model.CapabilityStatus.AVAILABLE })
+            val coverage = java.io.File(output.parentFile, "$family-production-coverage.tsv")
+            coverage.writeText("sha256\t$sha\nauthority\t${session.gen2ItemNameAuthority.javaClass.simpleName}\n" +
+                "records\t${refs.size}\nexpectedIds\t${ids.size}\navailableIds\t${names.values.count { it.value != null }}\n" +
+                "ItemId\tStatus\tName\n" + ids.joinToString("\n", postfix = "\n") { id ->
+                    val value = names.getValue(id)
+                    "$id\t${value.status}\t${value.value.orEmpty()}"
+                })
+            println("KOREAN_ITEM_COVERAGE $family authority=${session.gen2ItemNameAuthority.javaClass.simpleName} " +
+                "references=${refs.size} names=${names.values.count { it.value != null }}/${ids.size} raw=$raw coverage=$coverage")
+        }
         println("GEN2_REFERENCE_EVIDENCE $family records=${refs.size} ids=${refs.map { field(it, "ItemId") }.toSet().size} file=$output")
     }
 

@@ -344,6 +344,137 @@ class ItemNameMaterializerTest {
         }
     }
 
+    @Test fun koreanGenTwoRelocatedTwentyOneByteCopiesAndLiteralPrefixes() {
+        for (hram in listOf(false, true)) for (shift in listOf(0, 0x100)) {
+            val f = koreanGenTwoFixture(hram, shift)
+            val session = f.session(); session.freezeGen2ItemNameAuthority()
+            val authority = session.gen2ItemNameAuthority as Gen2ItemNameAuthority.Available
+            assertEquals(f.root, authority.root)
+            assertEquals(21, authority.copyBytes)
+            assertEquals(8, authority.tmPrefixBytes)
+            assertEquals(8, authority.hmPrefixBytes)
+            session.recordGen2ItemReferences(listOf(1, 2, 181, 233).map(::genTwoReference))
+            val names = ItemNameMaterializer(session).materialize(koreanGenTwoLayout(), setOf(1, 2, 181, 233))
+            assertEquals(mapOf(1 to "가".repeat(10), 2 to "각", 181 to "기술머신01", 233 to "비전머신01"),
+                names.mapValues { it.value.value })
+            assertTrue(names.values.all { it.status == CapabilityStatus.AVAILABLE })
+        }
+    }
+
+    @Test fun koreanGenTwoFullCopyMustFitBankEvenWhenNameTerminates() {
+        for (remaining in listOf(21, 20)) {
+            val f = koreanGenTwoFixture(shift = 0x100)
+            val start = f.bytes.size - remaining
+            f.word(f.at("directory") + 16, 0x8000 - remaining)
+            byteArrayOf(1, 1, 0x50).copyInto(f.bytes, start)
+            val session = f.session(); session.freezeGen2ItemNameAuthority()
+            assertTrue(session.gen2ItemNameAuthority is Gen2ItemNameAuthority.Available)
+            session.recordGen2ItemReferences(listOf(1, 181).map(::genTwoReference))
+            val names = ItemNameMaterializer(session).materialize(koreanGenTwoLayout(), setOf(1, 181))
+            assertEquals(setOf(1, 181), names.keys)
+            assertEquals(if (remaining == 21) "가" else null, names.getValue(1).value)
+            assertEquals("기술머신01", names.getValue(181).value)
+        }
+    }
+
+    @Test fun koreanGenTwoMalformedOrdinaryCopiesFailLocallyWithoutDroppingIds() {
+        val mutations: List<Pair<String, (com.enrpau.dualscreendex.parser.parse.Gen2ItemFixture) -> Unit>> = listOf(
+            "unsupported byte" to { f -> f.bytes[f.root] = 0x0c },
+            "control" to { f -> f.bytes[f.root] = 0 },
+            "substitution" to { f -> f.bytes[f.root] = 0x4a },
+            "split pair at copy boundary" to { f -> f.bytes[f.root + 20] = 1 },
+            "termination outside full copy" to { f -> f.bytes[f.root + 20] = 0x7f },
+        )
+        for ((label, mutate) in mutations) {
+            val f = koreanGenTwoFixture(shift = 0x100)
+            val session = f.session(); session.freezeGen2ItemNameAuthority()
+            val ids = setOf(1, 181, 233)
+            session.recordGen2ItemReferences(ids.map(::genTwoReference))
+            assertEquals("가".repeat(10), ItemNameMaterializer(session).materialize(koreanGenTwoLayout(), ids).getValue(1).value)
+            mutate(f)
+            val changed = f.session(); changed.freezeGen2ItemNameAuthority()
+            changed.recordGen2ItemReferences(ids.map(::genTwoReference))
+            val names = ItemNameMaterializer(changed).materialize(koreanGenTwoLayout(), ids)
+            assertEquals(ids, names.keys)
+            assertEquals(label, CapabilityStatus.NOT_FOUND, names.getValue(1).status)
+            assertNull(label, names.getValue(1).value)
+            assertEquals("기술머신01", names.getValue(181).value)
+            assertEquals("비전머신01", names.getValue(233).value)
+        }
+    }
+
+    @Test fun koreanGenTwoCompiledIndexStillWalksRaw50InAnUnsupportedPair() {
+        val f = koreanGenTwoFixture(shift = 0x100)
+        // Pinned Korean declarations do NOT support 0150. No invented trail-50 glyph:
+        // compiled GetNthString nevertheless consumes its raw 50 while seeking ordinal 2.
+        byteArrayOf(1, 0x50, 1, 2, 0x50).copyInto(f.bytes, f.root)
+        val invalid = com.enrpau.dualscreendex.parser.text.KoreanGen2PokemonTextCodec.codec
+            .decodeDetailed(byteArrayOf(1, 0x50))
+        assertTrue(invalid.invalidUnits > 0 && !invalid.terminated)
+        val session = f.session(); session.freezeGen2ItemNameAuthority()
+        session.recordGen2ItemReferences(listOf(1, 2).map(::genTwoReference))
+        val names = ItemNameMaterializer(session).materialize(koreanGenTwoLayout(), setOf(1, 2))
+        assertEquals(setOf(1, 2), names.keys)
+        assertNull(names.getValue(1).value)
+        assertEquals("각", names.getValue(2).value)
+        session.recordGen2ItemReferences(listOf(genTwoReference(2)))
+        assertEquals("각", ItemNameMaterializer(session).materialize(koreanGenTwoLayout(), setOf(2)).getValue(2).value)
+    }
+
+    @Test fun koreanGenTwoMalformedOrSplitLiteralPrefixCannotBorrowDigits() {
+        for (raw in listOf("50", "00", "0c", "4a", "7f 01 b2 06 2a 04 73 01")) {
+            val f = koreanGenTwoFixture(shift = 0x100)
+            val session = f.session(); session.freezeGen2ItemNameAuthority()
+            val ids = setOf(1, 181, 233)
+            session.recordGen2ItemReferences(ids.map(::genTwoReference))
+            assertEquals("기술머신01", ItemNameMaterializer(session).materialize(koreanGenTwoLayout(), ids).getValue(181).value)
+            raw.split(' ').map { it.toInt(16).toByte() }.toByteArray().copyInto(f.bytes, f.at("tmPrefix"))
+            val changed = f.session(); changed.freezeGen2ItemNameAuthority()
+            changed.recordGen2ItemReferences(ids.map(::genTwoReference))
+            val names = ItemNameMaterializer(changed).materialize(koreanGenTwoLayout(), ids)
+            assertEquals(ids, names.keys)
+            assertNull(raw, names.getValue(181).value)
+            assertEquals(CapabilityStatus.NOT_FOUND, names.getValue(181).status)
+            assertEquals("가".repeat(10), names.getValue(1).value)
+            assertEquals("비전머신01", names.getValue(233).value)
+        }
+    }
+
+    @Test fun koreanGenTwoReadableNamesNeedOriginalAndCompleteCurrentReferences() {
+        val f = koreanGenTwoFixture(shift = 0x100)
+        val ids = setOf(1, 2, 181, 233)
+        val uninvoked = f.session(); uninvoked.recordGen2ItemReferences(ids.map(::genTwoReference))
+        assertTrue(ItemNameMaterializer(uninvoked).materialize(koreanGenTwoLayout(), ids).values.all { it.value == null })
+        val session = f.session(); session.freezeGen2ItemNameAuthority()
+        val unbound = ItemNameMaterializer(session).materialize(koreanGenTwoLayout(), ids)
+        assertEquals(ids, unbound.keys)
+        assertTrue(unbound.values.all { it.value == null })
+        session.recordGen2ItemReferences(listOf(genTwoReference(1), genTwoReference(181).copy(mapHeader = null)))
+        val names = ItemNameMaterializer(session).materialize(koreanGenTwoLayout(), ids)
+        assertEquals(ids, names.keys)
+        assertEquals("가".repeat(10), names.getValue(1).value)
+        assertTrue((ids - 1).all { names.getValue(it).value == null })
+        assertNull(ItemNameMaterializer(session).materialize(koreanGenTwoLayout().copy(languageManifest = RomLanguageManifest.UNKNOWN), ids).getValue(1).value)
+        f.bytes[0x6001] = 2
+        val mismatched = f.session(); mismatched.freezeGen2ItemNameAuthority()
+        mismatched.recordGen2ItemReferences(listOf(genTwoReference(1)))
+        assertTrue(mismatched.gen2ItemReferences.isEmpty())
+        assertNull(ItemNameMaterializer(mismatched).materialize(koreanGenTwoLayout(), ids).getValue(1).value)
+    }
+
+    private fun koreanGenTwoLayout() = layout(com.enrpau.dualscreendex.parser.text.KoreanGen2PokemonTextCodec.codec)
+        .copy(family = EngineFamily.GOLD_SILVER, generation = 2, platform = Platform.GBC)
+    private fun koreanGenTwoFixture(hram: Boolean = false, shift: Int = 0) =
+        com.enrpau.dualscreendex.parser.parse.Gen2ItemFixture(hram, shift, korean = true).also { f ->
+            // Synthetic relocated B5/E9 consumer deliberately differs from native BF/F3.
+            // Payload tokens independently declared at pokegold-kr 7743877dc9fa8603f4b6eaebe904a7ba03fdb9e4.
+            repeat(10) { byteArrayOf(1, 1).copyInto(f.bytes, f.root + it * 2) }
+            byteArrayOf(0x50, 1, 2, 0x50).copyInto(f.bytes, f.root + 20)
+            "01 b2 06 2a 04 73 06 65".split(' ').map { it.toInt(16).toByte() }.toByteArray().copyInto(f.bytes, f.at("tmPrefix"))
+            "05 61 07 cc 04 73 06 65".split(' ').map { it.toInt(16).toByte() }.toByteArray().copyInto(f.bytes, f.at("hmPrefix"))
+            for (id in listOf(1, 2, 181, 233)) f.bytes[0x6000 + id] = id.toByte()
+        }
+
     private fun freezeGenTwo(session: com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession) {
         val freeze = session.javaClass.declaredMethods.singleOrNull { it.name.startsWith("freezeGen2ItemNameAuthority") }
         assertNotNull("original GenII authority must be frozen in the session", freeze)
