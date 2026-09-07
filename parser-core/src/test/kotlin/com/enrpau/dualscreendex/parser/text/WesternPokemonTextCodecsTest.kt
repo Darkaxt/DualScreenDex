@@ -130,6 +130,44 @@ class WesternPokemonTextCodecsTest {
         assertFalse(WesternPokemonTextCodecs.gen3German.supports(3, Platform.GBC))
     }
 
+    @Test
+    fun staticLabelPolicyPreservesEveryGeneralCounterAndOnlyRatifiesWesternGenTwo54() {
+        val codecs = WesternPokemonTextCodecs.all + JapanesePokemonTextCodecs.all +
+            KoreanGen2PokemonTextCodec.codec + PokemonTextCodec.gbEnglish + PokemonTextCodec.gbaEnglish
+        for (codec in codecs) {
+            assertEquals(codec.id, 1, codec.version)
+            for (value in 0..255) {
+                val raw = bytes(value, codec.terminator)
+                val decoded = codec.decodeDetailed(raw)
+                val label = codec.decodeStaticLabel(com.enrpau.dualscreendex.parser.io.RomImage(raw), 0, raw.size,
+                    com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken.NONE,
+                    StaticLabelUse.GEN2_ORDINARY_ITEM_NAME)
+                assertEquals("${codec.id} raw=$value", decoded, label.decoded)
+                val ratified = codec in WesternPokemonTextCodecs.all &&
+                    codec.applicableGenerations == setOf(2) && value == 0x54
+                assertEquals("${codec.id} raw=$value", if (ratified) 0 else decoded.substitutionUnits,
+                    label.unratifiedSubstitutionUnits)
+            }
+        }
+        val label = WesternPokemonTextCodecs.gen2English.decodeStaticLabel(
+            com.enrpau.dualscreendex.parser.io.RomImage(bytes(0x54, 0x7F, 0x80, 0x50)), 0, 4,
+            com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken.NONE,
+            StaticLabelUse.GEN2_ORDINARY_ITEM_NAME)
+        assertEquals("POKé A", label.decoded.text)
+        assertEquals(4, label.decoded.consumedBytes)
+        assertEquals(3, label.decoded.validBytes)
+        assertEquals(3, label.decoded.contentBytes)
+        assertEquals(3, label.decoded.validUnits)
+        assertEquals(3, label.decoded.contentUnits)
+        assertEquals(1, label.decoded.glyphUnits)
+        assertEquals(1, label.decoded.whitespaceUnits)
+        assertEquals(1, label.decoded.substitutionUnits)
+        assertEquals(0, label.decoded.controlUnits)
+        assertEquals(0, label.decoded.invalidUnits)
+        assertEquals(1.0, label.decoded.validRatio, 0.0)
+        assertEquals(0, label.unratifiedSubstitutionUnits)
+    }
+
     private fun assertDecodes(
         expected: String,
         codec: PokemonTextCodec,

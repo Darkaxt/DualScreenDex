@@ -6,6 +6,7 @@ import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.GbaItemNameAuthority
 import com.enrpau.dualscreendex.parser.text.PokemonTextToken
+import com.enrpau.dualscreendex.parser.text.StaticLabelUse
 
 /** One catalog-session producer; only the exact resolved projection may interpret native name bytes. */
 class ItemNameMaterializer(private val session: RomAnalysisSession) {
@@ -128,10 +129,13 @@ class ItemNameMaterializer(private val session: RomAnalysisSession) {
                 reference.mapGroupTable != null && reference.mapGroupBank != null && reference.mapHeader != null }
         }.toSet()
         if (authorized.isEmpty()) return result
-        fun decode(bytes: ByteArray): CatalogField<String> {
-            val text = codec.decodeDetailed(com.enrpau.dualscreendex.parser.io.RomImage(bytes), 0, bytes.size, session.cancellation)
+        fun decode(bytes: ByteArray, use: StaticLabelUse? = null): CatalogField<String> {
+            val image = com.enrpau.dualscreendex.parser.io.RomImage(bytes)
+            val label = use?.let { codec.decodeStaticLabel(image, 0, bytes.size, session.cancellation, it) }
+            val text = label?.decoded ?: codec.decodeDetailed(image, 0, bytes.size, session.cancellation)
+            val unratified = label?.unratifiedSubstitutionUnits ?: text.substitutionUnits
             return if (text.terminated && text.invalidUnits == 0 && text.controlUnits == 0 &&
-                text.substitutionUnits == 0 && text.text.isNotBlank()) CatalogField.available(text.text)
+                unratified == 0 && text.text.isNotBlank()) CatalogField.available(text.text)
             else CatalogField.notFound("item name lacks exact tokens and bounded termination")
         }
 
@@ -162,7 +166,7 @@ class ItemNameMaterializer(private val session: RomAnalysisSession) {
                 }
                 if (!terminated) break
                 if (id in ordinary && cursor - start <= authority.copyBytes && ensure(start + authority.copyBytes)) {
-                    result[id] = decode(packed.copyOfRange(start, start + authority.copyBytes))
+                    result[id] = decode(packed.copyOfRange(start, start + authority.copyBytes), StaticLabelUse.GEN2_ORDINARY_ITEM_NAME)
                 }
             }
         }

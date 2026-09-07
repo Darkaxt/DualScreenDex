@@ -181,6 +181,80 @@ class PokemonTextCodecTest {
         }
     }
 
+    @Test
+    fun staticLabelRatificationRequiresExactRawTextAndByteCount() {
+        val rule = StaticLabelRule.WESTERN_GEN2_POKE
+        for ((bytes, token) in listOf(
+            byteArrayOf(0x54, 0x50) to PokemonTextToken.Substitution("POKé"),
+            byteArrayOf(0x55, 0x50) to PokemonTextToken.Substitution("POKé"),
+            byteArrayOf(0x54, 0x50) to PokemonTextToken.Substitution("PKMN"),
+            byteArrayOf(0x54, 0x01, 0x50) to PokemonTextToken.Substitution("POKé", byteCount = 2),
+        )) {
+            val codec = staticLabelCodec(listOf(rule), token)
+            val result = codec.decodeStaticLabel(RomImage(bytes), 0, bytes.size, ParserCancellationToken.NONE,
+                StaticLabelUse.GEN2_ORDINARY_ITEM_NAME)
+            val exact = bytes[0] == 0x54.toByte() && token.text == "POKé" && token.byteCount == 1
+            assertEquals(if (exact) 0 else 1, result.unratifiedSubstitutionUnits)
+            assertEquals(codec.decodeDetailed(bytes), result.decoded)
+            assertEquals(1, result.decoded.substitutionUnits)
+            assertEquals(token.byteCount + 1, result.decoded.consumedBytes)
+        }
+    }
+
+    @Test
+    fun staticLabelRulesAreCodecOwnedSnapshotsAndMissingRulesStayStrict() {
+        val rules = mutableListOf(StaticLabelRule.WESTERN_GEN2_POKE)
+        val codec = staticLabelCodec(rules)
+        rules.clear()
+        val unratified = staticLabelCodec(rules)
+        rules += StaticLabelRule.WESTERN_GEN2_POKE
+        val image = RomImage(byteArrayOf(0x54, 0x50))
+        val legacy = PokemonTextCodec("legacy-sam", 1, LanguageTag.ENGLISH, setOf(2), setOf(Platform.GBC), 0x50) { rom, offset, _ ->
+            if (rom.u8(offset) == 0x50) PokemonTextToken.Terminator() else PokemonTextToken.Substitution("POKé")
+        }
+        for ((candidate, rejected) in listOf(codec to 0, unratified to 1, legacy to 1)) {
+            val result = candidate.decodeStaticLabel(image, 0, 2, ParserCancellationToken.NONE,
+                StaticLabelUse.GEN2_ORDINARY_ITEM_NAME)
+            assertEquals(rejected, result.unratifiedSubstitutionUnits)
+            assertEquals("POKé", result.decoded.text)
+            assertEquals(1, result.decoded.substitutionUnits)
+        }
+    }
+
+    @Test
+    fun staticLabelDecodePreservesBoundsTerminationAndCancellation() {
+        val codec = staticLabelCodec(listOf(StaticLabelRule.WESTERN_GEN2_POKE))
+        val image = RomImage(byteArrayOf(0x55, 0x54, 0x50, 0x55))
+        val bounded = codec.decodeStaticLabel(image, 1, 2, ParserCancellationToken.NONE,
+            StaticLabelUse.GEN2_ORDINARY_ITEM_NAME)
+        assertEquals(0, bounded.unratifiedSubstitutionUnits)
+        assertEquals(2, bounded.decoded.consumedBytes)
+        assertTrue(bounded.decoded.terminated)
+        val truncated = codec.decodeStaticLabel(image, 1, 1, ParserCancellationToken.NONE,
+            StaticLabelUse.GEN2_ORDINARY_ITEM_NAME)
+        assertTrue(!truncated.decoded.terminated)
+        assertEquals(1, truncated.decoded.consumedBytes)
+        var checks = 0
+        assertThrows(ParserCancellationException::class.java) {
+            codec.decodeStaticLabel(image, 1, 2, ParserCancellationToken {
+                if (++checks == 2) throw ParserCancellationException()
+            }, StaticLabelUse.GEN2_ORDINARY_ITEM_NAME)
+        }
+        assertEquals(2, checks)
+    }
+
+    private fun staticLabelCodec(
+        rules: Collection<StaticLabelRule>,
+        token: PokemonTextToken.Substitution = PokemonTextToken.Substitution("POKé"),
+    ) = PokemonTextCodec(
+        id = "synthetic-explicit-ratification", version = 1, language = LanguageTag.ENGLISH,
+        applicableGenerations = setOf(2), applicablePlatforms = setOf(Platform.GBC), terminator = 0x50,
+        tokenDecoder = PokemonTextTokenDecoder { rom, offset, _ ->
+            if (rom.u8(offset) == 0x50) PokemonTextToken.Terminator() else token
+        },
+        staticLabelRules = rules,
+    )
+
     private fun variableWidthCodec(): PokemonTextCodec = PokemonTextCodec(
         id = "test-variable",
         version = 1,

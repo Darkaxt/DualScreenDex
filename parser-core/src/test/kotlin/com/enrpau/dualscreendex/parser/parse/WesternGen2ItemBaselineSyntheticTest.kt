@@ -28,6 +28,113 @@ class WesternGen2ItemBaselineSyntheticTest {
         }
     }
 
+    @Test fun westernOrdinaryStatic54UsesOnlyOneCompiledByte() {
+        for (codec in WesternPokemonTextCodecs.all.filter { it.applicableGenerations == setOf(2) }) {
+            val f = fixture()
+            f.bytes[f.root] = 0x54
+            val session = f.session()
+            session.freezeGen2ItemNameAuthority()
+            val names = names(session, codec)
+            assertEquals(codec.id, "POKéBCDEFGHIJKL", names.getValue(1).value)
+            assertEquals("B", names.getValue(2).value)
+            assertEquals("TM01", names.getValue(181).value)
+            assertEquals("HM01", names.getValue(233).value)
+            assertEquals(requested, names.keys)
+        }
+    }
+
+    @Test fun westernStatic54DoesNotAuthorizeDynamicOrOtherFixedSubstitutions() {
+        for (bad in listOf(0x52, 0x53, 0x24, 0x4a, 0xe1, 0xe2, 0xd0, 0x4f, 0x01)) {
+            val f = fixture()
+            f.bytes[f.root] = 0x54
+            f.bytes[f.root + 1] = bad.toByte()
+            val session = f.session()
+            session.freezeGen2ItemNameAuthority()
+            val names = names(session)
+            assertNull("ordinary byte $bad", names.getValue(1).value)
+            assertEquals(CapabilityStatus.NOT_FOUND, names.getValue(1).status)
+            assertEquals("B", names.getValue(2).value)
+            assertEquals("TM01", names.getValue(181).value)
+            assertEquals(requested, names.keys)
+        }
+    }
+
+    @Test fun westernStatic54RemainsOrdinaryOnlyAndCannotEnterGeneratedPrefixes() {
+        val f = fixture()
+        f.bytes[f.root] = 0x54
+        f.bytes[f.at("tmPrefix") + 1] = 0x54
+        val session = f.session()
+        session.freezeGen2ItemNameAuthority()
+        val names = names(session)
+        assertEquals("POKéBCDEFGHIJKL", names.getValue(1).value)
+        assertNull(names.getValue(181).value)
+        assertEquals("HM01", names.getValue(233).value)
+        assertEquals(requested, names.keys)
+    }
+
+    @Test fun westernStatic54RequiresTheEntireThirteenByteCopyEvenWithEarlyTermination() {
+        for (remaining in listOf(13, 12)) {
+            val f = fixture()
+            f.word(f.at("directory") + 16, 0x8000 - remaining)
+            byteArrayOf(0x54, 0x50).copyInto(f.bytes, f.bytes.size - remaining)
+            val session = f.session()
+            session.freezeGen2ItemNameAuthority()
+            assertEquals(13, (session.gen2ItemNameAuthority as Gen2ItemNameAuthority.Available).copyBytes)
+            val names = names(session)
+            assertEquals(if (remaining == 13) "POKé" else null, names.getValue(1).value)
+            assertEquals("TM01", names.getValue(181).value)
+            assertEquals(requested, names.keys)
+        }
+    }
+
+    @Test fun westernStatic54StillRequiresOriginalExactProjectionAndCurrentReferences() {
+        val f = fixture()
+        f.bytes[f.root] = 0x54
+        assertNull(names(f.session()).getValue(1).value)
+        val session = f.session()
+        session.freezeGen2ItemNameAuthority()
+        val producer = ItemNameMaterializer(session)
+        assertNull(producer.materialize(layout(), requested).getValue(1).value)
+        assertEquals("POKéBCDEFGHIJKL", names(session).getValue(1).value)
+        val references = session.gen2ItemReferences
+        assertNull(producer.materialize(layout().copy(languageManifest = RomLanguageManifest.UNKNOWN), requested).getValue(1).value)
+        assertNull(producer.materialize(layout(WesternPokemonTextCodecs.gen1English), requested).getValue(1).value)
+        assertNull(producer.materialize(layout(com.enrpau.dualscreendex.parser.text.PokemonTextCodec.gbEnglish), requested).getValue(1).value)
+        session.recordGen2ItemReferences(references.map { it.copy(mapHeader = null) })
+        val incomplete = producer.materialize(layout(), requested)
+        assertNull(incomplete.getValue(1).value)
+        assertEquals(requested, incomplete.keys)
+        f.bytes[0x6001] = 2
+        val mismatched = f.session()
+        mismatched.freezeGen2ItemNameAuthority()
+        assertNull(names(mismatched).getValue(1).value)
+    }
+
+    @Test fun westernStatic54DoesNotChangePackedBudgetOrCancellation() {
+        val f = fixture()
+        f.bytes.fill(0x80.toByte(), f.root, f.root + 4097)
+        f.bytes[f.root] = 0x54
+        val session = f.session()
+        session.freezeGen2ItemNameAuthority()
+        val names = names(session)
+        assertNull(names.getValue(1).value)
+        assertEquals("TM01", names.getValue(181).value)
+        assertEquals(requested, names.keys)
+        val bounded = fixture()
+        bounded.bytes[bounded.root] = 0x54
+        var armed = false
+        var remaining = 20
+        val cancelled = bounded.session(cancellation = ParserCancellationToken {
+            if (armed && --remaining == 0) throw ParserCancellationException()
+        })
+        cancelled.freezeGen2ItemNameAuthority()
+        names(cancelled)
+        armed = true
+        assertThrows(ParserCancellationException::class.java) {
+            ItemNameMaterializer(cancelled).materialize(layout(), requested)
+        }
+    }
+
     @Test fun westernControlSubstitutionTerminatorAndInvalidPrefixStayUnavailable() {
         for (bad in listOf(0x4f, 0x52, 0x50, 0x01)) {
             val f = fixture()
@@ -138,18 +245,22 @@ class WesternGen2ItemBaselineSyntheticTest {
         for (id in listOf(1, 2, 181, 233)) f.bytes[0x6000 + id] = id.toByte()
     }
 
-    private fun names(session: RomAnalysisSession): Map<Int, CatalogField<String>> {
+    private fun names(
+        session: RomAnalysisSession,
+        codec: com.enrpau.dualscreendex.parser.text.PokemonTextCodec = WesternPokemonTextCodecs.gen2English,
+    ): Map<Int, CatalogField<String>> {
         session.recordGen2ItemReferences(listOf(1, 2, 181, 233).map { id ->
             Gen2ItemReference("item/$id", id, 0x6000 + id, Gen2ItemReference.Kind.VISIBLE_OBJECT,
                 0x101, 0x5000, 1, 0x5100, 1, 0x5200, 1, 0x5300, 0x5400, 0x5409, 1, 1, 1, null)
         })
-        val codec = WesternPokemonTextCodecs.gen2English
-        val layout = ResolvedRomLayout(EngineFamily.GOLD_SILVER, 2, Platform.GBC, 0, 0, ProfileTables(),
+        return ItemNameMaterializer(session).materialize(layout(codec), requested)
+    }
+
+    private fun layout(codec: com.enrpau.dualscreendex.parser.text.PokemonTextCodec = WesternPokemonTextCodecs.gen2English) =
+        ResolvedRomLayout(EngineFamily.GOLD_SILVER, 2, Platform.GBC, 0, 0, ProfileTables(),
             languageManifest = RomLanguageManifest(codec.language,
                 listOf(RomLanguageProjection(codec.language, codec.id, codec.version, LocalizedTableLayout(), emptyList(), LanguageResolutionStatus.RESOLVED)),
                 LanguageResolutionStatus.RESOLVED))
-        return ItemNameMaterializer(session).materialize(layout, requested)
-    }
 
     private val requested = setOf(-1, 0, 1, 2, 3, 181, 233, 256)
 }

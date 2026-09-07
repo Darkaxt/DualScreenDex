@@ -257,6 +257,29 @@ class ItemNameMaterializerTest {
             genOneLayout(false).copy(languageManifest = RomLanguageManifest.UNKNOWN), setOf(1)).getValue(1).value)
     }
 
+    @Test fun genOneAndJapaneseGenTwoStatic54RemainUnavailable() {
+        for (codec in listOf(JapanesePokemonTextCodecs.gen1RedBlue,
+            com.enrpau.dualscreendex.parser.text.WesternPokemonTextCodecs.gen1English)) {
+            val f = genOneFixture(false)
+            f.bytes[f.root] = 0x54
+            val session = f.session()
+            session.freezeGen1ItemNameAuthority()
+            session.recordGen1ItemReferences(listOf(1, 2).map(::genOneReference))
+            val names = ItemNameMaterializer(session).materialize(
+                layout(codec).copy(family = EngineFamily.RED_BLUE, generation = 1, platform = Platform.GB), setOf(1, 2))
+            assertNull(codec.id, names.getValue(1).value)
+            assertEquals(codec.decode(byteArrayOf(0x81.toByte(), 0x50)), names.getValue(2).value)
+        }
+        val f = genTwoFixture()
+        f.bytes[f.root] = 0x54
+        val session = f.session()
+        freezeGenTwo(session)
+        session.recordGen2ItemReferences(listOf(1, 2).map(::genTwoReference))
+        val names = ItemNameMaterializer(session).materialize(genTwoLayout(), setOf(1, 2))
+        assertNull(names.getValue(1).value)
+        assertEquals("イ", names.getValue(2).value)
+    }
+
     @Test fun genTwoCurrentReferencesGateBothSkippedIdArithmeticAndOrdinaryWalk() {
         val f = genTwoFixture()
         val session = f.session(); freezeGenTwo(session)
@@ -382,6 +405,7 @@ class ItemNameMaterializerTest {
             "unsupported byte" to { f -> f.bytes[f.root] = 0x0c },
             "control" to { f -> f.bytes[f.root] = 0 },
             "substitution" to { f -> f.bytes[f.root] = 0x4a },
+            "unratified native 54 control" to { f -> f.bytes[f.root] = 0x54 },
             "split pair at copy boundary" to { f -> f.bytes[f.root + 20] = 1 },
             "termination outside full copy" to { f -> f.bytes[f.root + 20] = 0x7f },
         )

@@ -22,6 +22,23 @@ data class DecodedText(
     val validRatio: Double get() = if (contentUnits == 0) 0.0 else validUnits.toDouble() / contentUnits
 }
 
+internal enum class StaticLabelUse { GEN2_ORDINARY_ITEM_NAME }
+
+/** Explicit source ratifications, not an inference from a substitution's display text. */
+internal enum class StaticLabelRule(
+    val use: StaticLabelUse,
+    val rawByte: Int,
+    val text: String,
+    val byteCount: Int,
+) {
+    WESTERN_GEN2_POKE(StaticLabelUse.GEN2_ORDINARY_ITEM_NAME, 0x54, "POKé", 1),
+}
+
+internal data class StaticLabelDecode(
+    val decoded: DecodedText,
+    val unratifiedSubstitutionUnits: Int,
+)
+
 sealed interface PokemonTextToken {
     val byteCount: Int
 
@@ -45,7 +62,20 @@ class PokemonTextCodec internal constructor(
     val applicablePlatforms: Set<Platform>,
     val terminator: Int,
     private val tokenDecoder: PokemonTextTokenDecoder,
+    staticLabelRules: Collection<StaticLabelRule>,
 ) {
+    // Keep the original constructor, including positional/trailing-SAM callers, strict by default.
+    internal constructor(
+        id: String,
+        version: Int,
+        language: LanguageTag,
+        applicableGenerations: Set<Int>,
+        applicablePlatforms: Set<Platform>,
+        terminator: Int,
+        tokenDecoder: PokemonTextTokenDecoder,
+    ) : this(id, version, language, applicableGenerations, applicablePlatforms, terminator, tokenDecoder, emptyList())
+
+    private val staticLabelRules = java.util.Collections.unmodifiableList(ArrayList(staticLabelRules))
     val name: String get() = id
 
     init {
@@ -91,6 +121,31 @@ class PokemonTextCodec internal constructor(
         offset: Int,
         maximumBytes: Int,
         cancellation: ParserCancellationToken,
+    ): DecodedText = decodeDetailed(rom, offset, maximumBytes, cancellation, onSubstitution = null)
+
+    internal fun decodeStaticLabel(
+        rom: RomImage,
+        offset: Int,
+        maximumBytes: Int,
+        cancellation: ParserCancellationToken,
+        use: StaticLabelUse,
+    ): StaticLabelDecode {
+        var unratified = 0
+        val decoded = decodeDetailed(rom, offset, maximumBytes, cancellation) { start, token ->
+            if (staticLabelRules.none { rule ->
+                    rule.use == use && rule.byteCount == token.byteCount && rule.text == token.text &&
+                        rom.u8(start) == rule.rawByte
+                }) unratified++
+        }
+        return StaticLabelDecode(decoded, unratified)
+    }
+
+    private fun decodeDetailed(
+        rom: RomImage,
+        offset: Int,
+        maximumBytes: Int,
+        cancellation: ParserCancellationToken,
+        onSubstitution: ((Int, PokemonTextToken.Substitution) -> Unit)?,
     ): DecodedText {
         require(offset in 0..rom.size) { "text offset must be in 0..${rom.size}" }
         require(maximumBytes >= 0) { "maximum text bytes must not be negative" }
@@ -130,6 +185,7 @@ class PokemonTextCodec internal constructor(
                     whitespaceUnits++
                 }
                 is PokemonTextToken.Substitution -> {
+                    onSubstitution?.invoke(cursor - token.byteCount, token)
                     output.append(token.text)
                     validBytes += token.byteCount
                     contentBytes += token.byteCount

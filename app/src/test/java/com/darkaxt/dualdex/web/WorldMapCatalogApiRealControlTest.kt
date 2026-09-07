@@ -35,6 +35,9 @@ import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.RomCapability
+import com.google.gson.JsonArray
+import com.google.gson.JsonObject
+import com.google.gson.JsonPrimitive
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URI
@@ -61,6 +64,226 @@ class WorldMapCatalogApiRealControlTest {
         assumeTrue("set DUALDEX_WESTERN_MANIFEST for the ten-control diagnostic baseline",
             !System.getenv("DUALDEX_WESTERN_MANIFEST").isNullOrBlank())
         WesternGen2BaselineCapture.run(JdbcTestCatalogDatabaseFactory)
+    }
+
+    @Test
+    fun westernOfficialGen2SemanticTenControls() {
+        val optIn = System.getenv("DUALDEX_WESTERN_SEMANTIC_ACCEPTANCE")
+        assumeTrue("set DUALDEX_WESTERN_SEMANTIC_ACCEPTANCE=1 for the independently ratified ten-control gate", optIn != null)
+        require(optIn == "1") { "Western semantic opt-in must be exactly 1" }
+        WesternGen2BaselineCapture.runSemantic(JdbcTestCatalogDatabaseFactory)
+    }
+
+    @Test
+    fun westernSemanticOracleParsesSyntheticTenControlMetadata() {
+        val (proof, manifest) = westernSyntheticOracle()
+        val controls = WesternGen2SemanticOracle.parseMetadata(proof.toString(), manifest)
+        assertEquals(10, controls.size)
+        assertEquals(690, controls.values.sumOf { it.names.size })
+        assertEquals(2440, controls.values.sumOf { it.references.size })
+        assertTrue(controls.values.all { it.names.getValue(5) == "SYNTHETIC FIVE" })
+    }
+
+    @Test
+    fun westernSemanticOracleRejectsMissingDuplicateOrWrongIdentity() {
+        val mutations: List<(JsonObject) -> Unit> = listOf(
+            { it.getAsJsonArray("controls").remove(0) },
+            { it.getAsJsonArray("controls").set(1, it.getAsJsonArray("controls")[0].deepCopy()) },
+            { it.getAsJsonArray("controls")[0].asJsonObject.addProperty("language", "ja") },
+            { it.getAsJsonArray("controls")[0].asJsonObject.addProperty("family", "YELLOW") },
+            { it.getAsJsonArray("controls")[0].asJsonObject.addProperty("sha256", "f".repeat(64)) },
+            { it.getAsJsonArray("controls")[0].asJsonObject.addProperty("status", "NOT_PROVED") },
+            { it.addProperty("status", "DIAGNOSTIC_CAPTURE_COMPLETE") },
+            { it.addProperty("contractSha256", "0".repeat(64)) },
+        )
+        mutations.forEachIndexed { index, mutate ->
+            val (proof, manifest) = westernSyntheticOracle()
+            mutate(proof)
+            assertTrue("identity mutation $index", runCatching { WesternGen2SemanticOracle.parseMetadata(proof.toString(), manifest) }.isFailure)
+        }
+        val (proof, manifest) = westernSyntheticOracle()
+        assertTrue(runCatching { WesternGen2SemanticOracle.parseMetadata(proof.toString(), manifest.drop(1)) }.isFailure)
+        assertTrue(runCatching { WesternGen2SemanticOracle.parseMetadata(proof.toString(), listOf(manifest[1]) + manifest.drop(1)) }.isFailure)
+    }
+
+    @Test
+    fun westernSemanticOracleRejectsUnprovedBlankDuplicateAndWrongDomainLabels() {
+        val mutations: List<(JsonObject) -> Unit> = listOf(
+            { it.getAsJsonArray("items")[0].asJsonObject.addProperty("status", "OBSERVED") },
+            { it.getAsJsonArray("items")[0].asJsonObject.remove("label") },
+            { it.getAsJsonArray("items")[0].asJsonObject.addProperty("label", " ") },
+            { it.getAsJsonArray("items")[0].asJsonObject.addProperty("label", 123) },
+            { it.getAsJsonArray("items").add(it.getAsJsonArray("items")[0].deepCopy()) },
+            { it.getAsJsonArray("items").remove(2) }, // ID 5, not an acceptable sparse oracle
+            { it.getAsJsonArray("items")[0].asJsonObject.addProperty("itemId", "2") },
+            { it.getAsJsonArray("requestedIds").remove(2) },
+            { it.getAsJsonArray("requestedIds").add(5) },
+            { it.getAsJsonArray("requestedIds").set(0, JsonPrimitive(3)) }, // same count, wrong domain
+        )
+        mutations.forEachIndexed { index, mutate ->
+            val (proof, manifest) = westernSyntheticOracle()
+            mutate(proof.getAsJsonArray("controls")[0].asJsonObject)
+            assertTrue("label mutation $index", runCatching { WesternGen2SemanticOracle.parseMetadata(proof.toString(), manifest) }.isFailure)
+        }
+    }
+
+    @Test
+    fun westernSemanticOracleRejectsChangedOriginalReferenceDomain() {
+        val mutations: List<(JsonObject) -> Unit> = listOf(
+            { it.addProperty("referenceCount", 224) },
+            { it.getAsJsonArray("references").remove(0) },
+            { it.getAsJsonArray("references").set(1, it.getAsJsonArray("references")[0].deepCopy()) },
+            { it.getAsJsonArray("references")[0].asJsonObject.getAsJsonObject("reference").addProperty("itemId", 255) },
+            { it.getAsJsonArray("references")[0].asJsonObject.getAsJsonObject("reference").addProperty("quantity", -1) },
+            { it.getAsJsonArray("references")[0].asJsonObject.getAsJsonObject("reference").remove("collectionFlag") },
+        )
+        mutations.forEachIndexed { index, mutate ->
+            val (proof, manifest) = westernSyntheticOracle()
+            mutate(proof.getAsJsonArray("controls")[0].asJsonObject)
+            assertTrue("reference mutation $index", runCatching { WesternGen2SemanticOracle.parseMetadata(proof.toString(), manifest) }.isFailure)
+        }
+    }
+
+    @Test
+    fun westernSemanticOracleRejectsMalformedJsonAndWrongPinnedHash() {
+        val (proof, manifest) = westernSyntheticOracle()
+        for (text in listOf("", "{", proof.toString() + " trailing", "{\"controls\":[],\"controls\":[]}", "{unquoted:true}")) {
+            assertTrue(runCatching { WesternGen2SemanticOracle.parseMetadata(text, manifest) }.isFailure)
+        }
+        // Even structurally valid metadata cannot replace the reviewed full-proof bytes.
+        assertTrue(runCatching { WesternGen2SemanticOracle.decodePinned(proof.toString().toByteArray(), manifest) }.isFailure)
+    }
+
+    @Test
+    fun westernSemanticOracleRejectsMissingOrOversizedEvidence() {
+        val (_, manifest) = westernSyntheticOracle()
+        for (path in listOf(null, "", " ", "western-synthetic-oracle-that-does-not-exist.json")) {
+            assertTrue(runCatching { WesternGen2SemanticOracle.readPinned(path, manifest) }.isFailure)
+        }
+        for (bytes in listOf(ByteArray(0), ByteArray(WesternGen2SemanticOracle.maxProofBytes + 1))) {
+            assertTrue(runCatching { WesternGen2SemanticOracle.decodePinned(bytes, manifest) }.isFailure)
+        }
+    }
+
+    @Test
+    fun westernRequiredNamesAcceptsExactCompleteOracle() {
+        assertTrue(westernRequiredOutcomes().values.all { it.isSuccess })
+    }
+
+    @Test
+    fun westernRequiredNamesRejectsMissingIdFiveAcrossBoundaries() {
+        for (stage in listOf("producer", "overlay", "sqlite.overlay")) {
+            val results = westernRequiredOutcomes(changedStage = stage, changedNames = mapOf(1 to CatalogField.available("SYNTHETIC ONE")))
+            assertEquals(setOf("$stage.denominator", "$stage.required-names"), results.filterValues { it.isFailure }.keys)
+        }
+        for (stage in listOf("projection", "sqlite.projection", "api")) {
+            val outcomes = linkedMapOf<String, Result<Unit>>()
+            WesternGen2BaselineCapture.checkRequiredProjectedNames(mapOf(1 to "SYNTHETIC ONE", 5 to "SYNTHETIC FIVE"),
+                mapOf(1 to listOf("SYNTHETIC ONE"))) { boundary, assertion ->
+                outcomes["$stage.$boundary"] = runCatching(assertion)
+            }
+            assertEquals(setOf("$stage.denominator", "$stage.required-names"), outcomes.filterValues { it.isFailure }.keys)
+        }
+    }
+
+    @Test
+    fun westernRequiredNamesRejectsWrongValueAcrossBoundaries() {
+        for (stage in listOf("producer", "overlay", "sqlite.overlay")) {
+            val results = westernRequiredOutcomes(changedStage = stage, changedNames = mapOf(
+                1 to CatalogField.available("SYNTHETIC ONE"), 5 to CatalogField.available("WRONG SYNTHETIC")))
+            assertEquals(setOf("$stage.required-names"), results.filterValues { it.isFailure }.keys)
+        }
+        for (stage in listOf("projection", "sqlite.projection", "api")) {
+            val outcomes = linkedMapOf<String, Result<Unit>>()
+            WesternGen2BaselineCapture.checkRequiredProjectedNames(mapOf(1 to "SYNTHETIC ONE", 5 to "SYNTHETIC FIVE"),
+                mapOf(1 to listOf("SYNTHETIC ONE"), 5 to listOf("SYNTHETIC FIVE", "WRONG SYNTHETIC"))) { boundary, assertion ->
+                outcomes["$stage.$boundary"] = runCatching(assertion)
+            }
+            assertEquals(setOf("$stage.required-names"), outcomes.filterValues { it.isFailure }.keys)
+        }
+    }
+
+    @Test
+    fun westernRequiredNamesRejectsCollapsedDenominators() {
+        val results = westernRequiredOutcomes(requested = setOf(1), state = LocalizedCapabilityState.available(1))
+        assertEquals(setOf("requested-domain", "item-capability.expected", "item-capability.covered"),
+            results.filterValues { it.isFailure }.keys)
+    }
+
+    @Test
+    fun westernRequiredNamesRejectsUnavailableAndBlankValues() {
+        assertTrue(runCatching {
+            CatalogField(CapabilityStatus.AMBIGUOUS, "SYNTHETIC FIVE", listOf("synthetic conflict"))
+        }.exceptionOrNull() is IllegalArgumentException)
+        for (field in listOf(CatalogField.available(" "), CatalogField.notFound<String>("synthetic unavailable"),
+            CatalogField<String>(CapabilityStatus.AMBIGUOUS, reasons = listOf("synthetic conflict")))) {
+            val results = westernRequiredOutcomes(changedStage = "producer", changedNames = mapOf(1 to CatalogField.available("SYNTHETIC ONE"), 5 to field))
+            assertEquals(setOf("producer.required-names"), results.filterValues { it.isFailure }.keys)
+        }
+        assertTrue(westernRequiredOutcomes(state = westernSparseStates().getValue(LocalizedTextCapability.ITEM_NAMES))
+            .getValue("item-capability.status").isFailure)
+    }
+
+    private fun westernRequiredOutcomes(
+        changedStage: String? = null,
+        changedNames: Map<Int, CatalogField<String>> = emptyMap(),
+        requested: Set<Int> = setOf(1, 5),
+        state: LocalizedCapabilityState = LocalizedCapabilityState.available(2),
+    ): Map<String, Result<Unit>> {
+        val expected = mapOf(1 to "SYNTHETIC ONE", 5 to "SYNTHETIC FIVE")
+        val fields = listOf("producer", "overlay", "sqlite.overlay").associateWith {
+            if (it == changedStage) changedNames else expected.mapValues { entry -> CatalogField.available(entry.value) }
+        }
+        return linkedMapOf<String, Result<Unit>>().also { outcomes ->
+            WesternGen2BaselineCapture.checkRequiredItemObservations(expected, requested, fields, state) { stage, assertion ->
+                check(stage !in outcomes)
+                outcomes[stage] = runCatching(assertion)
+            }
+        }
+    }
+
+    /** Fabricated metadata only: no ROM, private proof payload, baseline label or production decoder. */
+    private fun westernSyntheticOracle(): Pair<JsonObject, List<JsonObject>> {
+        val manifest = mutableListOf<JsonObject>()
+        val controls = JsonArray()
+        for (language in listOf("en", "fr", "de", "it", "es")) for (family in listOf("GOLD_SILVER", "CRYSTAL")) {
+            val sha = (manifest.size + 1).toString(16).padStart(64, '0')
+            manifest += JsonObject().apply {
+                addProperty("language", language); addProperty("family", family); addProperty("sha256", sha)
+                addProperty("file", "synthetic-not-a-rom"); addProperty("size", 2097152)
+            }
+            val ids = WesternGen2SemanticOracle.requestedIds(family).sorted()
+            val referenceCount = if (family == "CRYSTAL") 263 else 225
+            controls.add(JsonObject().apply {
+                addProperty("language", language); addProperty("family", family); addProperty("sha256", sha)
+                addProperty("status", "PROVED_REFERENCE_SCOPED_ONLY"); addProperty("referenceCount", referenceCount)
+                add("requestedIds", JsonArray().apply { ids.forEach { add(it) } })
+                add("items", JsonArray().apply {
+                    ids.forEach { id -> add(JsonObject().apply {
+                        addProperty("itemId", id); addProperty("status", "PROVED")
+                        addProperty("label", if (id == 5) "SYNTHETIC FIVE" else "SYNTHETIC $id")
+                    }) }
+                })
+                add("references", JsonArray().apply {
+                    val referencedIds = ids
+                    repeat(referenceCount) { index -> add(JsonObject().apply {
+                        add("reference", JsonObject().apply {
+                            addProperty("poiKey", "synthetic/ref/$index"); addProperty("kind", "VISIBLE_OBJECT")
+                            addProperty("itemId", referencedIds[index % referencedIds.size])
+                            for (field in listOf("operandOffset", "baseAreaId", "mapGroupTable", "mapGroupBank", "mapHeader",
+                                "attributesBank", "attributes", "scriptsBank", "eventsRoot", "eventRow", "pointerField",
+                                "tileX", "tileY", "collectionFlag")) addProperty(field, 1)
+                            addProperty("quantity", 1)
+                        })
+                    }) }
+                })
+            })
+        }
+        return JsonObject().apply {
+            addProperty("status", "PROVED_REFERENCE_SCOPED_ONLY")
+            addProperty("contractSha256", WesternGen2SemanticOracle.contractSha256)
+            add("controls", controls)
+        } to manifest
     }
 
     @Test

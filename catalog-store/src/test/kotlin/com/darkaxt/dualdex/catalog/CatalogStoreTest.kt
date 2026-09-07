@@ -125,6 +125,26 @@ import org.junit.Test
 
 class CatalogStoreTest {
     @Test
+    fun revision58CachesMissingRatifiedOrdinaryStaticLabelsMustBeReparsed() {
+        val cache = CatalogCache(newRoot().toFile(), JdbcCatalogDatabaseFactory)
+        val catalog = completeCatalog("8".repeat(64))
+        val source = CatalogSourceMetadata.direct("Synthetic.gbc", 65536, "SYNTHETIC")
+        cache.write(catalog, source, CatalogWriteProgress.complete())
+        assertEquals(catalog, cache.readComplete(catalog.romSha256)?.catalog)
+        JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
+            database.execute("UPDATE catalog_metadata SET parser_schema_version = 58 WHERE id = 1")
+            assertEquals(listOf(58L to 2L), database.query(
+                "SELECT parser_schema_version, schema_version FROM catalog_metadata WHERE id = 1",
+            ) { row -> row.long("parser_schema_version") to row.long("schema_version") })
+        }
+        assertNull("schema58 may persist unavailable Western GenII ordinary static54 labels", cache.readComplete(catalog.romSha256))
+        cache.write(catalog, source, CatalogWriteProgress.complete())
+        assertEquals(catalog, cache.readComplete(catalog.romSha256)?.catalog)
+        assertEquals(59, CatalogSchema.parserSchemaVersion)
+        assertEquals(2, CatalogSchema.version)
+    }
+
+    @Test
     fun revision57CachesWithUnvalidatedGenTwoPrefixesMustBeReparsed() {
         val cache = CatalogCache(newRoot().toFile(), JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("6".repeat(64))
@@ -140,7 +160,7 @@ class CatalogStoreTest {
         assertNull("schema57 may persist names with a split GenII prefix borrowing generated digits", cache.readComplete(catalog.romSha256))
         cache.write(catalog, source, CatalogWriteProgress.complete())
         assertEquals(catalog, cache.readComplete(catalog.romSha256)?.catalog)
-        assertEquals(58, CatalogSchema.parserSchemaVersion)
+        assertEquals(59, CatalogSchema.parserSchemaVersion)
         assertEquals(2, CatalogSchema.version)
     }
 
@@ -156,7 +176,7 @@ class CatalogStoreTest {
         assertNull("schema56 without reference-scoped GenII names must not bootstrap", cache.readComplete(catalog.romSha256))
         cache.write(catalog, source, CatalogWriteProgress.complete())
         assertEquals(catalog, cache.readComplete(catalog.romSha256)?.catalog)
-        assertEquals(58, CatalogSchema.parserSchemaVersion)
+        assertEquals(59, CatalogSchema.parserSchemaVersion)
         assertEquals(2, CatalogSchema.version)
     }
 
@@ -172,7 +192,7 @@ class CatalogStoreTest {
         assertNull("schema55 without reference-scoped Gen I names must not bootstrap", cache.readComplete(catalog.romSha256))
         cache.write(catalog, source, CatalogWriteProgress.complete())
         assertEquals(catalog, cache.readComplete(catalog.romSha256)?.catalog)
-        assertEquals(58, CatalogSchema.parserSchemaVersion)
+        assertEquals(59, CatalogSchema.parserSchemaVersion)
         assertEquals(2, CatalogSchema.version)
     }
 
@@ -188,7 +208,7 @@ class CatalogStoreTest {
         assertNull("schema54 without headerless item names must not bootstrap", cache.readComplete(catalog.romSha256))
         cache.write(catalog, source, CatalogWriteProgress.complete())
         assertEquals(catalog, cache.readComplete(catalog.romSha256)?.catalog)
-        assertEquals(58, CatalogSchema.parserSchemaVersion)
+        assertEquals(59, CatalogSchema.parserSchemaVersion)
         assertEquals(2, CatalogSchema.version)
     }
 
@@ -1400,7 +1420,7 @@ class CatalogStoreTest {
         )
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(58, CatalogSchema.parserSchemaVersion)
+        assertEquals(59, CatalogSchema.parserSchemaVersion)
         assertEquals(catalog.worldMaps, reopened?.catalog?.worldMaps)
         assertEquals(catalog.localMaps.maps, reopened?.catalog?.localMaps?.maps)
         assertEquals(catalog.localMaps.scenes, reopened?.catalog?.localMaps?.scenes)
@@ -1754,7 +1774,7 @@ class CatalogStoreTest {
         cache.write(catalog, source, CatalogWriteProgress.complete())
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(58, CatalogSchema.parserSchemaVersion)
+        assertEquals(59, CatalogSchema.parserSchemaVersion)
         assertEquals(source, reopened?.source)
         assertEquals(catalog, reopened?.catalog)
         assertEquals(
@@ -1903,7 +1923,7 @@ class CatalogStoreTest {
 
     @Test
     fun `revision 42 caches are invalidated so hybrid move details are rebuilt`() {
-        assertEquals(58, CatalogSchema.parserSchemaVersion)
+        assertEquals(59, CatalogSchema.parserSchemaVersion)
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("4".repeat(64)).copy(diagnostics = listOf("pre-hybrid move output"))
@@ -1925,7 +1945,7 @@ class CatalogStoreTest {
 
     @Test
     fun `revision 43 caches are invalidated so optional relationship evidence is rebuilt`() {
-        assertEquals(58, CatalogSchema.parserSchemaVersion)
+        assertEquals(59, CatalogSchema.parserSchemaVersion)
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("5".repeat(64)).copy(diagnostics = listOf("pre-isolation relationship output"))
@@ -1947,7 +1967,7 @@ class CatalogStoreTest {
 
     @Test
     fun `revision 44 caches are invalidated so bounded detached Gen I evidence is rebuilt`() {
-        assertEquals(58, CatalogSchema.parserSchemaVersion)
+        assertEquals(59, CatalogSchema.parserSchemaVersion)
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("6".repeat(64)).copy(diagnostics = listOf("pre-bounded detached Gen I output"))
@@ -1969,7 +1989,7 @@ class CatalogStoreTest {
 
     @Test
     fun `revision 45 caches are invalidated so Gen I applicability and bounded fallbacks are rebuilt`() {
-        assertEquals(58, CatalogSchema.parserSchemaVersion)
+        assertEquals(59, CatalogSchema.parserSchemaVersion)
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("7".repeat(64)).copy(

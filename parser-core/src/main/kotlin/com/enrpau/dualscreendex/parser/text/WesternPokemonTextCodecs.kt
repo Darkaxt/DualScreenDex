@@ -62,6 +62,7 @@ object WesternPokemonTextCodecs {
             applicableGenerations = setOf(generation),
             applicablePlatforms = setOf(Platform.GB, Platform.GBC),
             terminator = GB_TERMINATOR,
+            staticLabelRules = if (generation == 2) listOf(StaticLabelRule.WESTERN_GEN2_POKE) else emptyList(),
             tokenDecoder = PokemonTextTokenDecoder { rom, offset, _ ->
                 val value = rom.u8(offset)
                 val mappedToken = mappedTokens[value]

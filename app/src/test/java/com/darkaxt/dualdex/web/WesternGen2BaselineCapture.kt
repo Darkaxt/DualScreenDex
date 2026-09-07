@@ -26,15 +26,20 @@ import java.util.concurrent.atomic.AtomicReference
 import kotlin.jvm.internal.CallableReference
 import org.junit.Assert.*
 
-/** Opt-in diagnostic only. Observed labels never become semantic expectations. */
+/** Separate opt-in diagnostic and independently pinned semantic modes; observed labels are never expectations. */
 internal object WesternGen2BaselineCapture {
     private val json = GsonBuilder().setPrettyPrinting().serializeNulls().create()
     private const val manifestSha = "ee408ad4a5d51da8656ff336ff7c139d92fc24b9d201f6817c47ce3ef194a749"
     private val languages = setOf("en", "fr", "de", "it", "es")
     private val families = setOf("GOLD_SILVER", "CRYSTAL")
 
-    fun run(factory: CatalogDatabaseFactory) {
-        val root = Path.of(requireNotNull(System.getenv("DUALDEX_TEST_TEMP_ROOT"))).resolve("controls")
+    fun run(factory: CatalogDatabaseFactory) = runBatch(factory, semantic = false)
+
+    fun runSemantic(factory: CatalogDatabaseFactory) = runBatch(factory, semantic = true)
+
+    private fun runBatch(factory: CatalogDatabaseFactory, semantic: Boolean) {
+        val root = Path.of(requireNotNull(System.getenv("DUALDEX_TEST_TEMP_ROOT")))
+            .resolve(if (semantic) "semantic-controls" else "controls")
         // A second invocation cannot overwrite or silently reuse the first capture.
         Files.createDirectory(root)
         val manifestBytes = Files.readAllBytes(Path.of(requireNotNull(System.getenv("DUALDEX_WESTERN_MANIFEST"))))
@@ -59,29 +64,46 @@ internal object WesternGen2BaselineCapture {
         assertEquals(10, selected.size)
         assertEquals(languages.flatMap { language -> families.map { language to it } }.toSet(),
             selected.map { it["language"].asString to it["family"].asString }.toSet())
+        // Validate the entire independent oracle before invoking ANY control's ROM path.
+        val oracles = if (semantic) WesternGen2SemanticOracle.readPinned(System.getenv("DUALDEX_WESTERN_ORACLE"), selected) else null
+        if (semantic) write(root.resolve("oracle-binding.json"), mapOf(
+            "proofSha256" to WesternGen2SemanticOracle.proofSha256,
+            "contractSha256" to WesternGen2SemanticOracle.contractSha256,
+            "reviewSha256" to WesternGen2SemanticOracle.reviewSha256,
+            "sourceProofRerun" to false, "historicalBaselineChanged" to false,
+            "oracleScope" to "PROVED_REFERENCE_SCOPED_ONLY", "controls" to 10, "labels" to 690, "references" to 2440))
         val receipts = selected.map { control ->
             val key = "${control["language"].asString}-${control["family"].asString}-${control["sha256"].asString}"
             Receipt(Files.createDirectory(root.resolve(key)), control).also { it.save() }
         }
         for (receipt in receipts) {
             try {
-                capture(receipt, factory)
+                capture(receipt, factory, oracles?.getValue(receipt.control["sha256"].asString))
+                if (semantic) receipt.check("semantic.capture-complete") {
+                    assertEquals(true, receipt.values["semanticCheckPathComplete"])
+                }
             } catch (failure: AssertionError) {
                 receipt.failure("control", failure)
             } catch (failure: Exception) {
                 receipt.failure("control", failure)
             } finally {
-                receipt.values["terminal"] = if (receipt.errors.isEmpty()) "DIAGNOSTIC_CAPTURE_COMPLETE" else "BASELINE_INTEGRITY_BROKEN"
+                val accepted = semantic && receipt.errors.isEmpty() && receipt.values["semanticCheckPathComplete"] == true
+                receipt.values["semanticAcceptance"] = accepted
+                if (semantic) receipt.values["requiredSemanticCompletion"] = if (accepted) "ACCEPTED" else "NOT_ACCEPTED"
+                receipt.values["terminal"] = if (semantic) {
+                    if (accepted) "SEMANTIC_ACCEPTANCE_COMPLETE" else "SEMANTIC_ACCEPTANCE_FAILED"
+                } else if (receipt.errors.isEmpty()) "DIAGNOSTIC_CAPTURE_COMPLETE" else "BASELINE_INTEGRITY_BROKEN"
                 receipt.save()
-                println("WESTERN_GEN2_BASELINE ${receipt.root.fileName} terminal=${receipt.values["terminal"]} " +
+                println("WESTERN_GEN2_${if (semantic) "SEMANTIC" else "BASELINE"} ${receipt.root.fileName} terminal=${receipt.values["terminal"]} " +
                     "authority=${receipt.values["authorityStatus"]} references=${receipt.values["referenceCount"]} " +
                     "available=${receipt.values["availableCount"]}/${receipt.values["requestedCount"]} failures=${receipt.errors.keys}")
             }
         }
         write(root.resolve("batch.json"), mapOf("junitMethods" to 1, "controlReceipts" to receipts.size,
-            "semanticAcceptance" to false, "controls" to receipts.map { it.values },
+            "semanticAcceptance" to (semantic && receipts.all { it.values["semanticAcceptance"] == true }),
+            "controls" to receipts.map { it.values },
             "failedControls" to receipts.filter { it.errors.isNotEmpty() }.map { it.root.fileName.toString() }))
-        assertTrue("mandatory baseline integrity failed; retained receipts at $root",
+        assertTrue("mandatory Western ${if (semantic) "semantic acceptance" else "baseline integrity"} failed; retained receipts at $root",
             receipts.all { it.errors.isEmpty() })
     }
 
@@ -99,7 +121,7 @@ internal object WesternGen2BaselineCapture {
         return context to session
     }
 
-    private fun capture(receipt: Receipt, factory: CatalogDatabaseFactory) {
+    private fun capture(receipt: Receipt, factory: CatalogDatabaseFactory, oracle: WesternGen2SemanticOracle.Control?) {
         val control = receipt.control
         val path = Path.of(control["file"].asString)
         val rom = receipt.check("input.exact-size-sha") {
@@ -114,7 +136,8 @@ internal object WesternGen2BaselineCapture {
         val frozen = session.gen2ItemNameAuthority
         receipt.values["authorityStatus"] = frozen.javaClass.simpleName
         write(receipt.root.resolve("authority.json"), mapOf("status" to frozen.javaClass.simpleName, "authority" to frozen,
-            "productionLimits" to session.limits, "independentCompiledProof" to "NOT_RUN"))
+            "productionLimits" to session.limits,
+            "independentCompiledProof" to if (oracle == null) "NOT_RUN" else "REVIEWED_REFERENCE_SCOPED_ONLY; NOT_RERUN"))
         receipt.check("selection") {
             assertEquals(SelectionStatus.SELECTED, analysis.status)
             assertEquals(control["family"].asString, analysis.selectedFamily?.name)
@@ -162,6 +185,17 @@ internal object WesternGen2BaselineCapture {
             receipt.check("original-authority.authorized-names") {
                 assertTrue(names.filterValues { it.value != null }.keys.all { it in authorized })
             }
+            if (oracle != null) {
+                receipt.check("semantic.original-authority.available") { assertEquals("Available", frozen.javaClass.simpleName) }
+                receipt.check("semantic.original-reference-domain") {
+                    assertEquals(oracle.references.size, refs.size)
+                    val current = refs.associate { ref -> ref.poiKey to json.toJsonTree(ref).asJsonObject }
+                    assertEquals(refs.size, current.size)
+                    assertEquals(oracle.references, current)
+                }
+                receipt.check("semantic.original-requested-domain") { assertEquals(oracle.names.keys, requested) }
+                receipt.check("semantic.original-producer-required-names") { assertEquals(oracle.names, availableItemNames(names)) }
+            }
             receipt.save()
         } ?: return
         val refs = session.gen2ItemReferences
@@ -186,6 +220,19 @@ internal object WesternGen2BaselineCapture {
                 assertEquals(ref.itemId, rom.u8(ref.operandOffset))
             }
         }
+        if (oracle != null) {
+            receipt.check("semantic.numeric-pois.complete") {
+                assertEquals(oracle.references.size, catalog.localMaps.pois.count { it.item != null })
+                assertEquals(oracle.references.keys, items.keys)
+            }
+            receipt.check("semantic.quantity.typed-raw-only") {
+                refs.forEach { ref ->
+                    if (ref.kind == Gen2ItemReference.Kind.HIDDEN_EVENT) assertNull(ref.quantity)
+                    else assertEquals(ref.quantity, rom.u8(ref.operandOffset + 1))
+                }
+            }
+            checkRequiredCatalog(receipt, "materialize", catalog, oracle)
+        }
         receipt.check("language.exact-projection") {
             assertEquals(LanguageResolutionStatus.RESOLVED, catalog.languageManifest.status)
             assertEquals(control["language"].asString, catalog.languageManifest.defaultLanguage?.value)
@@ -199,6 +246,11 @@ internal object WesternGen2BaselineCapture {
         checkItemObservations(requested, names, overlay?.localizedCapabilities, overlay?.itemNames) { stage, assertion ->
             receipt.check(stage, assertion)
         }
+        if (oracle != null) checkRequiredItemObservations(oracle.names, requested,
+            mapOf("producer" to names, "overlay" to overlay?.itemNames),
+            overlay?.localizedCapabilities?.get(LocalizedTextCapability.ITEM_NAMES)) { stage, assertion ->
+            receipt.check("semantic.materialize.$stage", assertion)
+        }
         val cache = CatalogCache(receipt.root.resolve("sqlite").toFile(), factory)
         receipt.check("sqlite.write-close") {
             cache.write(catalog, CatalogSourceMetadata.direct("western-gen2-baseline", rom.size, "WESTERN-DIAGNOSTIC"), CatalogWriteProgress.complete())
@@ -206,6 +258,20 @@ internal object WesternGen2BaselineCapture {
         val stored = receipt.check("sqlite.reopen-close") { requireNotNull(cache.readComplete(rom.sha256)) } ?: return
         val reopened = stored.catalog
         receipt.values["database"] = cache.fileFor(rom.sha256).absolutePath
+        if (oracle != null) {
+            checkRequiredCatalog(receipt, "sqlite", reopened, oracle)
+            val reopenedOverlay = reopened.defaultLocalizedText()
+            checkRequiredItemObservations(oracle.names, requested, mapOf("overlay" to reopenedOverlay?.itemNames),
+                reopenedOverlay?.localizedCapabilities?.get(LocalizedTextCapability.ITEM_NAMES)) { stage, assertion ->
+                receipt.check("semantic.sqlite.$stage", assertion)
+            }
+            receipt.check("semantic.sqlite.collection-flags") {
+                val persisted = reopened.localMaps.pois.filter { it.item != null }
+                assertEquals(oracle.references.size, persisted.size)
+                assertEquals(oracle.references.mapValues { it.value["collectionFlag"].asInt },
+                    persisted.associate { it.key to it.item!!.collectionFlagId })
+            }
+        }
         receipt.check("sqlite.whole-catalog-parity") { assertTrue("whole catalog differs", catalog == reopened) }
         receipt.check("sqlite.poi-parity") { assertEquals(catalog.localMaps.pois, reopened.localMaps.pois) }
         receipt.check("sqlite.ball-parity") { assertEquals(catalog.captureBallsById, reopened.captureBallsById) }
@@ -222,7 +288,7 @@ internal object WesternGen2BaselineCapture {
                     "foreignKeyCheck" to foreign, "schemas" to schemas, "sections" to stored.committedSections))
                 assertEquals(listOf("ok"), quick)
                 assertTrue(foreign.isEmpty())
-                assertEquals(listOf(58L to 2L), schemas)
+                assertEquals(listOf((if (oracle != null) 59L else CatalogSchema.parserSchemaVersion.toLong()) to 2L), schemas)
             }
         }
         receipt.values["boundaryNonExposure"] = mapOf("quantity" to "typed-reference/raw only; absent from LocalMapPoiItem and API",
@@ -303,9 +369,128 @@ internal object WesternGen2BaselineCapture {
                         assertEquals(setOf(reopened.defaultTextProjection().itemName(id)), apiItems.getValue(id).toSet())
                     }
                 }
+                if (oracle != null) {
+                    receipt.check("semantic.api.numeric-pois.complete") {
+                        assertEquals(oracle.references.size, state.localMapPois.count { it.itemId != null })
+                        assertEquals(oracle.references.keys, projected.keys)
+                    }
+                    checkRequiredProjectedNames(oracle.names, apiItems()) { stage, assertion ->
+                        receipt.check("semantic.api.$stage", assertion)
+                    }
+                    receipt.check("semantic.api.item-capability.complete") {
+                        val itemState = requireNotNull(states).getValue(LocalizedTextCapability.ITEM_NAMES.name)
+                        assertEquals("AVAILABLE", itemState.status)
+                        assertEquals(oracle.names.size, itemState.expectedRecords)
+                        assertEquals(oracle.names.size, itemState.coveredRecords)
+                    }
+                }
                 receipt.check("api.zero-reparse") { assertEquals(0, reparses.get()) }
             }
         }
+        if (oracle != null) receipt.values["semanticCheckPathComplete"] = true
+    }
+
+    /** Each boundary is independent: missing ID 5 must not prevent later SQLite/API evidence. */
+    internal fun checkRequiredItemObservations(
+        expected: Map<Int, String>,
+        requested: Set<Int>,
+        fields: Map<String, Map<Int, CatalogField<String>>?>,
+        state: LocalizedCapabilityState?,
+        check: (String, () -> Unit) -> Unit,
+    ) {
+        check("requested-domain") {
+            assertTrue(expected.isNotEmpty() && expected.values.all { it.isNotBlank() })
+            assertEquals(expected.keys, requested)
+        }
+        for ((stage, names) in fields) {
+            check("$stage.denominator") { assertEquals(expected.keys, requireNotNull(names).keys) }
+            check("$stage.required-names") { assertEquals(expected, availableItemNames(requireNotNull(names))) }
+        }
+        check("item-capability.status") { assertEquals(CapabilityStatus.AVAILABLE, requireNotNull(state).status) }
+        check("item-capability.expected") { assertEquals(expected.size, requireNotNull(state).expectedRecords) }
+        check("item-capability.covered") { assertEquals(expected.size, requireNotNull(state).coveredRecords) }
+    }
+
+    /** API has labels but no CatalogField status, quantity or collection flags. Check only exposed text. */
+    internal fun checkRequiredProjectedNames(
+        expected: Map<Int, String>,
+        actual: Map<Int, List<String?>>,
+        check: (String, () -> Unit) -> Unit,
+    ) {
+        check("denominator") { assertEquals(expected.keys, actual.keys) }
+        check("required-names") {
+            assertTrue(expected.isNotEmpty() && expected.values.all { it.isNotBlank() })
+            expected.forEach { (id, label) ->
+                val values = requireNotNull(actual[id]) { "missing required projected item $id" }
+                assertTrue("empty projected occurrences for item $id", values.isNotEmpty())
+                assertEquals("independent label for every projected occurrence of item $id", setOf(label), values.toSet())
+            }
+        }
+    }
+
+    private fun checkRequiredCatalog(receipt: Receipt, stage: String, catalog: ParsedCatalog, oracle: WesternGen2SemanticOracle.Control) {
+        receipt.check("semantic.$stage.shared-numeric-names-null") {
+            assertTrue(catalog.captureBallsById.values.all { it.name.value == null })
+            assertTrue(catalog.localMaps.pois.all { it.item?.displayName == null })
+        }
+        receipt.check("semantic.$stage.original-identity") {
+            assertEquals(receipt.control["sha256"].asString, catalog.romSha256)
+            assertEquals(receipt.control["family"].asString, catalog.family.name)
+            assertEquals(receipt.control["language"].asString, catalog.languageManifest.defaultLanguage?.value)
+            assertEquals(LanguageResolutionStatus.RESOLVED, catalog.languageManifest.status)
+        }
+        val numericIds = catalog.captureBallsById.keys + catalog.localMaps.pois.mapNotNull { it.item?.itemId }
+        val projection = catalog.defaultTextProjection()
+        checkRequiredProjectedNames(oracle.names, numericIds.associateWith { listOf(projection.itemName(it)) }) { boundary, assertion ->
+            receipt.check("semantic.$stage.projection.$boundary", assertion)
+        }
+        receipt.check("semantic.$stage.poi-projection.required-names") {
+            catalog.localMaps.pois.forEach { poi -> poi.item?.let { item ->
+                val id = requireNotNull(item.itemId)
+                assertEquals(oracle.names.getValue(id), projection.poiItemName(poi.key, id))
+            } }
+        }
+        // Preserve the diagnostic's other fourteen status/count observations. No historical labels are read.
+        val expected = unchangedCapabilityObservations(receipt.control["language"].asString, receipt.control["family"].asString)
+        for ((capability, observation) in expected) receipt.check("semantic.$stage.unchanged.$capability") {
+            val actual = requireNotNull(catalog.defaultLocalizedText()).localizedCapabilities.getValue(capability)
+            assertEquals(observation, Triple(actual.status, actual.coveredRecords, actual.expectedRecords))
+        }
+    }
+
+    private fun unchangedCapabilityObservations(language: String, family: String): Map<LocalizedTextCapability, Triple<CapabilityStatus, Int, Int>> {
+        val crystal = family == "CRYSTAL"
+        // Original baseline-01 catalog-snapshot capability metadata only, never semantic item-name expectations.
+        val proseCoverage = mapOf(
+            "en" to Pair(251, 251), "fr" to Pair(if (crystal) 235 else 244, 249),
+            "de" to Pair(236, if (crystal) 232 else 227), "it" to Pair(if (crystal) 234 else 238, if (crystal) 244 else 245),
+            "es" to Pair(if (crystal) 234 else 236, 250),
+        )
+        val (species, moves) = proseCoverage.getValue(language)
+        val missingMapNames = language == "it" || crystal && language == "de"
+        val mapCovered = if (missingMapNames) 0 else if (!crystal) 364 else if (language == "fr") 358 else 382
+        fun observed(covered: Int, expected: Int): Triple<CapabilityStatus, Int, Int> = Triple(when {
+            expected == 0 -> CapabilityStatus.NOT_APPLICABLE
+            covered == 0 -> CapabilityStatus.NOT_FOUND
+            covered == expected -> CapabilityStatus.AVAILABLE
+            else -> CapabilityStatus.PARTIAL
+        }, covered, expected)
+        return mapOf(
+            LocalizedTextCapability.SPECIES_NAMES to observed(251, 251),
+            LocalizedTextCapability.SPECIES_DESCRIPTIONS to observed(species, 251),
+            LocalizedTextCapability.MOVE_NAMES to observed(251, 251),
+            LocalizedTextCapability.MOVE_DESCRIPTIONS to observed(moves, 251),
+            LocalizedTextCapability.ABILITY_NAMES to observed(0, 0),
+            LocalizedTextCapability.ABILITY_DESCRIPTIONS to observed(0, 0),
+            LocalizedTextCapability.TYPE_NAMES to observed(18, 18),
+            LocalizedTextCapability.NATURE_NAMES to observed(0, 0),
+            LocalizedTextCapability.AREA_NAMES to observed(0, 0),
+            LocalizedTextCapability.LOCAL_MAP_NAMES to observed(mapCovered, if (crystal) 388 else 368),
+            LocalizedTextCapability.WORLD_REGION_NAMES to observed(2, 2),
+            LocalizedTextCapability.WORLD_LOCATION_NAMES to observed(if (missingMapNames) 0 else 79, 79),
+            LocalizedTextCapability.ENCOUNTER_AREA_NAMES to observed(335, 335),
+            LocalizedTextCapability.POI_TEXT to observed(0, if (crystal) 2082 else 1951),
+        )
     }
 
     /** Independent diagnostic boundaries; the observer records failures and continues every check. */
