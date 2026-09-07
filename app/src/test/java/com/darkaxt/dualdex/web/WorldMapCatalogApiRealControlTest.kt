@@ -57,6 +57,109 @@ import org.junit.Test
 
 class WorldMapCatalogApiRealControlTest {
     @Test
+    fun westernOfficialGen2BaselineTenControls() {
+        assumeTrue("set DUALDEX_WESTERN_MANIFEST for the ten-control diagnostic baseline",
+            !System.getenv("DUALDEX_WESTERN_MANIFEST").isNullOrBlank())
+        WesternGen2BaselineCapture.run(JdbcTestCatalogDatabaseFactory)
+    }
+
+    @Test
+    fun westernBaselineObserverRetainsTheNormalOriginalSession() {
+        val rom = RomImage(ByteArray(0x200))
+        val (context, session) = WesternGen2BaselineCapture.observe(rom)
+        assertTrue(context.javaClass.simpleName == "CatalogAnalysisContext")
+        assertTrue(session.rom === rom)
+        assertTrue(session.gen2ItemReferences.isEmpty())
+    }
+
+    @Test
+    fun westernSparseOverlayKeepsUnavailableRequestedNamesDiagnostic() {
+        val names = westernSparseProducer()
+        val overlay = CatalogLanguageOverlay(LanguageTag.ENGLISH, 1, westernSparseStates(),
+            itemNames = mapOf(1 to CatalogField.available("SYNTHETIC")))
+        val results = westernSparseOutcomes(names, overlay.localizedCapabilities, overlay.itemNames)
+        assertEquals(emptySet<String>(), results.filterValues { it.isFailure }.keys)
+        assertEquals(22, results.size)
+        assertEquals(setOf(5), WesternGen2BaselineCapture.missingRequestedItemIds(setOf(1, 5), names))
+        assertEquals(2, overlay.localizedCapabilities.getValue(LocalizedTextCapability.ITEM_NAMES).expectedRecords)
+        assertEquals(CapabilityStatus.PARTIAL, overlay.localizedCapabilities.getValue(LocalizedTextCapability.ITEM_NAMES).status)
+    }
+
+    @Test
+    fun westernSparseOverlayRejectsMissingProducerAndCapabilityDenominators() {
+        val results = westernSparseOutcomes(westernSparseProducer() - 5, westernSparseStates(expected = 1),
+            mapOf(1 to CatalogField.available("SYNTHETIC")))
+        assertEquals(setOf("items.producer-denominator", "items.capability-denominator"),
+            results.filterValues { it.isFailure }.keys)
+        assertTrue(results.getValue("items.available-name-parity").isSuccess)
+    }
+
+    @Test
+    fun westernSparseOverlayStillChecksEveryCountAndNameAfterInventoryFailure() {
+        val states = westernSparseStates() - LocalizedTextCapability.SPECIES_NAMES +
+            (LocalizedTextCapability.ITEM_NAMES to LocalizedCapabilityState.notFound("fault-injected coverage", 2))
+        val results = westernSparseOutcomes(westernSparseProducer(), states,
+            mapOf(1 to CatalogField.available("WRONG SYNTHETIC")))
+        assertEquals(22, results.size)
+        assertEquals(setOf("capabilities.inventory", "capability.SPECIES_NAMES.counts",
+            "items.capability-covered-count", "items.available-name-parity"), results.filterValues { it.isFailure }.keys)
+        assertTrue(results.getValue("capability.POI_TEXT.counts").isSuccess)
+        assertTrue(results.getValue("items.capability-denominator").isSuccess)
+    }
+
+    @Test
+    fun westernSparseOverlayRejectsAmbiguousUnexpectedAndUnavailableEntries() {
+        val ambiguous = westernSparseProducer() + (5 to CatalogField<String>(CapabilityStatus.AMBIGUOUS, null, listOf("synthetic conflict")))
+        val proper = westernSparseOutcomes(ambiguous, westernSparseStates(), mapOf(1 to CatalogField.available("SYNTHETIC")))
+        assertTrue(proper.values.all { it.isSuccess })
+        for (entry in listOf(5 to CatalogField.available("UNAUTHORIZED"), 7 to CatalogField.available("UNREQUESTED"),
+            5 to CatalogField.available(" "), 5 to CatalogField.notFound<String>("unavailable entries are not sparse names"))) {
+            val results = westernSparseOutcomes(ambiguous, westernSparseStates(expected = 2, covered = 2),
+                mapOf(1 to CatalogField.available("SYNTHETIC"), entry))
+            assertTrue(results.getValue("items.overlay-sparse-keys").isFailure)
+            assertTrue(results.getValue("items.available-name-parity").isFailure)
+            if (entry.second.value.isNullOrBlank()) assertTrue(results.getValue("items.overlay-available-fields").isFailure)
+        }
+        assertEquals(setOf(5), WesternGen2BaselineCapture.missingRequestedItemIds(setOf(1, 5), ambiguous))
+    }
+
+    @Test
+    fun westernSparseOverlayAllowsEmptyAndAllUnavailableDiagnosticDomains() {
+        for (requested in listOf(emptySet(), setOf(5))) {
+            val names = requested.associateWith { CatalogField.notFound<String>("synthetic missing label") }
+            val results = westernSparseOutcomes(names, westernSparseStates(expected = requested.size, covered = 0), emptyMap(), requested)
+            assertTrue(results.values.all { it.isSuccess })
+            assertEquals(requested, WesternGen2BaselineCapture.missingRequestedItemIds(requested, names))
+        }
+    }
+
+    private fun westernSparseProducer() = mapOf(1 to CatalogField.available("SYNTHETIC"),
+        5 to CatalogField.notFound<String>("synthetic requested name unavailable; not a semantic waiver"))
+
+    private fun westernSparseStates(expected: Int = 2, covered: Int = 1) = LocalizedTextCapability.entries.associateWith { capability ->
+        if (capability != LocalizedTextCapability.ITEM_NAMES) LocalizedCapabilityState.notApplicable("synthetic", 0)
+        else LocalizedCapabilityState(
+            when {
+                expected == 0 -> CapabilityStatus.NOT_APPLICABLE
+                covered == 0 -> CapabilityStatus.NOT_FOUND
+                covered == expected -> CapabilityStatus.AVAILABLE
+                else -> CapabilityStatus.PARTIAL
+            }, if (covered == 0) 0.0 else 1.0, covered, expected)
+    }
+
+    private fun westernSparseOutcomes(
+        names: Map<Int, CatalogField<String>>,
+        states: Map<LocalizedTextCapability, LocalizedCapabilityState>,
+        overlayNames: Map<Int, CatalogField<String>>,
+        requested: Set<Int> = setOf(1, 5),
+    ): Map<String, Result<Unit>> = linkedMapOf<String, Result<Unit>>().also { outcomes ->
+        WesternGen2BaselineCapture.checkItemObservations(requested, names, states, overlayNames) { stage, assertion ->
+            check(stage !in outcomes)
+            outcomes[stage] = runCatching(assertion)
+        }
+    }
+
+    @Test
     fun exactReferenceThemesSurviveCatalogStoreAndApiProjection() {
         themeControls.forEach { control ->
             val configured = System.getenv(control.environmentVariable)

@@ -219,6 +219,16 @@ The coordinator verified seven source/baseline hashes, 229 artifact hashes plus 
 
 Task 390 remains open for broader Western item support/acceptance. Task 386's Gen II Local labels, GBA region-label authority/applicability and reference-aware POI gaps, and Tasks 373–375's all-15-capability current 43-cell/44-control matrix, final current corpus after executable changes stabilize, ledger audit and Stage 4 closure remain mandatory. No required cell is deferred. Stage 5 remains blocked. No corpus, devices, signing, release APK, cleanup or ROM publication was performed.
 
+## Western Gen II item-name diagnostic boundary
+
+`stage-04-western-gen2-item-name-diagnostic.md` records Task 390 / `LNG-B002`'s **one ten-control diagnostic invocation**, not semantic acceptance. Each of the five Western Gold/Silver controls retains 225 typed references and **61/62** available names; each Crystal control retains 263 references and **75/76** names. Item 5 remains required and unavailable in all ten. Original production authority reports `Available`, but independent exact compiled/token proof and expected names remain mandatory; the item ID does not establish the cause.
+
+The actual aggregate JUnit method **failed** because the adapter wrongly required requested IDs to equal sparse overlay keys. Its combined capability check short-circuited; original failed XML and ten `BASELINE_INTEGRITY_BROKEN` receipts are retained. The producer/capability denominator correctly includes the unavailable name. Independent bounded read-only reconciliation verified ten 18-section caches, complete retained overlay/POI/capability parity, all 15 API capabilities, 2,440 typed-reference numeric/collection-flag joins and 12,200 witness role/bound checks. It did not rerun tests, read ROMs, replay raw bytes or establish semantic acceptance.
+
+The test-only adapter correction now separates 22 observation boundaries and compares sparse overlay entries only with available, nonblank producer names. A new focused RED isolates the old assertion; the owner passes 11/11 corrected methods. The coordinator reviewed the complete changed code, verified 50 frozen artifacts and all 786 executable-source hashes, then independently passed **11/11 fresh synthetic/observer/contract tests**, zero failures/errors/skips, in **80.11 seconds**, 43 tasks executed. No real-control or native acceptance method was selected, production remains unchanged, and the original baseline failure is not reclassified.
+
+**Owner/target:** Stage 4 Task 390 — Western Gen II independent referenced-name acceptance. **Required acceptance:** independently bound compiled consumers and consumed tokens; all required names through actual SQLite close/reopen and cache-only API; retained native regressions. **Temporary disposition:** missing names remain unavailable and counted; production stays parser58/storage2. No required content is waived. Task 390 and `LNG-B002` stay open. Task 391 corrects Korean prose to distinguish typed/raw quantity, typed/SQLite collection flags and actual API-exposed fields without expanding production models.
+
 ## Audit rule
 
 An item without a durable ID, exact spec clause, evidence, owner, target, acceptance condition, and fail-closed temporary disposition is a `STOP-CORE` blocker. Required official language-family cells in Stages 3 and 4 cannot be deferred.
