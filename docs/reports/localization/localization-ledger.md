@@ -229,6 +229,12 @@ The test-only adapter correction now separates 22 observation boundaries and com
 
 **Owner/target:** Stage 4 Task 390 — Western Gen II independent referenced-name acceptance. **Required acceptance:** independently bound compiled consumers and consumed tokens; all required names through actual SQLite close/reopen and cache-only API; retained native regressions. **Temporary disposition:** missing names remain unavailable and counted; production stays parser58/storage2. No required content is waived. Task 390 and `LNG-B002` stay open. Task 391 corrects Korean prose to distinguish typed/raw quantity, typed/SQLite collection flags and actual API-exposed fields without expanding production models.
 
+## Western Gen II independent token stopping boundary
+
+After publishing `c50e7a4e`, the coordinator reviewed the frozen standalone proof and input/source/budget pins, independently passed **18/18 synthetic methods**, and separately authorized one read-only attempt. It exited **2** (`NOT_PROVED`) in **0.32 seconds**, with no timeout or retry and only **one ROM read**. In English Gold, the preceding checks matched nine compiled windows (287 unique bytes), reconciled original authority and bound all **225 references**. Required item **5** then stopped at consumed token **`0x54`**, which the frozen oracle does not support. Its complete 13-byte copy contains raw termination; this is diagnostic evidence, not an accepted token expansion or name.
+
+The failed attempt removes all accepted labels while retaining all **690 requested-ID instances**. The other nine controls were not read, so no token-cause conclusion extends to them. Proof SHA-256: `f77be8498ceffef94ac516ea37a873592852796e8cb22065932dfe61291257d1`; execution receipt SHA-256: `628436c7e6cd29c8f63a26c171bf482da3b3d04fec23773fbc784fd19915d753`. The frozen failure is not retried or rewritten. **Owner/target:** Task 390 / `LNG-B002` — source-backed static-token authority, then a separately reviewed proof contract and required ten-control name acceptance. Unsupported text remains unavailable and counted; production is unchanged at **58/2**. No full corpus or device work occurred.
+
 ## Audit rule
 
 An item without a durable ID, exact spec clause, evidence, owner, target, acceptance condition, and fail-closed temporary disposition is a `STOP-CORE` blocker. Required official language-family cells in Stages 3 and 4 cannot be deferred.

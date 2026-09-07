@@ -60,8 +60,20 @@ The coordinator reviewed the full adapter/synthetic files and added app-test dif
 
 A separate fresh coordinator gate then passed **11/11 methods: five parser synthetics and six app observer/contract tests**, zero failures/errors/skips, with `--rerun-tasks --continue --no-parallel --offline` in approximately **80.11 seconds**, 43 tasks executed. All 786 executable-source hashes remained unchanged; exact fresh XML methods and the complete log were checked. Existing Kotlin/Gradle warnings remain. Neither real-control nor native acceptance methods were selected. Fresh receipt SHA-256: `bed5d9d5e680e410e3d2a6e9e0049017e104d004765ed95ad882e96c0603e121`.
 
+## First independent proof attempt: terminal token boundary
+
+After publishing the test/documentation checkpoint `c50e7a4e`, the coordinator reviewed the complete standalone source-authored checker/evaluator, its frozen contract, 31 source-file pins and all ten original-baseline input/reference nominations. A fresh independent synthetic run passed **18/18 methods**, including 510 in-memory instruction-chain evaluations. The original limits remained unchanged, with an additional 300-second process ceiling. Review receipt SHA-256: `a1d144cddc73bfb73bee97e7796cdc7165d12f7e1ec417ff92add7b832f8add5`.
+
+The coordinator then separately authorized **one** read-only invocation of script SHA-256 `57efc3f0ac31b4746978b30bd9ed3f91bc88afd4bf570bd68effb86ac6f94c29` under contract SHA-256 `549111a6d1ff8d6b0d7507770e0a2a7795561f4b580525620bf43f9168ce9740`. It exited **2** in approximately **0.32 seconds**, without timeout or retry, and read only the first control: English Gold.
+
+Before the stop, the checker matched nine compiled-code/directory windows containing 287 unique bytes, reconciled the original structural nomination and bound all 225 current typed references to raw witnesses. Evaluation reached required item ID **5**, whose complete 13-byte copied buffer begins with **`0x54`** and contains raw `0x50` termination at index 6. The frozen token oracle rejected `0x54` at index 0 as an unsupported control/substitution unit. These are retained diagnostic observations, not an accepted name oracle.
+
+The terminal result is **`NOT_PROVED`**. All partial accepted labels were removed; all **690 requested-ID instances** remain represented. The other **nine controls were not read or evaluated**, so this observed token cannot yet be attributed to their missing names. No parser, materializer, SQLite/API, native acceptance or corpus rerun occurred. Production remains unchanged.
+
+Proof receipt SHA-256: `f77be8498ceffef94ac516ea37a873592852796e8cb22065932dfe61291257d1`. Execution receipt SHA-256: `628436c7e6cd29c8f63a26c171bf482da3b3d04fec23773fbc784fd19915d753`. The frozen failed attempt is retained without modification. Source-only investigation of the observed token's static versus dynamic behavior precedes any revised proof contract or production change; neither automatic retry nor unsupported-token acceptance is authorized by this failure.
+
 ## Required next acceptance
 
-Task 390 must establish an independent bounded compiled-consumer and consumed-token oracle, identify and correct any proven production defect, and require every applicable expected name through materialization, SQLite close/reopen and API in all ten controls. Frozen proof limits and acquired source references alone are not executable proof or semantic acceptance. Observed baseline labels cannot serve as independent expectations.
+Task 390 must complete the independent bounded compiled-consumer and consumed-token oracle, identify and correct any proven production defect, and require every applicable expected name through materialization, SQLite close/reopen and API in all ten controls. The first executable proof stopped without semantic acceptance. Observed baseline labels cannot serve as independent expectations.
 
 Western Gen I/GBA item acceptance, Task 386's Local/region-label authority and reference-aware POI coverage, and Tasks 373–375's complete current **43-cell/44-control** matrix, all 15 capability dispositions, final current corpus and Stage 4 closure remain mandatory. No required cell is deferred. Stages 5–6 have not begun. No devices, emulator/ADB testing, signing, release APK, cleanup or ROM publication is part of this diagnostic.
