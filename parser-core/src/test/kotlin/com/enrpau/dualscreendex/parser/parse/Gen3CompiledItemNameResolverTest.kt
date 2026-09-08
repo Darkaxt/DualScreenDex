@@ -18,6 +18,398 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class Gen3CompiledItemNameResolverTest {
+    @Test fun completeR1DescriptionConsumerReconcilesWithoutAddingScalarField() {
+        for ((stride, maximum, width) in listOf(Triple(44, 174, 10), Triple(44, 188, 14), Triple(52, 150, 18))) {
+            for (entry in listOf(0x2000, 0x2800)) for (siteCap in listOf(1, 16)) {
+                val f = ItemConsumerFixture(root = 0x6000, mulStride = stride, maximumHalf = maximum,
+                    nameBytes = width, simpleWrapper = true)
+                f.descriptionLineConsumer(entry)
+                val session = f.session(ResolutionLimits(maxCompiledReferenceSitesPerCandidate = siteCap))
+                assertEquals(15, requireNotNull(session.gbaReferenceIndex).referenceCount(f.root))
+                assertEquals(1, requireNotNull(session.gbaReferenceIndex?.itemConsumerHints).observedSites)
+                for (route in listOf(GbaItemPublishedRoute.NotInvoked,
+                    GbaItemPublishedRoute.Invoked(GbaItemRootNomination.Nominated(f.root)))) {
+                    val authority = session.itemNameResolver.original(route)
+                    assertTrue("stride=$stride width=$width entry=$entry siteCap=$siteCap: $authority",
+                        authority is GbaItemNameAuthority.Available)
+                    authority as GbaItemNameAuthority.Available
+                    assertEquals(maximum * 2 + 1, authority.count); assertEquals(stride, authority.stride)
+                    assertEquals(width, authority.nameBytes)
+                    assertSame(authority, session.itemNameResolver.original(route))
+                }
+                assertNotNull(f.session().itemNameResolver.resolve(f.root).table)
+            }
+        }
+    }
+
+    @Test fun everyR1DescriptionInstructionDependencyMustBeComplete() {
+        for (offset in (0 until 60 step 2) + (64 until 96 step 2)) {
+            val f = ItemConsumerFixture(mulStride = 44, nameBytes = 14, simpleWrapper = true)
+            f.descriptionLineConsumer(0x2000)
+            // Preserve the root-reference nomination even when changing its LDR register.
+            f.half(0x2000 + offset, if (offset == 8) 0x4D0C else 0)
+            assertEquals("nomination survives +${offset.toString(16)}", 15,
+                requireNotNull(f.session().gbaReferenceIndex).referenceCount(f.root))
+            for (route in listOf(GbaItemPublishedRoute.NotInvoked,
+                GbaItemPublishedRoute.Invoked(GbaItemRootNomination.Nominated(f.root)))) {
+                assertTrue("required auxiliary halfword +${offset.toString(16)}",
+                    f.session().itemNameResolver.original(route) is GbaItemNameAuthority.Unavailable)
+            }
+            assertNull(f.session().itemNameResolver.resolve(f.root).table)
+        }
+    }
+
+    @Test fun descriptionConsumerCannotReplaceIndependentScalarOrInlineAuthority() {
+        for (missing in listOf("description scalar", "last scalar", "inline getter", "copier")) {
+            val f = ItemConsumerFixture(mulStride = 44, nameBytes = 14, simpleWrapper = true)
+            f.descriptionLineConsumer(0x2000)
+            val (at, size) = when (missing) {
+                "description scalar" -> f.scalarEntries[4] to 0x40
+                "last scalar" -> f.scalarEntries.last() to 0x40
+                "inline getter" -> f.nameGetter to 32
+                else -> f.copier to 30
+            }
+            f.bytes.fill(0, at, at + size)
+            assertTrue(missing, f.session().itemNameResolver.original(GbaItemPublishedRoute.NotInvoked)
+                is GbaItemNameAuthority.Unavailable)
+        }
+    }
+
+    @Test fun descriptionGeometryRootsLiteralOwnershipAndUnknownReferencesStayTerminal() {
+        for (mutation in listOf("stride", "field", "count", "field-root", "escaped pool", "unknown reference")) {
+            val f = ItemConsumerFixture(mulStride = 44, nameBytes = 14, simpleWrapper = true)
+            f.descriptionLineConsumer(0x2000)
+            when (mutation) {
+                "stride" -> f.half(0x2016, 0x2134)
+                "field" -> f.half(0x201A, 0x3418)
+                "count" -> { f.emitSanitizer(0x3000, f.maximumHalf - 1); f.bl(0x200E, 0x3000) }
+                "field-root" -> f.pointer(0x203C, f.root + 1)
+                "escaped pool" -> f.literalLoad(0x2008, 4, 0x23FC, f.root)
+                "unknown reference" -> f.literalLoad(0x3000, 3, 0x3004, f.root)
+            }
+            assertTrue(mutation, f.session().itemNameResolver.original(GbaItemPublishedRoute.NotInvoked)
+                is GbaItemNameAuthority.Unavailable)
+            assertNull(mutation, f.session().itemNameResolver.resolve(f.root).table)
+        }
+    }
+
+    @Test fun unknownPartialOrLocalDescriptionSanitizerCallsCannotBeDischarged() {
+        for (target in listOf(0x3000, 0x600 + 2, 0x800, 0x2040, 0x10000)) {
+            val f = ItemConsumerFixture(mulStride = 44, nameBytes = 14, simpleWrapper = true)
+            f.descriptionLineConsumer(0x2000)
+            f.emit(0x3000, 0x4770) // opaque in-bounds leaf, not the complete u16 sanitizer
+            f.bl(0x200E, target)
+            assertTrue("call target=${target.toString(16)}",
+                f.session().itemNameResolver.original(GbaItemPublishedRoute.NotInvoked) is GbaItemNameAuthority.Unavailable)
+            assertNull(f.session().itemNameResolver.resolve(f.root).table)
+        }
+    }
+
+    @Test fun descriptionWitnessKeepsCountsRecoveryBudgetsAndCancellation() {
+        val f = ItemConsumerFixture(mulStride = 44, nameBytes = 14, simpleWrapper = true)
+        f.descriptionLineConsumer(0x2000)
+        for (cap in listOf(14, 15)) for (siteCap in listOf(1, 16)) for (passes in listOf(2, 3)) {
+            val session = f.session(ResolutionLimits(maxNominatedGbaReferenceSites = cap,
+                maxCompiledReferenceSitesPerCandidate = siteCap, maxCandidatesPerDataset = 1,
+                maxDatasetExtentBytes = f.bytes.size.toLong() * passes))
+            assertEquals(15, requireNotNull(session.gbaReferenceIndex).referenceCount(f.root))
+            assertEquals("cap=$cap siteCap=$siteCap passes=$passes", cap >= 15 && (siteCap >= 15 || passes >= 3),
+                session.itemNameResolver.original(GbaItemPublishedRoute.NotInvoked) is GbaItemNameAuthority.Available)
+        }
+        assertTrue(f.session(ResolutionLimits(maxProbeWorkPerDataset = 8)).itemNameResolver
+            .original(GbaItemPublishedRoute.NotInvoked) is GbaItemNameAuthority.Unavailable)
+        var checks = 0
+        assertThrows(ParserCancellationException::class.java) {
+            f.session(cancellation = ParserCancellationToken {
+                if (++checks > 40) throw ParserCancellationException()
+            }).itemNameResolver.original(GbaItemPublishedRoute.NotInvoked)
+        }
+        var stopped = false
+        val resolver = f.session(cancellation = ParserCancellationToken {
+            if (stopped) throw ParserCancellationException()
+        }).itemNameResolver
+        assertTrue(resolver.original(GbaItemPublishedRoute.NotInvoked) is GbaItemNameAuthority.Available)
+        stopped = true
+        assertThrows(ParserCancellationException::class.java) { resolver.original(GbaItemPublishedRoute.NotInvoked) }
+    }
+
+    private fun pooledMulFixture(register: Int = 7, entry: Int = 0x800): ItemConsumerFixture =
+        ItemConsumerFixture(root = 0x4800 or (register shl 8) or 80, nameGetter = entry,
+            scalarStart = entry + 32, scalarSpacing = 36, mulStride = 44, maximumHalf = 187,
+            nameBytes = 14, simpleWrapper = true)
+
+    private fun fivePoolWords(f: ItemConsumerFixture): List<Int> =
+        listOf(f.nameGetter + 28) + f.scalarEntries.take(4).map { it + 32 }
+
+    @Test fun fiveOwnedLiteralWordsDoNotBecomeCompetingGetterInstructions() {
+        for (register in listOf(6, 7)) for (entry in listOf(0x800, 0x1800)) for (siteCap in listOf(1, 16, 32)) {
+            val f = pooledMulFixture(register, entry)
+            val session = f.session(ResolutionLimits(maxCompiledReferenceSitesPerCandidate = siteCap))
+            val index = requireNotNull(session.gbaReferenceIndex)
+            assertEquals(19, index.referenceCount(f.root))
+            assertEquals(1, requireNotNull(index.itemConsumerHints).observedSites)
+            for (route in listOf(GbaItemPublishedRoute.NotInvoked,
+                GbaItemPublishedRoute.Invoked(GbaItemRootNomination.Nominated(f.root)))) {
+                val authority = session.itemNameResolver.original(route)
+                assertTrue("register=$register entry=$entry siteCap=$siteCap: $authority",
+                    authority is GbaItemNameAuthority.Available)
+                authority as GbaItemNameAuthority.Available
+                assertEquals(375, authority.count); assertEquals(44, authority.stride)
+                assertEquals(14, authority.nameBytes); assertEquals(f.root, authority.root)
+            }
+            assertNotNull(f.session().itemNameResolver.resolve(f.root).table)
+        }
+    }
+
+    @Test fun shiftGetterOwnedLiteralInterpretationsAreAlsoReconciled() {
+        val f = ItemConsumerFixture(root = 0x4800 or (7 shl 8) or 15, simpleWrapper = true)
+        val session = f.session()
+        assertTrue(requireNotNull(session.gbaReferenceIndex).referenceCount(f.root) > 14)
+        val authority = session.itemNameResolver.original(GbaItemPublishedRoute.NotInvoked)
+        assertTrue("$authority", authority is GbaItemNameAuthority.Available)
+    }
+
+    @Test fun everySupportedDirectEdgeIntoEitherPoolHalfwordRemainsTerminal() {
+        for (kind in listOf("BL", "B", "BEQ")) for (poolIndex in 0..4) for (halfword in listOf(0, 2)) {
+            val f = pooledMulFixture()
+            val source = 0x7B0
+            val target = fivePoolWords(f)[poolIndex] + halfword
+            val halfDelta = (target - source - 4) / 2
+            when (kind) {
+                "BL" -> f.bl(source, target)
+                "B" -> f.half(source, 0xE000 or (halfDelta and 0x7FF))
+                "BEQ" -> { assertTrue(halfDelta in -128..127); f.half(source, 0xD000 or (halfDelta and 255)) }
+            }
+            for (route in listOf(GbaItemPublishedRoute.NotInvoked,
+                GbaItemPublishedRoute.Invoked(GbaItemRootNomination.Nominated(f.root)))) {
+                assertTrue("kind=$kind pool=$poolIndex halfword=$halfword",
+                    f.session().itemNameResolver.original(route) is GbaItemNameAuthority.Unavailable)
+            }
+            assertNull("explicit root kind=$kind", f.session().itemNameResolver.resolve(f.root).table)
+        }
+    }
+
+    @Test fun backwardBranchesAndFinalHalfwordEdgesCannotEnterOwnedPools() {
+        for (kind in listOf("BL", "B")) {
+            val f = pooledMulFixture()
+            val source = 0xA00
+            val target = fivePoolWords(f).first() + 2
+            if (kind == "BL") f.bl(source, target)
+            else f.half(source, 0xE000 or (((target - source - 4) / 2) and 0x7FF))
+            assertTrue(f.session().itemNameResolver.original(GbaItemPublishedRoute.NotInvoked)
+                is GbaItemNameAuthority.Unavailable)
+        }
+        for (condition in 0..15) {
+            val f = ItemConsumerFixture(root = 0x4800 or (7 shl 8) or 15, simpleWrapper = true)
+            val source = f.scalarStart + 54 // unused gap after the first owned pool
+            val target = f.scalarStart + 32
+            f.half(source, 0xD000 or (condition shl 8) or (((target - source - 4) / 2) and 255))
+            assertEquals("condition=$condition", condition >= 14,
+                f.session().itemNameResolver.original(GbaItemPublishedRoute.NotInvoked) is GbaItemNameAuthority.Available)
+        }
+        val f = pooledMulFixture(entry = 0xFD80)
+        val source = f.bytes.size - 2
+        val target = fivePoolWords(f).first()
+        f.half(source, 0xE000 or (((target - source - 4) / 2) and 0x7FF))
+        assertTrue(f.session().itemNameResolver.original(GbaItemPublishedRoute.NotInvoked)
+            is GbaItemNameAuthority.Unavailable)
+    }
+
+    @Test fun directIncomingAlignmentPaddingCannotFallThroughIntoOwnedPools() {
+        for (kind in listOf("BL", "B", "BEQ")) for (poolIndex in 0..4) {
+            val f = pooledMulFixture()
+            val source = 0x7B0
+            val target = fivePoolWords(f)[poolIndex] - 2
+            val halfDelta = (target - source - 4) / 2
+            when (kind) {
+                "BL" -> f.bl(source, target)
+                "B" -> f.half(source, 0xE000 or (halfDelta and 0x7FF))
+                "BEQ" -> f.half(source, 0xD000 or (halfDelta and 255))
+            }
+            val authority = f.session().itemNameResolver.original(GbaItemPublishedRoute.NotInvoked)
+            assertTrue("kind=$kind pool=$poolIndex: $authority", authority is GbaItemNameAuthority.Unavailable)
+            assertNull(f.session().itemNameResolver.resolve(f.root).table)
+        }
+    }
+
+    @Test fun nonzeroGetterAlignmentPaddingDoesNotGrantPoolOwnership() {
+        for (poolIndex in 0..4) {
+            val f = pooledMulFixture()
+            f.half(fivePoolWords(f)[poolIndex] - 2, 0x1C00)
+            assertTrue(f.session().itemNameResolver.original(GbaItemPublishedRoute.NotInvoked)
+                is GbaItemNameAuthority.Unavailable)
+        }
+    }
+
+    @Test fun incompleteGetterAndEscapedPoolOwnershipCannotDischargeWords() {
+        for (poolIndex in 0..4) for (escape in listOf(false, true)) {
+            val f = pooledMulFixture()
+            val ownerSite = if (poolIndex == 0) f.nameGetter + 18 else f.scalarEntries[poolIndex - 1] + 6
+            if (escape) f.literalLoad(ownerSite, if (poolIndex == 0) 1 else 4, 0xB00, f.root)
+            else f.half(fivePoolWords(f)[poolIndex] - 4, 0) // damage required BX, keep nomination
+            val session = f.session()
+            assertEquals(1, requireNotNull(session.gbaReferenceIndex?.itemConsumerHints).observedSites)
+            assertTrue("pool=$poolIndex escape=$escape",
+                session.itemNameResolver.original(GbaItemPublishedRoute.NotInvoked) is GbaItemNameAuthority.Unavailable)
+        }
+    }
+
+    @Test fun poolInterpretationCountsAndSharedScanBudgetsStayComplete() {
+        for (siteCap in listOf(16, 32)) for (passes in listOf(2, 3)) {
+            val f = pooledMulFixture()
+            val session = f.session(ResolutionLimits(maxCompiledReferenceSitesPerCandidate = siteCap,
+                maxDatasetExtentBytes = f.bytes.size.toLong() * passes))
+            assertEquals(19, requireNotNull(session.gbaReferenceIndex).referenceCount(f.root))
+            assertEquals("siteCap=$siteCap passes=$passes", siteCap >= 19 || passes >= 3,
+                session.itemNameResolver.original(GbaItemPublishedRoute.NotInvoked) is GbaItemNameAuthority.Available)
+        }
+        for (cap in listOf(18, 19)) {
+            val f = pooledMulFixture()
+            assertEquals("site inventory cap=$cap", cap >= 19,
+                f.session(ResolutionLimits(maxNominatedGbaReferenceSites = cap)).itemNameResolver
+                    .original(GbaItemPublishedRoute.NotInvoked) is GbaItemNameAuthority.Available)
+        }
+    }
+
+    @Test fun ownedPoolWorkAndCachedAuthorityHonorCancellation() {
+        val f = pooledMulFixture()
+        assertTrue(f.session(ResolutionLimits(maxProbeWorkPerDataset = 8)).itemNameResolver
+            .original(GbaItemPublishedRoute.NotInvoked) is GbaItemNameAuthority.Unavailable)
+        var checks = 0
+        assertThrows(ParserCancellationException::class.java) {
+            f.session(cancellation = ParserCancellationToken {
+                if (++checks > 40) throw ParserCancellationException()
+            }).itemNameResolver.original(GbaItemPublishedRoute.NotInvoked)
+        }
+        var stopped = false
+        val resolver = f.session(cancellation = ParserCancellationToken {
+            if (stopped) throw ParserCancellationException()
+        }).itemNameResolver
+        assertTrue(resolver.original(GbaItemPublishedRoute.NotInvoked) is GbaItemNameAuthority.Available)
+        stopped = true
+        assertThrows(ParserCancellationException::class.java) { resolver.original(GbaItemPublishedRoute.NotInvoked) }
+    }
+
+    @Test fun completeConditionalU8CallDoesNotPoisonInlineAuthority() {
+        for (stride in listOf(44, 52)) for (scale in listOf(2, 3)) {
+            val f = ItemConsumerFixture(root = 0x6000, mulStride = stride,
+                nameBytes = 14, simpleWrapper = true)
+            f.conditionalU8Call(0x300, 0x3800, scale)
+            val session = f.session()
+            assertEquals(2, requireNotNull(session.gbaReferenceIndex?.itemConsumerHints).observedSites)
+            for (route in listOf(GbaItemPublishedRoute.NotInvoked,
+                GbaItemPublishedRoute.Invoked(GbaItemRootNomination.Nominated(f.root)))) {
+                val result = session.itemNameResolver.original(route)
+                assertTrue("$route: $result", result is GbaItemNameAuthority.Available)
+                result as GbaItemNameAuthority.Available
+                assertEquals(f.root, result.root); assertEquals(stride, result.stride)
+                assertEquals(377, result.count); assertEquals(14, result.nameBytes)
+                assertSame(result, session.itemNameResolver.original(route))
+            }
+        }
+    }
+
+    @Test fun completeU8CategoryCopyDoesNotPoisonInlineAuthority() {
+        val f = ItemConsumerFixture(root = 0x6000, mulStride = 44, nameBytes = 14, simpleWrapper = true)
+        f.conditionalU8Call(0x300, 0x3800)
+        f.u8CategoryCopy(0x2000, 0x3900)
+        val session = f.session()
+        assertEquals(3, requireNotNull(session.gbaReferenceIndex?.itemConsumerHints).observedSites)
+        for (route in listOf(GbaItemPublishedRoute.NotInvoked,
+            GbaItemPublishedRoute.Invoked(GbaItemRootNomination.Nominated(f.root)))) {
+            val result = session.itemNameResolver.original(route)
+            assertTrue("$route: $result", result is GbaItemNameAuthority.Available)
+        }
+    }
+
+    @Test fun damagedU8WrapperProofsRemainTerminal() {
+        for (category in listOf(false, true)) {
+            val required = if (category) listOf(6, 8, 10, 12, 14, 16, 18, 20, 24, 32, 34, 36,
+                38, 40, 42, 44, 46, 48, 50, 52, 54, 56, 58, 60, 62)
+            else listOf(6, 8, 10, 12, 14, 16, 18, 20, 24, 26, 28, 30, 32)
+            for (offset in required) {
+                val f = ItemConsumerFixture(root = 0x6000, mulStride = 44, nameBytes = 14, simpleWrapper = true)
+                if (category) f.u8CategoryCopy(0x2000, 0x3800) else f.conditionalU8Call(0x2000, 0x3800)
+                f.half(0x2000 + offset, if (category && offset == 34) 0x0800 else 0)
+                val session = f.session()
+                assertEquals("category=$category offset=$offset", 2,
+                    requireNotNull(session.gbaReferenceIndex?.itemConsumerHints).observedSites)
+                assertTrue("category=$category offset=$offset",
+                    session.itemNameResolver.original(GbaItemPublishedRoute.NotInvoked) is GbaItemNameAuthority.Unavailable)
+            }
+        }
+    }
+
+    @Test fun nonGetterHintsStillCountBeforeCapsAndRecovery() {
+        for (hintCap in listOf(1, 2, 64)) for (siteCap in listOf(1, 16)) {
+            val f = ItemConsumerFixture(root = 0x6000, mulStride = 44, nameBytes = 14, simpleWrapper = true)
+            f.conditionalU8Call(0x300, 0x3800)
+            f.u8CategoryCopy(0x2000, 0x3900)
+            val session = f.session(ResolutionLimits(maxCandidatesPerDataset = hintCap,
+                maxCompiledReferenceSitesPerCandidate = siteCap))
+            val hints = requireNotNull(session.gbaReferenceIndex?.itemConsumerHints)
+            assertEquals(3, hints.observedSites); assertEquals(minOf(3, hintCap), hints.sites.size)
+            assertEquals(hintCap >= 3, hints.complete)
+            assertEquals("hintCap=$hintCap siteCap=$siteCap", hintCap >= 3,
+                session.itemNameResolver.original(GbaItemPublishedRoute.NotInvoked) is GbaItemNameAuthority.Available)
+        }
+    }
+
+    @Test fun nonGetterProofDoesNotHideItemRootReferencesOrAuthorizeAlone() {
+        for (sameRoot in listOf(false, true)) {
+            val f = ItemConsumerFixture(root = 0x6000, mulStride = 44, nameBytes = 14, simpleWrapper = true)
+            f.conditionalU8Call(0x300, if (sameRoot) f.root else 0x3800)
+            if (!sameRoot) f.bytes.fill(0, f.nameGetter, f.nameGetter + 32)
+            assertTrue(f.session().itemNameResolver.original(GbaItemPublishedRoute.NotInvoked)
+                is GbaItemNameAuthority.Unavailable)
+        }
+    }
+
+    @Test fun nonGetterScalarAndDestinationLiteralsCannotBecomeRomPointers() {
+        for (category in listOf(false, true)) {
+            val f = ItemConsumerFixture(root = 0x6000, mulStride = 44, nameBytes = 14, simpleWrapper = true)
+            if (category) f.u8CategoryCopy(0x2000, 0x3800) else f.conditionalU8Call(0x2000, 0x3800)
+            f.pointer(0x2000 + if (category) 68 else 36, f.root)
+            assertTrue(f.session().itemNameResolver.original(GbaItemPublishedRoute.NotInvoked)
+                is GbaItemNameAuthority.Unavailable)
+        }
+    }
+
+    @Test fun nonGetterLiteralOwnershipAndLocalCallTargetsAreRequired() {
+        for (category in listOf(false, true)) for (mutation in listOf("literal", "local call", "outside call", "frame")) {
+            val f = ItemConsumerFixture(root = 0x6000, mulStride = 44, nameBytes = 14, simpleWrapper = true)
+            if (category) f.u8CategoryCopy(0x2000, 0x3800) else f.conditionalU8Call(0x2000, 0x3800)
+            when (mutation) {
+                "literal" -> {
+                    f.literalLoad(0x2000 + if (category) 38 else 14, 0, 0x23FC, 0)
+                    f.half(0x23FC, 99); f.half(0x23FE, 0)
+                }
+                "local call" -> f.bl(0x2006, 0x2000 + if (category) 28 else 36)
+                "outside call" -> f.bl(0x2006, f.bytes.size)
+                "frame" -> f.half(0x2000 + if (category) 60 else 30, 0xBC02)
+            }
+            val session = f.session()
+            assertEquals(2, requireNotNull(session.gbaReferenceIndex?.itemConsumerHints).observedSites)
+            assertTrue("category=$category mutation=$mutation",
+                session.itemNameResolver.original(GbaItemPublishedRoute.NotInvoked) is GbaItemNameAuthority.Unavailable)
+        }
+    }
+
+    @Test fun nonGetterProofWorkBudgetAndCachedCancellationRemainTerminal() {
+        val f = ItemConsumerFixture(root = 0x6000, mulStride = 44, nameBytes = 14, simpleWrapper = true)
+        f.conditionalU8Call(0x300, 0x3800)
+        f.u8CategoryCopy(0x2000, 0x3900)
+        assertTrue(f.session(ResolutionLimits(maxProbeWorkPerDataset = 8)).itemNameResolver
+            .original(GbaItemPublishedRoute.NotInvoked) is GbaItemNameAuthority.Unavailable)
+        var stopped = false
+        val resolver = f.session(cancellation = ParserCancellationToken {
+            if (stopped) throw ParserCancellationException()
+        }).itemNameResolver
+        assertTrue(resolver.original(GbaItemPublishedRoute.NotInvoked) is GbaItemNameAuthority.Available)
+        stopped = true
+        assertThrows(ParserCancellationException::class.java) { resolver.original(GbaItemPublishedRoute.NotInvoked) }
+    }
+
     @Test fun crossRootShiftTailMutationsStayTerminalBeforeCapsAndRecovery() {
         assertTailDamagedCompetitorsRemainNominated(mulStride = null)
     }
@@ -602,6 +994,7 @@ internal class ItemConsumerFixture(
     val scalarStart: Int = 0x900,
     val mulStride: Int? = null,
     val simpleWrapper: Boolean = false,
+    val scalarSpacing: Int = 0x40,
 ) {
     val bytes = ByteArray(0x10000)
     val scalarEntries = mutableListOf<Int>()
@@ -623,7 +1016,7 @@ internal class ItemConsumerFixture(
             description + 4 to 1, description + 5 to 1, description + 6 to 1, description + 7 to 1,
             description + 8 to 4, description + 12 to 1, description + 16 to 4, description + 20 to 1)
             .forEachIndexed { index, (offset, width) ->
-                val entry = scalarStart + index * 0x40
+                val entry = scalarStart + index * scalarSpacing
                 if (mulStride != null) mulScalarGetter(entry, offset, width) else scalar(entry, offset, width)
             }
         if (simpleWrapper) simpleCopyWrapper(wrapper) else dynamicCopyWrapper()
@@ -634,6 +1027,61 @@ internal class ItemConsumerFixture(
             bytes[root + id * stride + 1] = 0xFF.toByte()
             half(root + id * stride + nameBytes, id)
         }
+    }
+
+    /** R1 item index; copies one description line to the incoming destination, returning a flag. */
+    fun descriptionLineConsumer(entry: Int) {
+        emit(entry, 0xB570, 0x1C06, 0x1C08, 0x1C55)
+        literalLoad(entry + 8, 4, entry + 60, root)
+        emit(entry + 10, 0x0400, 0x0C00)
+        bl(entry + 14, sanitizer)
+        emit(entry + 18, 0x0400, 0x0C00, 0x2100 or stride, 0x4348,
+            0x3400 or ((nameBytes + 9) and -4), 0x1900, 0x6803,
+            0x1C32, 0x7819, 0x1C88, 0x0600, 0x0E00, 0x2801, 0xD811,
+            0x3D01, 0x2D00, 0xD105, 0x20FF, 0x7010, 0x2001, 0xE00E)
+        emit(entry + 64, 0x0608, 0x0E00, 0x28FF, 0xD101, 0x2000, 0xE006,
+            0x1C32, 0x3301, 0xE7E7, 0x7011, 0x3301, 0x3201, 0xE7E3,
+            0xBC70, 0xBC02, 0x4708)
+    }
+
+    /** Synthetic u8-indexed call wrapper; opaque callees are not item-name authority. */
+    fun conditionalU8Call(entry: Int, otherRoot: Int, scale: Int = 3) {
+        emit(entry, 0xB500, 0x0400, 0x0C00)
+        bl(entry + 6, 0x2400)
+        emit(entry + 10, 0x0600, 0x0E01)
+        literalLoad(entry + 14, 0, entry + 36, 0) // scalar literal, replaced below
+        emit(entry + 16, 0x4281, 0xD004, (scale shl 6) or 8)
+        literalLoad(entry + 22, 1, entry + 40, otherRoot)
+        half(entry + 24, 0x1840)
+        bl(entry + 26, 0x2420)
+        emit(entry + 30, 0xBC01, 0x4700)
+        half(entry + 36, 0x2345); half(entry + 38, 0)
+        emit(0x2400, 0x4770); emit(0x2420, 0x4770)
+    }
+
+    /** Synthetic category-selected copy wrapper with two owned scalar IDs and writable destinations. */
+    fun u8CategoryCopy(entry: Int, otherRoot: Int) {
+        emit(entry, 0xB500, 0x0400, 0x0C00)
+        bl(entry + 6, 0x2400)
+        emit(entry + 10, 0x0600, 0x0E00, 0x2802, 0xD006, 0x2807, 0xD007)
+        literalLoad(entry + 22, 1, entry + 28, otherRoot)
+        half(entry + 24, 0xE009)
+        emit(entry + 32, 0x2031, 0x0040, 0xE000)
+        literalLoad(entry + 38, 0, entry + 64, 0)
+        half(entry + 64, 99); half(entry + 66, 0)
+        bl(entry + 40, nameGetter)
+        half(entry + 44, 0x1C01)
+        literalLoad(entry + 46, 0, entry + 68, 0)
+        bl(entry + 48, copier)
+        literalLoad(entry + 52, 0, entry + 72, 0)
+        literalLoad(entry + 54, 1, entry + 76, 0)
+        bl(entry + 56, 0x2420)
+        emit(entry + 60, 0xBC01, 0x4700)
+        for ((offset, value) in listOf(68 to 0x02000100, 72 to 0x02000200,
+            76 to (0x08000000 + otherRoot + 0x80))) {
+            half(entry + offset, value and 0xFFFF); half(entry + offset + 2, value ushr 16)
+        }
+        emit(0x2400, 0x4770); emit(0x2420, 0x4770)
     }
 
     fun emitSanitizer(entry: Int, halfMaximum: Int) {

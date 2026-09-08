@@ -61,7 +61,8 @@ import org.junit.Test
 class WorldMapCatalogApiRealControlTest {
     @Test
     fun westernOfficialGen3DiagnosticFifteenControls() {
-        assumeTrue("set DUALDEX_WESTERN_GEN3_DIAGNOSTIC=1 for the separate fifteen-control diagnostic only",
+        // Optional Task416 semantic mode uses this SAME capture, never a second original selector.
+        assumeTrue("set DUALDEX_WESTERN_GEN3_DIAGNOSTIC=1 for the fifteen-control capture; semantic mode additionally requires its pinned fixture opt-in",
             System.getenv("DUALDEX_WESTERN_GEN3_DIAGNOSTIC") != null)
         WesternGen3BaselineCapture.run(JdbcTestCatalogDatabaseFactory)
     }
@@ -1209,14 +1210,18 @@ class WorldMapCatalogApiRealControlTest {
             if (requireDeclaredSigns) checks.attempt("declared-sign.sqlite.independent-samples") {
                 assertKoreanDeclaredSigns(reopened)
                 assertEquals(catalog.localMaps.pois, reopened.localMaps.pois)
-                assertEquals(58, CatalogSchema.parserSchemaVersion)
                 assertEquals(2, CatalogSchema.version)
+                JdbcTestCatalogDatabaseFactory.open(cache.fileFor(rom.sha256)).use { database ->
+                    assertEquals(listOf(CatalogSchema.parserSchemaVersion.toLong() to CatalogSchema.version.toLong()), database.query(
+                        "SELECT parser_schema_version, schema_version FROM catalog_metadata WHERE id = 1",
+                    ) { row -> row.long("parser_schema_version") to row.long("schema_version") })
+                }
                 println("DECLARED_SIGN_CACHE ${control.folder} sha256=${rom.sha256} database=${cache.fileFor(rom.sha256).absolutePath}")
             }
             if (directMoveProseControl) checks.attempt("sqlite.move-prose.independent-samples") {
                 assertNativeMoveProseSamples(reopened, control)
                 JdbcTestCatalogDatabaseFactory.open(cache.fileFor(rom.sha256)).use { database ->
-                    assertEquals(listOf(58L to 2L), database.query(
+                    assertEquals(listOf(CatalogSchema.parserSchemaVersion.toLong() to CatalogSchema.version.toLong()), database.query(
                         "SELECT parser_schema_version, schema_version FROM catalog_metadata WHERE id = 1",
                     ) { row -> row.long("parser_schema_version") to row.long("schema_version") })
                 }

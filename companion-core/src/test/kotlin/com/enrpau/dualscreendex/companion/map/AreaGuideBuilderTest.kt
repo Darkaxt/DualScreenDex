@@ -12,6 +12,7 @@ import com.enrpau.dualscreendex.parser.catalog.EncounterSlot
 import com.enrpau.dualscreendex.parser.catalog.EncounterWindow
 import com.enrpau.dualscreendex.parser.catalog.LocalMap
 import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
+import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiTextObligation
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoi
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiItem
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiKind
@@ -35,6 +36,28 @@ import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class AreaGuideBuilderTest {
+    @Test
+    fun task415DestinationLabelDoesNotReplaceDirectSignOrRevealSilhouette() {
+        val base = catalog()
+        val entrance = base.localMaps.pois.single { it.key == HOUSE }
+        val source = base.copy(localMaps = base.localMaps.copy(pois = listOf(
+            entrance.copy(key = "warp", displayName = null, kind = LocalMapPoiKind.PLACE, service = null,
+                textObligation = LocalMapPoiTextObligation.DESTINATION_NAME),
+            entrance.copy(key = "missing-sign", displayName = null, textObligation = LocalMapPoiTextObligation.DIRECT_TEXT),
+        )))
+        val discovered = AppSnapshot(settings = CompanionSettings(knowledgeMode = KnowledgeMode.DISCOVERED))
+        val points = AreaGuideBuilder.project(source, discovered).points.associateBy { it.key }
+        assertEquals("Oldale Town", points.getValue("warp").label)
+        assertNull(points.getValue("missing-sign").label)
+        val organic = organicSnapshot(visitedAreaBaseIds = setOf(ROUTE), seenSpeciesByArea = emptyMap(), proximityRevealedPoiKeys = setOf("warp", "missing-sign"))
+        val silhouettes = AreaGuideBuilder.project(source, organic).points
+        assertEquals(2, silhouettes.size)
+        silhouettes.forEach {
+            assertNull(it.label)
+            assertNull(it.destinationBaseAreaId)
+        }
+    }
+
     @Test
     fun oversizedPointInputFailsBeforeProjectionAllocation() {
         val base = catalog()

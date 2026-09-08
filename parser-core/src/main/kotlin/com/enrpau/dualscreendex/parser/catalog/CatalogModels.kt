@@ -778,6 +778,20 @@ data class LocalMapCatalog(
             require(poi.destinationBaseAreaId == null || poi.destinationBaseAreaId in 0..0xFFFF) {
                 "local-map POI destination base-area IDs must fit group/map identity"
             }
+            when (requireNotNull(poi.textObligation) { "local-map POIs require structural text obligations" }) {
+                LocalMapPoiTextObligation.ITEM_NAME -> require(poi.item != null) {
+                    "item-name obligations require item metadata"
+                }
+                LocalMapPoiTextObligation.DESTINATION_NAME -> require(poi.kind == LocalMapPoiKind.PLACE) {
+                    "destination-name obligations require destination-only place POIs"
+                }
+                LocalMapPoiTextObligation.DIRECT_TEXT,
+                LocalMapPoiTextObligation.GENDERED_DIRECT_TEXT,
+                -> require(poi.kind == LocalMapPoiKind.PLACE || poi.kind == LocalMapPoiKind.SERVICE) {
+                    "direct-text obligations require place or service POIs"
+                }
+                LocalMapPoiTextObligation.UNRESOLVED -> Unit
+            }
             when (poi.kind) {
                 LocalMapPoiKind.SERVICE -> require(poi.service != null && poi.item == null) {
                     "service POIs require a service role and cannot carry item metadata"
@@ -895,6 +909,16 @@ data class LocalMapPoiItem(
     }
 }
 
+/** The event producer's structural label contract, retained after localized text is stripped. */
+enum class LocalMapPoiTextObligation {
+    DIRECT_TEXT,
+    GENDERED_DIRECT_TEXT,
+    ITEM_NAME,
+    DESTINATION_NAME,
+    /** Unknown scripts/services are still incomplete, never an implicit applicability exclusion. */
+    UNRESOLVED,
+}
+
 data class LocalMapPoi(
     val key: String,
     val localMapKey: String,
@@ -908,6 +932,7 @@ data class LocalMapPoi(
     val item: LocalMapPoiItem? = null,
     val destinationBaseAreaId: Int? = null,
     val displayNamesByTrainerGender: Map<Int, String> = emptyMap(),
+    val textObligation: LocalMapPoiTextObligation = LocalMapPoiTextObligation.UNRESOLVED,
 ) {
     init {
         require(displayNamesByTrainerGender.keys.all { it in 0..1 }) {

@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 import org.junit.Assert.*
 
-/** Current Western GBA diagnostic parity only. Observed output is NEVER an independent name oracle. */
+/** One Western GBA capture; diagnostic by default, independently pinned semantic comparison by explicit opt-in. */
 internal object WesternGen3BaselineCapture {
     internal val json = WesternGen1BaselineCapture.json
     internal const val manifestSha = "ee408ad4a5d51da8656ff336ff7c139d92fc24b9d201f6817c47ce3ef194a749"
@@ -57,20 +57,37 @@ internal object WesternGen3BaselineCapture {
         preflight(System.getenv("DUALDEX_WESTERN_GEN3_DIAGNOSTIC"),
             { readMetadata("DUALDEX_WESTERN_MANIFEST").also { manifest = it } },
             { readMetadata("DUALDEX_WESTERN_INVENTORY").also { inventory = it } }) { controls ->
+            val semanticOptIn = System.getenv("DUALDEX_WESTERN_GEN3_SEMANTIC_ACCEPTANCE")
+            val fixturePath = System.getenv("DUALDEX_WESTERN_GEN3_FIXTURE")
+            val fixtureSha = System.getenv("DUALDEX_WESTERN_GEN3_FIXTURE_SHA256")
+            // Validate ALL15 independent identities/domains before output reservation or any input access.
+            // A partial semantic configuration rejects; it cannot silently degrade to diagnostic mode.
+            val oracles = if (listOf(semanticOptIn, fixturePath, fixtureSha).all { it == null }) emptyMap() else
+                WesternGen3SemanticOracle.preflight(semanticOptIn, fixtureSha,
+                    { readMetadata("DUALDEX_WESTERN_GEN3_FIXTURE") }, controls) { it }
+            val semanticMode = oracles.isNotEmpty()
             val root = createOutput(Path.of(requireNotNull(System.getenv("DUALDEX_TEST_TEMP_ROOT"))))
             Files.write(root.resolve("manifest.json"), manifest); Files.write(root.resolve("inventory.json"), inventory)
             write(root.resolve("scope.json"), mapOf("manifestSha256" to manifestSha, "inventorySha256" to inventorySha,
                 "controls" to controls.map { it.identity }, "parserSchemaVersion" to CatalogSchema.parserSchemaVersion, "storageSchemaVersion" to CatalogSchema.version,
                 "historicalParserSchemaVersion" to 49, "historicalRequestedNameSlots" to controls.sumOf {
                     it.historical.getAsJsonObject("localizedCapabilities").getAsJsonObject("ITEM_NAMES")["expectedRecords"].asInt },
-                "currentExpectedDomain" to "OBSERVE_NOT_PRESET", "semanticAcceptance" to false, "acceptedNames" to 0,
-                "independentCompiledProof" to "NOT_RUN", "tokenPolicyProof" to "NOT_RUN", "automaticRetry" to false,
+                "currentExpectedDomain" to if (semanticMode) "INDEPENDENT_TASK416_EXACT1660" else "OBSERVE_NOT_PRESET",
+                "semanticMode" to semanticMode, "independentFixtureSha256" to fixtureSha,
+                "semanticAcceptance" to false, "acceptedNames" to 0,
+                "independentCompiledProof" to if (semanticMode) "EXTERNALLY_PINNED_NOT_REEVALUATED" else "NOT_RUN",
+                "tokenPolicyProof" to if (semanticMode) "EXTERNALLY_PINNED_NOT_REEVALUATED" else "NOT_RUN", "automaticRetry" to false,
                 "rawRomRetention" to "NONE", "historicalCachesOpened" to false, "nonItemEquality49ToCurrent" to "NOT_ESTABLISHED"))
             // Reserve every directory before the first original read; collisions are not retried or merged.
             val receipts = controls.map { control ->
                 val c = control.identity
-                Receipt(Files.createDirectory(root.resolve("${c["language"].asString}-${c["family"].asString}-${c["sha256"].asString}")), c).also {
+                Receipt(Files.createDirectory(root.resolve("${c["language"].asString}-${c["family"].asString}-${c["sha256"].asString}")), c,
+                    oracles[c["sha256"].asString]).also {
                     it.save(); write(it.root.resolve("historical-parser49-cell.json"), control.historical)
+                    it.oracle?.let { oracle -> write(it.root.resolve("independent-expectations.json"), mapOf(
+                        "fixtureSha256" to WesternGen3SemanticOracle.fixtureSha256, "normalization" to WesternGen3SemanticOracle.displayNormalization,
+                        "identity" to oracle.identity, "rawNames" to oracle.rawNames, "expectedDisplayNames" to oracle.names,
+                        "authority" to "EXTERNALLY_PINNED_TASK416_PROOF_NOT_PRODUCTION_OUTPUT")) }
                 }
             }
             for ((control, receipt) in controls.zip(receipts)) {
@@ -83,11 +100,15 @@ internal object WesternGen3BaselineCapture {
                         "available=${receipt.values["availableCount"]}/${receipt.values["requestedCount"]} failures=${receipt.errors.keys}")
                 }
             }
-            val complete = receipts.all { it.values["terminal"] == "DIAGNOSTIC_CAPTURE_COMPLETE" }
+            val complete = receipts.all { it.values["terminal"] == if (semanticMode) "SEMANTIC_ACCEPTANCE_COMPLETE" else "DIAGNOSTIC_CAPTURE_COMPLETE" }
+            val semanticAccepted = semanticMode && complete && receipts.sumOf { it.values["acceptedNames"] as Int } == 1660
             write(root.resolve("batch.json"), mapOf("junitMethods" to 1, "controlReceipts" to receipts.size,
-                "diagnosticComplete" to complete, "semanticAcceptance" to false, "acceptedNames" to 0,
-                "requiredSemanticCompletion" to "NOT_ACCEPTED", "automaticRetry" to false, "controls" to receipts.map { it.values }))
-            assertTrue("Western GBA diagnostic integrity failed; retained receipts at $root", complete)
+                "diagnosticComplete" to receipts.all { it.values["diagnosticComplete"] == true },
+                "semanticAcceptance" to semanticAccepted, "acceptedNames" to if (semanticAccepted) 1660 else 0,
+                "independentFixtureSha256" to fixtureSha, "semanticMode" to semanticMode,
+                "requiredSemanticCompletion" to if (semanticAccepted) "COMPLETE" else "NOT_ACCEPTED",
+                "automaticRetry" to false, "controls" to receipts.map { it.values }))
+            assertTrue("Western GBA capture integrity failed; retained receipts at $root", complete && (!semanticMode || semanticAccepted))
         }
     }
 
@@ -252,6 +273,13 @@ internal object WesternGen3BaselineCapture {
             receipt.check("original-authority.unchanged") { assertSame(authority, layout.itemNameAuthority) }
             receipt.check("producer.once-complete") { assertEquals(1, observation.attempts); assertTrue(observation.completed) }
             receipt.check("producer.complete-keys") { assertEquals(observation.requested, observation.fields.keys) }
+            receipt.oracle?.let { oracle ->
+                WesternGen3SemanticOracle.checkProducer(oracle.rawNames, observation.requested, observation.fields) {
+                    stage, block -> receipt.check("producer.semantic.$stage", block)
+                }
+                receipt.semanticBoundaryCounts["producer"] = observation.fields.size
+                receipt.completed += "semantic-producer"
+            }
         } ?: return
         receipt.completed += "materialize"
         receipt.check("current.snapshot") {
@@ -275,6 +303,14 @@ internal object WesternGen3BaselineCapture {
             assertEquals(setOf(projection.language), catalog.localization.overlays.keys)
         }
         checkCatalogItems(catalog, observation.requested, observation.fields) { stage, block -> receipt.check("materialize.$stage", block) }
+        receipt.oracle?.let { oracle ->
+            WesternGen3SemanticOracle.checkCatalog(oracle, catalog, observation.requested, observation.fields) {
+                stage, block -> receipt.check("materialize.semantic.$stage", block)
+            }
+            receipt.semanticBoundaryCounts["materialize-overlay"] = catalog.defaultLocalizedText()?.itemNames?.size ?: 0
+            receipt.semanticBoundaryCounts["materialize-projection"] = numericIds(catalog).size
+            receipt.completed += "semantic-materialize"
+        }
         receipt.completed += "numeric"
         receipt.check("historical.record-comparison") {
             write(receipt.root.resolve("historical-current-comparison.json"), historicalComparison(historical, catalog))
@@ -316,6 +352,14 @@ internal object WesternGen3BaselineCapture {
             assertEquals(CatalogSchema.requiredSections + "language_overlay:${catalog.languageManifest.defaultLanguage!!.value}", stored.committedSections)
         }
         checkCatalogItems(reopened, requested, fields) { stage, block -> receipt.check("sqlite.$stage", block) }
+        receipt.oracle?.let { oracle ->
+            WesternGen3SemanticOracle.checkCatalog(oracle, reopened, requested, fields) {
+                stage, block -> receipt.check("sqlite.semantic.$stage", block)
+            }
+            receipt.semanticBoundaryCounts["sqlite-overlay"] = reopened.defaultLocalizedText()?.itemNames?.size ?: 0
+            receipt.semanticBoundaryCounts["sqlite-projection"] = numericIds(reopened).size
+            receipt.completed += "semantic-sqlite"
+        }
         for (capability in LocalizedTextCapability.entries) receipt.check("sqlite.capability-parity.$capability") {
             assertEquals(catalog.defaultLocalizedText()!!.localizedCapabilities.getValue(capability), reopened.defaultLocalizedText()!!.localizedCapabilities.getValue(capability))
         }
@@ -350,9 +394,27 @@ internal object WesternGen3BaselineCapture {
                     WesternGen1SemanticCapture.checkApiLanguage(reopened, requireNotNull(bootstrap.language)) { stage, block -> receipt.check("api.$stage", block) }
                     receipt.check("api.whole-projection-parity") { assertEquals(ApiViewBuilder.catalog(reopened), bootstrap.catalog) }
                     checkApiItems(reopened, requireNotNull(bootstrap.catalog), pois) { stage, block -> receipt.check("api.$stage", block) }
+                    receipt.oracle?.let { oracle ->
+                        val names = (requireNotNull(bootstrap.catalog).balls.map { it.id to it.name } +
+                            pois.filter { it.itemId != null }.map { requireNotNull(it.itemId) to it.itemName })
+                            .groupBy({ it.first }, { it.second })
+                        WesternGen3SemanticOracle.checkNames(oracle.rawNames, names) {
+                            stage, block -> receipt.check("api.semantic.$stage", block)
+                        }
+                        receipt.check("api.semantic.item-capability.complete") {
+                            val state = requireNotNull(bootstrap.language).projections.single().localizedCapabilities.getValue("ITEM_NAMES")
+                            assertEquals("AVAILABLE", state.status)
+                            assertEquals(oracle.names.size, state.expectedRecords); assertEquals(oracle.names.size, state.coveredRecords)
+                            assertEquals(0, state.incompleteRecords)
+                        }
+                        receipt.semanticBoundaryCounts["api"] = names.size
+                        receipt.values["semanticApiUniqueIds"] = names.size
+                        receipt.values["semanticApiOccurrences"] = names.values.sumOf { it.size }
+                    }
                 }
                 // Only reached after the runtime close and every API boundary was visited.
                 receipt.completed += "api"
+                if (receipt.oracle != null) receipt.completed += "semantic-api"
             }
         } finally {
             receipt.values["apiReparses"] = reparses.get()
@@ -410,16 +472,31 @@ internal object WesternGen3BaselineCapture {
     private fun sha256(bytes: ByteArray) = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
     private fun write(path: Path, value: Any?) { Files.write(path, json.toJson(value).toByteArray(Charsets.UTF_8)) }
 
-    internal class Receipt(val root: Path, val control: JsonObject) {
+    internal class Receipt(val root: Path, val control: JsonObject, val oracle: WesternGen3SemanticOracle.Control? = null) {
         val checks = linkedMapOf<String, String>(); val errors = linkedMapOf<String, String>(); val completed = linkedSetOf<String>()
+        val semanticBoundaryCounts = linkedMapOf<String, Int>()
         val values = linkedMapOf<String, Any?>("control" to control, "terminal" to "NOT_STARTED", "semanticAcceptance" to false,
             "acceptedNames" to 0, "requiredSemanticCompletion" to "NOT_ACCEPTED", "inputReadAttempts" to 0, "inputReads" to 0,
-            "originalAnalysisInvocations" to 0, "checks" to checks, "errors" to errors, "completedPaths" to completed)
+            "originalAnalysisInvocations" to 0, "checks" to checks, "errors" to errors, "completedPaths" to completed,
+            "semanticMode" to (oracle != null), "independentFixtureSha256" to oracle?.let { WesternGen3SemanticOracle.fixtureSha256 },
+            "independentExpectedNames" to (oracle?.names?.size ?: 0), "semanticBoundaryUniqueIds" to semanticBoundaryCounts)
         fun save() { write(root.resolve("receipt.json"), values) }
         fun finish() {
-            values["semanticAcceptance"] = false; values["acceptedNames"] = 0; values["requiredSemanticCompletion"] = "NOT_ACCEPTED"
-            values["missingPaths"] = requiredPaths - completed
-            values["terminal"] = if (errors.isEmpty() && completed.containsAll(requiredPaths)) "DIAGNOSTIC_CAPTURE_COMPLETE" else "DIAGNOSTIC_CAPTURE_FAILED"
+            val diagnosticComplete = errors.isEmpty() && completed.containsAll(requiredPaths)
+            val semanticPaths = if (oracle == null) emptySet() else WesternGen3SemanticOracle.requiredPaths
+            val expectedCount = oracle?.names?.size ?: 0
+            val singleCapture = listOf("inputReads", "inputReadAttempts", "originalAnalysisInvocations", "itemProducerCalls").all { values[it] == 1 } && values["apiReparses"] == 0
+            val completeNames = expectedCount > 0 && values["requestedCount"] == expectedCount && values["availableCount"] == expectedCount &&
+                semanticBoundaryCounts == WesternGen3SemanticOracle.requiredBoundaries.associateWith { expectedCount }
+            val accepted = oracle != null && diagnosticComplete && completed.containsAll(semanticPaths) && singleCapture && completeNames
+            values["diagnosticComplete"] = diagnosticComplete
+            values["semanticAcceptance"] = accepted; values["acceptedNames"] = if (accepted) expectedCount else 0
+            values["requiredSemanticCompletion"] = if (accepted) "COMPLETE" else "NOT_ACCEPTED"
+            values["missingPaths"] = (requiredPaths + semanticPaths) - completed
+            values["singleCaptureCountersComplete"] = singleCapture; values["independentBoundaryCountsComplete"] = completeNames
+            values["terminal"] = if (oracle != null) {
+                if (accepted) "SEMANTIC_ACCEPTANCE_COMPLETE" else "SEMANTIC_ACCEPTANCE_FAILED"
+            } else if (diagnosticComplete) "DIAGNOSTIC_CAPTURE_COMPLETE" else "DIAGNOSTIC_CAPTURE_FAILED"
             save()
         }
         fun failure(stage: String, failure: Throwable) {

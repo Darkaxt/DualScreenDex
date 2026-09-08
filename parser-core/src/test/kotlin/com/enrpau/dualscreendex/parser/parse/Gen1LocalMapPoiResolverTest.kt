@@ -1,6 +1,7 @@
 package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.catalog.LocalMap
+import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiTextObligation
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiKind
 import com.enrpau.dualscreendex.parser.io.RomImage
 import org.junit.Assert.assertEquals
@@ -8,6 +9,27 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class Gen1LocalMapPoiResolverTest {
+    @Test
+    fun task415ObligationsComeFromEventsWithoutDecodedNames() {
+        val bytes = ByteArray(0x8000)
+        writeHeader(bytes, HEADER_1, OBJECT_ROOT_1_ADDRESS)
+        byteArrayOf(
+            0, 2, 1, 2, 1, 2, 8, 8, 1, 2,
+            1, 1, 2, 1,
+            1, 1, 5, 6, 0, 0, 0x80.toByte(), 4,
+        ).copyInto(bytes, OBJECT_ROOT_1)
+        val result = Gen1LocalMapPoiResolver.resolve(RomImage(bytes),
+            listOf(Gen1LocalMapPoiResolver.Source(1, 1, HEADER_1)), listOf(localMap(1), localMap(2)), null)
+        val points = result.pois.associateBy { it.key.substringAfter("local/1/") }
+        assertEquals(setOf("warp/1", "bg/0", "object/0"), points.keys)
+        assertEquals(LocalMapPoiTextObligation.DESTINATION_NAME, points.getValue("warp/1").textObligation)
+        assertEquals(LocalMapPoiTextObligation.DIRECT_TEXT, points.getValue("bg/0").textObligation)
+        assertEquals(2, points.getValue("bg/0").destinationBaseAreaId)
+        assertEquals(null, points.getValue("bg/0").displayName)
+        assertEquals(LocalMapPoiTextObligation.ITEM_NAME, points.getValue("object/0").textObligation)
+        assertEquals(4, points.getValue("object/0").item?.itemId)
+    }
+
     @Test
     fun isolatesMalformedMapsAndOmitsOutOfBoundsEvents() {
         val bytes = ByteArray(0x8000)

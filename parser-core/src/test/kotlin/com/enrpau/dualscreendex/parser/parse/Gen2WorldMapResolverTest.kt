@@ -55,6 +55,45 @@ class Gen2WorldMapResolverTest {
             fixture.session(), Gen2CompiledMapFixture.MAP_IDS, PokemonTextCodec.gbEnglish))
     }
 
+    @Test fun englishCodecDoesNotAuthorizeUnreferencedRegionTitles() {
+        assertNoInventedRegionTitles(PokemonTextCodec.gbEnglish, intArrayOf(0x80, 0x50))
+    }
+
+    @Test fun japaneseCodecDoesNotAuthorizeEnglishRegionTitles() {
+        assertNoInventedRegionTitles(JapanesePokemonTextCodecs.gen2, intArrayOf(0x05, 0x06, 0x50))
+    }
+
+    @Test fun koreanCodecDoesNotAuthorizeEnglishRegionTitles() {
+        assertNoInventedRegionTitles(KoreanGen2PokemonTextCodec.codec, intArrayOf(0x01, 0x01, 0x50))
+    }
+
+    private fun assertNoInventedRegionTitles(codec: PokemonTextCodec, name: IntArray) {
+        for (relocated in listOf(false, true)) {
+            val fixture = Gen2CompiledMapFixture().apply {
+                landmark(1, name)
+                landmark(2, name)
+                if (relocated) {
+                    // Move the complete asset bank while preserving its local pointer relationships.
+                    bytes.copyInto(bytes, 0xc000, 0x4000, 0x8000)
+                    bytes.fill(0, 0x4000, 0x8000)
+                    bytes[0xc208] = 3 // compressed-graphics bank operand
+                }
+                // Readable but unreferenced payloads cannot declare a region title.
+                put(0x7000, 0x89, 0x8e, 0x87, 0x93, 0x8e, 0x50)
+                put(0x7010, 0x8a, 0x80, 0x8d, 0x93, 0x8e, 0x50)
+            }
+            val numeric = resolved(fixture, null)
+            val catalog = resolved(fixture, codec)
+            assertEquals("codec ${codec.id}, relocated=$relocated", listOf(null, null),
+                catalog.regions.map { it.displayName })
+            assertTrue(catalog.regions.flatMap { it.locations }.all { it.displayName != null })
+            assertEquals(numeric.regions, catalog.regions.map { region ->
+                region.copy(locations = region.locations.map { it.copy(displayName = null) })
+            })
+            assertEquals(numeric.assets, catalog.assets)
+        }
+    }
+
     @Test fun malformedLocalizedNamesRetainExactlyTheCodecFreeNumericCatalog() {
         val cases = listOf(
             PokemonTextCodec.gbEnglish to intArrayOf(0x80, 0, 0x50),

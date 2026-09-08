@@ -4,6 +4,7 @@ import com.enrpau.dualscreendex.parser.analysis.Gen1ItemReference
 import com.enrpau.dualscreendex.parser.catalog.LocalMap
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoi
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiItem
+import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiTextObligation
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiKind
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiOrganicVisibility
 import com.enrpau.dualscreendex.parser.io.RomImage
@@ -139,6 +140,7 @@ internal object Gen1LocalMapPoiResolver {
                         tileX = objectEvent.x,
                         tileY = objectEvent.y,
                         kind = LocalMapPoiKind.VISIBLE_ITEM,
+                        textObligation = LocalMapPoiTextObligation.ITEM_NAME,
                         item = LocalMapPoiItem(itemId = itemId),
                     ),
                 )
@@ -156,6 +158,7 @@ internal object Gen1LocalMapPoiResolver {
                         tileX = background.x,
                         tileY = background.y,
                         kind = LocalMapPoiKind.PLACE,
+                        textObligation = LocalMapPoiTextObligation.DIRECT_TEXT,
                         organicVisibility = LocalMapPoiOrganicVisibility.ENTRANCE_PROXIMITY,
                         displayName = codec?.let {
                             readSignHeadline(rom, source, background.textId, it)
@@ -310,6 +313,7 @@ internal object Gen1LocalMapPoiResolver {
                                 tileX = x,
                                 tileY = y,
                                 kind = LocalMapPoiKind.HIDDEN_ITEM,
+                                textObligation = LocalMapPoiTextObligation.ITEM_NAME,
                                 organicVisibility = LocalMapPoiOrganicVisibility.PROXIMITY_SILHOUETTE,
                                 item = LocalMapPoiItem(itemId = itemId, collectionFlagId = coordinateIndex),
                             )
@@ -496,6 +500,7 @@ internal object Gen1LocalMapPoiResolver {
             tileX = x,
             tileY = y,
             kind = LocalMapPoiKind.PLACE,
+            textObligation = LocalMapPoiTextObligation.DESTINATION_NAME,
             organicVisibility = LocalMapPoiOrganicVisibility.ENTRANCE_PROXIMITY,
             destinationBaseAreaId = destinationBaseAreaId,
         )

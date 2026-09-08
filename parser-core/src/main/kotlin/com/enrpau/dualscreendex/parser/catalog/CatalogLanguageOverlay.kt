@@ -5,6 +5,7 @@ import com.enrpau.dualscreendex.parser.language.LanguageTag
 import com.enrpau.dualscreendex.parser.language.RomLanguageManifest
 import com.enrpau.dualscreendex.parser.model.CapabilityReviewStatus
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
+import com.enrpau.dualscreendex.parser.model.RomCapability
 import java.util.Collections
 
 enum class LocalizedTextCapability {
@@ -228,7 +229,9 @@ class CatalogLanguageOverlay(
         requireCoverage(LocalizedTextCapability.WORLD_REGION_NAMES, worldRegionNames.size)
         requireCoverage(LocalizedTextCapability.WORLD_LOCATION_NAMES, worldLocationNames.size)
         requireCoverage(LocalizedTextCapability.ENCOUNTER_AREA_NAMES, encounterAreaNames.size)
-        requireCoverage(LocalizedTextCapability.POI_TEXT, poiTexts.size)
+        require(localizedCapabilities.getValue(LocalizedTextCapability.POI_TEXT).coveredRecords >= poiTexts.size) {
+            "localized POI coverage must include its stored direct-text records"
+        }
         require(totalEntryCount() <= MAXIMUM_OVERLAY_ENTRIES) { "catalog overlay entry limit exceeded" }
         require(totalTextCharacters() <= MAXIMUM_OVERLAY_TEXT_CHARACTERS) {
             "catalog overlay text-character limit exceeded"
@@ -279,6 +282,26 @@ class CatalogLanguageOverlay(
         requireSubset(worldLocationNames.keys, worldLocationKeys, "world-location name", "location")
         requireSubset(encounterAreaNames.keys, catalog.encounterAreas.mapTo(hashSetOf(), EncounterArea::id), "encounter name", "area")
         requireSubset(poiTexts.keys, catalog.localMaps.pois.mapTo(hashSetOf(), LocalMapPoi::key), "POI text", "POI")
+        catalog.localMaps.pois.forEach { poi ->
+            val text = poiTexts[poi.key] ?: return@forEach
+            val valid = when (poi.textObligation) {
+                LocalMapPoiTextObligation.DIRECT_TEXT -> text.displayName != null &&
+                    text.displayNamesByTrainerGender.isEmpty() && text.itemDisplayName == null
+                LocalMapPoiTextObligation.GENDERED_DIRECT_TEXT -> text.displayName == null &&
+                    text.displayNamesByTrainerGender.keys == setOf(0, 1) && text.itemDisplayName == null
+                LocalMapPoiTextObligation.ITEM_NAME -> poi.item != null && poi.item.itemId == null &&
+                    text.itemDisplayName != null && text.displayName == null && text.displayNamesByTrainerGender.isEmpty()
+                LocalMapPoiTextObligation.DESTINATION_NAME,
+                LocalMapPoiTextObligation.UNRESOLVED,
+                -> false
+            }
+            require(valid) { "localized POI text must match its structural obligation" }
+        }
+        val resolvedPoiCount = CatalogPoiTextResolver(catalog.localMaps, poiTexts, itemNames, localMapNames,
+            poiTextAuthorized(catalog.capabilities[RomCapability.LOCAL_MAP])).coveredRecords()
+        require(localizedCapabilities.getValue(LocalizedTextCapability.POI_TEXT).coveredRecords == resolvedPoiCount) {
+            "localized POI coverage must equal its fulfilled structural obligations"
+        }
 
         requireExpected(LocalizedTextCapability.SPECIES_NAMES, catalog.speciesById.size)
         requireExpected(

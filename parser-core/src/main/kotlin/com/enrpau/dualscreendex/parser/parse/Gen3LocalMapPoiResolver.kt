@@ -3,6 +3,7 @@ package com.enrpau.dualscreendex.parser.parse
 import com.enrpau.dualscreendex.parser.catalog.LocalMap
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoi
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiItem
+import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiTextObligation
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiKind
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiOrganicVisibility
 import com.enrpau.dualscreendex.parser.io.RomImage
@@ -107,6 +108,7 @@ internal object Gen3LocalMapPoiResolver {
                         tileX = x,
                         tileY = y,
                         kind = LocalMapPoiKind.VISIBLE_ITEM,
+                        textObligation = LocalMapPoiTextObligation.ITEM_NAME,
                         item = LocalMapPoiItem(
                             itemId = itemId,
                             collectionFlagId = rom.u16le(offset + 0x14),
@@ -123,6 +125,7 @@ internal object Gen3LocalMapPoiResolver {
                         tileX = warp.x,
                         tileY = warp.y,
                         kind = LocalMapPoiKind.PLACE,
+                        textObligation = LocalMapPoiTextObligation.DESTINATION_NAME,
                         organicVisibility = LocalMapPoiOrganicVisibility.ENTRANCE_PROXIMITY,
                         destinationBaseAreaId = warp.destinationBaseAreaId,
                     ),
@@ -142,6 +145,7 @@ internal object Gen3LocalMapPoiResolver {
                             tileX = background.x,
                             tileY = background.y,
                             kind = LocalMapPoiKind.HIDDEN_ITEM,
+                            textObligation = LocalMapPoiTextObligation.ITEM_NAME,
                             organicVisibility = LocalMapPoiOrganicVisibility.PROXIMITY_SILHOUETTE,
                             item = LocalMapPoiItem(
                                 itemId = rom.u16le(background.offset + 8),
@@ -152,15 +156,16 @@ internal object Gen3LocalMapPoiResolver {
                 } else {
                     val destination = backgroundWarps[background.index]
                     val isSign = background.kind in BG_EVENT_SIGN_KINDS
-                    val signHeadline = if (isSign) {
-                        codec?.let { selectedCodec ->
-                            rom.gbaPointer(background.offset + 8)?.let {
-                                readSignHeadline(rom, it, selectedCodec)
-                            }
-                        }
-                    } else {
-                        null
+                    val script = if (isSign) rom.gbaPointer(background.offset + 8) else null
+                    // The branch contract comes from the script prefix, even if either text fails decoding.
+                    val genderConditioned = script != null && script.toLong() + 2 <= rom.size &&
+                        rom.u8(script) == SCR_OP_LOCK_ALL && rom.u8(script + 1) == SCR_OP_CHECK_PLAYER_GENDER
+                    val obligation = when {
+                        !isSign -> LocalMapPoiTextObligation.UNRESOLVED
+                        genderConditioned -> LocalMapPoiTextObligation.GENDERED_DIRECT_TEXT
+                        else -> LocalMapPoiTextObligation.DIRECT_TEXT
                     }
+                    val signHeadline = if (script != null && codec != null) readSignHeadline(rom, script, codec) else null
                     add(
                         LocalMapPoi(
                             key = "${map.key}/bg/${background.index}",
@@ -178,6 +183,7 @@ internal object Gen3LocalMapPoiResolver {
                             } else {
                                 LocalMapPoiOrganicVisibility.VISIBLE
                             },
+                            textObligation = obligation,
                             displayName = signHeadline?.displayName,
                             displayNamesByTrainerGender = signHeadline?.byTrainerGender.orEmpty(),
                             destinationBaseAreaId = destination?.destinationBaseAreaId,

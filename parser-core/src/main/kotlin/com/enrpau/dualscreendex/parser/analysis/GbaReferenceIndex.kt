@@ -216,7 +216,8 @@ internal object SafeGbaReferenceIndexBuilder {
                                 rom.u16le(site - 20) == 0x0400 && rom.u16le(site - 18) == 0x0C00) ||
                              (site >= 18 && rom.u16le(site - 18) == 0xB500 &&
                                 rom.u16le(site - 16) == 0x0400 && rom.u16le(site - 14) == 0x0C00))) {
-                            // Nominate from the pre-literal shift/MUL prefix, never the return tail.
+                            // Nominate the broad u16-entry/LDR skeleton, never filter by the return tail.
+                            // The resolver proves direct getters or complete distinct local wrappers.
                             // Damaged scale, sanitizer, ADD, POP, or BX competitors must reach full proof.
                             observedItemHints++
                             if (itemHints.size < itemHintLimit) itemHints += site

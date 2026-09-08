@@ -18,6 +18,164 @@ import org.junit.Test
 
 class CatalogLanguageOverlayTest {
     @Test
+    fun itemReferenceSatisfiesPoiCoverageWithoutDuplicatingItemText() {
+        val localMaps = LocalMapCatalog(
+            maps = listOf(LocalMap("local/1", "Town", 1, 16, 16, 1, 1, "map")),
+            assets = mapOf("map" to PngMapAsset(byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10))),
+            pois = listOf(LocalMapPoi(
+                "item", "local/1", 1, 0, 0, LocalMapPoiKind.VISIBLE_ITEM,
+                item = LocalMapPoiItem(itemId = 4),
+                textObligation = LocalMapPoiTextObligation.ITEM_NAME,
+            )),
+        )
+        val extraction = CatalogLocalizedTextExtractor.extract(
+            manifest = resolvedManifest(), speciesById = emptyMap(), movesById = emptyMap(),
+            abilitiesById = emptyMap(), naturesById = emptyMap(), capabilities = emptyMap(),
+            localMaps = localMaps,
+            captureBallsById = mapOf(4 to CaptureBallRecord(4, CatalogField.available("native ball"), CatalogField.notFound("sprite"))),
+        )
+        val overlay = requireNotNull(extraction.localization.defaultOverlay())
+        assertEquals(1, overlay.localizedCapabilities.getValue(LocalizedTextCapability.POI_TEXT).coveredRecords)
+        assertEquals(emptyMap<String, CatalogPoiText>(), overlay.poiTexts)
+    }
+
+    @Test
+    fun task415CoverageResolvesOnlyExplicitSameOverlayObligations() {
+        val extraction = poiExtraction()
+        val catalog = poiCatalog(extraction)
+        val overlay = requireNotNull(catalog.defaultLocalizedText())
+        val state = overlay.localizedCapabilities.getValue(LocalizedTextCapability.POI_TEXT)
+        assertEquals(4, state.coveredRecords)
+        assertEquals(6, state.expectedRecords)
+        assertEquals(setOf("direct", "gender"), overlay.poiTexts.keys)
+        assertEquals(setOf(4), overlay.itemNames.keys)
+        assertEquals(poiMaps().pois.map { it.textObligation }, catalog.localMaps.pois.map { it.textObligation })
+        assertEquals(poiMaps().assets, catalog.localMaps.assets)
+        assertEquals(poiMaps().maps.map { it.copy(displayName = null) }, catalog.localMaps.maps)
+        catalog.localMaps.pois.forEach {
+            assertNull(it.displayName)
+            assertEquals(emptyMap<Int, String>(), it.displayNamesByTrainerGender)
+            assertNull(it.item?.displayName)
+        }
+        val text = catalog.defaultTextProjection()
+        assertEquals("Ball", text.poiItemName("item", 4))
+        assertNull(text.poiItemName("item", 5))
+        assertNull(text.poiItemName("direct", 4))
+        assertEquals("Cave", text.poiDisplayName("warp"))
+        assertEquals("Direct sign", text.poiDisplayName("direct"))
+        assertNull(text.poiDisplayName("missing-sign"))
+        assertNull(text.poiDisplayName("unknown"))
+        assertEquals("Boy's house", text.poiDisplayName("gender", 0))
+        assertEquals("Girl's house", text.poiDisplayName("gender", 1))
+        assertNull(text.poiDisplayName("gender", 2))
+        assertNull(text.poiDisplayName("gender"))
+        val french = requireNotNull(catalog.textProjection(LanguageTag.FRENCH))
+        assertNull(french.poiItemName("item", 4))
+        catalog.localMaps.pois.forEach { assertNull(french.poiDisplayName(it.key, 0)) }
+        assertEquals(0, french.localizedCapabilities.getValue(LocalizedTextCapability.POI_TEXT).coveredRecords)
+        assertEquals(6, french.localizedCapabilities.getValue(LocalizedTextCapability.POI_TEXT).expectedRecords)
+    }
+
+    @Test
+    fun task415MissingConflictingReferencesAndIncompleteGenderStayIncomplete() {
+        val maps = poiMaps().let { source -> source.copy(
+            maps = source.maps.map { it.copy(displayName = null) },
+            pois = source.pois.map { poi -> when (poi.key) {
+                "item" -> poi.copy(item = poi.item!!.copy(displayName = "Conflicting ball"))
+                "gender" -> poi.copy(displayName = "Must not replace missing female", displayNamesByTrainerGender = mapOf(0 to "Boy's house"))
+                else -> poi
+            } },
+        ) }
+        val catalog = poiCatalog(poiExtraction(maps))
+        val text = catalog.defaultTextProjection()
+        assertEquals(1, text.localizedCapabilities.getValue(LocalizedTextCapability.POI_TEXT).coveredRecords)
+        assertEquals(6, text.localizedCapabilities.getValue(LocalizedTextCapability.POI_TEXT).expectedRecords)
+        assertNull(text.poiItemName("item", 4))
+        assertNull(text.poiDisplayName("warp"))
+        assertNull(text.poiDisplayName("gender", 0))
+        assertNull(text.poiDisplayName("gender", 1))
+        assertEquals("Direct sign", text.poiDisplayName("direct"))
+    }
+
+    @Test
+    fun task415DeniedLocalAuthorityCannotPublishReferenceLabels() {
+        val denied = CapabilityEvidence(RomCapability.LOCAL_MAP, false, 0.0, status = CapabilityStatus.AMBIGUOUS)
+        val catalog = poiCatalog(poiExtraction(capabilities = mapOf(RomCapability.LOCAL_MAP to denied)))
+        val text = catalog.defaultTextProjection()
+        assertEquals("Ball", text.itemName(4))
+        assertEquals(0, text.localizedCapabilities.getValue(LocalizedTextCapability.POI_TEXT).coveredRecords)
+        assertNull(text.poiItemName("item", 4))
+        assertNull(text.poiDisplayName("warp"))
+        assertNull(text.poiDisplayName("direct"))
+    }
+
+    @Test
+    fun task415CoverageIsRevalidatedAgainstSharedReferences() {
+        val extraction = poiExtraction()
+        val original = requireNotNull(extraction.localization.defaultOverlay())
+        val inflated = CatalogLanguageOverlay(
+            original.language, original.overlayVersion,
+            original.localizedCapabilities + (LocalizedTextCapability.POI_TEXT to LocalizedCapabilityState.available(6)),
+            itemNames = original.itemNames, localMapNames = original.localMapNames, poiTexts = original.poiTexts,
+        )
+        assertThrows(IllegalArgumentException::class.java) {
+            poiCatalog(extraction.copy(localization = CatalogLocalization(extraction.localization.manifest,
+                extraction.localization.overlays + (original.language to inflated))))
+        }
+        val missingTarget = extraction.localMaps.copy(pois = extraction.localMaps.pois.map {
+            if (it.key == "warp") it.copy(destinationBaseAreaId = 999) else it
+        })
+        assertThrows(IllegalArgumentException::class.java) { poiCatalog(extraction.copy(localMaps = missingTarget)) }
+        val misboundText = CatalogLanguageOverlay(
+            original.language, original.overlayVersion, original.localizedCapabilities,
+            itemNames = original.itemNames, localMapNames = original.localMapNames,
+            poiTexts = original.poiTexts + ("warp" to CatalogPoiText(displayName = CatalogField.available("Decoy"))),
+        )
+        assertThrows(IllegalArgumentException::class.java) {
+            poiCatalog(extraction.copy(localization = CatalogLocalization(extraction.localization.manifest,
+                extraction.localization.overlays + (original.language to misboundText))))
+        }
+    }
+
+    @Test
+    fun task415AnonymousItemUsesOnlyItsExplicitPoiTextObligation() {
+        val maps = poiMaps().let { source -> source.copy(pois = source.pois.map {
+            if (it.key == "item") it.copy(item = LocalMapPoiItem(displayName = "Inline item")) else it
+        }) }
+        val catalog = poiCatalog(poiExtraction(maps))
+        assertEquals("Inline item", catalog.defaultTextProjection().poiItemName("item", null))
+        assertNull(catalog.defaultTextProjection().poiItemName("item", 4))
+        assertEquals(4, catalog.defaultTextProjection().localizedCapabilities.getValue(LocalizedTextCapability.POI_TEXT).coveredRecords)
+        assertNull(requireNotNull(catalog.textProjection(LanguageTag.FRENCH)).poiItemName("item", null))
+    }
+
+    private fun poiMaps() = LocalMapCatalog(
+        maps = listOf(LocalMap("local/1", "Town", 1, 16, 16, 1, 1, "map"), LocalMap("local/2", "Cave", 2, 16, 16, 1, 1, "map")),
+        assets = mapOf("map" to PngMapAsset(byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10))),
+        pois = listOf(
+            LocalMapPoi("item", "local/1", 1, 0, 0, LocalMapPoiKind.VISIBLE_ITEM, item = LocalMapPoiItem(4), textObligation = LocalMapPoiTextObligation.ITEM_NAME),
+            LocalMapPoi("warp", "local/1", 1, 0, 0, LocalMapPoiKind.PLACE, destinationBaseAreaId = 2, textObligation = LocalMapPoiTextObligation.DESTINATION_NAME),
+            LocalMapPoi("missing-sign", "local/1", 1, 0, 0, LocalMapPoiKind.PLACE, destinationBaseAreaId = 2, textObligation = LocalMapPoiTextObligation.DIRECT_TEXT),
+            LocalMapPoi("direct", "local/1", 1, 0, 0, LocalMapPoiKind.PLACE, displayName = "Direct sign", textObligation = LocalMapPoiTextObligation.DIRECT_TEXT),
+            LocalMapPoi("unknown", "local/1", 1, 0, 0, LocalMapPoiKind.UNKNOWN, displayName = "Untrusted", destinationBaseAreaId = 2),
+            LocalMapPoi("gender", "local/1", 1, 0, 0, LocalMapPoiKind.PLACE, displayName = "Must not pick first", displayNamesByTrainerGender = mapOf(0 to "Boy's house", 1 to "Girl's house"), textObligation = LocalMapPoiTextObligation.GENDERED_DIRECT_TEXT),
+        ),
+    )
+
+    private fun poiExtraction(maps: LocalMapCatalog = poiMaps(), capabilities: Map<RomCapability, CapabilityEvidence> = emptyMap()) =
+        CatalogLocalizedTextExtractor.extract(
+            manifest = resolvedManifest(), speciesById = emptyMap(), movesById = emptyMap(),
+            abilitiesById = emptyMap(), naturesById = emptyMap(), capabilities = capabilities, localMaps = maps,
+            captureBallsById = mapOf(4 to CaptureBallRecord(4, CatalogField.available("Ball"), CatalogField.notFound("sprite"))),
+        )
+
+    private fun poiCatalog(extraction: CatalogLocalizedTextExtraction) = ParsedCatalog(
+        romSha256 = "4".repeat(64), family = EngineFamily.GOLD_SILVER, platform = Platform.GBC,
+        localMaps = extraction.localMaps, captureBallsById = extraction.captureBallsById,
+        capabilities = extraction.capabilities, localization = extraction.localization,
+    )
+
+    @Test
     fun resolvedSecondaryProjectionNeverBorrowsOrdinaryItemNames() {
         val extraction = CatalogLocalizedTextExtractor.extract(
             manifest = resolvedManifest(), speciesById = emptyMap(), movesById = emptyMap(),

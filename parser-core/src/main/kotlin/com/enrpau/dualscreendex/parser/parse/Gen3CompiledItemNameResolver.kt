@@ -68,10 +68,17 @@ internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSess
         for (site in hints.sites) {
             session.cancellation.throwIfCancellationRequested()
             val root = literal(site) ?: return unavailable("incomplete original item candidate literal")
-            val getter = pointerGetter(site, root) ?: return unavailable("incomplete original item getter candidate")
+            val getter = pointerGetter(site, root)
+            if (getter == null) {
+                // A complete distinct wrapper may discharge a hint, never an item-root reference.
+                // Failed or partial direct getters still remain competing candidates.
+                if (conditionalU8CallWrapper(site, root) || categoryCopyWrapper(site, root)) continue
+                return unavailable("incomplete original item getter candidate")
+            }
             roots += root
             targets += getter.entry
         }
+        if (roots.isEmpty()) return unavailable("no original direct inline item getter candidates")
         if (roots.size > minOf(8, session.limits.maxProbeRootsPerDataset)) return unavailable("original item root budget")
         var siteCount = 0L
         val evidence = linkedMapOf<Int, GbaTargetReferenceEvidence>()
@@ -92,11 +99,17 @@ internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSess
             val recovered = recoverOriginalSites(evidence) ?: return unavailable("original item batch recovery unavailable")
             evidence.putAll(recovered)
         }
-        val calls = callers(targets) ?: return unavailable("original item caller inventory unavailable")
+        val pools = linkedMapOf<Int, Set<Int>>()
+        for (root in roots) {
+            pools[root] = ownedLiteralPools(root, evidence.getValue(root))
+                ?: return unavailable("incomplete original item pool inventory")
+        }
+        val calls = callers(targets, pools.values.flatten().toSet())
+            ?: return unavailable("original item caller or pool incoming inventory unavailable")
         val tables = mutableListOf<Table>()
         for (root in roots) {
             session.cancellation.throwIfCancellationRequested()
-            val result = prove(root, index, evidence.getValue(root), calls)
+            val result = prove(root, index, evidence.getValue(root), calls, pools.getValue(root))
             tables += result.table ?: return result // unsupported witnesses never vanish via mapNotNull
         }
         if (tables.size != 1) return unavailable("competing complete original item roots")
@@ -162,22 +175,51 @@ internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSess
         return prove(root, index, references, null)
     }
 
-    private fun prove(root: Int, index: GbaReferenceIndex, references: GbaTargetReferenceEvidence,
-                      batchCalls: Map<Int, List<Int>>?): Result {
-        if (root !in 0 until rom.size || index.overflowed) return unavailable("invalid item root inventory")
+    private fun completeReferenceSites(references: GbaTargetReferenceEvidence): Boolean {
         val sites = references.instructionSites
-        if (!references.siteEvidenceAvailable || references.siteBudgetExceeded || sites.isEmpty() ||
-            sites.size != references.count || sites.distinct().size != sites.size ||
-            references.observedSites != references.count || sites.size > session.limits.maxNominatedGbaReferenceSites) {
-            return unavailable("incomplete item reference inventory")
+        return references.siteEvidenceAvailable && !references.siteBudgetExceeded && sites.isNotEmpty() &&
+            sites.size == references.count && sites.distinct().size == sites.size &&
+            references.observedSites == references.count && sites.size <= session.limits.maxNominatedGbaReferenceSites
+    }
+
+    /**
+     * Positive ownership only: a complete getter returns before its exact aligned four-byte literal.
+     * This does not reconcile unknown instructions. The caller scan must still guard both pool
+     * halfwords and optional alignment padding against supported direct Thumb edges before discharge.
+     */
+    private fun ownedLiteralPools(root: Int, references: GbaTargetReferenceEvidence): Set<Int>? {
+        if (!completeReferenceSites(references)) return null
+        val pools = linkedSetOf<Int>()
+        for (site in references.instructionSites) {
+            session.cancellation.throwIfCancellationRequested()
+            val getter = pointerGetter(site, root) ?: scalarGetter(site, root) ?: continue
+            val pool = literalSlot(site) ?: continue
+            if (pool != ((getter.codeEnd + 3) and -4) ||
+                (pool != getter.codeEnd && word(getter.codeEnd) != 0)) continue
+            pools += pool
         }
+        if (exhausted) return null
+        // Only pools actually interpreted as root-reference instructions need this disposition.
+        return pools.intersect(references.instructionSites.mapTo(linkedSetOf()) { it and -4 })
+    }
+
+    private fun prove(root: Int, index: GbaReferenceIndex, references: GbaTargetReferenceEvidence,
+                      batchCalls: Map<Int, List<Int>>?, batchPools: Set<Int>? = null): Result {
+        if (root !in 0 until rom.size || index.overflowed) return unavailable("invalid item root inventory")
+        if (!completeReferenceSites(references)) return unavailable("incomplete item reference inventory")
+        val pools = batchPools ?: ownedLiteralPools(root, references)
+            ?: return unavailable("incomplete item pool inventory")
         val getters = mutableListOf<Getter>()
-        for (site in sites) {
+        val descriptions = mutableListOf<DescriptionConsumer>()
+        for (site in references.instructionSites) {
             session.cancellation.throwIfCancellationRequested()
             if (literal(site) != root) return unavailable("item reference site does not load nominated root")
             val getter = pointerGetter(site, root) ?: scalarGetter(site, root)
-                ?: return unavailable("unreconciled item getter at 0x${site.toString(16)}")
-            getters += getter
+            if (getter == null) {
+                if ((site and -4) in pools) continue // exact owned word, never an arbitrary unsupported site
+                descriptions += descriptionConsumer(site, root)
+                    ?: return unavailable("unreconciled item getter at 0x${site.toString(16)}")
+            } else getters += getter
         }
         if (getters.map { it.stride to it.count }.distinct().size != 1) return unavailable("conflicting item geometry")
         val pointer = getters.singleOrNull { it.field == null } ?: return unavailable("conflicting or missing inline-name getter")
@@ -195,6 +237,9 @@ internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSess
         if (fields.size != expectedFields.size || fields.toSet() != expectedFields.toSet()) {
             return unavailable("incomplete or conflicting item scalar field inventory")
         }
+        if (descriptions.any { it.stride != pointer.stride || it.count != pointer.count || it.field != description }) {
+            return unavailable("conflicting auxiliary item description geometry")
+        }
         if (boundary.width != 2 || width !in 1 until pointer.stride || getters.any {
                 it.field != null && it.field + it.width > pointer.stride
             }) return unavailable("invalid item numeric field boundary")
@@ -202,7 +247,7 @@ internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSess
             is ExtentCheck.Valid -> Unit
             else -> return unavailable("item record extent unavailable")
         }
-        val calls = (if (batchCalls == null) callers(setOf(pointer.entry))?.get(pointer.entry)
+        val calls = (if (batchCalls == null) callers(setOf(pointer.entry), pools)?.get(pointer.entry)
             else batchCalls[pointer.entry]) ?: return unavailable("item copier caller scan unavailable")
         val contracts = mutableListOf<CopyContract>()
         for (call in calls) {
@@ -220,7 +265,72 @@ internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSess
         return Result(Table(root, pointer.stride, pointer.count, width, setOfNotNull(contracts.single().excludedId)), "complete compiled static item-name consumer")
     }
 
-    private data class Getter(val entry: Int, val stride: Int, val count: Int, val field: Int?, val width: Int = 0)
+    /**
+     * Negative direct-getter eligibility only: a complete local u8-indexed call wrapper.
+     * Its callees remain opaque; neither their effects nor their returned values grant authority.
+     * The broad hint inventory and complete per-item-root reference reconciliation are unchanged.
+     */
+    private fun conditionalU8CallWrapper(site: Int, root: Int): Boolean {
+        val entry = site - 22
+        if (entry < 0 || entry > rom.size - 44 ||
+            !matches(entry, 0xB500, 0x0400, 0x0C00) ||
+            !matches(entry + 10, 0x0600, 0x0E01) ||
+            !matches(entry + 16, 0x4281, 0xD004) || word(site + 2) != 0x1840 ||
+            !matches(site + 8, 0xBC01, 0x4700)) return false
+        if (wrapperCall(entry + 6, entry, entry + 44) == null ||
+            wrapperCall(site + 4, entry, entry + 44) == null) return false
+        val scale = shift(word(entry + 20), 1, 0) ?: return false
+        if (scale > 8 || root.toLong() + (255L shl scale) >= rom.size.toLong()) return false
+        val sentinel = wrapperLiteral(entry + 14, 0, entry + 34, entry + 44) ?: return false
+        return sentinel in 0..0xFFFFL &&
+            wrapperLiteral(site, 1, entry + 34, entry + 44) == 0x08000000L + root
+    }
+
+    /** Every arm selects a copy source, not a direct indexed inline-name pointer return. */
+    private fun categoryCopyWrapper(site: Int, root: Int): Boolean {
+        val entry = site - 22
+        if (entry < 0 || entry > rom.size - 80 ||
+            !matches(entry, 0xB500, 0x0400, 0x0C00) ||
+            !matches(entry + 10, 0x0600, 0x0E00) ||
+            word(entry + 14) and 0xFF00 != 0x2800 || word(entry + 18) and 0xFF00 != 0x2800 ||
+            word(entry + 14) == word(entry + 18) || word(entry + 16) != 0xD006 ||
+            word(entry + 20) != 0xD007 || word(entry + 24) != 0xE009 ||
+            word(entry + 36) != 0xE000 || word(entry + 44) != 0x1C01 ||
+            !matches(entry + 60, 0xBC01, 0x4700)) return false
+        val immediate = word(entry + 32)
+        val scale = shift(word(entry + 34), 0, 0) ?: return false
+        if (immediate and 0xFF00 != 0x2000 || ((immediate and 255).toLong() shl scale) !in 0..0xFFFFL) return false
+        if (wrapperCall(entry + 6, entry, entry + 80) == null ||
+            wrapperCall(entry + 40, entry, entry + 80) == null ||
+            wrapperCall(entry + 56, entry, entry + 80) == null) return false
+        val copier = wrapperCall(entry + 48, entry, entry + 80) ?: return false
+        if (!completeCopier(copier) ||
+            wrapperLiteral(site, 1, entry + 28, entry + 32) != 0x08000000L + root) return false
+        val alternateId = wrapperLiteral(entry + 38, 0, entry + 64, entry + 80) ?: return false
+        val firstDestination = wrapperLiteral(entry + 46, 0, entry + 64, entry + 80) ?: return false
+        val finalDestination = wrapperLiteral(entry + 52, 0, entry + 64, entry + 80) ?: return false
+        val template = wrapperLiteral(entry + 54, 1, entry + 64, entry + 80) ?: return false
+        return alternateId in 0..0xFFFFL && writableAddress(firstDestination) && writableAddress(finalDestination) &&
+            template in 0x08000000L..0x09FFFFFFL && template - 0x08000000L < rom.size.toLong()
+    }
+
+    private fun writableAddress(value: Long): Boolean =
+        value in 0x02000000L..0x0203FFFFL || value in 0x03000000L..0x03007FFFL
+
+    /** Encoding/bounds and exclusion of this wrapper's owned code/pools, not callee semantics. */
+    private fun wrapperCall(at: Int, entry: Int, end: Int): Int? =
+        bl(at)?.takeUnless { it in entry until end }
+
+    private fun wrapperLiteral(at: Int, register: Int, poolStart: Int, poolEnd: Int): Long? {
+        val instruction = word(at)
+        if (instruction < 0 || instruction and 0xFF00 != (0x4800 or (register shl 8))) return null
+        val slot = ((at + 4) and -4).toLong() + (instruction and 255) * 4L
+        return if (slot >= poolStart && slot <= poolEnd.toLong() - 4 && slot <= rom.size.toLong() - 4)
+            rom.u32le(slot.toInt()) else null
+    }
+
+    private data class Getter(val entry: Int, val stride: Int, val count: Int, val field: Int?,
+                              val codeEnd: Int, val width: Int = 0)
 
     private fun pointerGetter(site: Int, root: Int): Getter? =
         shiftPointerGetter(site, root) ?: mulPointerGetter(site, root)
@@ -234,7 +344,7 @@ internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSess
         val first = shift(word(entry + 16), 1, 0) ?: return null
         if (word(entry + 18) != 0x1840) return null
         val last = shift(word(entry + 20), 0, 0) ?: return null
-        return Getter(entry, stride(first, last) ?: return null, count, null)
+        return Getter(entry, stride(first, last) ?: return null, count, null, site + 8)
     }
 
     private fun mulPointerGetter(site: Int, root: Int): Getter? {
@@ -244,7 +354,7 @@ internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSess
             literal(site) != root) return null
         val count = sanitize(bl(entry + 6) ?: return null) ?: return null
         val stride = immediateMulStride(entry + 14) ?: return null
-        return Getter(entry, stride, count, null)
+        return Getter(entry, stride, count, null, site + 8)
     }
 
     private fun scalarGetter(site: Int, root: Int): Getter? =
@@ -267,7 +377,7 @@ internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSess
         val width = when (load and 0xF800) { 0x7800 -> 1; 0x8800 -> 2; 0x6800 -> 4; else -> return null }
         if (load and 0x3F != 8 || !matches(cursor + 2, 0xBC10, 0xBC02, 0x4708)) return null
         val field = adjustment + ((load ushr 6) and 31) * width
-        return Getter(entry, stride(first, last) ?: return null, count, field, width)
+        return Getter(entry, stride(first, last) ?: return null, count, field, cursor + 8, width)
     }
 
     private fun mulScalarGetter(site: Int, root: Int): Getter? {
@@ -286,7 +396,33 @@ internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSess
         val width = when (load and 0xF800) { 0x7800 -> 1; 0x8800 -> 2; 0x6800 -> 4; else -> return null }
         if (load and 0x3F != 0 || !matches(cursor + 2, 0xBC10, 0xBC02, 0x4708)) return null
         val field = adjustment + ((load ushr 6) and 31) * width
-        return Getter(entry, stride, count, field, width)
+        return Getter(entry, stride, count, field, cursor + 8, width)
+    }
+
+    private data class DescriptionConsumer(val stride: Int, val count: Int, val field: Int)
+
+    /**
+     * Complete R1-indexed description-line consumer, not a scalar getter or inline-name authority.
+     * Its sole call must be the complete u16 sanitizer. Every loop/return arm skips the exact
+     * internal root literal; description payloads and destination memory are never traversed here.
+     */
+    private fun descriptionConsumer(site: Int, root: Int): DescriptionConsumer? {
+        val entry = site - 8
+        if (entry < 0 || entry > rom.size - 96 ||
+            !matches(entry, 0xB570, 0x1C06, 0x1C08, 0x1C55) ||
+            word(site) and 0xFF00 != 0x4C00 || literalSlot(site) != entry + 60 || literal(site) != root ||
+            !matches(entry + 10, 0x0400, 0x0C00) || !matches(entry + 18, 0x0400, 0x0C00)) return null
+        val count = sanitize(bl(entry + 14) ?: return null) ?: return null
+        val stride = immediateMulStride(entry + 22) ?: return null
+        val adjustment = word(entry + 26)
+        if (adjustment and 0xFF00 != 0x3400) return null
+        val field = adjustment and 255
+        if (field !in 0..stride - 4 || !matches(entry + 28,
+                0x1900, 0x6803, 0x1C32, 0x7819, 0x1C88, 0x0600, 0x0E00, 0x2801,
+                0xD811, 0x3D01, 0x2D00, 0xD105, 0x20FF, 0x7010, 0x2001, 0xE00E) ||
+            !matches(entry + 64, 0x0608, 0x0E00, 0x28FF, 0xD101, 0x2000, 0xE006,
+                0x1C32, 0x3301, 0xE7E7, 0x7011, 0x3301, 0x3201, 0xE7E3, 0xBC70, 0xBC02, 0x4708)) return null
+        return DescriptionConsumer(stride, count, field)
     }
 
     /** MOV r1,#stride; MUL r0,r1, with the same bounded geometry as the shift forms. */
@@ -311,21 +447,47 @@ internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSess
     private fun shift(opcode: Int, source: Int, destination: Int): Int? =
         if (opcode >= 0 && opcode and 0xF83F == ((source shl 3) or destination)) (opcode ushr 6) and 31 else null
 
-    /** One finite target-set BL nomination pass; overflow counts remain complete, never sampled. */
-    private fun callers(targets: Set<Int>): Map<Int, List<Int>>? {
+    /**
+     * One bounded shared scan: complete BL caller counts and direct Thumb BL/B/Bcc pool guards.
+     * This is not a global absence claim for ARM, indirect/computed edges, or arbitrary execution.
+     */
+    private fun callers(targets: Set<Int>, guardedPools: Set<Int>): Map<Int, List<Int>>? {
         if (!scan(rom.size)) return null
         val sites = targets.associateWith { mutableListOf<Int>() }
+        val guardedHalfwords = hashSetOf<Int>()
+        for (pool in guardedPools) {
+            guardedHalfwords += pool
+            guardedHalfwords += pool + 2
+            // Positive ownership permits only a BX immediately before this word or one zero pad.
+            // A direct edge to that pad could otherwise fall through into the literal.
+            if (word(pool - 2) == 0) guardedHalfwords += pool - 2
+        }
+        if (exhausted) return null
+        var incoming = false
         var observed = 0
         val limit = minOf(session.limits.maxNominatedGbaReferenceSites, MAX_CALLERS)
-        for (at in 0..rom.size - 4 step 2) {
+        for (at in 0..rom.size - 2 step 2) {
             if (at and 4095 == 0) session.cancellation.throwIfCancellationRequested()
-            val list = sites[rawBl(at)] ?: continue
+            val call = if (at <= rom.size - 4) rawBl(at) else null
+            if (guardedHalfwords.isNotEmpty() && (call in guardedHalfwords ||
+                    rawBranch(at) in guardedHalfwords)) incoming = true
+            val list = sites[call] ?: continue
             observed++
             if (observed <= limit) list += at
         }
         session.cancellation.throwIfCancellationRequested()
         if (observed > limit) { exhausted = true; return null }
-        return sites
+        return if (incoming) null else sites
+    }
+
+    private fun rawBranch(at: Int): Int? {
+        val op = rom.u16le(at)
+        val displacement = when {
+            op and 0xF800 == 0xE000 -> (op and 0x7FF) shl 21 shr 20
+            op and 0xF000 == 0xD000 && ((op ushr 8) and 15) < 14 -> (op and 255) shl 24 shr 23
+            else -> return null // excludes undefined condition 14 and SWI condition 15
+        }
+        return (at.toLong() + 4 + displacement).takeIf { it in 0 until rom.size.toLong() }?.toInt()
     }
 
     private data class CopyContract(val entry: Int, val getter: Int, val copier: Int, val excludedId: Int?)
@@ -373,11 +535,12 @@ internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSess
         return if (at >= 0 && at and 1 == 0 && at <= rom.size - 2) rom.u16le(at) else -1
     }
     private fun matches(at: Int, vararg words: Int): Boolean = words.indices.all { word(at + 2 * it) == words[it] }
-    private fun literal(at: Int): Int? {
+    private fun literal(at: Int): Int? = literalSlot(at)?.let { rom.gbaPointer(it) }
+    private fun literalSlot(at: Int): Int? {
         val instruction = word(at)
         if (instruction < 0 || instruction and 0xF800 != 0x4800) return null
         val slot = ((at + 4) and -4).toLong() + (instruction and 255) * 4L
-        return if (slot in 0..rom.size.toLong() - 4) rom.gbaPointer(slot.toInt()) else null
+        return slot.takeIf { it in 0..rom.size.toLong() - 4 }?.toInt()
     }
     private fun bl(at: Int): Int? {
         val high = word(at); val low = word(at + 2)

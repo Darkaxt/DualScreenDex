@@ -164,7 +164,9 @@ internal object CatalogLocalizedTextExtractor {
                 expectedRecords.getValue(LocalizedTextCapability.ENCOUNTER_AREA_NAMES),
             ),
             LocalizedTextCapability.POI_TEXT to localizedState(
-                capabilities[RomCapability.LOCAL_MAP], poiTexts.size,
+                capabilities[RomCapability.LOCAL_MAP],
+                CatalogPoiTextResolver(localMaps, poiTexts, itemNames, localMapNames,
+                    poiTextAuthorized(capabilities[RomCapability.LOCAL_MAP])).coveredRecords(),
                 expectedRecords.getValue(LocalizedTextCapability.POI_TEXT),
             ),
         )
@@ -310,15 +312,23 @@ internal object CatalogLocalizedTextExtractor {
 
     private fun extractPoiTexts(localMaps: LocalMapCatalog): Map<String, CatalogPoiText> =
         localMaps.pois.mapNotNull { poi ->
-            val displayName = poi.displayName?.let(CatalogField.Companion::available)
-            val genderNames = poi.displayNamesByTrainerGender.mapValues { (_, value) -> CatalogField.available(value) }
-            val itemDisplayName = poi.item?.takeIf { it.itemId == null }?.displayName
-                ?.let(CatalogField.Companion::available)
-            if (displayName == null && genderNames.isEmpty() && itemDisplayName == null) {
-                null
-            } else {
-                poi.key to CatalogPoiText(displayName, genderNames, itemDisplayName)
+            val text = when (poi.textObligation) {
+                LocalMapPoiTextObligation.DIRECT_TEXT -> poi.displayName?.let {
+                    CatalogPoiText(displayName = CatalogField.available(it))
+                }
+                LocalMapPoiTextObligation.GENDERED_DIRECT_TEXT -> if (poi.displayNamesByTrainerGender.keys == setOf(0, 1)) {
+                    CatalogPoiText(displayNamesByTrainerGender = poi.displayNamesByTrainerGender.mapValues { (_, value) ->
+                        CatalogField.available(value)
+                    })
+                } else null
+                LocalMapPoiTextObligation.ITEM_NAME -> poi.item?.takeIf { it.itemId == null }?.displayName?.let {
+                    CatalogPoiText(itemDisplayName = CatalogField.available(it))
+                }
+                LocalMapPoiTextObligation.DESTINATION_NAME,
+                LocalMapPoiTextObligation.UNRESOLVED,
+                -> null
             }
+            text?.let { poi.key to it }
         }.toMap(linkedMapOf())
 
     private fun expectedRecords(

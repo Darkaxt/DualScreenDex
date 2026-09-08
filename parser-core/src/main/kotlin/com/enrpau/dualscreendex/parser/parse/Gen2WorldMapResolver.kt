@@ -99,17 +99,18 @@ object Gen2WorldMapResolver {
 
         val asset = assets.single()
         val binding = bindings.single()
-        val hasBothEncounterRegions = binding.johto.isNotEmpty() && binding.kanto.isNotEmpty()
+        // Region classification and a valid codec do not prove a ROM-authored region title.
+        // Keep titles unavailable until a compiled title declaration is independently bound.
         val regionInputs = listOf(
             RegionInput(
                 "gen2-johto",
-                codec?.let { "Johto" }?.takeIf { hasBothEncounterRegions },
+                null,
                 asset.johtoMap,
                 binding.johto,
             ),
             RegionInput(
                 "gen2-kanto",
-                codec?.let { "Kanto" }?.takeIf { hasBothEncounterRegions },
+                null,
                 asset.kantoMap,
                 binding.kanto,
             ),

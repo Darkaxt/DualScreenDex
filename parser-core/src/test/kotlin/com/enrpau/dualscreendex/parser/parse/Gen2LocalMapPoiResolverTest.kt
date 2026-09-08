@@ -4,6 +4,7 @@ import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.analysis.ParserCancellationException
 import com.enrpau.dualscreendex.parser.analysis.ResolutionLimits
 import com.enrpau.dualscreendex.parser.catalog.LocalMap
+import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiTextObligation
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiKind
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.language.LanguageTag
@@ -18,6 +19,35 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class Gen2LocalMapPoiResolverTest {
+    @Test
+    fun task415ObligationsPreserveSignDestinationAndUnknownEventsWithoutCodec() {
+        val bytes = ByteArray(0x8000)
+        writeAttributes(bytes, ATTRIBUTES_1, EVENTS_1_ADDRESS)
+        byteArrayOf(
+            0, 0, 2, 1, 2, 1, 0, 2, 8, 8, 1, 0, 2,
+            0, 3,
+            1, 2, 0, 0, 0x46,
+            4, 4, 5, 0, 0x46,
+            6, 6, 7, 0, 0x47,
+            0,
+        ).copyInto(bytes, EVENTS_1)
+        byteArrayOf(0x34, 0x12, 4).copyInto(bytes, 0x4700)
+        for (family in listOf(EngineFamily.GOLD_SILVER, EngineFamily.CRYSTAL)) {
+            val result = Gen2LocalMapPoiResolver.resolve(RomImage(bytes),
+                listOf(Gen2LocalMapPoiResolver.Source(1, 1, ATTRIBUTES_1)), listOf(localMap(1), localMap(2)), family, null)
+            val points = result.pois.associateBy { it.key.substringAfter("local/1/") }
+            assertEquals(setOf("warp/1", "bg/0", "bg/1", "bg/2"), points.keys)
+            assertEquals(LocalMapPoiTextObligation.DESTINATION_NAME, points.getValue("warp/1").textObligation)
+            assertEquals(LocalMapPoiTextObligation.DIRECT_TEXT, points.getValue("bg/0").textObligation)
+            assertEquals(2, points.getValue("bg/0").destinationBaseAreaId)
+            assertEquals(null, points.getValue("bg/0").displayName)
+            assertEquals(LocalMapPoiTextObligation.UNRESOLVED, points.getValue("bg/1").textObligation)
+            assertEquals(LocalMapPoiTextObligation.ITEM_NAME, points.getValue("bg/2").textObligation)
+            assertEquals(4, points.getValue("bg/2").item?.itemId)
+            assertEquals(0x1234, points.getValue("bg/2").item?.collectionFlagId)
+        }
+    }
+
     @Test
     fun isolatesMalformedMapsAndIgnoresUnrelatedObjectPointers() {
         val bytes = ByteArray(0x8000)

@@ -6,6 +6,7 @@ import com.enrpau.dualscreendex.parser.analysis.ResolutionLimits
 import com.enrpau.dualscreendex.parser.catalog.LocalMap
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoi
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiItem
+import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiTextObligation
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiKind
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiOrganicVisibility
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiService
@@ -181,6 +182,7 @@ internal object Gen2LocalMapPoiResolver {
                         tileX = objectEvent.x,
                         tileY = objectEvent.y,
                         kind = LocalMapPoiKind.VISIBLE_ITEM,
+                        textObligation = LocalMapPoiTextObligation.ITEM_NAME,
                         item = LocalMapPoiItem(
                             itemId = itemId,
                             collectionFlagId = objectEvent.eventFlag,
@@ -210,6 +212,7 @@ internal object Gen2LocalMapPoiResolver {
                                 tileX = background.x,
                                 tileY = background.y,
                                 kind = LocalMapPoiKind.HIDDEN_ITEM,
+                                textObligation = LocalMapPoiTextObligation.ITEM_NAME,
                                 organicVisibility = LocalMapPoiOrganicVisibility.PROXIMITY_SILHOUETTE,
                                 item = LocalMapPoiItem(itemId = itemId, collectionFlagId = collectionFlag),
                             ),
@@ -226,6 +229,7 @@ internal object Gen2LocalMapPoiResolver {
                             tileX = background.x,
                             tileY = background.y,
                             kind = if (semantics.service == null) LocalMapPoiKind.PLACE else LocalMapPoiKind.SERVICE,
+                            textObligation = LocalMapPoiTextObligation.DIRECT_TEXT,
                             organicVisibility = LocalMapPoiOrganicVisibility.ENTRANCE_PROXIMITY,
                             displayName = semantics.displayName,
                             service = semantics.service,
@@ -241,6 +245,7 @@ internal object Gen2LocalMapPoiResolver {
                             tileX = background.x,
                             tileY = background.y,
                             kind = LocalMapPoiKind.UNKNOWN,
+                            textObligation = LocalMapPoiTextObligation.UNRESOLVED,
                         ),
                     )
                 }
@@ -424,6 +429,7 @@ internal object Gen2LocalMapPoiResolver {
             tileX = x,
             tileY = y,
             kind = LocalMapPoiKind.PLACE,
+            textObligation = LocalMapPoiTextObligation.DESTINATION_NAME,
             organicVisibility = LocalMapPoiOrganicVisibility.ENTRANCE_PROXIMITY,
             destinationBaseAreaId = destinationBaseAreaId,
         )

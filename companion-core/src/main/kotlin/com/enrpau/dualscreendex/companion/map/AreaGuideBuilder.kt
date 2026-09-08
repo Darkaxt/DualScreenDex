@@ -154,12 +154,7 @@ object AreaGuideBuilder {
             else -> AreaGuidePointCategory.UNKNOWN
         }
         val trainer = snapshot.trainerCardState?.identity
-        val label = when {
-            !identified -> null
-            category == AreaGuidePointCategory.AVAILABLE_ITEM || category == AreaGuidePointCategory.COLLECTED_ITEM ->
-                normalizeText(text.poiItemName(poi.key, poi.item?.itemId), trainer?.name, null)
-            else -> normalizeText(text.poiDisplayName(poi.key, trainer?.gender), trainer?.name, null)
-        }
+        val label = if (identified) normalizeText(text.poiLabel(poi.key, trainer?.gender), trainer?.name, null) else null
         outputBudget?.retain()
         add(AreaGuidePoint(
             key = poi.key,
