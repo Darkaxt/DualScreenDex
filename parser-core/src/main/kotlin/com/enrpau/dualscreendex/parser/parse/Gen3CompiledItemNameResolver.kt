@@ -11,7 +11,9 @@ import com.enrpau.dualscreendex.parser.model.GbaItemRootNomination
 
 /** Static inline names only. Every accepted instruction path is complete; unsupported ABIs stay absent. */
 internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSession) {
-    data class Table(val root: Int, val stride: Int, val count: Int, val nameBytes: Int, val excludedIds: Set<Int>)
+    data class Table(val root: Int, val stride: Int, val count: Int, val nameBytes: Int, val excludedIds: Set<Int>) {
+        init { require(excludedIds.size <= 1) }
+    }
     data class Result(val table: Table? = null, val reason: String, val scannedBytes: Long = 0, val probeWords: Int = 0)
 
     private val originalResults = mutableMapOf<GbaItemPublishedRoute, GbaItemNameAuthority>()
@@ -43,7 +45,7 @@ internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSess
                 published != null && published.offset != table.root ->
                     GbaItemNameAuthority.Unavailable("compiled item authority conflicts with original published root")
                 else -> GbaItemNameAuthority.Available(table.root, table.stride, table.count, table.nameBytes,
-                    table.excludedIds.single(), if (published == null) GbaItemNameProvenance.COMPILED_CONSUMER
+                    table.excludedIds.singleOrNull(), if (published == null) GbaItemNameProvenance.COMPILED_CONSUMER
                     else GbaItemNameProvenance.PUBLISHED_ROOT)
             }
         }
@@ -208,16 +210,22 @@ internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSess
                 word(call - 32) and 0xFF00 == 0x2800) {
                 contracts += ordinaryWrapper(call, pointer.entry)
                     ?: return unavailable("incomplete static item copy contract")
+            } else if (matches(call - 8, 0xB510, 0x1C0C, 0x0400, 0x0C00)) {
+                contracts += simpleWrapper(call, pointer.entry)
+                    ?: return unavailable("incomplete simple item copy contract")
             }
         }
         if (exhausted) return unavailable("item wrapper budget")
         if (contracts.distinct().size != 1) return unavailable("missing or conflicting static item copy contracts")
-        return Result(Table(root, pointer.stride, pointer.count, width, setOf(contracts.single().excludedId)), "complete compiled static item-name consumer")
+        return Result(Table(root, pointer.stride, pointer.count, width, setOfNotNull(contracts.single().excludedId)), "complete compiled static item-name consumer")
     }
 
     private data class Getter(val entry: Int, val stride: Int, val count: Int, val field: Int?, val width: Int = 0)
 
-    private fun pointerGetter(site: Int, root: Int): Getter? {
+    private fun pointerGetter(site: Int, root: Int): Getter? =
+        shiftPointerGetter(site, root) ?: mulPointerGetter(site, root)
+
+    private fun shiftPointerGetter(site: Int, root: Int): Getter? {
         val entry = site - 22
         if (!matches(entry, 0xB500, 0x0400, 0x0C00) ||
             !matches(entry + 10, 0x1C01, 0x0409, 0x0C09) || word(site) and 0xFF00 != 0x4900 ||
@@ -229,7 +237,20 @@ internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSess
         return Getter(entry, stride(first, last) ?: return null, count, null)
     }
 
-    private fun scalarGetter(site: Int, root: Int): Getter? {
+    private fun mulPointerGetter(site: Int, root: Int): Getter? {
+        val entry = site - 18
+        if (!matches(entry, 0xB500, 0x0400, 0x0C00) || !matches(entry + 10, 0x0400, 0x0C00) ||
+            word(site) and 0xFF00 != 0x4900 || !matches(site + 2, 0x1840, 0xBC02, 0x4708) ||
+            literal(site) != root) return null
+        val count = sanitize(bl(entry + 6) ?: return null) ?: return null
+        val stride = immediateMulStride(entry + 14) ?: return null
+        return Getter(entry, stride, count, null)
+    }
+
+    private fun scalarGetter(site: Int, root: Int): Getter? =
+        shiftScalarGetter(site, root) ?: mulScalarGetter(site, root)
+
+    private fun shiftScalarGetter(site: Int, root: Int): Getter? {
         val entry = site - 6
         if (!matches(entry, 0xB510, 0x0400, 0x0C00) || word(site) and 0xFF00 != 0x4C00 || literal(site) != root) return null
         val count = sanitize(bl(entry + 8) ?: return null) ?: return null
@@ -247,6 +268,32 @@ internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSess
         if (load and 0x3F != 8 || !matches(cursor + 2, 0xBC10, 0xBC02, 0x4708)) return null
         val field = adjustment + ((load ushr 6) and 31) * width
         return Getter(entry, stride(first, last) ?: return null, count, field, width)
+    }
+
+    private fun mulScalarGetter(site: Int, root: Int): Getter? {
+        val entry = site - 6
+        if (!matches(entry, 0xB510, 0x0400, 0x0C00) || word(site) and 0xFF00 != 0x4C00 ||
+            literal(site) != root || !matches(entry + 12, 0x0400, 0x0C00)) return null
+        val count = sanitize(bl(entry + 8) ?: return null) ?: return null
+        val stride = immediateMulStride(entry + 16) ?: return null
+        var cursor = entry + 20
+        var adjustment = 0
+        if (word(cursor) and 0xFF00 == 0x3400) { adjustment = word(cursor) and 255; cursor += 2 }
+        if (word(cursor) != 0x1900) return null
+        cursor += 2
+        if (word(cursor) and 0xFF00 == 0x3000) { adjustment += word(cursor) and 255; cursor += 2 }
+        val load = word(cursor)
+        val width = when (load and 0xF800) { 0x7800 -> 1; 0x8800 -> 2; 0x6800 -> 4; else -> return null }
+        if (load and 0x3F != 0 || !matches(cursor + 2, 0xBC10, 0xBC02, 0x4708)) return null
+        val field = adjustment + ((load ushr 6) and 31) * width
+        return Getter(entry, stride, count, field, width)
+    }
+
+    /** MOV r1,#stride; MUL r0,r1, with the same bounded geometry as the shift forms. */
+    private fun immediateMulStride(at: Int): Int? {
+        val move = word(at)
+        if (move and 0xFF00 != 0x2100 || word(at + 2) != 0x4348) return null
+        return (move and 255).takeIf { it.toLong() in 2..MAX_RECORD_BYTES }
     }
 
     /** This entire call-free leaf normalizes u16, compares an instruction-built upper bound and returns zero on BHI. */
@@ -281,7 +328,20 @@ internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSess
         return sites
     }
 
-    private data class CopyContract(val entry: Int, val getter: Int, val copier: Int, val excludedId: Int)
+    private data class CopyContract(val entry: Int, val getter: Int, val copier: Int, val excludedId: Int?)
+
+    private fun simpleWrapper(call: Int, getter: Int): CopyContract? {
+        val entry = call - 8
+        if (!matches(entry, 0xB510, 0x1C0C, 0x0400, 0x0C00) || bl(call) != getter ||
+            !matches(call + 4, 0x1C01, 0x1C20) || !matches(call + 12, 0xBC10, 0xBC01, 0x4700)) return null
+        val copier = bl(call + 8) ?: return null
+        if (!completeCopier(copier)) return null
+        return CopyContract(entry, getter, copier, null)
+    }
+
+    private fun completeCopier(entry: Int): Boolean = matches(entry,
+        0xB500, 0x1C03, 0xE002, 0x701A, 0x3301, 0x3101, 0x780A,
+        0x1C10, 0x28FF, 0xD1F8, 0x20FF, 0x7018, 0x1C18, 0xBC02, 0x4708)
 
     private fun ordinaryWrapper(call: Int, getter: Int): CopyContract? {
         val entry = call - 40
@@ -290,8 +350,7 @@ internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSess
             !matches(call + 4, 0x1C01, 0x1C20) || !matches(call + 12, 0xBC10, 0xBC01, 0x4700)) return null
         // Only the unequal branch reaches this path. Dynamic descendants have no claimed effects.
         val copier = bl(call + 8) ?: return null
-        if (!matches(copier, 0xB500, 0x1C03, 0xE002, 0x701A, 0x3301, 0x3101, 0x780A,
-                0x1C10, 0x28FF, 0xD1F8, 0x20FF, 0x7018, 0x1C18, 0xBC02, 0x4708)) return null
+        if (!completeCopier(copier)) return null
         // The equal arm must leave across its literal pool and the entire ordinary path.
         // Its helper bodies remain opaque; only the wrapper's data/control flow is claimed.
         if (word(entry + 12) and 0xFF00 != 0x2000 || bl(entry + 14) == null ||

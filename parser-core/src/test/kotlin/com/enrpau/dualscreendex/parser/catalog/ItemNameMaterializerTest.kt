@@ -10,6 +10,21 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ItemNameMaterializerTest {
+    @Test fun genThreeSimpleAndDynamicContractsPreserveZeroAndExplicitExclusion() {
+        for (mul in listOf(false, true)) for (simple in listOf(true, false)) {
+            val f = ItemConsumerFixture(mulStride = if (mul) 44 else null, maximumHalf = 174, simpleWrapper = simple)
+            val session = f.session()
+            val authority = session.itemNameResolver.original(GbaItemPublishedRoute.NotInvoked)
+            assertTrue("mul=$mul simple=$simple: $authority", authority is GbaItemNameAuthority.Available)
+            assertEquals(if (simple) null else 175, (authority as GbaItemNameAuthority.Available).excludedId)
+            val names = ItemNameMaterializer(session).materialize(layout().copy(itemNameAuthority = authority), setOf(0, 4, 175, 348, 349))
+            for (id in listOf(0, 4, 348)) assertEquals("A", names.getValue(id).value)
+            assertEquals(if (simple) "A" else null, names.getValue(175).value)
+            assertNull(names.getValue(349).value)
+            if (!simple) assertTrue(names.getValue(175).reasons.any { it.contains("dynamic") })
+        }
+    }
+
     @Test
     fun `default unavailable authority never discovers readable published records`() {
         val f = fixture()

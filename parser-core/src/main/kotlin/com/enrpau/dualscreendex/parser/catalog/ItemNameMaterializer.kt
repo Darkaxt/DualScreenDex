@@ -32,7 +32,7 @@ class ItemNameMaterializer(private val session: RomAnalysisSession) {
             session.cancellation.throwIfCancellationRequested()
             when {
                 id !in 0..0xFFFF || id >= table.count -> CatalogField.notFound("item ID outside compiled u16 domain")
-                id == table.excludedId -> CatalogField.notFound("compiled item name requires unproved dynamic state")
+                table.excludedId != null && id == table.excludedId -> CatalogField.notFound("compiled item name requires unproved dynamic state")
                 else -> {
                     val text = codec.decodeDetailed(session.rom, table.root + table.stride * id, table.nameBytes, session.cancellation)
                     if (text.terminated && text.invalidUnits == 0 && text.controlUnits == 0 && text.substitutionUnits == 0 && text.text.isNotBlank()) {

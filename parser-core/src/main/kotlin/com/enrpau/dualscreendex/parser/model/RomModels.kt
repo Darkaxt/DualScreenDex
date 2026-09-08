@@ -191,7 +191,7 @@ sealed interface GbaItemNameAuthority {
         val stride: Int,
         val count: Int,
         val nameBytes: Int,
-        val excludedId: Int,
+        val excludedId: Int?,
         val provenance: GbaItemNameProvenance,
     ) : GbaItemNameAuthority
 }

@@ -211,10 +211,13 @@ internal object SafeGbaReferenceIndexBuilder {
                         // Collect all observed hint counts even after the bounded item list fills.
                         // This item-only overflow does not invalidate unrelated numeric references.
                         val site = instructionOffset.toInt()
-                        if (instruction and 0xFF00 == 0x4900 && site >= 22 && site <= rom.size - 8 &&
-                            rom.u16le(site - 22) == 0xB500 && rom.u16le(site - 20) == 0x0400 &&
-                            rom.u16le(site - 18) == 0x0C00 && rom.u16le(site + 2) == 0x1840 &&
-                            rom.u16le(site + 4) == 0xBC02 && rom.u16le(site + 6) == 0x4708) {
+                        if (instruction and 0xFF00 == 0x4900 &&
+                            ((site >= 22 && rom.u16le(site - 22) == 0xB500 &&
+                                rom.u16le(site - 20) == 0x0400 && rom.u16le(site - 18) == 0x0C00) ||
+                             (site >= 18 && rom.u16le(site - 18) == 0xB500 &&
+                                rom.u16le(site - 16) == 0x0400 && rom.u16le(site - 14) == 0x0C00))) {
+                            // Nominate from the pre-literal shift/MUL prefix, never the return tail.
+                            // Damaged scale, sanitizer, ADD, POP, or BX competitors must reach full proof.
                             observedItemHints++
                             if (itemHints.size < itemHintLimit) itemHints += site
                         }
