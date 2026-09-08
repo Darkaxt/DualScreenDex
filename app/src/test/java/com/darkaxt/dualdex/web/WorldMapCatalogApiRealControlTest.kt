@@ -60,6 +60,13 @@ import org.junit.Test
 
 class WorldMapCatalogApiRealControlTest {
     @Test
+    fun westernOfficialGen3DiagnosticFifteenControls() {
+        assumeTrue("set DUALDEX_WESTERN_GEN3_DIAGNOSTIC=1 for the separate fifteen-control diagnostic only",
+            System.getenv("DUALDEX_WESTERN_GEN3_DIAGNOSTIC") != null)
+        WesternGen3BaselineCapture.run(JdbcTestCatalogDatabaseFactory)
+    }
+
+    @Test
     fun westernOfficialGen1BaselineTenControls() {
         assumeTrue("set DUALDEX_WESTERN_GEN1_DIAGNOSTIC=1 for the ten-control diagnostic only",
             System.getenv("DUALDEX_WESTERN_GEN1_DIAGNOSTIC") != null)
