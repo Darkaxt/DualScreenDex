@@ -5,6 +5,7 @@ import com.enrpau.dualscreendex.parser.model.*
 import com.enrpau.dualscreendex.parser.parse.ItemConsumerFixture
 import com.enrpau.dualscreendex.parser.text.JapanesePokemonTextCodecs
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
+import com.enrpau.dualscreendex.parser.text.WesternPokemonTextCodecs
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -161,6 +162,45 @@ class ItemNameMaterializerTest {
             assertEquals("イ", names.getValue(2).value)
             assertEquals(if (yellow) "あいうえお０１" else "あいうえお01", names.getValue(201).value)
             for (id in listOf(-1, 0, 196, 202, 255, 256)) assertNull("unrequested/invalid $id", names.getValue(id).value)
+        }
+    }
+
+    @Test fun genOneFrenchGermanReferencedOrdinaryPlusNamesAreAvailable() {
+        for (yellow in listOf(false, true)) {
+            for (codec in listOf(WesternPokemonTextCodecs.gen1French, WesternPokemonTextCodecs.gen1German)) {
+                val f = genOneFixture(yellow)
+                byteArrayOf(0x80.toByte(), 0x7F, 0xE4.toByte(), 0x50, 0x81.toByte(), 0x50)
+                    .copyInto(f.bytes, f.root)
+                val session = f.session(); session.freezeGen1ItemNameAuthority()
+                session.recordGen1ItemReferences(listOf(1, 2).map(::genOneReference))
+                val names = ItemNameMaterializer(session).materialize(
+                    layout(codec).copy(family = if (yellow) EngineFamily.YELLOW else EngineFamily.RED_BLUE,
+                        generation = 1, platform = Platform.GB), setOf(1, 2))
+                assertEquals("${codec.id} yellow=$yellow", "A +", names.getValue(1).value)
+                assertEquals(CapabilityStatus.AVAILABLE, names.getValue(1).status)
+                assertEquals("B", names.getValue(2).value)
+                assertEquals(setOf(1, 2), names.keys)
+            }
+        }
+    }
+
+    @Test fun genOneFrenchGermanOrdinarySubstitutionsAndControlsStillFailLocally() {
+        for (yellow in listOf(false, true)) {
+            for (codec in listOf(WesternPokemonTextCodecs.gen1French, WesternPokemonTextCodecs.gen1German)) {
+                for (token in listOf(0xD4, 0xDF, 0x4A, 0x54, 0xE1, 0xE2, 0x4E, 0x00)) {
+                    val f = genOneFixture(yellow)
+                    f.bytes[f.root] = token.toByte()
+                    val session = f.session(); session.freezeGen1ItemNameAuthority()
+                    session.recordGen1ItemReferences(listOf(1, 2).map(::genOneReference))
+                    val names = ItemNameMaterializer(session).materialize(
+                        layout(codec).copy(family = if (yellow) EngineFamily.YELLOW else EngineFamily.RED_BLUE,
+                            generation = 1, platform = Platform.GB), setOf(1, 2))
+                    assertNull("${codec.id} yellow=$yellow token=$token", names.getValue(1).value)
+                    assertEquals(CapabilityStatus.NOT_FOUND, names.getValue(1).status)
+                    assertEquals("B", names.getValue(2).value)
+                    assertEquals(setOf(1, 2), names.keys)
+                }
+            }
         }
     }
 

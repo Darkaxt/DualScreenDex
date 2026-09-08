@@ -1,10 +1,10 @@
-# Western Gen I referenced-item proof stopping boundary
+# Western Gen I referenced-item proof and production boundary
 
 ## Status and scope
 
-Task 393 under Task 390 / `LNG-B002` remains **open**. The first exact ten-control independent proof exited **2**, `PARTIAL_OR_UNSUPPORTED`. No independently derived item label was accepted. This does not supersede the earlier [diagnostic](stage-04-western-gen1-item-name-diagnostic.md), certify its 616 observed names, or establish the cause of the two French missing-name gaps.
+Tasks 393–395 complete **Task 390's ten official Western Gen I referenced-name slice** under `LNG-B002`. After the historical failed proof and successful retained-membership supplement below, a separately reviewed new acquisition independently derived **620/620 static names**, with all **1,585 references** verified. A subsequent, separately scoped production semantic gate passes every required name through the original producer, exact projection, actual SQLite close/reopen and cache-only API, with **zero reparses**. The original failure, static proof and [diagnostic](stage-04-western-gen1-item-name-diagnostic.md) remain immutable and are not relabeled as semantic acceptance.
 
-The scope is the five official Western languages, each with one exact Red/Blue-family and one Yellow control from the retained 35-control inventory. All **620 requested-ID instances** and **1,585 original typed references/numeric item POIs** remain accounted for. Production remains the `5d65bf72` checkpoint, parser **59**, storage **2**; the published diagnostic checkpoint is `672f7f70`. This report introduces no production or test-code changes.
+The scope is the five official Western languages, each with one exact Red/Blue-family and one Yellow control from the retained 35-control inventory. The acquired French evidence establishes a literal `+` glyph misclassified as a substitution, not a Gen I fixed-token-policy gap. The narrow correction advances parser revision **59 → 60**, with storage **2**, unchanged strict materialization and unchanged display-whitespace normalization. Its focused synthetic gate passes **32/32**; the semantic adapter's focused fabricated gate passes **18/18**, and the separate ten-control semantic gate passes **2,815 checks**. The preceding production checkpoint is `5d65bf72`, and the frozen diagnostic checkpoint is `672f7f70`.
 
 ## Independent source policy preparation
 
@@ -58,15 +58,61 @@ All **1,585 references** now pass this supplemental membership boundary: **1,060
 
 Two coordinator reconciliation failures are retained separately: an inline shell launch failed before Python execution, then a verifier assumed nomination-derived candidate counters existed in the no-scan supplement. Moving the verifier into a file and asserting the actual absent-counter schema resolved those verification-only failures. The supplement itself was not retried.
 
-## Remaining blocker and acceptance
+## Separately reviewed missing-name acquisition
 
-**Owner / target:** Stage 4 Task 393 — bounded missing-name evidence acquisition and independent name proof, then Task 390 — mandatory Western Gen I semantic acceptance.
+A new immutable preparation package retained the corrected checker and wrapper byte-identically. Independent metadata review verified **22 flat artifacts, 18 identical copies, all 76 original metadata pins**, external token/hidden sources, both RAM sources, historical results and the exact ten-control / 620-ID / 1,585-reference domains, with no mismatches. The coordinator reviewed the runtime boundary and reused the unchanged checker's existing 116-method gate rather than rerunning it. The wrapper hashes the RAM-source pin inventory; the independent audit separately rehashed its external RAM sources. This is a provenance distinction, not an additional runtime read claim.
 
-The hidden-state lifetime stopping condition is resolved for the separately checked retained-reference membership scope above, not for names or production behavior. Ordinary-root bytes and both generated-prefix payloads remain absent from the audited retained evidence. A separate acquisition package is being prepared without execution; its contract, input pins and execution scope require review before any new original read. Sparse evidence cannot establish the missing naming payloads or fresh whole-input nomination.
+After the explicit human resumption and completed reviews, a separate coordinator decision authorized **one new-root acquisition**, not semantic acceptance. The frozen preparation's earlier unauthorized state was not rewritten. The wrapper used one worker, a 300-second watchdog, exclusive one-shot/worker markers and one bounded exact-size/SHA read per control, with no automatic retry. It exited **0**, **3.039 seconds** parent process time (**2.366 seconds** batch evaluation). All ten controls complete fresh bounded nomination and static proof; no parser, materializer, SQLite or API ran.
 
-**Required acceptance:** preserve all rejected unsafe cases, exact current-reference/input binding and existing bounds, and obtain independently authorized names through the original producer, exact projection, actual SQLite close/reopen and cache-only API. The French IDs 46/68 remain mandatory and their production failure cause remains unknown. The original failed one-shot result is never retried or rewritten; the successful membership supplement does not relabel it.
+| Each control in family | Requested / derived names | Ordinary | Generated technical | Verified references |
+|---|---:|---:|---:|---:|
+| Red/Blue, each of five languages | 62 / 62 | 35 | 27 | 156 |
+| Yellow, each of five languages | 62 / 62 | 35 | 27 | 161 |
+| Total | 620 / 620 | 350 | 270 | 1,585 |
 
-**Temporary disposition:** no Gen I policy or production change; missing/unproved labels remain unavailable and counted. Task 390's Western GBA work, Task 386's remaining Local/region-label and reference-aware POI gaps, and Tasks 373–375's current 43-cell/44-control matrix, all fifteen capability dispositions, final current corpus after executable changes stabilize and published closure remain mandatory. Stage 4 stays open; Stages 5–6 stay blocked. No corpus, native acceptance rerun, device, signing, APK, cleanup or ROM publication occurred.
+Only the requested **technical** branch's two-byte prefixes were consumed; no unrequested HM-prefix payload or whole-item-domain acceptance is claimed. All result fields remain `STATIC_DERIVED_NOT_PRODUCTION_ACCEPTED`, `semanticAcceptance=false`, `requiredSemanticCompletion=NOT_ACCEPTED`, with empty accepted-label maps.
+
+Coordinator retained-only reconciliation checked all ten result files, exact original reference/numeric-POI/authority bindings, full ordinary 20-byte copies, bounded generated outputs/stores, **39,226 windows**, **4,222 consumed-token records** and **14,935 machine steps**. All previously audited evidence and historical results remain unchanged. It performs **zero additional original reads** and does not replay whole-input nomination from sparse windows.
+
+Compared with the frozen diagnostic, **614** previously available names match the independent raw names verbatim. Two Spanish item-79 instances contain two literal spaces in raw proof but one in the existing display output. The existing whitespace collapse/trim explains these two differences; raw proof labels are retained unchanged and independently normalized display expectations are required at acceptance. The initial exact-equality reconciliation failure and its original verifier are preserved; only that metadata verifier was corrected, with no acquisition retry. The remaining **four** newly derived names are French IDs **46 and 68**, in both families.
+
+## Narrow literal-plus production correction
+
+The acquired French names consume ordinary **`0xE4` as the literal `+` glyph**. Pinned French and German main-font declarations at line 190 and the archived Gen I table at line 135 independently support that classification. `GEN1_FRENCH_GERMAN` incorrectly placed this entry in `substitutions()`, so the strict Gen I materializer rejected otherwise valid names with `substitutionUnits > 0`. The cause is **not token `0x54`** and needs no broad fixed-token permission.
+
+Task 394 moves only this entry into the existing glyph map. Parser cache revision **60** invalidates revision-59 caches that may persist the unavailable fields; storage schema stays **2** and codec versions stay **1**. The materializer and whitespace normalizer are unchanged. Gen II already explicitly classifies this entry as a glyph; other dialects and unratified substitutions retain their existing behavior.
+
+The focused five-method RED gate produced **three expected assertion failures** (glyph classification, referenced-name materialization, stale-cache rejection) and two passing strict/isolation cases, zero errors/skips. After the correction, the focused gate passed **32/32: 20 parser and 12 store methods**, zero failures/errors/skips, exit **0**, **84.023 seconds** process time. The coordinator verified all **35 retained evidence pins**, exact RED/GREEN XML and command inventories, all five tested working-source hashes and the reviewed patch. No unchanged test was rerun solely for reassurance. These tests use fabricated data; no real-control semantic result follows.
+
+## Separate semantic adapter and fabricated verification
+
+Task 395 adds a separate opt-in oracle/capture/selector; the historical diagnostic is byte-identical. Before original reads, strict UTF-8/JSON and externally pinned proof/freeze/bundle/baseline checks require the exact ten identities, all 620 requested IDs and ordered fourteen-field references. Missing, extra, duplicate, partial or misbound evidence is rejected. Expected display names independently apply the existing whitespace collapse/trim to immutable raw proof labels, never production output.
+
+A bounded independent review identified missing API manifest/projection metadata and capability-field assertions. The corrected helper now checks every exposed language/projection field and all seven fields for each of fifteen capabilities. The five retained focused attempts distinguish one compilation-preparation failure (zero JUnit), two invalid-fixture runs (15/18 passes each), the genuine behavioral RED (16/18, five metadata and sixty capability mutations escaped), and final **18/18 GREEN**, zero failures/errors/skips, **68.897 seconds**. The final gate includes actual synthetic SQLite close/reopen and cache-only runtime startup with zero parser callbacks. Only the existing test JDBC factory's visibility changed to permit reuse; its implementation is unchanged.
+
+The coordinator independently reconciled all five exact method inventories, commands/logs/XML, tested source snapshots and the unchanged production correction. Final packaging rehashes cover **95 unique paths**, with a non-mutating reverse-check of the four-file adapter patch. These fabricated gates do not themselves establish official-control acceptance.
+
+## Verified ten-control production semantic acceptance
+
+After focused verification and source review, a separate coordinator decision pinned **791 executable sources and 196 evidence artifacts**, one exact aggregate selector and a **1,800-second watchdog**, with no automatic retry. The one run exited **0** in **538.568 seconds**, **40 tasks executed**, one JUnit method passed with zero failures/errors/skips. Every control was read and analyzed once, and each original-session item producer was called exactly once. All source/evidence pins remained unchanged; the watchdog did not fire.
+
+| Each control in family | Required / available names | Original references / API occurrences | Passing checks | SQLite sections | API reparses |
+|---|---:|---:|---:|---:|---:|
+| Red/Blue, each of five languages | 62 / 62 | 156 / 156 | 279 | 18 | 0 |
+| Yellow, each of five languages | 62 / 62 | 161 / 161 | 284 | 18 | 0 |
+| Total | 620 / 620 | 1,585 / 1,585 | 2,815 | 180 | 0 |
+
+All **350 ordinary and 270 technical names**, including French IDs **46/68** in both families, match independent display expectations in producer, overlay/projection, reopened catalog and every API occurrence. Raw Spanish item-79 double spaces remain unchanged in proof; only the independent expected-display transformation collapses them. No name is waived, borrowed or dropped from a denominator. Original compiled authority identity, all typed references, numeric item/POI bindings and null shared-name fields are preserved.
+
+Actual SQLite write/close/reopen passes whole-catalog equality, required section inventory, integrity/foreign-key checks and parser/storage **60/2**. Cache-only `ProductionCompanionRuntime` reports `CACHE_REOPEN`, `ROM_DEFAULT`, the exact codec/projection and all fifteen complete capability DTOs. **ITEM_NAMES is AVAILABLE 62/62** per control; all other fourteen capability states and `POI_TEXT` remain unchanged. Item labels do not inflate direct POI text coverage.
+
+Additional coordinator retained-only reconciliation checks all ten receipts, exact raw/display name maps, original references and witnesses, complete exposed API language/capability fields, every numeric/name API occurrence and read-only SQLite integrity/schema. All **six original snapshot sections** compare exactly except `itemNames` and `ITEM_NAMES`, which are independently required above. This is not a comparison of all eighteen historical catalog sections. The reconciliation retains **1,114 content pins**, makes zero new original reads and reruns no tests. Its first attempt incorrectly assumed a plain-string overlay map key; the actual serialized `LanguageTag` key correction and original failure are retained. No production result or expectation was changed. Existing unrelated compiler and Gradle deprecation warnings do not affect the passing gate.
+
+## Remaining Stage 4 acceptance
+
+**Completed slice:** Tasks 393–395 — independent Western Gen I referenced-name proof, narrow literal-plus correction and the separate mandatory ten-control production semantic gate. Historical failed/diagnostic evidence remains historical.
+
+**Remaining owner / target:** Task 390's Western GBA referenced-name acceptance; Task 386's remaining Local/region-label and reference-aware POI gaps; Tasks 373–375's current **43-cell/44-control matrix**, all fifteen capability dispositions, native metadata-pin reconciliation, final current corpus after executable changes stabilize and published closure. These remain mandatory. Stage 4 stays open; Stages 5–6 stay blocked. No corpus, native acceptance rerun, device, signing, APK, cleanup or ROM publication occurred in this checkpoint.
 
 ## Private evidence identifiers
 
@@ -90,3 +136,16 @@ Only digests are published; exact paths, input payloads and retained raw windows
 | Coordinator fresh 116-test receipt | `a95f7622d401eaed6c153f009298fdc1cc2b395030a695629a85892581aa4cc0` |
 | Retained-only membership batch | `a04544e92616086628b803884f39860b8e11ae9a9bed305f48550bda30d94157` |
 | Coordinator membership reconciliation | `1c5ddec2637d68aa514542ea3c28f982a1a9b957c48788eccb22b67cefe9892f` |
+| New acquisition handoff | `4f08ec9e5e3e7eab1ef6fccedfdcaa3dd1050c2dd4a6fed406b6b50c72f4a7a0` |
+| Independent acquisition metadata audit | `a141a986dfc5dedaeefa742df9df25d5a4590e3881fbe04db499e0fbf88096d2` |
+| New complete static-name batch | `97a2c0c61694adfaf3887f3bf5041ad82c2ae4b708e1afcd002b6d10e3d841c5` |
+| Coordinator static-name reconciliation | `2e29d0303cd08279fe0648a775e7f6eaf5f3a4f6ea1fc4d767cc2637837900e0` |
+| Literal-plus implementation receipt | `ca565b166f5a720964e90cbc906f8e503f78d316c992e28ee16d53ceae7a3515` |
+| Literal-plus 32-method GREEN result | `3134b980d53083778a33212a3db3453b155ebce61f9ade838b18ba3b37995d37` |
+| Coordinator literal-plus retained verification | `305dec0907141f670b8223e3fafbc41a61a2e6a52acd8ce133c12d4d7bef0dba` |
+| Semantic adapter implementation receipt | `4b5d83a907ba9e1ac3b722f7eac9402f2a8a26178dbd5fbf78a813f94b738bd8` |
+| Coordinator 18-method retained verification | `b6e428ba1d75e53d9c97e1ced08b1511fc7ca18f3628fd23450f5ba2c67c209d` |
+| Separate semantic execution decision | `df267cf31b5c9d9a77bc8828c61a343680f6ade67c3cce95f54770dd1a6c3373` |
+| Ten-control semantic batch | `85762da7b2965edc60868ac1886f4bd75898cf4b8f305d2432d204d397cf4e6c` |
+| Semantic execution receipt | `50fb4a8e4795a090deeb48104a70bfcd09b1a8b922e59fff922caf94a441ca73` |
+| Coordinator semantic result reconciliation | `11d8aac437f44aef491d2f1b289741d22934226430c0df417c2ba90f722b05ac` |

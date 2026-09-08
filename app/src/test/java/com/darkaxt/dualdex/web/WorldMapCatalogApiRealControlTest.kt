@@ -67,6 +67,13 @@ class WorldMapCatalogApiRealControlTest {
     }
 
     @Test
+    fun westernOfficialGen1SemanticTenControls() {
+        val optIn = System.getenv("DUALDEX_WESTERN_GEN1_SEMANTIC_ACCEPTANCE")
+        assumeTrue("set DUALDEX_WESTERN_GEN1_SEMANTIC_ACCEPTANCE=1 with separately pinned private Gen I evidence", optIn != null)
+        WesternGen1SemanticCapture.run(JdbcTestCatalogDatabaseFactory)
+    }
+
+    @Test
     fun westernOfficialGen2BaselineTenControls() {
         assumeTrue("set DUALDEX_WESTERN_MANIFEST for the ten-control diagnostic baseline",
             !System.getenv("DUALDEX_WESTERN_MANIFEST").isNullOrBlank())
@@ -2048,7 +2055,7 @@ class WorldMapCatalogApiRealControlTest {
     }
 }
 
-private object JdbcTestCatalogDatabaseFactory : CatalogDatabaseFactory {
+internal object JdbcTestCatalogDatabaseFactory : CatalogDatabaseFactory {
     override fun open(file: File): CatalogDatabase {
         Class.forName("org.sqlite.JDBC")
         return JdbcTestCatalogDatabase(DriverManager.getConnection("jdbc:sqlite:${file.absolutePath}"))

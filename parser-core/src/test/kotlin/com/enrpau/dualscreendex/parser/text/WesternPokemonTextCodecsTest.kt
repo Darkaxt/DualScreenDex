@@ -52,6 +52,56 @@ class WesternPokemonTextCodecsTest {
     }
 
     @Test
+    fun frenchGermanPlusIsALiteralGlyphNotASubstitution() {
+        // Gen I French/German main-font charmaps declare "+" at $e4:
+        // pokered-fr 7ddc547e22e4c84f3e492a3c04a92c26f7f2e877,
+        // pokered-de f6a2c0cdc557e4c8c1886743629341848ff5bc40, constants/charmap.asm.
+        for (codec in listOf(WesternPokemonTextCodecs.gen1French, WesternPokemonTextCodecs.gen1German,
+            WesternPokemonTextCodecs.gen2French, WesternPokemonTextCodecs.gen2German)) {
+            val decoded = codec.decodeDetailed(bytes(0x80, 0x7F, 0xE4, 0x50, 0x54))
+            assertEquals(codec.id, "A +", decoded.text)
+            assertTrue(codec.id, decoded.terminated)
+            assertEquals(codec.id, 4, decoded.consumedBytes)
+            assertEquals(codec.id, 2, decoded.glyphUnits)
+            assertEquals(codec.id, 1, decoded.whitespaceUnits)
+            assertEquals(codec.id, 0, decoded.substitutionUnits)
+            assertEquals(codec.id, 0, decoded.controlUnits)
+            assertEquals(codec.id, 0, decoded.invalidUnits)
+        }
+    }
+
+    @Test
+    fun plusCorrectionDoesNotChangeOtherE4DialectsOrRatifySubstitutions() {
+        val english = WesternPokemonTextCodecs.gen1English.decodeDetailed(bytes(0xE4, 0x50))
+        assertEquals("'r", english.text)
+        assertEquals(1, english.substitutionUnits)
+        assertEquals(0, english.glyphUnits)
+        val genTwoEnglish = WesternPokemonTextCodecs.gen2English.decodeDetailed(bytes(0xE4, 0x50))
+        assertEquals("", genTwoEnglish.text)
+        assertEquals(1, genTwoEnglish.invalidUnits)
+        for (codec in listOf(WesternPokemonTextCodecs.gen1Italian, WesternPokemonTextCodecs.gen1Spanish,
+            WesternPokemonTextCodecs.gen2Italian, WesternPokemonTextCodecs.gen2Spanish)) {
+            val decoded = codec.decodeDetailed(bytes(0xE4, 0x50))
+            assertEquals(codec.id, "¿", decoded.text)
+            assertEquals(codec.id, 1, decoded.glyphUnits)
+            assertEquals(codec.id, 0, decoded.substitutionUnits)
+        }
+        for (codec in WesternPokemonTextCodecs.all.filter { it.applicableGenerations == setOf(3) }) {
+            val decoded = codec.decodeDetailed(bytes(0xE4, 0xFF))
+            assertEquals(codec.id, "p", decoded.text)
+            assertEquals(codec.id, 1, decoded.glyphUnits)
+            assertEquals(codec.id, 0, decoded.substitutionUnits)
+        }
+        for (codec in listOf(WesternPokemonTextCodecs.gen1French, WesternPokemonTextCodecs.gen1German)) {
+            for (token in listOf(0xD4, 0xDF, 0x4A, 0x54, 0xE1, 0xE2)) {
+                val decoded = codec.decodeDetailed(bytes(token, 0x50))
+                assertEquals("${codec.id} raw=$token", 1, decoded.substitutionUnits)
+                assertEquals("${codec.id} raw=$token", 0, decoded.glyphUnits)
+            }
+        }
+    }
+
+    @Test
     fun decodesDistinctGenTwoWesternOverlaysWithoutReusingGenOneSemantics() {
         assertDecodes(
             "Ä'd'v←é",
