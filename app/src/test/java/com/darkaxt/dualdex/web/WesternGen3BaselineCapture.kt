@@ -57,16 +57,15 @@ internal object WesternGen3BaselineCapture {
         preflight(System.getenv("DUALDEX_WESTERN_GEN3_DIAGNOSTIC"),
             { readMetadata("DUALDEX_WESTERN_MANIFEST").also { manifest = it } },
             { readMetadata("DUALDEX_WESTERN_INVENTORY").also { inventory = it } }) { controls ->
-            require(CatalogSchema.parserSchemaVersion == 60 && CatalogSchema.version == 2)
             val root = createOutput(Path.of(requireNotNull(System.getenv("DUALDEX_TEST_TEMP_ROOT"))))
             Files.write(root.resolve("manifest.json"), manifest); Files.write(root.resolve("inventory.json"), inventory)
             write(root.resolve("scope.json"), mapOf("manifestSha256" to manifestSha, "inventorySha256" to inventorySha,
-                "controls" to controls.map { it.identity }, "parserSchemaVersion" to 60, "storageSchemaVersion" to 2,
+                "controls" to controls.map { it.identity }, "parserSchemaVersion" to CatalogSchema.parserSchemaVersion, "storageSchemaVersion" to CatalogSchema.version,
                 "historicalParserSchemaVersion" to 49, "historicalRequestedNameSlots" to controls.sumOf {
                     it.historical.getAsJsonObject("localizedCapabilities").getAsJsonObject("ITEM_NAMES")["expectedRecords"].asInt },
                 "currentExpectedDomain" to "OBSERVE_NOT_PRESET", "semanticAcceptance" to false, "acceptedNames" to 0,
                 "independentCompiledProof" to "NOT_RUN", "tokenPolicyProof" to "NOT_RUN", "automaticRetry" to false,
-                "rawRomRetention" to "NONE", "historicalCachesOpened" to false, "nonItemEquality49To60" to "NOT_ESTABLISHED"))
+                "rawRomRetention" to "NONE", "historicalCachesOpened" to false, "nonItemEquality49ToCurrent" to "NOT_ESTABLISHED"))
             // Reserve every directory before the first original read; collisions are not retried or merged.
             val receipts = controls.map { control ->
                 val c = control.identity
@@ -332,7 +331,7 @@ internal object WesternGen3BaselineCapture {
                 }
                 receipt.check("sqlite.schemas") {
                     val result = db.query("SELECT parser_schema_version, schema_version FROM catalog_metadata WHERE id = 1") { it.long("parser_schema_version") to it.long("schema_version") }
-                    write(receipt.root.resolve("sqlite-schemas.json"), result); assertEquals(listOf(60L to 2L), result)
+                    write(receipt.root.resolve("sqlite-schemas.json"), result); assertEquals(listOf(CatalogSchema.parserSchemaVersion.toLong() to CatalogSchema.version.toLong()), result)
                 }
             }
         }
@@ -395,11 +394,11 @@ internal object WesternGen3BaselineCapture {
                 if (!now.has(key)) continue
                 val next = now[key]; val path = if (prefix.isEmpty()) key else "$prefix.$key"
                 if (value.isJsonObject && next.isJsonObject) compare(path, value.asJsonObject, next.asJsonObject)
-                else if (value != next) differences[path] = mapOf("historical49" to value, "current60" to next)
+                else if (value != next) differences[path] = mapOf("historical49" to value, "current${CatalogSchema.parserSchemaVersion}" to next)
             }
         }
         compare("", historical, current)
-        return mapOf("historicalParserSchema" to 49, "currentParserSchema" to 60, "status" to "PENDING_CLASSIFICATION_NOT_EQUALITY_GATE",
+        return mapOf("historicalParserSchema" to 49, "currentParserSchema" to CatalogSchema.parserSchemaVersion, "status" to "PENDING_CLASSIFICATION_NOT_EQUALITY_GATE",
             "historicalCell" to historical, "currentComparableObservation" to current, "commonFieldChanges" to differences,
             "nonItemEqualityEstablished" to false, "uncomparedScope" to "historical catalog payloads/shared sections and fields absent from either summary; no old caches opened")
     }

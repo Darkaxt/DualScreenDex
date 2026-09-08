@@ -1,5 +1,6 @@
 package com.darkaxt.dualdex.web
 
+import com.darkaxt.dualdex.catalog.CatalogSchema
 import com.enrpau.dualscreendex.companion.api.*
 import com.enrpau.dualscreendex.parser.catalog.*
 import com.enrpau.dualscreendex.parser.io.RomImage
@@ -254,7 +255,7 @@ class WesternGen3BaselineCaptureTest {
         val f = fixture(); val historical = metadata().second.first()
         val comparison = WesternGen3BaselineCapture.historicalComparison(historical, f.catalog)
         assertEquals(49, comparison["historicalParserSchema"])
-        assertEquals(60, comparison["currentParserSchema"])
+        assertEquals(CatalogSchema.parserSchemaVersion, comparison["currentParserSchema"])
         assertEquals("PENDING_CLASSIFICATION_NOT_EQUALITY_GATE", comparison["status"])
         assertEquals(false, comparison["nonItemEqualityEstablished"])
         assertTrue(WesternGen3BaselineCapture.json.toJson(comparison).contains("expectedRecords"))

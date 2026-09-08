@@ -337,6 +337,14 @@ Task 411's initial synthetic recognizer patch has independently reconciled **5 a
 
 **Owner / target:** Task 390 — complete consumer and independent expected-name acceptance following the Tasks 411–412 synthetic recognizer checkpoint. **Required acceptance:** all **1,660 names** through original authority/materialization, exact overlay, actual SQLite close/reopen and cache-only API, with complete denominators and numeric preservation. **Temporary disposition:** no actual name acceptance or new acquisition authorization; partial consumers remain unavailable. Task 386 and Tasks 373–375 remain mandatory, final corpus waits for stable executable changes, and Stages 5–6 remain blocked. No corpus or device work was performed for this retained review.
 
+## Western GBA revision-61 real-control execution
+
+Task 413's [changed-source real-control run](stage-04-western-gen3-revision61-real-control.md) completed once against production checkpoint `6d8f5d31`: **24/24 JUnit methods passed**, comprising 23 synthetic adapter methods and one method covering all fifteen exact originals. The test-only adapter now reports/asserts the current schema instead of requiring revision 60; production sources are unchanged. All fifteen requested-ID lists match the prior diagnostic exactly, retaining the **1,660-ID** domain.
+
+Actual name availability remains **0/1,660**, not acceptance. Every selected authority reports `incomplete original item getter candidate`; Ruby retains `NotInvoked` and the other ten controls retain `InvokedNominated`. All **10,545 diagnostic checks** passed, including actual SQLite write/close/reopen and cache-only API parity: fifteen original reads, **4,470 numeric API occurrences preserved**, and **zero reparses**. No acquisition runner was reused, and no full corpus, device, RC/APK, signing or release work occurred.
+
+**Owner/target/acceptance:** Task 390 / `LNG-B002` still owns all 1,660 mandatory names. Trace the actual incomplete-candidate rejection, correct it without suppressing malformed competitors, and establish independent exact language/version-correct expectations before claiming producer → projection → SQLite reopen → cache-only API semantic acceptance. A successful diagnostic is not feature closure. Task 386 and Tasks 373–375 retain the other Stage 4 requirements; Stages 5–6 remain blocked.
+
 ## Audit rule
 
 An item without a durable ID, exact spec clause, evidence, owner, target, acceptance condition, and fail-closed temporary disposition is a `STOP-CORE` blocker. Required official language-family cells in Stages 3 and 4 cannot be deferred.
