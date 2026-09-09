@@ -668,7 +668,8 @@ class WorldMapCatalogApiRealControlTest {
     @Test fun nativeOfficialJapaneseRedBlue() = assertNativeRoundTrip(nativeControls[0], requireItemNames = true)
     @Test fun nativeOfficialJapaneseYellow() = assertNativeRoundTrip(nativeControls[1], requireItemNames = true)
     @Test fun nativeOfficialJapaneseGoldSilver() = assertNativeRoundTrip(nativeControls[2], requireItemNames = true)
-    @Test fun nativeOfficialJapaneseCrystal() = assertNativeRoundTrip(nativeControls[3], requireItemNames = true)
+    @Test fun nativeOfficialJapaneseCrystal() = assertNativeRoundTrip(nativeControls[3], requireItemNames = true,
+        selectedDirectSign = japaneseCrystalSelectedSign)
     @Test fun nativeOfficialJapaneseRubySapphire() = assertNativeRoundTrip(nativeControls[4], requireItemNames = true)
     @Test fun nativeOfficialJapaneseEmerald() = assertNativeRoundTrip(nativeControls[5], requireItemNames = true)
     @Test fun nativeOfficialJapaneseFireRedLeafGreen() = assertNativeRoundTrip(nativeControls[6], requireItemNames = true)
@@ -1169,12 +1170,29 @@ class WorldMapCatalogApiRealControlTest {
             overlay.localizedCapabilities.getValue(LocalizedTextCapability.LOCAL_MAP_NAMES))
     }
 
-    private fun assertNativeRoundTrip(control: NativeControl, requireDeclaredSigns: Boolean = false, requireItemNames: Boolean = false) {
+    private fun assertNativeSelectedDirectSign(catalog: ParsedCatalog, expected: NativeSelectedDirectSignExpectation): JsonObject {
+        assertEquals(expected.sha256, catalog.romSha256)
+        val overlay = requireNotNull(catalog.defaultLocalizedText())
+        val text = catalog.defaultTextProjection()
+        val fulfilled = catalog.localMaps.pois.filter { poi ->
+            if (poi.textObligation == com.enrpau.dualscreendex.parser.catalog.LocalMapPoiTextObligation.GENDERED_DIRECT_TEXT)
+                (0..1).all { gender -> !text.poiLabel(poi.key, gender).isNullOrBlank() }
+            else !text.poiLabel(poi.key).isNullOrBlank()
+        }.mapTo(linkedSetOf()) { it.key }
+        return NativeSelectedDirectSignAssertions.names(expected, catalog.localMaps.maps, catalog.localMaps.pois,
+            overlay.poiTexts[expected.poiKey], text.poiDisplayName(expected.poiKey), fulfilled,
+            overlay.localizedCapabilities.getValue(LocalizedTextCapability.POI_TEXT))
+    }
+
+    private fun assertNativeRoundTrip(control: NativeControl, requireDeclaredSigns: Boolean = false, requireItemNames: Boolean = false,
+        selectedDirectSign: NativeSelectedDirectSignExpectation? = null) {
         val configured = System.getenv("DUALDEX_NATIVE_CONTROLS")
         if (requireDeclaredSigns || requireItemNames) require(!configured.isNullOrBlank()) { "exact native sign/item gate requires DUALDEX_NATIVE_CONTROLS" }
         assumeTrue("set DUALDEX_NATIVE_CONTROLS for the nine exact native controls", !configured.isNullOrBlank())
         val checks = NativeChecks(control)
+        val originalReads = AtomicInteger()
         val originalParserInvocations = AtomicInteger()
+        var selectedSignReceipt: JsonObject? = null
         val itemExpectation = if (requireItemNames) itemNameExpectation(control) else null
         try {
             val rom = checks.attempt("input.sha256") {
@@ -1182,6 +1200,7 @@ class WorldMapCatalogApiRealControlTest {
                 val path = Files.list(directory).use { paths ->
                     paths.filter { Files.isRegularFile(it) }.toList().single()
                 }
+                originalReads.incrementAndGet()
                 RomImage(Files.readAllBytes(path)).also { assertEquals(control.sha256, it.sha256) }
             } ?: return
             val attempt = checks.attempt("parse") {
@@ -1195,6 +1214,9 @@ class WorldMapCatalogApiRealControlTest {
             val catalog = checks.attempt("materialize") { requireNotNull(attempt.catalog).getOrThrow() } ?: return
             val contextualProducer = control.contextualMaps?.let { expected ->
                 checks.attempt("contextual-maps.materialize") { assertNativeContextualMaps(catalog, expected) }
+            }
+            val selectedSignProducer = selectedDirectSign?.let { expected ->
+                checks.attempt("selected-direct-sign.materialize") { assertNativeSelectedDirectSign(catalog, expected) }
             }
             if (itemExpectation != null) {
                 checks.attempt("item-names.materialize.${itemExpectation.count}.independent-samples") { assertNativeItemNames(catalog, itemExpectation) }
@@ -1332,13 +1354,34 @@ class WorldMapCatalogApiRealControlTest {
             }
 
             // This opt-in diagnostic retains its private SQLite artifacts; it never copies a ROM to the repository.
-            val cache = checks.attempt("sqlite.create") { CatalogCache(newRoot().toFile(), JdbcTestCatalogDatabaseFactory) } ?: return
+            val cache = checks.attempt("sqlite.create") {
+                CatalogCache(newRoot().toFile(), JdbcTestCatalogDatabaseFactory).also {
+                    if (selectedDirectSign != null) assertTrue("selected sign requires a fresh SQLite file", !it.fileFor(rom.sha256).exists())
+                }
+            } ?: return
             checks.attempt("sqlite.write-close") {
                 cache.write(catalog, CatalogSourceMetadata.direct("native-control", rom.size, "NATIVE-CONTROL"), CatalogWriteProgress.complete())
             } ?: return
             // CatalogCache opens and closes a JDBC connection for each operation; this is not an in-memory round trip.
             val stored = checks.attempt("sqlite.reopen-close") { requireNotNull(cache.readComplete(rom.sha256)) } ?: return
             val reopened = stored.catalog
+            val selectedSignMetadata = selectedDirectSign?.let { expected ->
+                checks.attempt("selected-direct-sign.sqlite.actual-metadata") {
+                    JdbcTestCatalogDatabaseFactory.open(cache.fileFor(rom.sha256)).use { database ->
+                        NativeSelectedDirectSignAssertions.metadata(expected, database.query(
+                            "SELECT sha256, parser_schema_version, schema_version, is_complete FROM catalog_metadata WHERE id = 1",
+                        ) { row -> NativeSelectedSignMetadata(requireNotNull(row.string("sha256")), requireNotNull(row.long("parser_schema_version")),
+                            requireNotNull(row.long("schema_version")), requireNotNull(row.long("is_complete"))) })
+                    }
+                }
+            }
+            val selectedSignSqlite = selectedDirectSign?.let { expected ->
+                checks.attempt("selected-direct-sign.sqlite.reopened") {
+                    assertEquals(catalog.localMaps, reopened.localMaps)
+                    assertEquals(catalog.defaultLocalizedText(), reopened.defaultLocalizedText())
+                    assertNativeSelectedDirectSign(reopened, expected).also { assertEquals(selectedSignProducer, it) }
+                }
+            }
             val contextualSqlite = control.contextualMaps?.let { expected ->
                 checks.attempt("contextual-maps.sqlite-reopened") {
                     JdbcTestCatalogDatabaseFactory.open(cache.fileFor(rom.sha256)).use { database ->
@@ -1459,6 +1502,20 @@ class WorldMapCatalogApiRealControlTest {
                         println("DECLARED_SIGN_API ${control.folder} samples=2 staticDeclaration=PASS zeroReparse=PASS")
                     }
                     val api = requireNotNull(bootstrap.catalog)
+                    selectedDirectSign?.let { expected ->
+                        checks.attempt("selected-direct-sign.api.same-capture") {
+                            assertEquals("CACHE_REOPEN", bootstrap.state.loading.phase)
+                            assertEquals(rom.sha256, api.hash)
+                            val state = requireNotNull(bootstrap.language).projections.single().localizedCapabilities
+                                .getValue(LocalizedTextCapability.POI_TEXT.name)
+                            val snapshot = NativeSelectedDirectSignAssertions.api(expected, requireNotNull(selectedSignSqlite),
+                                reopened.localMaps.maps, reopened.localMaps.pois, api.localMaps, runtime.stateView().localMapPois,
+                                state.status, state.coveredRecords, state.expectedRecords)
+                            selectedSignReceipt = NativeSelectedDirectSignAssertions.receipt(expected, control.folder, rom.sha256,
+                                selectedSignProducer, selectedSignSqlite, snapshot, selectedSignMetadata,
+                                originalReads.get(), originalParserInvocations.get(), parserInvocations.get())
+                        }
+                    }
                     control.contextualMaps?.let { expected ->
                         checks.attempt("contextual-maps.api.same-capture") {
                             assertEquals("CACHE_REOPEN", bootstrap.state.loading.phase)
@@ -1559,6 +1616,8 @@ class WorldMapCatalogApiRealControlTest {
             }
         } finally {
             checks.finish()
+            // Emit only after EVERY same-capture NativeChecks boundary passed, including contextual maps.
+            selectedSignReceipt?.let { println("NATIVE_SELECTED_DIRECT_SIGN_RECEIPT $it") }
         }
     }
 
@@ -2007,6 +2066,16 @@ class WorldMapCatalogApiRealControlTest {
     }
 
     private companion object {
+        // Task420 independent selected structural oracle and UTF-8 headline digest, not parser output.
+        // Public pokecrystal constants/charmap.asm SHA-256:
+        // 417d4ff77af9bd44748dbf168d51e0103664532f7d3bae943d48b00a3146cc5a.
+        // The separately reviewed static-literal declaration supplies the prefix; no opcode assumptions here.
+        val japaneseCrystalSelectedSign = NativeSelectedDirectSignExpectation(
+            "ja/CRYSTAL", "136ada06cb68656b7de475fa4b278d37dbeff8f5257e7dfdf7f4a4aec19a90f3",
+            "local/1804", 0x1804, 20, 18, "local/1804/bg/0", 8, 8,
+            "0623a1b7d00060bf32bfd45d17816e7d7fa75f88efb1076ef2e300e46639ba73",
+        )
+
         // UTF-8 digests of independently decoded, whitespace-normalized compiled Ruby/Emerald
         // move records using the pinned pokeruby charmap below; not production-parser baselines.
         // Covers first/last moves plus short-learnset false negatives. No raw ROM prose is retained here.

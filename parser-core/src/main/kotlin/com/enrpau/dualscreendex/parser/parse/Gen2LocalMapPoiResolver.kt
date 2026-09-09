@@ -327,21 +327,42 @@ internal object Gen2LocalMapPoiResolver {
     ): String? {
         if (offset >= limit || rom.u8(offset) != grammar.start) return null
         val headline = StringBuilder()
+        val usedLiterals = mutableSetOf<Int>()
         var firstLine = true
         var cursor = offset + 1
         while (cursor < limit) {
             cancellation.throwIfCancellationRequested()
             val value = rom.u8(cursor)
+            // Compiled END exits before the required DONE, regardless of the codec's token meaning.
+            if (value == grammar.endCommand) return null
             if (value == grammar.done) return headline.toString().replace(WHITESPACE, " ").trim().takeIf { it.length >= MIN_SIGN_HEADLINE_CHARS }
             if (value == grammar.line) { firstLine = false; cursor++; continue }
+            val dictionary = grammar.dictionary
+            if (dictionary != null && value in dictionary.controls) {
+                if (usedLiterals.add(value) && usedLiterals.size > 4) return null
+                val literal = dictionary.literal(value) ?: return null
+                for (at in literal) {
+                    cancellation.throwIfCancellationRequested()
+                    val token = codec.decodeToken(rom, at, literal.last + 1)
+                    if (token.byteCount != 1) return null
+                    val text = when (token) {
+                        is PokemonTextToken.Glyph -> token.text
+                        is PokemonTextToken.Whitespace -> token.text
+                        else -> return null
+                    }
+                    if (firstLine) headline.append(text)
+                }
+                cursor++
+                continue
+            }
             val token = codec.decodeToken(rom, cursor, limit)
-            val expectedWidth = if (value in 1 until grammar.leadLimit) 2 else 1
+            val expectedWidth = grammar.width.byteCount(value)
             if (token.byteCount != expectedWidth || cursor + token.byteCount > limit) return null
             val text = when (token) {
                 is PokemonTextToken.Glyph -> token.text
                 is PokemonTextToken.Whitespace -> token.text
-                is PokemonTextToken.Substitution -> token.text
-                else -> return null // No unconditional Western controls/substitutions or codec terminator.
+                is PokemonTextToken.Substitution -> if (dictionary == null) token.text else return null
+                else -> return null // No implicit scalar substitutions, controls or codec terminator.
             }
             if (firstLine) headline.append(text)
             cursor += token.byteCount

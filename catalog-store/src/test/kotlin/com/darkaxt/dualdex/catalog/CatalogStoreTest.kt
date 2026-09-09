@@ -441,7 +441,108 @@ class CatalogStoreTest {
     }
 
     @Test
-    fun revision62StaticNameDomainsAreRejectedAnd63ReopensWithContextualInventory() {
+    fun revision63JapaneseSignOutcomesAreRejectedAndCurrentReopensWithNativeTextAndGeometry() {
+        val base = task417MixedCatalog()
+        val signNames = mapOf(LanguageTag.JAPANESE to "ここは　まち", LanguageTag.KOREAN to "여기는 마을")
+        val maps = LocalMapCatalog(
+            maps = base.localMaps.maps,
+            assets = base.localMaps.assets,
+            scenes = base.localMaps.scenes,
+            pois = base.localMaps.pois + LocalMapPoi(
+                "native-sign", "local/3", 3, 0, 0, LocalMapPoiKind.PLACE,
+                destinationBaseAreaId = 3, textObligation = LocalMapPoiTextObligation.DIRECT_TEXT,
+            ),
+        )
+        val overlays = base.localization.overlays.mapValues { (language, overlay) ->
+            val poiState = overlay.localizedCapabilities.getValue(LocalizedTextCapability.POI_TEXT)
+            CatalogLanguageOverlay(
+                language, overlay.overlayVersion,
+                overlay.localizedCapabilities + (LocalizedTextCapability.POI_TEXT to LocalizedCapabilityState(
+                    CapabilityStatus.PARTIAL, 1.0, poiState.coveredRecords + 1, poiState.expectedRecords + 1,
+                )),
+                itemNames = overlay.itemNames,
+                areaNames = overlay.areaNames,
+                localMapNames = overlay.localMapNames,
+                poiTexts = mapOf("native-sign" to CatalogPoiText(displayName = CatalogField.available(signNames.getValue(language)))),
+            )
+        }
+        val catalog = base.copy(localMaps = maps, localization = CatalogLocalization(base.languageManifest, overlays))
+        val root = newRoot().toFile()
+        val cache = CatalogCache(root, JdbcCatalogDatabaseFactory)
+        val source = CatalogSourceMetadata.direct("Synthetic.gbc", 32768, "SYNTHETIC")
+        cache.write(catalog, source, CatalogWriteProgress.complete())
+        val file = cache.fileFor(catalog.romSha256)
+        JdbcCatalogDatabaseFactory.open(file).use { database ->
+            assertEquals(catalog, CatalogReader(database).readComplete()?.catalog)
+            // Valid sections isolate invalidation of old Japanese sign outcomes from payload corruption.
+            database.execute("UPDATE catalog_metadata SET parser_schema_version = 63 WHERE id = 1")
+            assertEquals(listOf(63L to 2L), database.query(
+                "SELECT parser_schema_version, schema_version FROM catalog_metadata WHERE id = 1",
+            ) { row -> row.long("parser_schema_version") to row.long("schema_version") })
+        }
+        val readerAccepted = JdbcCatalogDatabaseFactory.open(file).use { database ->
+            CatalogReader(database).readComplete() != null
+        }
+        val reopened = CatalogCache(root, JdbcCatalogDatabaseFactory)
+        val lookup = reopened.lookupComplete(catalog.romSha256)
+        assertEquals("revision63 must be rejected by both fresh reader and cache", listOf(false, false),
+            listOf(readerAccepted, lookup.stored != null))
+        assertEquals(CatalogCacheDecision.MISS_INCOMPLETE_OR_INCOMPATIBLE, lookup.decision)
+        reopened.write(catalog, source, CatalogWriteProgress.complete())
+        JdbcCatalogDatabaseFactory.open(file).use { database ->
+            assertEquals(listOf(CatalogSchema.parserSchemaVersion.toLong() to CatalogSchema.version.toLong()), database.query(
+                "SELECT parser_schema_version, schema_version FROM catalog_metadata WHERE id = 1",
+            ) { row -> row.long("parser_schema_version") to row.long("schema_version") })
+            assertEquals(catalog, CatalogReader(database).readComplete()?.catalog)
+        }
+        // A new cache uses only the rewritten SQLite catalog, not an in-memory catalog or ROM bytes.
+        val currentLookup = CatalogCache(root, JdbcCatalogDatabaseFactory).lookupComplete(catalog.romSha256)
+        assertEquals(CatalogCacheDecision.HIT, currentLookup.decision)
+        val current = requireNotNull(currentLookup.stored).catalog
+        assertEquals(catalog, current)
+        assertEquals(maps, current.localMaps)
+        assertEquals(setOf("local/1", "local/3"), current.localMaps.staticNameRequiredMapKeys)
+        assertEquals(setOf("local/2"), current.localMaps.contextDependentMapKeys)
+        assertEquals(mapOf(
+            "item" to LocalMapPoiTextObligation.ITEM_NAME,
+            "context-warp" to LocalMapPoiTextObligation.DESTINATION_NAME,
+            "static-warp" to LocalMapPoiTextObligation.DESTINATION_NAME,
+            "sign" to LocalMapPoiTextObligation.DIRECT_TEXT,
+            "native-sign" to LocalMapPoiTextObligation.DIRECT_TEXT,
+        ), current.localMaps.pois.associate { it.key to it.textObligation })
+        for ((language, signName) in signNames) {
+            val text = requireNotNull(current.textProjection(language))
+            val hasStaticName = language == LanguageTag.JAPANESE
+            assertEquals(setOf("native-sign"), requireNotNull(current.localizedText(language)).poiTexts.keys)
+            assertEquals(signName, text.poiDisplayName("native-sign"))
+            assertNull(text.poiDisplayName("sign")) // A direct sign must not borrow its destination's name.
+            assertNull(text.poiDisplayName("context-warp"))
+            assertEquals(if (hasStaticName) "どうくつ" else null, text.poiDisplayName("static-warp"))
+            assertEquals(if (hasStaticName) "ボール" else "볼", text.poiItemName("item", 4))
+            assertEquals("runtime ordinary", text.areaName(1))
+            assertEquals("runtime context", text.areaName(2))
+            assertNull(text.localMapName("local/1"))
+            assertNull(text.localMapName("local/2"))
+            assertEquals(if (hasStaticName) "どうくつ" else null, text.localMapName("local/3"))
+            val names = text.localizedCapabilities.getValue(LocalizedTextCapability.LOCAL_MAP_NAMES)
+            assertEquals(2, names.expectedRecords)
+            assertEquals(if (hasStaticName) 1 else 0, names.coveredRecords)
+            assertEquals(if (hasStaticName) CapabilityStatus.PARTIAL else CapabilityStatus.NOT_FOUND, names.status)
+            val pois = text.localizedCapabilities.getValue(LocalizedTextCapability.POI_TEXT)
+            assertEquals(5, pois.expectedRecords)
+            assertEquals(if (hasStaticName) 3 else 2, pois.coveredRecords)
+            assertEquals(CapabilityStatus.PARTIAL, pois.status)
+        }
+        assertTrue(CatalogSchema.parserSchemaVersion > 63)
+        assertEquals(2, CatalogSchema.version)
+        assertTrue(current.languageManifest.projections.all { it.codecVersion == 1 })
+        assertEquals(1, JapanesePokemonTextCodecs.gen2.version)
+        assertEquals(1, KoreanGen2PokemonTextCodec.codec.version)
+        assertEquals(1, PokemonTextCodec.gbaEnglish.version)
+    }
+
+    @Test
+    fun revision62StaticNameDomainsAreRejectedAndCurrentReopensWithContextualInventory() {
         val root = newRoot().toFile()
         val cache = CatalogCache(root, JdbcCatalogDatabaseFactory)
         val catalog = task417MixedCatalog()
@@ -464,7 +565,7 @@ class CatalogStoreTest {
         assertEquals(CatalogCacheDecision.MISS_INCOMPLETE_OR_INCOMPATIBLE, lookup.decision)
         reopened.write(catalog, source, CatalogWriteProgress.complete())
         JdbcCatalogDatabaseFactory.open(reopened.fileFor(catalog.romSha256)).use { database ->
-            assertEquals(listOf(63L to 2L), database.query(
+            assertEquals(listOf(CatalogSchema.parserSchemaVersion.toLong() to CatalogSchema.version.toLong()), database.query(
                 "SELECT parser_schema_version, schema_version FROM catalog_metadata WHERE id = 1",
             ) { row -> row.long("parser_schema_version") to row.long("schema_version") })
             assertEquals(catalog, CatalogReader(database).readComplete()?.catalog)
@@ -478,7 +579,7 @@ class CatalogStoreTest {
         assertEquals(2, text.localizedCapabilities.getValue(LocalizedTextCapability.LOCAL_MAP_NAMES).expectedRecords)
         assertNull(text.localMapName("local/2"))
         assertEquals("どうくつ", text.localMapName("local/3"))
-        assertEquals(63, CatalogSchema.parserSchemaVersion)
+        assertTrue(CatalogSchema.parserSchemaVersion > 62)
         assertEquals(2, CatalogSchema.version)
         assertTrue(current.languageManifest.projections.all { it.codecVersion == 1 })
         assertEquals(1, PokemonTextCodec.gbaEnglish.version)

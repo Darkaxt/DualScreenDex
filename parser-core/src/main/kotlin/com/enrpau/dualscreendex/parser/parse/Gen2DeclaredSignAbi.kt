@@ -8,7 +8,44 @@ import com.enrpau.dualscreendex.parser.io.RomImage
 internal object Gen2DeclaredSignAbi {
     enum class Status { RESOLVED, ABSENT, INCOMPLETE, CONFLICT, BUDGET }
     data class Resolution(val status: Status, val abi: Declaration? = null, val reason: String? = null)
-    data class Grammar(val start: Int, val line: Int, val done: Int, val leadLimit: Int)
+    sealed interface TokenWidth {
+        data object Scalar : TokenWidth
+        data class LeadBytePair(val leadLimit: Int) : TokenWidth
+        fun byteCount(value: Int): Int = if (this is LeadBytePair && value in 1 until leadLimit) 2 else 1
+    }
+    data class Grammar(val start: Int, val line: Int, val done: Int, val endCommand: Int, val width: TokenWidth, val dictionary: ScalarDictionary? = null)
+
+    /** Only used ROM0 literal consumers are opened. Runtime/nested controls remain unsupported. */
+    class ScalarDictionary internal constructor(private val r: Reader, private val env: Map<String, Int>, private val targets: Map<Int, Int>) {
+        val controls: Set<Int> = targets.keys
+        private val literals = mutableMapOf<Int, IntRange?>()
+        fun literal(value: Int): IntRange? {
+            r.cancel()
+            if (value !in controls) return null
+            if (literals.containsKey(value)) return literals[value]
+            val result = try {
+                val e = env.toMutableMap()
+                r.need(r.home(targets[value] ?: throw Invalid("undeclared literal control")), "D5 11 @literal C3 @literalJoin", e)
+                r.needHome(e, "literalJoin", "CD @placeString 60 69 D1 C3 @nextChar")
+                val start = r.home(e.getValue("literal"))
+                var cursor = start
+                while (true) {
+                    r.spend()
+                    if (cursor - start >= 32) throw Exhausted("literal extent limit")
+                    r.span(start, cursor - start + 1)
+                    r.home(cursor)
+                    val byte = r.byte(cursor)
+                    if (byte == e.getValue("endCommand")) break
+                    r.check(byte !in controls, "nested or runtime literal control")
+                    cursor++
+                }
+                start until cursor
+            } catch (_: Invalid) { null }
+              catch (_: Exhausted) { null }
+            literals[value] = result
+            return result
+        }
+    }
 
     fun resolve(rom: RomImage, sources: List<Gen2LocalMapPoiResolver.Source>, limits: ResolutionLimits, cancellation: ParserCancellationToken): Resolution {
         if (sources.isEmpty()) return Resolution(Status.ABSENT)
@@ -118,20 +155,25 @@ internal object Gen2DeclaredSignAbi {
             try {
                 val e = root.toMutableMap()
                 val bank = e.getValue("commandBank")
-                val table = r.pointer(bank, e.getValue("scriptTable"))
-                val handler = r.pointer(bank, r.word(table + command * 2))
+                val table = e.getValue("scriptTable")
+                val handler = r.slot(bank, table, command)
                 r.need(handler, "FA @scriptBankState EA @textBankState CD @getByte EA @textPointerState CD @getByte EA @textPointerHi 06 %templateBank 21 @template C3 @scriptJump", e)
                 r.check(e.getValue("textPointerState") == e.getValue("textBankState") + 1 && e.getValue("textPointerHi") == e.getValue("textBankState") + 2, "captured text state width")
                 r.need(r.pointer(bank, e.getValue("scriptJump")), "78 EA @scriptBankState 7D EA @scriptPointerState 7C EA @scriptPointerHi C9", e)
                 r.check(e.getValue("templateBank") == bank, "direct template changes command bank")
                 val template = r.pointer(bank, e.getValue("template"))
-                r.need(template, "%openCommand %repeatCommand FF FF 54 4A 91", e)
-                val repeat = r.pointer(bank, r.word(table + e.getValue("repeatCommand") * 2))
-                r.need(repeat, "CD @getByte 6F CD @getByte 67 FE FF 20 11 7D FE FF 20 0C 21 @textBankState 2A 47 2A 66 6F CD @mapTextbox C9 C9", e)
-                val open = r.pointer(bank, r.word(table + e.getValue("openCommand") * 2))
-                r.need(open, "CD @openText C9", e)
-                r.needHome(e, "mapTextbox", "F0 %hram F5 78 D7 CD @setup 3E 01 E0 %oam CD @printText AF E0 %oam F1 D7 C9")
-                bindSetupEnvelope(r, e)
+                r.need(template, "%openCommand %repeatCommand FF FF %waitCommand %closeCommand %endScriptCommand", e)
+                val roles = listOf("openCommand", "repeatCommand", "waitCommand", "closeCommand", "endScriptCommand")
+                if (roles.map { e.getValue(it) }.distinct().size != roles.size) throw Ambiguous("aliased template roles")
+                r.need(r.slot(bank, table, e.getValue("repeatCommand")), "CD @getByte 6F CD @getByte 67 FE FF 20 11 7D FE FF 20 0C 21 @textBankState 2A 47 2A 66 6F CD @mapTextbox C9 C9", e)
+                r.need(r.slot(bank, table, e.getValue("openCommand")), "CD @openText C9", e)
+                r.need(r.slot(bank, table, e.getValue("waitCommand")), "C3 @waitButton", e)
+                r.need(r.slot(bank, table, e.getValue("closeCommand")), "CD @hdma CD @closeText C9", e)
+                r.need(r.slot(bank, table, e.getValue("endScriptCommand")), "CD @exitSubroutine 38 01 C9 AF EA @scriptRunning 3E 00 EA @scriptMode 21 @scriptFlags CB 86 CD @stopScript C9", e)
+                for (name in listOf("waitButton", "hdma", "closeText")) r.home(e.getValue(name))
+                for (name in listOf("exitSubroutine", "stopScript")) r.pointer(bank, e.getValue(name))
+                val inlineSetup = bindMapTextbox(r, e)
+                bindSetupEnvelope(r, e, inlineSetup)
                 r.needHome(e, "printText", "01 @origin CD @printAt C9")
                 r.needHome(e, "printAt", "FA @textFlags F5 CB CF EA @textFlags CD @textDispatch F1 EA @textFlags C9")
                 r.needHome(e, "textDispatch", "2A FE %endCommand C8 CD @textStep 18 F7 E5 C5 4F 06 00 21 @textCommands 09 09 5E 23 56 C1 E1 D5 C9")
@@ -140,39 +182,58 @@ internal object Gen2DeclaredSignAbi {
                 val start = r.home(r.word(r.home(e.getValue("textCommands"))))
                 r.need(start, "54 5D 60 69 CD @placeString 62 6B 23 C9", e)
                 val place = r.home(e.getValue("placeString"))
-                r.need(place, "E5 1A FE %endCommand 20 09 44 4D E1 C9 D1 13 C3 @nextPlace FE %leadLimit DA @doubleByte", e)
-                r.check(e.getValue("nextPlace") == place + 1 && e.getValue("leadLimit") in 2..32, "token entry/width")
+                r.need(place, "E5 1A FE %endCommand 20 09 44 4D E1 C9 D1 13 C3 @nextPlace", e)
+                r.check(e.getValue("nextPlace") == place + 1 && e.getValue("endCommand") != 0, "token entry")
                 e["nextChar"] = place + 11
-                bindDoubleByte(r, e)
-                var cursor = place + 20
+                val paired = r.match(place + 15, "FE %leadLimit DA @doubleByte", e) != null
+                val width = if (paired) {
+                    // Do not broaden or weaken the existing pair/setup/farcall contract.
+                    r.check(!inlineSetup && e.getValue("leadLimit") in 2..32, "token pair setup/width")
+                    bindDoubleByte(r, e)
+                    TokenWidth.LeadBytePair(e.getValue("leadLimit"))
+                } else TokenWidth.Scalar
+                var cursor = place + if (paired) 20 else 15
                 var line: Int? = null; var done: Int? = null
-                val controls = mutableSetOf<Int>()
-                // Only the finite CP/JP dictionary prefix is supported; never search arbitrary bytes.
-                var branches = 0
-                while (done == null && branches++ < 40) {
+                val controls = linkedMapOf<Int, Int>()
+                // Scalar width requires the complete dictionary AND positive ordinary fallback.
+                // The legacy pair grammar retains its established prefix-through-DONE scope.
+                while (!paired || done == null) {
+                    r.spend()
                     val size: Int
                     val value: Int
                     val target: Int
-                    if (r.byte(cursor) == 0xFE && r.byte(cursor + 2) == 0xCA) {
+                    val opcode = r.byte(r.home(cursor))
+                    if (opcode == 0xFE) r.span(cursor, 3) else if (opcode == 0xA7) r.span(cursor, 2)
+                    if (opcode == 0xFE && r.byte(cursor + 2) == 0xCA) {
+                        r.span(cursor, 5)
                         value = r.byte(cursor + 1); target = r.word(cursor + 3); size = 5
-                    } else if (r.byte(cursor) == 0xA7 && r.byte(cursor + 1) == 0xCA) {
+                    } else if (opcode == 0xA7 && r.byte(cursor + 1) == 0xCA) {
+                        r.span(cursor, 4)
                         value = 0; target = r.word(cursor + 2); size = 4
-                    } else throw Invalid("unsupported text dictionary branch")
-                    if (!controls.add(value)) throw Ambiguous("conflicting text dictionary control")
+                    } else {
+                        if (paired) throw Invalid("unsupported text dictionary branch")
+                        break
+                    }
+                    if (value in controls) throw Ambiguous("conflicting text dictionary control")
+                    if (controls.size >= 40) throw Exhausted("text dictionary branch limit")
+                    controls[value] = r.home(target)
                     val candidate = e.toMutableMap()
-                    if (r.match(r.home(target), "E1 21 @lineOrigin E5 C3 @nextChar", candidate) != null) {
+                    if (r.match(target, "E1 21 @lineOrigin E5 C3 @nextChar", candidate) != null) {
                         if (line != null) throw Ambiguous("multiple LINE handlers")
                         line = value
                     }
                     val stop = e.toMutableMap()
-                    if (r.match(r.home(target), "E1 11 @stopByte 1B C9 %endCommand", stop) != null) {
+                    if (r.match(target, "E1 11 @stopByte 1B C9 %endCommand", stop) != null) {
                         r.check(stop.getValue("stopByte") == target + 6, "DONE stop pointer")
+                        if (done != null) throw Ambiguous("multiple DONE handlers")
                         done = value
                     }
                     cursor += size
                 }
-                r.check(line != null && done != null && line != done, "LINE/DONE grammar incomplete")
-                val grammar = Grammar(0, requireNotNull(line), requireNotNull(done), e.getValue("leadLimit"))
+                r.check(line != null && done != null && line != done && e.getValue("endCommand") !in controls, "LINE/DONE grammar incomplete")
+                if (!paired) bindScalarFallback(r, cursor, e)
+                val grammar = Grammar(0, requireNotNull(line), requireNotNull(done), e.getValue("endCommand"), width,
+                    if (paired) null else ScalarDictionary(r, e.toMap(), controls.toMap()))
                 grammars[command] = grammar
                 declarations[command] = Resolution(Status.RESOLVED)
                 return grammar
@@ -188,21 +249,52 @@ internal object Gen2DeclaredSignAbi {
         internal fun outcome(command: Int): Resolution { grammar(command); return declarations.getValue(command) }
     }
 
+    private fun bindMapTextbox(r: Reader, e: MutableMap<String, Int>): Boolean {
+        val variants = listOf(
+            false to "F0 %hram F5 78 D7 CD @setup 3E 01 E0 %oam CD @printText AF E0 %oam F1 D7 C9",
+            true to "F0 %hram F5 78 D7 E5 CD @speech CD @sprites 3E 01 E0 %oam CD @tilemap E1 CD @printText AF E0 %oam F1 D7 C9",
+        )
+        r.spend()
+        val matches = variants.mapNotNull { (inline, pattern) ->
+            r.match(r.home(e.getValue("mapTextbox")), pattern, e.toMutableMap())?.let { inline to it }
+        }
+        r.unique(matches.size, "MapTextbox envelope")
+        e.putAll(matches.single().second)
+        return matches.single().first
+    }
+
     /** Closed top-level setup envelope. Its graphics descendants are opaque declaration boundaries,
      * not interpreted calls and emphatically not certified side-effect-free/returned leaves. */
-    private fun bindSetupEnvelope(r: Reader, e: MutableMap<String, Int>) {
-        r.needHome(e, "setup", "E5 CD @speech CD @sprites CD @tilemap E1 C9")
+    private fun bindSetupEnvelope(r: Reader, e: MutableMap<String, Int>, inline: Boolean) {
+        if (!inline) r.needHome(e, "setup", "E5 CD @speech CD @sprites CD @tilemap E1 C9")
         r.needHome(e, "speech", "21 @boxOrigin 06 04 0E 12 C3 @drawBox")
         r.needHome(e, "openText", "CD @clearWindow F0 %hram F5 3E %graphicsBank D7 CD @reanchor CD @speech CD @hdma CD @fonts F1 D7 C9")
-        r.needHome(e, "hdma", "F0 %oam F5 3E 01 E0 %oam CD @transfer F1 E0 %oam C9")
-        r.needHome(e, "clearWindow", "3B E5 F5 E5 F8 06 36 %clearBank 2B 36 %clearHi 2B 36 %clearLo E1 F1 CD @farCall 33 33 33 C9")
-        bindFarCallEnvelope(r, e)
-        for (name in listOf("sprites", "tilemap", "drawBox", "transfer")) r.home(e.getValue(name))
+        if (!inline) {
+            // Preserve every previously required setup/pair dispatcher declaration.
+            r.needHome(e, "hdma", "F0 %oam F5 3E 01 E0 %oam CD @transfer F1 E0 %oam C9")
+            r.needHome(e, "clearWindow", "3B E5 F5 E5 F8 06 36 %clearBank 2B 36 %clearHi 2B 36 %clearLo E1 F1 CD @farCall 33 33 33 C9")
+            bindFarCallEnvelope(r, e)
+            r.home(e.getValue("transfer"))
+            r.pointer(e.getValue("clearBank"), e.getValue("clearHi") * 256 + e.getValue("clearLo"))
+        }
+        for (name in listOf("sprites", "tilemap", "drawBox", "hdma", "clearWindow")) r.home(e.getValue(name))
         for (name in listOf("reanchor", "fonts")) {
             r.check(e.getValue(name) in BANK until 2 * BANK, "graphics boundary banked target")
             r.pointer(e.getValue("graphicsBank"), e.getValue(name))
         }
-        r.pointer(e.getValue("clearBank"), e.getValue("clearHi") * 256 + e.getValue("clearLo"))
+    }
+
+    private fun bindScalarFallback(r: Reader, offset: Int, e: MutableMap<String, Int>) {
+        // Every JR and shared continuation is part of this finite source-shaped declaration.
+        // Diacritic/letter-delay callees are address-checked opaque boundaries, not executed.
+        r.need(r.home(offset), "FE %handMark 28 04 FE %dakMark 20 07 47 CD @diacritic C3 @nextChar " +
+            "FE %firstRegular 30 24 FE %firstHand 30 11 FE %firstHiraDak 30 04 C6 %katDakDelta 18 02 C6 %hiraDakDelta " +
+            "06 %dakMark CD @diacritic 18 0F FE %firstHiraHand 30 04 C6 %katHandDelta 18 02 C6 %hiraHandDelta " +
+            "06 %handMark CD @diacritic 22 CD @letterDelay C3 @nextChar", e)
+        r.check(0 < e.getValue("firstHiraDak") && e.getValue("firstHiraDak") < e.getValue("firstHand") &&
+            e.getValue("firstHand") < e.getValue("firstHiraHand") && e.getValue("firstHiraHand") < e.getValue("firstRegular"), "scalar range order")
+        if (e.getValue("handMark") == e.getValue("dakMark")) throw Ambiguous("aliased diacritic marks")
+        r.home(e.getValue("diacritic")); r.home(e.getValue("letterDelay"))
     }
 
     private fun bindFarCallEnvelope(r: Reader, e: MutableMap<String, Int>) {
@@ -223,7 +315,7 @@ internal object Gen2DeclaredSignAbi {
         private var nominations = 0
         private val patterns = mutableMapOf<String, Pattern>()
         fun cancel() = cancellation.throwIfCancellationRequested()
-        private fun spend() { cancel(); if (++work > limits.maxProbeWorkPerDataset) throw Exhausted("declaration work limit") }
+        fun spend() { cancel(); if (++work > limits.maxProbeWorkPerDataset) throw Exhausted("declaration work limit") }
         fun unique(count: Int, reason: String) {
             if (count > 1) throw Ambiguous("$reason is conflicting")
             check(count == 1, "$reason is missing")
@@ -240,6 +332,11 @@ internal object Gen2DeclaredSignAbi {
             check(address in 0 until 2 * BANK, "invalid LE banked address")
             val offset = if (address < BANK) address else bank * BANK + address - BANK
             span(offset, 1); return offset
+        }
+        fun slot(bank: Int, table: Int, command: Int): Int {
+            check(command in 0..255 && table in 0 until 2 * BANK &&
+                table + command * 2 + 2 <= if (table < BANK) BANK else 2 * BANK, "command table bank boundary")
+            return pointer(bank, word(pointer(bank, table) + command * 2))
         }
         fun needHome(e: MutableMap<String, Int>, name: String, pattern: String) = need(home(e.getValue(name)), pattern, e)
         fun need(offset: Int, pattern: String, e: MutableMap<String, Int>) {

@@ -132,6 +132,23 @@ internal class Gen2DeclaredSignFixture(val shift: Int = 0, val bankShift: Int = 
         emit("line", "e1 21 @lineOrigin e5 c3 @nextChar")
         emit("done", "e1 11 @stopByte 1b c9 50")
         emit("doubleByte", "47 13 1a 4f 3b e5 f5 e5 f8 06 36 7f 2b 36 46 2b 36 1e e1 f1 cd @farCall 33 33 33 cd @graphicsE c3 @nextChar")
+        // Complete source-shaped tail roles; these are fabricated declarations, not returned leaves.
+        for ((i, name) in listOf("waitHandler", "closeHandler", "endHandler", "exitSubroutine", "stopScript").withIndex()) {
+            symbol(name, codeBank * 0x4000 + 0x2800 + shift + i * 0x40)
+        }
+        symbol("scriptRunning", 0xD21A + shift, false)
+        symbol("scriptFlags", 0xD240 + shift, false)
+        word(at("scriptTable") + 0x54 * 2, at("waitHandler"))
+        word(at("scriptTable") + 0x4A * 2, at("closeHandler"))
+        word(at("scriptTable") + 0x91 * 2, at("endHandler"))
+        emit("waitHandler", "c3 @graphicsC")
+        emit("closeHandler", "cd @hdma cd @graphicsE c9")
+        emit("endHandler", "cd @exitSubroutine 38 01 c9 af ea @scriptRunning 3e 00 ea @scriptMode 21 @scriptFlags cb 86 cd @stopScript c9")
+    }
+
+    fun symbol(name: String, address: Int, romAddress: Boolean = true) {
+        symbols[name] = address
+        if (romAddress) romSymbols.add(name) else romSymbols.remove(name)
     }
 
     fun at(name: String): Int = requireNotNull(symbols[name]) { name }
