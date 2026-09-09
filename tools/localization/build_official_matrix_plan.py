@@ -15,6 +15,9 @@ RUN is the existing official_matrix.py v1 run shape: pinned manifest, report,
 receipt, evidence, api, oracle JSON references, cacheDir and generatorSha256.
 Runs must partition all44. Normalized evidence/API/oracle and referenced proof
 JSON must ALREADY carry the exact source/report/receipt/generator binding.
+G3 uses the shared validator contract: report16 CLI logical digests match the
+restored catalog digest, and nested capture provenance binds the actual cache-only
+BootstrapView envelope. It does not repair captures or derive oracle expectations.
 Proof sourceSlice bytes address the separately pinned source evidence bundle.
 Source is reviewed evidence, never a ROM/cache. Known ROM/cache/dump suffixes
 are refused; JSON documents must use .json. Original paths inside manifests
@@ -231,13 +234,7 @@ def run_metadata(run, plan, controls, inputs, source):
                            matrix.hash_value(vectors.get("vectorSetSha256")) and matrix.integer(vectors.get("vectorCount"), 1) and
                            type(vectors.get("matchedCount")) is int and vectors["matchedCount"] == vectors["vectorCount"], "REQUIRED_CHECK")
         with gap("G3_API_CAPTURE"):
-            matrix.require(api.get("cacheSha256") == evidence["cacheSha256"], "EVIDENCE_BINDING")
-            fixed = {"romSha256": identity, "language": c["language"], "authority": "ROM_DEFAULT", "parserInvocations": 0}
-            matrix.require(isinstance(oracle.get("bootstrap"), dict) and set(oracle["bootstrap"]) == set(fixed), "REQUIRED_CHECK")
-            for key, value in fixed.items():
-                check = oracle["bootstrap"][key]
-                matrix.require(matrix.canonical(check.get("value")) == matrix.canonical(value), "REQUIRED_CHECK")
-                matrix.assertion(api["bootstrap"], check, "API_ACCEPTANCE")
+            matrix.g3_capture(api, row, evidence, oracle, c, plan, binding)
         with gap("G1_NORMALIZED_CHECKS"):
             matrix.required_checks(evidence["checks"], oracle["checks"], api)
         with gap("G4_INDEPENDENT_ORACLE"):

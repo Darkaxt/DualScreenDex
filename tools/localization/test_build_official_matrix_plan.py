@@ -11,6 +11,7 @@ import unittest
 from unittest.mock import patch
 
 import official_matrix as matrix
+from test_official_matrix import bind_fixture_capture, fixture_bootstrap
 
 MODULE = Path(__file__).with_name("build_official_matrix_plan.py")
 COMMIT = "a" * 40
@@ -23,8 +24,11 @@ def sha(data):
 
 
 def bootstrap(c):
-    return {"romSha256": c["sha256"], "language": c["language"],
-            "authority": "ROM_DEFAULT", "parserInvocations": 0}
+    return fixture_bootstrap(c, None, None)
+
+
+def logical_digest(c):
+    return sha(("fabricated logical catalog " + c["sha256"]).encode())
 
 
 def declared_checks(c):
@@ -33,7 +37,7 @@ def declared_checks(c):
         "rawHeader": {"rawHeaderSha256": "c" * 64, "byteCount": 80},
         "codecGoldenVectors": {"vectorSetSha256": "d" * 64, "vectorCount": 3, "matchedCount": 3},
         "structuralAuthority": {"consumerEvidenceSha256": sha(SOURCE), "corroboratingTableCount": 2},
-        "reopenParity": {"beforeCatalogSha256": "e" * 64, "afterCatalogSha256": "e" * 64},
+        "reopenParity": {"beforeCatalogSha256": logical_digest(c), "afterCatalogSha256": logical_digest(c)},
         "projectionIsolation": {"fieldsChecked": 15, "mixedFields": 0, "fallbackFields": 0, "sharedTextFields": 0},
         "typeSemantics": {"typesChecked": 3, "unresolvedTypes": 0, "mismatchedTypes": 0},
         "apiBootstrap": {"responseSha256": sha(matrix.canonical(bootstrap(c))), "parserInvocations": 0},
@@ -54,8 +58,8 @@ class SyntheticInputs:
                              "language": language, "release": release, "codecId": "fabricated-" + language,
                              "codecVersion": 1})
         self.expectations = {"schemaVersion": 1, "sourceCommit": COMMIT,
-                             "source": self.write("source.txt", SOURCE), "reportSchemaVersion": 14,
-                             "cacheSchemaVersion": 2, "parserSchemaVersion": 63,
+                             "source": self.write("source.txt", SOURCE), "reportSchemaVersion": 16,
+                             "cacheSchemaVersion": 2, "parserSchemaVersion": 64,
                              "requiredSections": sorted(matrix.SECTIONS), "controls": controls}
         groups = ([controls[:35], controls[35:]] if split else [controls])
         self.data = [self.make_run(group) for group in groups]
@@ -71,9 +75,9 @@ class SyntheticInputs:
     def make_run(self, controls):
         d = {k: {"schemaVersion": 1, "controls": {}} for k in ("evidence", "api", "oracle")}
         d.update(manifest=copy.deepcopy(controls), proofs={"schemaVersion": 1, "proofs": {}},
-                 report={"schemaVersion": 14, "execution": {"sourceCommit": COMMIT, "generatorSha256": GENERATOR}, "results": []},
+                 report={"schemaVersion": 16, "execution": {"sourceCommit": COMMIT, "generatorSha256": GENERATOR}, "results": []},
                  receipt={"schemaVersion": 1, "sourceCommit": COMMIT, "inputCount": len(controls),
-                          "generator": {"name": "parser-cli", "schemaVersion": 14, "sha256": GENERATOR}})
+                          "generator": {"name": "parser-cli", "schemaVersion": 16, "sha256": GENERATOR}})
         for c in controls:
             identity = c["sha256"]
             language_manifest = {"status": "RESOLVED", "defaultLanguage": c["language"], "projections": [
@@ -81,17 +85,23 @@ class SyntheticInputs:
                  "evidence": [{"kind": "FABRICATED_TEST_ONLY"}]}]}
             d["report"]["results"].append({"result": {"sha256": identity, "status": "SELECTED", "selectedFamily": c["family"],
                 "probes": [{"family": c["family"], "resolvedLayout": {"languageManifest": language_manifest}}]},
-                "samples": {"referenceErrors": []}, "persistence": {"fileName": identity + ".sqlite"},
+                "samples": {"referenceErrors": []}, "persistence": {"fileName": identity + ".sqlite",
+                    "logicalDigestVersion": 1, "beforeCatalogSha256": logical_digest(c), "afterCatalogSha256": logical_digest(c)},
                 "catalog": {"localizedCapabilities": {cap: {"status": "AVAILABLE", "coveredRecords": 1, "expectedRecords": 1}
                                                       for cap in matrix.CAPABILITIES}}})
             d["evidence"]["controls"][identity] = {"cacheSha256": "f" * 64, "checks": {
                 name: {"tests": 1, "failures": 0, "errors": 0, "skipped": 0, "data": value}
                 for name, value in declared_checks(c).items()}}
             # Fake captured values and independently declared expectations are separate inputs.
-            d["api"]["controls"][identity] = {"cacheSha256": "f" * 64, "bootstrap": bootstrap(c),
+            d["api"]["controls"][identity] = {"acceptance": False, "scope": "CACHE_ONLY_OBSERVATION",
+                "cacheSha256": "f" * 64, "catalogLogicalDigest": {"version": 1, "sha256": logical_digest(c)},
+                "bootstrap": bootstrap(c),
                 "fields": {cap: {"1": "fabricated-" + c["language"] + "-" + cap} for cap in matrix.CAPABILITIES}}
-            oracle = {"checks": declared_checks(c), "bootstrap": {key: {"pointer": "/" + key, "value": value}
-                      for key, value in bootstrap(c).items()}, "capabilities": {}}
+            oracle = {"checks": declared_checks(c), "bootstrap": {
+                "romSha256": {"pointer": "/response/catalog/hash", "value": identity},
+                "language": {"pointer": "/response/language/activeLanguage", "value": c["language"]},
+                "authority": {"pointer": "/response/language/authority", "value": "ROM_DEFAULT"},
+                "parserInvocations": {"pointer": "/parserInvocations", "value": 0}}, "capabilities": {}}
             for cap in matrix.CAPABILITIES:
                 key = identity + cap
                 d["proofs"]["proofs"][key] = {"kind": "FIELD_ACCEPTANCE", "romSha256": identity, "capability": cap,
@@ -116,6 +126,11 @@ class SyntheticInputs:
                        "reportSha256": report["sha256"], "receiptSha256": receipt["sha256"], "generatorSha256": GENERATOR}
             for name in ("evidence", "api", "oracle", "proofs"):
                 data[name]["binding"] = dict(binding)
+            for c in data["manifest"]:
+                identity = c["sha256"]
+                if identity in data["api"]["controls"]:
+                    bind_fixture_capture(c, data["api"]["controls"][identity], data["evidence"]["controls"][identity],
+                                         data["oracle"]["controls"][identity], binding)
             proofs = self.write(f"proofs-{index}.json", data["proofs"])
             for c in data["oracle"]["controls"].values():
                 for cap in c["capabilities"].values():
@@ -199,6 +214,44 @@ class AssemblyTests(unittest.TestCase):
         self.assertEqual(result["status"], "PLAN_ASSEMBLED", result)
         plan = json.loads(self.output.read_bytes())
         self.assertEqual(len(plan["runs"]), 2)
+
+    def test_cli_persistence_digests_must_match_capture(self):
+        self.fx.data[0]["report"]["results"][0]["persistence"]["beforeCatalogSha256"] = "0" * 64
+        self.fx.refresh()
+        self.blocked("G3_API_CAPTURE")
+
+    def test_restored_digest_cannot_be_replaced_with_cache_digest(self):
+        capture = self.fx.data[0]["api"]["controls"][self.identity]
+        capture["catalogLogicalDigest"]["sha256"] = capture["cacheSha256"]
+        self.fx.refresh()
+        self.blocked("G3_API_CAPTURE")
+
+    def test_report_order_does_not_change_digest_join(self):
+        self.fx.data[0]["report"]["results"].reverse()
+        self.fx.refresh()
+        self.assertEqual(self.assemble()["status"], "PLAN_ASSEMBLED")
+
+    def test_stale_nested_binding_even_with_matching_envelope_checks(self):
+        capture = self.fx.data[0]["api"]["controls"][self.identity]
+        capture["bootstrap"]["captureProvenance"]["binding"]["reportSha256"] = "0" * 64
+        response_sha = sha(matrix.canonical(capture["bootstrap"]))
+        self.fx.data[0]["evidence"]["controls"][self.identity]["checks"]["apiBootstrap"]["data"]["responseSha256"] = response_sha
+        self.fx.data[0]["oracle"]["controls"][self.identity]["checks"]["apiBootstrap"]["responseSha256"] = response_sha
+        for name in ("api", "evidence", "oracle"):
+            self.fx.repin_document(name)
+        self.blocked("G3_API_CAPTURE")
+
+    def test_api_identity_alias_cannot_replace_actual_response(self):
+        capture = self.fx.data[0]["api"]["controls"][self.identity]
+        capture["bootstrap"]["claimedHash"] = self.identity
+        capture["bootstrap"]["response"]["catalog"]["hash"] = "0" * 64
+        self.fx.data[0]["oracle"]["controls"][self.identity]["bootstrap"]["romSha256"]["pointer"] = "/claimedHash"
+        response_sha = sha(matrix.canonical(capture["bootstrap"]))
+        self.fx.data[0]["evidence"]["controls"][self.identity]["checks"]["apiBootstrap"]["data"]["responseSha256"] = response_sha
+        self.fx.data[0]["oracle"]["controls"][self.identity]["checks"]["apiBootstrap"]["responseSha256"] = response_sha
+        for name in ("api", "evidence", "oracle"):
+            self.fx.repin_document(name)
+        self.blocked("G3_API_CAPTURE")
 
     def test_missing_oracle_names_g4(self):
         del self.fx.request["runs"][0]["oracle"]
@@ -503,6 +556,132 @@ class AssemblyTests(unittest.TestCase):
         p = subprocess.run([sys.executable, "-B", str(MODULE), "--help"], capture_output=True, text=True, timeout=20)
         self.assertEqual(p.returncode, 0)
         self.assertIn("not acceptance", p.stdout)
+
+
+class G3BindingTests(unittest.TestCase):
+    """Pure metadata boundary tests; no files or cache payloads are needed."""
+    def setUp(self):
+        self.control = {"sha256": "1" * 64, "family": "EMERALD", "language": "fr",
+                        "codecId": "fabricated-fr", "codecVersion": 1}
+        self.binding = {"sourceCommit": COMMIT, "sourceSha256": sha(SOURCE), "reportSha256": "2" * 64,
+                        "receiptSha256": "3" * 64, "generatorSha256": GENERATOR}
+        self.plan = {"reportSchemaVersion": 16, "parserSchemaVersion": 64, "cacheSchemaVersion": 2}
+        self.row = {"persistence": {"logicalDigestVersion": 1, "beforeCatalogSha256": logical_digest(self.control),
+                                    "afterCatalogSha256": logical_digest(self.control)}}
+        self.capture = {"acceptance": False, "scope": "CACHE_ONLY_OBSERVATION", "cacheSha256": "f" * 64,
+                        "catalogLogicalDigest": {"version": 1, "sha256": logical_digest(self.control)},
+                        "bootstrap": fixture_bootstrap(self.control, "f" * 64, copy.deepcopy(self.binding))}
+        self.observed = {"cacheSha256": "f" * 64,
+                         "checks": {k: {"data": v} for k, v in declared_checks(self.control).items()}}
+        self.expected = {"bootstrap": {
+            "romSha256": {"pointer": "/response/catalog/hash", "value": "1" * 64},
+            "language": {"pointer": "/response/language/activeLanguage", "value": "fr"},
+            "authority": {"pointer": "/response/language/authority", "value": "ROM_DEFAULT"},
+            "parserInvocations": {"pointer": "/parserInvocations", "value": 0}}}
+
+    def check(self):
+        matrix.g3_capture(self.capture, self.row, self.observed, self.expected, self.control, self.plan, self.binding)
+
+    def test_valid_metadata_is_not_rewritten(self):
+        keys = ("capture", "row", "observed", "expected", "control", "plan", "binding")
+        before = {key: copy.deepcopy(getattr(self, key)) for key in keys}
+        self.check()
+        for key in keys:
+            self.assertEqual(getattr(self, key), before[key])
+
+    def test_missing_or_unsupported_logical_versions(self):
+        for target, key in ((self.row["persistence"], "logicalDigestVersion"),
+                            (self.capture["catalogLogicalDigest"], "version")):
+            for value in (None, True, False, 0, 2, "1", 1.0):
+                with self.subTest(key=key, value=value):
+                    target[key] = value
+                    with self.assertRaises(matrix.Blocked):
+                        self.check()
+            target[key] = 1
+            del target[key]
+            with self.assertRaises(matrix.Blocked):
+                self.check()
+            target[key] = 1
+
+    def test_every_logical_digest_must_agree(self):
+        for target, key in ((self.row["persistence"], "beforeCatalogSha256"),
+                            (self.row["persistence"], "afterCatalogSha256"),
+                            (self.capture["catalogLogicalDigest"], "sha256"),
+                            (self.observed["checks"]["reopenParity"]["data"], "beforeCatalogSha256"),
+                            (self.observed["checks"]["reopenParity"]["data"], "afterCatalogSha256")):
+            for value in (None, "e" * 64, "A" * 64, "", True):
+                with self.subTest(key=key, value=value):
+                    target[key] = value
+                    with self.assertRaises(matrix.Blocked):
+                        self.check()
+            target[key] = logical_digest(self.control)
+
+    def test_each_embedded_binding_field_is_required_and_exact(self):
+        provenance = self.capture["bootstrap"]["captureProvenance"]
+        for key in self.binding:
+            with self.subTest(key=key):
+                provenance["binding"][key] = "0" * len(self.binding[key])
+                with self.assertRaises(matrix.Blocked):
+                    self.check()
+                del provenance["binding"][key]
+                with self.assertRaises(matrix.Blocked):
+                    self.check()
+                provenance["binding"] = copy.deepcopy(self.binding)
+        provenance["binding"]["extra"] = "not the exact run binding"
+        with self.assertRaises(matrix.Blocked):
+            self.check()
+
+    def test_provenance_schema_and_restore_method_are_not_optional(self):
+        provenance = self.capture["bootstrap"]["captureProvenance"]
+        saved = copy.deepcopy(provenance)
+        cases = [("method", "PARSE"), ("sourceCacheSha256", "0" * 64), ("knowledgeMode", "OMNISCIENT")]
+        cases += [(key, value) for key in ("parserSchemaVersion", "sqlSchemaVersion", "catalogLogicalDigestVersion")
+                  for value in (None, True, "1", 0, 99)]
+        for key, value in cases:
+            with self.subTest(key=key, value=value):
+                provenance[key] = value
+                with self.assertRaises(matrix.Blocked):
+                    self.check()
+                provenance[key] = saved[key]
+
+    def test_actual_response_and_measurement_paths_are_required(self):
+        cases = [("/acceptance", 0), ("/scope", "ACCEPTED"), ("/bootstrap/parserInvocations", False),
+                 ("/bootstrap/parserInvocations", 1), ("/bootstrap/response/catalog/hash", "0" * 64),
+                 ("/bootstrap/response/catalog/family", "CRYSTAL"),
+                 ("/bootstrap/response/language/manifestStatus", "UNKNOWN"),
+                 ("/bootstrap/response/language/defaultLanguage", "en"),
+                 ("/bootstrap/response/language/activeLanguage", "en"),
+                 ("/bootstrap/response/language/authority", "LIVE_RAM"),
+                 ("/bootstrap/response/state/loading/phase", "PARSE"),
+                 ("/bootstrap/response/state/settings/knowledgeMode", "OMNISCIENT"),
+                 ("/bootstrap/response/language/projections/0/codecVersion", True),
+                 ("/bootstrap/response/language/projections/0/codecId", "other"),
+                 ("/bootstrap/response/language/projections", []),
+                 ("/bootstrap/response/language/projections", [None])]
+        for path, value in cases:
+            with self.subTest(path=path, value=value):
+                parent, key = path.rsplit("/", 1)
+                target = matrix.pointer(self.capture, parent) if parent else self.capture
+                saved = target[key]
+                target[key] = value
+                with self.assertRaises(matrix.Blocked):
+                    self.check()
+                target[key] = saved
+        del self.capture["bootstrap"]["response"]["state"]["settings"]
+        with self.assertRaises(matrix.Blocked):
+            self.check()
+
+    def test_oracle_pointer_alias_is_rejected_even_if_value_agrees(self):
+        self.expected["bootstrap"]["language"]["pointer"] = "/response/language/defaultLanguage"
+        with self.assertRaises(matrix.Blocked):
+            self.check()
+
+    def test_pre_digest_report_formats_remain_ineligible(self):
+        for version in (14, 15, True, "16", 17):
+            with self.subTest(version=version):
+                self.plan["reportSchemaVersion"] = version
+                with self.assertRaises(matrix.Blocked):
+                    self.check()
 
 
 if __name__ == "__main__":

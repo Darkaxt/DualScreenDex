@@ -29,6 +29,34 @@ def encoded(value):
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
 
 
+def fixture_bootstrap(c, cache_sha256, binding):
+    """Independent fabricated envelope declaration, not a captured expectation."""
+    return {
+        "response": {"catalog": {"hash": c["sha256"], "family": c["family"]},
+                     "language": {"manifestStatus": "RESOLVED", "defaultLanguage": c["language"],
+                                  "activeLanguage": c["language"], "authority": "ROM_DEFAULT",
+                                  "projections": [{"language": c["language"], "status": "RESOLVED",
+                                                   "codecId": c["codecId"], "codecVersion": c["codecVersion"]}]},
+                     "state": {"loading": {"phase": "CACHE_REOPEN"}, "settings": {"knowledgeMode": "DISCOVERED"}}},
+        "parserInvocations": 0,
+        "captureProvenance": {"method": "RESTORE_CATALOG_BY_SHA", "sourceCacheSha256": cache_sha256,
+                              "parserSchemaVersion": 64, "sqlSchemaVersion": 2,
+                              "catalogLogicalDigestVersion": 1, "knowledgeMode": "DISCOVERED", "binding": binding},
+    }
+
+
+def bind_fixture_capture(c, capture, observed, expected, binding):
+    """Rebind fabricated declarations without repairing deliberately corrupted checks."""
+    provenance = capture["bootstrap"]["captureProvenance"]
+    previous = sha(encoded(fixture_bootstrap(c, provenance["sourceCacheSha256"], provenance["binding"])))
+    declared = sha(encoded(fixture_bootstrap(c, capture["cacheSha256"], binding)))
+    for check in (observed["checks"]["apiBootstrap"]["data"], expected["checks"]["apiBootstrap"]):
+        if check["responseSha256"] == previous:
+            check["responseSha256"] = declared
+    provenance["sourceCacheSha256"] = capture["cacheSha256"]
+    provenance["binding"] = copy.deepcopy(binding)
+
+
 class Fixture:
     def __init__(self, root):
         self.root = Path(root)
@@ -36,8 +64,8 @@ class Fixture:
         self.cache.mkdir()
         self.plan = {"schemaVersion": 1, "sourceCommit": COMMIT,
                      "source": self.write("source.txt", SOURCE),
-                     "reportSchemaVersion": 14, "cacheSchemaVersion": 2,
-                     "parserSchemaVersion": 49, "requiredSections": SECTIONS, "controls": [], "runs": []}
+                     "reportSchemaVersion": 16, "cacheSchemaVersion": 2,
+                     "parserSchemaVersion": 64, "requiredSections": SECTIONS, "controls": [], "runs": []}
         self.controls = self.plan["controls"]
         # These identities and codec IDs are explicitly synthetic expectations.
         for language in ["en", "fr", "de", "it", "es", "ja"]:
@@ -52,10 +80,10 @@ class Fixture:
         self.proofs = {"schemaVersion": 1, "proofs": {}}
         for c in self.controls:
             self.make_control(c)
-        self.report = {"schemaVersion": 14, "execution": {"sourceCommit": COMMIT,
+        self.report = {"schemaVersion": 16, "execution": {"sourceCommit": COMMIT,
                        "generatorSha256": "b" * 64}, "results": self.rows}
         self.receipt = {"schemaVersion": 1, "sourceCommit": COMMIT,
-                        "generator": {"name": "parser-cli", "schemaVersion": 14, "sha256": "b" * 64},
+                        "generator": {"name": "parser-cli", "schemaVersion": 16, "sha256": "b" * 64},
                         "inputCount": 44}
         self.manifest = [{"sha256": c["sha256"], "family": c["family"],
                           "language": c["language"], "release": c["release"],
@@ -83,8 +111,10 @@ class Fixture:
         caps = {k: {"status": "AVAILABLE", "coveredRecords": 1, "expectedRecords": 1} for k in CAPS}
         overlay = {"language": language, "overlayVersion": 1,
                    "localizedCapabilities": [dict(v, capability=k) for k, v in caps.items()]}
-        api = {"bootstrap": {"romSha256": identity, "language": language,
-                             "authority": "ROM_DEFAULT", "parserInvocations": 0}, "fields": {}}
+        logical = sha(("fabricated logical catalog " + identity).encode())
+        api = {"acceptance": False, "scope": "CACHE_ONLY_OBSERVATION",
+               "catalogLogicalDigest": {"version": 1, "sha256": logical},
+               "bootstrap": fixture_bootstrap(c, None, None), "fields": {}}
         oracle_caps = {}
         for cap, field in zip(CAPS, FIELDS):
             value = "synthetic-" + language + "-" + field
@@ -111,7 +141,7 @@ class Fixture:
                 CREATE TABLE catalog_section_chunks(section_name TEXT, chunk_index INTEGER, payload BLOB,
                     PRIMARY KEY(section_name,chunk_index));
             """)
-            db.execute("INSERT INTO catalog_metadata VALUES(1,2,49,?,?,1)", (identity, c["family"]))
+            db.execute("INSERT INTO catalog_metadata VALUES(1,2,64,?,?,1)", (identity, c["family"]))
             for name, value in sections.items():
                 payload = gzip.compress(encoded(value), mtime=0)
                 db.execute("INSERT INTO catalog_sections VALUES(?,?,?)", (name, "gzip+json+chunks-v1", bytes.fromhex(sha(payload))))
@@ -120,7 +150,7 @@ class Fixture:
             "rawHeader": {"rawHeaderSha256": "c" * 64, "byteCount": 80},
             "codecGoldenVectors": {"vectorSetSha256": "d" * 64, "vectorCount": 3, "matchedCount": 3},
             "structuralAuthority": {"consumerEvidenceSha256": sha(SOURCE), "corroboratingTableCount": 2},
-            "reopenParity": {"beforeCatalogSha256": "e" * 64, "afterCatalogSha256": "e" * 64},
+            "reopenParity": {"beforeCatalogSha256": logical, "afterCatalogSha256": logical},
             "projectionIsolation": {"fieldsChecked": 15, "mixedFields": 0, "fallbackFields": 0, "sharedTextFields": 0},
             "typeSemantics": {"typesChecked": 3, "unresolvedTypes": 0, "mismatchedTypes": 0},
             "apiBootstrap": {"responseSha256": sha(encoded(api["bootstrap"])), "parserInvocations": 0},
@@ -132,14 +162,15 @@ class Fixture:
         self.api["controls"][identity] = api
         self.oracle["controls"][identity] = {
             "checks": copy.deepcopy(checks), "capabilities": oracle_caps,
-            "bootstrap": {"romSha256": {"pointer": "/romSha256", "value": identity},
-                          "language": {"pointer": "/language", "value": language},
-                          "authority": {"pointer": "/authority", "value": "ROM_DEFAULT"},
+            "bootstrap": {"romSha256": {"pointer": "/response/catalog/hash", "value": identity},
+                          "language": {"pointer": "/response/language/activeLanguage", "value": language},
+                          "authority": {"pointer": "/response/language/authority", "value": "ROM_DEFAULT"},
                           "parserInvocations": {"pointer": "/parserInvocations", "value": 0}}}
         self.rows.append({"result": {"sha256": identity, "status": "SELECTED", "selectedFamily": c["family"],
                                      "probes": [{"family": c["family"], "resolvedLayout": {"languageManifest": manifest}}]},
                           "catalog": {"localizedCapabilities": caps}, "samples": {"referenceErrors": []},
-                          "persistence": {"fileName": identity + ".sqlite"},
+                          "persistence": {"fileName": identity + ".sqlite", "logicalDigestVersion": 1,
+                                          "beforeCatalogSha256": logical, "afterCatalogSha256": logical},
                           "catalogError": None, "persistenceError": None, "error": None})
 
     def refresh(self):
@@ -151,6 +182,11 @@ class Fixture:
                    "generatorSha256": "b" * 64}
         for obj in (self.evidence, self.api, self.oracle, self.proofs):
             obj["binding"] = copy.deepcopy(binding)
+        for c in self.controls:
+            identity = c["sha256"]
+            if identity in self.api["controls"]:
+                bind_fixture_capture(c, self.api["controls"][identity], self.evidence["controls"][identity],
+                                     self.oracle["controls"][identity], binding)
         proofs = self.write("proofs.json", self.proofs)
         for control in self.oracle["controls"].values():
             for cap in control["capabilities"].values():
@@ -230,8 +266,13 @@ class Fixture:
             proof_ref = self.write(f"proofs-{index}.json", proofs)
             run = {"manifest": self.write(f"manifest-{index}.json", [c for c in self.manifest if c["sha256"] in ids]),
                    "report": report_ref, "receipt": receipt_ref, "cacheDir": str(self.cache), "generatorSha256": "b" * 64}
-            for name in ("evidence", "api", "oracle"):
-                obj = copy.deepcopy(getattr(self, name))
+            documents = {name: copy.deepcopy(getattr(self, name)) for name in ("evidence", "api", "oracle")}
+            for c in selected:
+                identity = c["sha256"]
+                bind_fixture_capture(c, documents["api"]["controls"][identity],
+                                     documents["evidence"]["controls"][identity],
+                                     documents["oracle"]["controls"][identity], binding)
+            for name, obj in documents.items():
                 obj["binding"] = binding
                 obj["controls"] = {k: v for k, v in obj["controls"].items() if k in ids}
                 if name == "oracle":
@@ -272,6 +313,22 @@ class MatrixTests(unittest.TestCase):
         self.assertEqual((result["validatedCells"], result["validatedControls"]), (43, 44))
         self.assertEqual(len(result["controls"]), 44)
         self.assertTrue(all(len(c["capabilities"]) == 15 for c in result["controls"]))
+
+    def test_cli_persistence_digests_must_match_capture(self):
+        self.fx.rows[0]["persistence"]["beforeCatalogSha256"] = "f" * 64
+        self.fx.refresh()
+        self.blocked("CATALOG_LOGICAL_DIGEST")
+
+    def test_restored_digest_cannot_be_replaced_with_sqlite_digest(self):
+        capture = self.fx.api["controls"][self.identity]
+        capture["catalogLogicalDigest"]["sha256"] = capture["cacheSha256"]
+        self.fx.refresh()
+        self.blocked("CATALOG_LOGICAL_DIGEST")
+
+    def test_report_order_does_not_change_digest_join(self):
+        self.fx.rows.reverse()
+        self.fx.refresh()
+        self.assertEqual(self.validate()["status"], "EVIDENCE_VALIDATED")
 
     def test_duplicate_expected_hash(self):
         self.fx.controls[1]["sha256"] = self.identity

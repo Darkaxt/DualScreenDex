@@ -25,10 +25,17 @@ Input contract v1 (executable synthetic example: test_official_matrix.Fixture):
 * evidence.controls[sha]: cacheSha256, checks. Seven mandatory checks below
   each contain tests>0, failures=errors=skipped=0 and structured data. The
   independent oracle supplies expected data, not a free-form 'pass'.
-* api.controls[sha]: cacheSha256, bootstrap (actual captured response), plus
-  captured field responses in any JSON layout. oracle.controls[sha].bootstrap
-  supplies {pointer,value} assertions for romSha256/language/authority/
-  parserInvocations (ROM_DEFAULT and zero reparses are mandatory).
+* api.controls[sha]: acceptance=false, scope=CACHE_ONLY_OBSERVATION,
+  cacheSha256, catalogLogicalDigest={version:1,sha256}, bootstrap envelope
+  {response: unchanged production BootstrapView, parserInvocations:0,
+  captureProvenance:{method:RESTORE_CATALOG_BY_SHA, sourceCacheSha256,
+  parserSchemaVersion, sqlSchemaVersion, catalogLogicalDigestVersion:1,
+  knowledgeMode:DISCOVERED, binding: exact run binding}}, plus field observations.
+  Report format16 persistence before/after logical digests and reopenParity must
+  match the restored digest. Historical report formats are not final evidence.
+  oracle.controls[sha].bootstrap supplies fixed production-path assertions for
+  romSha256/language/authority/parserInvocations; alias pointers cannot replace
+  real response fields. apiBootstrap.responseSha256 hashes the whole envelope.
 * oracle.controls[sha]: checks, bootstrap, capabilities (all 15 names).
   Each capability: disposition ACCEPTED or EXCLUDED, coveredRecords,
   expectedRecords, records (independent applicable field SAMPLES, not a full
@@ -326,6 +333,60 @@ def required_checks(observed, expected, api):
         require(valid, "REQUIRED_CHECK")
 
 
+def g3_capture(capture, row, observed, expected, control, plan, binding):
+    """Bind cache-only API metadata to the SHA-joined CLI row; never read or rewrite inputs."""
+    require(integer(plan.get("reportSchemaVersion"), 16, 16), "REPORT_SCHEMA")
+    require(isinstance(capture, dict) and capture.get("acceptance") is False and
+            capture.get("scope") == "CACHE_ONLY_OBSERVATION", "API_ACCEPTANCE")
+    persistence, logical = row.get("persistence"), capture.get("catalogLogicalDigest")
+    require(isinstance(persistence, dict) and isinstance(logical, dict) and
+            integer(persistence.get("logicalDigestVersion"), 1, 1) and
+            integer(logical.get("version"), 1, 1), "CATALOG_LOGICAL_DIGEST")
+    restored = logical.get("sha256")
+    require(hash_value(restored) and persistence.get("beforeCatalogSha256") == restored and
+            persistence.get("afterCatalogSha256") == restored, "CATALOG_LOGICAL_DIGEST")
+    parity = observed["checks"]["reopenParity"]["data"]
+    require(isinstance(parity, dict) and parity.get("beforeCatalogSha256") == restored and
+            parity.get("afterCatalogSha256") == restored, "CATALOG_LOGICAL_DIGEST")
+    require(hash_value(capture.get("cacheSha256")) and
+            capture["cacheSha256"] == observed.get("cacheSha256"), "EVIDENCE_BINDING")
+    envelope = capture.get("bootstrap")
+    require(isinstance(envelope, dict) and set(envelope) == {"response", "parserInvocations", "captureProvenance"},
+            "API_ACCEPTANCE")
+    provenance = envelope.get("captureProvenance")
+    require(isinstance(provenance, dict) and provenance.get("binding") == binding and
+            provenance.get("method") == "RESTORE_CATALOG_BY_SHA" and
+            provenance.get("sourceCacheSha256") == capture["cacheSha256"] and
+            provenance.get("knowledgeMode") == "DISCOVERED", "EVIDENCE_BINDING")
+    for key, version in (("parserSchemaVersion", plan["parserSchemaVersion"]),
+                         ("sqlSchemaVersion", plan["cacheSchemaVersion"]), ("catalogLogicalDigestVersion", 1)):
+        require(integer(provenance.get(key), version, version), "EVIDENCE_BINDING")
+    # These paths are production BootstrapView fields, not caller-selected aliases.
+    fixed = {"romSha256": ("/response/catalog/hash", control["sha256"]),
+             "language": ("/response/language/activeLanguage", control["language"]),
+             "authority": ("/response/language/authority", "ROM_DEFAULT"),
+             "parserInvocations": ("/parserInvocations", 0)}
+    bootstrap = expected.get("bootstrap")
+    require(isinstance(bootstrap, dict) and set(bootstrap) == set(fixed), "REQUIRED_CHECK")
+    for key, (path, value) in fixed.items():
+        require(bootstrap[key] == {"pointer": path, "value": value} and
+                canonical(bootstrap[key]["value"]) == canonical(value), "API_ACCEPTANCE")
+        assertion(envelope, {"pointer": path, "value": value}, "API_ACCEPTANCE")
+    for path, value in (("/response/catalog/family", control["family"]),
+                        ("/response/language/manifestStatus", "RESOLVED"),
+                        ("/response/language/defaultLanguage", control["language"]),
+                        ("/response/state/loading/phase", "CACHE_REOPEN"),
+                        ("/response/state/settings/knowledgeMode", "DISCOVERED")):
+        assertion(envelope, {"pointer": path, "value": value}, "API_ACCEPTANCE")
+    projections = pointer(envelope, "/response/language/projections")
+    require(isinstance(projections, list) and len(projections) == 1 and isinstance(projections[0], dict),
+            "API_ACCEPTANCE")
+    projection = projections[0]
+    require(projection.get("language") == control["language"] and projection.get("status") == "RESOLVED" and
+            projection.get("codecId") == control["codecId"] and type(projection.get("codecVersion")) is int and
+            projection["codecVersion"] == control["codecVersion"], "API_ACCEPTANCE")
+
+
 def referenced_proof(ref, inputs, binding, source, identity, cap, kinds):
     require(isinstance(ref, dict), "EVIDENCE_REFERENCE")
     document = inputs.document(ref["artifact"])
@@ -447,12 +508,7 @@ def validate_run(run, plan, controls, inputs, source):
         for field in ("status", "defaultLanguage", "projections"):
             require(canonical(cached["language_manifest"].get(field)) == canonical(manifest_value.get(field)), "LANGUAGE_AUTHORITY")
         required_checks(observed["checks"], expected["checks"], capture)
-        bootstrap = expected["bootstrap"]
-        fixed = {"romSha256": identity, "language": c["language"], "authority": "ROM_DEFAULT", "parserInvocations": 0}
-        require(set(bootstrap) == set(fixed), "REQUIRED_CHECK")
-        for key, value in fixed.items():
-            require(canonical(bootstrap[key].get("value")) == canonical(value), "REQUIRED_CHECK")
-            assertion(capture["bootstrap"], bootstrap[key], "API_ACCEPTANCE")
+        g3_capture(capture, row, observed, expected, c, plan, binding)
         caps = capability_audit(row["catalog"]["localizedCapabilities"], cached["language_overlay:" + c["language"]],
                                 capture, expected["capabilities"], inputs, binding, source, identity)
         public.append({"romSha256": identity, "family": c["family"], "language": c["language"],
