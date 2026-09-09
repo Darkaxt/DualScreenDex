@@ -74,6 +74,59 @@ Private evidence SHA-256 bindings (no payloads or private paths published):
 | Final 67-test log | `eff67ebd09a5988963812a607a6063efcceca2dec5caa6f121bd85313c299dc5` |
 | Final three-loader replay summary | `df7d1867d767a7c90d4b3bf1cdeb657c282622b0a1091defec36434277ac9553` |
 
+## Retained title callers and bounded consumer follow-up
+
+The next serial Task 419 investigation bound two direct-call edges from each
+field-map caller through its initialization wrapper to the nominated affine
+loader. Exact instruction, literal-pool and call-target assertions passed against
+the pinned retained captures. Both static source pointers reach an eight-byte
+terminated payload. Payload equality is an evidence observation, never a route.
+
+The compiled Japanese declarations differ from current Western public source:
+Ruby supplies a three-argument print call rather than the centered variant;
+Emerald supplies a static pointer to a separate title window without a centering
+call. Its title frame also uses a different tile base. The dynamic map-section
+printer remains a separate RAM-derived source, not a region-title substitute.
+Public source describes structural roles but cannot overwrite these native ABIs.
+
+All four nominated frame/print callee prefixes were absent from the anchor
+capture. A **fresh, separately frozen and MAIN-reviewed consumer scope** therefore
+admitted exactly **two original reads / zero parser invocations**, after six
+fabricated capture tests passed. This was not a retry or expansion of either
+consumed earlier reservation. Limits were two exact callees per control,
+768-byte windows, one nonrecursive direct-call layer, sixteen child targets,
+256 literal words and 16 KiB retained per control; no literal-target previews.
+The existing suspended-child kill-on-close Job finished in **0.669 s**, without
+timeout and with **`ownedTreeEmpty=true`**. The new reservation is consumed.
+
+- **Ruby:** retained **7,276 bytes**. The title pointer flows through the menu
+  wrapper into the initialization call, and frame/print wrappers share the same
+  window root. Three `CHILD_CAP` records cover two distinct sites because root
+  windows overlap; these remain explicit. The initialization callee's first
+  **32 bytes are not retained**, so its full source-storage contract is unproved.
+- **Emerald:** retained **9,076 bytes**, no capture stops. Exact native assertions
+  bind the source register to offset zero of the stack printer template, with
+  window/font/coordinates in distinct byte fields, then to its sixteen-byte copy.
+  This is a consumer data-flow observation, not final selected-raster or
+  current-domain authority.
+
+The initial overlap test fixture accidentally contained literal-load encodings;
+it was corrected to neutral instructions before the final **6/6** capture gate.
+No production code, parser/cache revision, corpus, APK, device or signing changed.
+All title applicability and semantic acceptance remain unproved/false. Neither
+capture success nor a terminated source string closes Tasks 419/417.
+
+| Additional private evidence | SHA-256 |
+|---|---|
+| Retained title caller assertions | `c6891e6fcc5bc51699d8d8c09be425a609aedbdd496bd60fc066f3623a063dd6` |
+| Fresh consumer freeze | `8b7574fdba7cbc64c380c6d3297e84488d0968d7af8e6ce4f3dd1e82e631cf58` |
+| Six-test capture log | `8d5db0349ab2ce1d38e6ad9e109674a2ad67e9db7496f64bc205f39ec7a62584` |
+| Consumer acquisition outcome | `1126ab288f7af62e24ae79b653aac587bc3d08c53dab2f38c646d33e15612df7` |
+| Owned-process terminal receipt | `891ef4a06ea609a4220653dfee2f948c90dca057f999b02f698551499057599e` |
+| Ruby consumer capture | `1d1835075badf1206282a093926ec6f93b19ff1eb720f489d4f66fbced0cd857` |
+| Emerald consumer capture | `025dfb4abbcb6d0218681722376dd156dcab06f77a8242acfb55c62c5f30376f` |
+| Retained consumer-flow assertions | `e093b804b664124c083856e6610358e26a587b9886341bd7c2fb81787c7ad459` |
+
 ## Remaining owner / target / acceptance
 
 **Tasks 419/417:** use the retained loader/caller evidence to bind actual title
