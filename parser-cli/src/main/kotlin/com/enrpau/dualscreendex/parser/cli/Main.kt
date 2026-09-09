@@ -1,6 +1,7 @@
 package com.enrpau.dualscreendex.parser.cli
 
 import com.darkaxt.dualdex.catalog.CatalogCache
+import com.darkaxt.dualdex.catalog.CatalogLogicalDigest
 import com.darkaxt.dualdex.catalog.CatalogSourceMetadata
 import com.darkaxt.dualdex.catalog.CatalogWriteProgress
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
@@ -338,17 +339,26 @@ private fun persistCatalog(
         analysis.size,
         analysis.header.title,
     )
+    // Logical observations deliberately exclude the existing write/reopen timers.
+    val beforeCatalogSha256 = CatalogLogicalDigest.sha256(catalog)
     val writeDuration = measureTime { cache.write(catalog, source, CatalogWriteProgress.complete()) }
     var reopened: com.darkaxt.dualdex.catalog.StoredCatalog? = null
     val reopenDuration = measureTime { reopened = cache.readComplete(catalog.romSha256) }
     val stored = requireNotNull(reopened) { "completed SQLite catalog did not reopen" }
     require(stored.catalog == catalog) { "reopened SQLite catalog differs from parsed catalog" }
+    val afterCatalogSha256 = CatalogLogicalDigest.sha256(stored.catalog)
+    require(beforeCatalogSha256 == afterCatalogSha256) {
+        "reopened SQLite catalog logical digest differs from pre-write catalog"
+    }
     return CatalogPersistenceMetrics(
         fileName = cache.fileFor(catalog.romSha256).name,
         bytes = cache.fileFor(catalog.romSha256).length(),
         writeMillis = writeDuration.inWholeMilliseconds,
         reopenMillis = reopenDuration.inWholeMilliseconds,
         sections = stored.committedSections.size,
+        logicalDigestVersion = CatalogLogicalDigest.version,
+        beforeCatalogSha256 = beforeCatalogSha256,
+        afterCatalogSha256 = afterCatalogSha256,
     )
 }
 

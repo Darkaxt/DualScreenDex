@@ -28,7 +28,7 @@ import java.nio.file.Path
 import java.security.MessageDigest
 import kotlin.math.round
 
-private const val CORPUS_REPORT_SCHEMA_VERSION = 15
+private const val CORPUS_REPORT_SCHEMA_VERSION = 16
 
 data class CorpusExecutionIdentity(
     val sourceCommit: String,
@@ -411,6 +411,9 @@ data class CatalogPersistenceMetrics(
     val writeMillis: Long,
     val reopenMillis: Long,
     val sections: Int,
+    val logicalDigestVersion: Int,
+    val beforeCatalogSha256: String,
+    val afterCatalogSha256: String,
 )
 
 data class CatalogRulesetSelectorMetrics(

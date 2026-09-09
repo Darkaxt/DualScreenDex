@@ -72,10 +72,10 @@ class RawHeaderObservationCliTest {
         }
     }
 
-    @Test fun publicObservationIsOnlyHashAndCountAtExplicitSchema15() {
-        assertEquals(15, report["schemaVersion"].asInt)
+    @Test fun publicObservationIsOnlyHashAndCountAtExplicitSchema16() {
+        assertEquals(16, report["schemaVersion"].asInt)
         assertEquals(1, receipt["schemaVersion"].asInt)
-        assertEquals(15, receipt.getAsJsonObject("generator")["schemaVersion"].asInt)
+        assertEquals(16, receipt.getAsJsonObject("generator")["schemaVersion"].asInt)
         val observation = observation("gb.gba")
         assertEquals(setOf("rawHeaderSha256", "byteCount"), observation.keySet())
         assertEquals(64, observation["rawHeaderSha256"].asString.length)

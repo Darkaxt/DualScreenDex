@@ -447,7 +447,7 @@ class ReportWriterTest {
     fun jsonIsDeterministicForSameReport() {
         val report = CorpusReport(roots = emptyList(), results = emptyList())
         assertEquals(ReportWriter.json(report), ReportWriter.json(report))
-        assertTrue(ReportWriter.json(report).contains("\"schemaVersion\": 15"))
+        assertTrue(ReportWriter.json(report).contains("\"schemaVersion\": 16"))
         assertFalse(ReportWriter.markdown(report).contains("No mainline-family match"))
     }
 
@@ -492,7 +492,7 @@ class ReportWriterTest {
         val ruleset = catalogJson.getAsJsonArray("rulesetDetails")[0].asJsonObject
         val selector = ruleset.getAsJsonObject("levelUpSelector")
 
-        assertEquals(15, root.get("schemaVersion").asInt)
+        assertEquals(16, root.get("schemaVersion").asInt)
         assertEquals(1, catalogJson.get("learnsetRulesets").asInt)
         assertEquals(
             setOf("id", "label", "sourceOffset", "confidence", "primary", "levelUpSelector"),
@@ -527,7 +527,7 @@ class ReportWriterTest {
 
         val json = ReportWriter.json(report)
 
-        assertTrue(json.contains("\"schemaVersion\": 15"))
+        assertTrue(json.contains("\"schemaVersion\": 16"))
         assertTrue(json.contains("\"validatorReviewRecommended\": true"))
     }
 
@@ -566,6 +566,9 @@ class ReportWriterTest {
                         writeMillis = 80,
                         reopenMillis = 12,
                         sections = 10,
+                        logicalDigestVersion = 1,
+                        beforeCatalogSha256 = "a".repeat(64),
+                        afterCatalogSha256 = "a".repeat(64),
                     ),
                 ),
             ),
