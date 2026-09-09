@@ -11,7 +11,7 @@ import unittest
 from unittest.mock import patch
 
 import official_matrix as matrix
-from test_official_matrix import bind_fixture_capture, fixture_bootstrap
+from test_official_matrix import bind_fixture_capture, fixture_bootstrap, fixture_measurements
 
 MODULE = Path(__file__).with_name("build_official_matrix_plan.py")
 COMMIT = "a" * 40
@@ -95,7 +95,7 @@ class SyntheticInputs:
             # Fake captured values and independently declared expectations are separate inputs.
             d["api"]["controls"][identity] = {"acceptance": False, "scope": "CACHE_ONLY_OBSERVATION",
                 "cacheSha256": "f" * 64, "catalogLogicalDigest": {"version": 1, "sha256": logical_digest(c)},
-                "bootstrap": bootstrap(c),
+                "bootstrap": bootstrap(c), "measurements": fixture_measurements(),
                 "fields": {cap: {"1": "fabricated-" + c["language"] + "-" + cap} for cap in matrix.CAPABILITIES}}
             oracle = {"checks": declared_checks(c), "bootstrap": {
                 "romSha256": {"pointer": "/response/catalog/hash", "value": identity},
@@ -570,6 +570,7 @@ class G3BindingTests(unittest.TestCase):
                                     "afterCatalogSha256": logical_digest(self.control)}}
         self.capture = {"acceptance": False, "scope": "CACHE_ONLY_OBSERVATION", "cacheSha256": "f" * 64,
                         "catalogLogicalDigest": {"version": 1, "sha256": logical_digest(self.control)},
+                        "measurements": fixture_measurements(), "fields": {cap: {} for cap in matrix.CAPABILITIES},
                         "bootstrap": fixture_bootstrap(self.control, "f" * 64, copy.deepcopy(self.binding))}
         self.observed = {"cacheSha256": "f" * 64,
                          "checks": {k: {"data": v} for k, v in declared_checks(self.control).items()}}
@@ -675,6 +676,26 @@ class G3BindingTests(unittest.TestCase):
         self.expected["bootstrap"]["language"]["pointer"] = "/response/language/defaultLanguage"
         with self.assertRaises(matrix.Blocked):
             self.check()
+
+    def test_captured_measurements_must_match_normalized_checks(self):
+        for group in ("projectionIsolation", "typeSemantics"):
+            for key in self.capture["measurements"][group]:
+                with self.subTest(group=group, key=key):
+                    saved = self.capture["measurements"][group][key]
+                    self.capture["measurements"][group][key] = saved + 1
+                    with self.assertRaises(matrix.Blocked):
+                        self.check()
+                    self.capture["measurements"][group][key] = saved
+        del self.capture["measurements"]["typeSemantics"]
+        with self.assertRaises(matrix.Blocked):
+            self.check()
+
+    def test_all_fifteen_normalized_field_groups_are_required(self):
+        for value in ({}, {cap: {} for cap in matrix.CAPABILITIES if cap != "ITEM_NAMES"},
+                      {cap: [] for cap in matrix.CAPABILITIES}):
+            self.capture["fields"] = value
+            with self.assertRaises(matrix.Blocked):
+                self.check()
 
     def test_pre_digest_report_formats_remain_ineligible(self):
         for version in (14, 15, True, "16", 17):

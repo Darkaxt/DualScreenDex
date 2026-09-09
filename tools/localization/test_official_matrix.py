@@ -29,6 +29,12 @@ def encoded(value):
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
 
 
+def fixture_measurements():
+    """Explicit fabricated observations, not measured official-control success."""
+    return {"projectionIsolation": {"fieldsChecked": 15, "mixedFields": 0, "fallbackFields": 0, "sharedTextFields": 0},
+            "typeSemantics": {"typesChecked": 3, "unresolvedTypes": 0, "mismatchedTypes": 0}}
+
+
 def fixture_bootstrap(c, cache_sha256, binding):
     """Independent fabricated envelope declaration, not a captured expectation."""
     return {
@@ -114,6 +120,7 @@ class Fixture:
         logical = sha(("fabricated logical catalog " + identity).encode())
         api = {"acceptance": False, "scope": "CACHE_ONLY_OBSERVATION",
                "catalogLogicalDigest": {"version": 1, "sha256": logical},
+               "measurements": fixture_measurements(),
                "bootstrap": fixture_bootstrap(c, None, None), "fields": {}}
         oracle_caps = {}
         for cap, field in zip(CAPS, FIELDS):

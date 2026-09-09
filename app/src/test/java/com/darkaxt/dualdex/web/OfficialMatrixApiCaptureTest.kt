@@ -6,7 +6,23 @@ import com.darkaxt.dualdex.catalog.CatalogLogicalDigest
 import com.darkaxt.dualdex.catalog.CatalogSchema
 import com.darkaxt.dualdex.catalog.CatalogSourceMetadata
 import com.darkaxt.dualdex.catalog.CatalogWriteProgress
+import com.enrpau.dualscreendex.companion.api.AbilityView
+import com.enrpau.dualscreendex.companion.api.AreaGuideAreaView
+import com.enrpau.dualscreendex.companion.api.AreaGuideOverviewView
+import com.enrpau.dualscreendex.companion.api.AreaGuideView
+import com.enrpau.dualscreendex.companion.api.AreaView
+import com.enrpau.dualscreendex.companion.api.BallView
+import com.enrpau.dualscreendex.companion.api.BootstrapView
+import com.enrpau.dualscreendex.companion.api.LocalMapPoiView
+import com.enrpau.dualscreendex.companion.api.LocalMapView
+import com.enrpau.dualscreendex.companion.api.MoveView
+import com.enrpau.dualscreendex.companion.api.NatureView
+import com.enrpau.dualscreendex.companion.api.TypeView
+import com.enrpau.dualscreendex.companion.api.WorldMapLocationView
+import com.enrpau.dualscreendex.companion.api.WorldMapRegionView
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
+import com.enrpau.dualscreendex.parser.catalog.TypeRecord
+import com.enrpau.dualscreendex.parser.catalog.TypeSemanticRole
 import com.enrpau.dualscreendex.parser.catalog.CatalogLanguageOverlay
 import com.enrpau.dualscreendex.parser.catalog.CatalogLocalization
 import com.enrpau.dualscreendex.parser.catalog.LocalizedCapabilityState
@@ -21,6 +37,7 @@ import com.enrpau.dualscreendex.parser.language.RomLanguageProjection
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
+import com.google.gson.Gson
 import com.google.gson.JsonObject
 import org.junit.Assert.*
 import org.junit.Rule
@@ -62,6 +79,147 @@ class OfficialMatrixApiCaptureTest {
         assertEquals(fixture.expected.cacheSha256, digest(fixture.source))
         assertTrue(Files.isRegularFile(fixture.working.resolve("$SHA.sqlite")))
     }
+
+    @Test fun capturesAllFifteenApiGroupsWithoutOverlayBackfill() {
+        val observed = capture(fixture())
+        val fields = observed.getAsJsonObject("fields")
+        assertNotNull("actual API field observations are required", fields)
+        assertEquals(LocalizedTextCapability.entries.map { it.name }.toSet(), fields.keySet())
+        assertEquals("Bulbizarre", fields.getAsJsonObject("SPECIES_NAMES").get("1").asString)
+        assertEquals(0, fields.getAsJsonObject("SPECIES_DESCRIPTIONS").size())
+        assertEquals(0, fields.getAsJsonObject("ITEM_NAMES").size())
+    }
+
+    @Test fun measuresInspectedGroupsAndActualTypeDomain() {
+        val observed = capture(fixture())
+        val measurements = observed.getAsJsonObject("measurements")
+        assertNotNull("projection and type observations must be measured", measurements)
+        val isolation = measurements.getAsJsonObject("projectionIsolation")
+        assertEquals(15, isolation.get("fieldsChecked").asInt)
+        for (key in listOf("mixedFields", "fallbackFields", "sharedTextFields")) assertEquals(0, isolation.get(key).asInt)
+        val types = measurements.getAsJsonObject("typeSemantics")
+        assertEquals(0, types.get("typesChecked").asInt)
+        assertEquals(0, types.get("unresolvedTypes").asInt)
+        assertEquals(0, types.get("mismatchedTypes").asInt)
+    }
+
+    @Test fun normalizesEveryGroupOnlyFromApiValuesAndKeepsCompoundKeys() {
+        val fixture = fixture()
+        val response = response(fixture)
+        val api = requireNotNull(response.catalog)
+        val changed = response.copy(catalog = api.copy(
+            species = api.species.map { it.copy(name = "API species", description = "API species description",
+                abilities = listOf(AbilityView(3, "API ability", "API ability description", emptyList()))) },
+            moves = listOf(MoveView(7, "API move", null, null, null, null, null, null, null, "API move description")),
+            types = listOf(TypeView(2, "API type", null, null, null)),
+            natures = listOf(NatureView(4, "API nature", emptyMap(), null, null, 10, 10, null, null)),
+            balls = listOf(BallView(13, "API item", false, false)),
+            areas = listOf(AreaView(6, 9, "API encounter", 0, emptyList(), emptyList(), emptyList())),
+            localMaps = listOf(LocalMapView("map", "API map", 9, 16, 16, 1, 1, "", false)),
+            worldMaps = listOf(
+                WorldMapRegionView("a/b", "API region", 16, 16, 1, 1, "",
+                    listOf(WorldMapLocationView("c", "API location one", emptyList(), emptyList()))),
+                WorldMapRegionView("a", "API region two", 16, 16, 1, 1, "",
+                    listOf(WorldMapLocationView("b/c", "API location two", emptyList(), emptyList()))),
+            ),
+        ), state = response.state.copy(
+            areaGuide = AreaGuideView(null, listOf(AreaGuideAreaView(9, "API area",
+                AreaGuideOverviewView(0, null, 0, emptyList()), emptyList(), emptyList(), emptyList(), emptyList(), emptyList()))),
+            localMapPois = listOf(
+                LocalMapPoiView("item", "map", 9, 0, 0, "AVAILABLE_ITEM", "AVAILABLE", "wrong display channel", null, 14, "API POI item", null),
+                LocalMapPoiView("sign", "map", 9, 0, 0, "PERSON", "KNOWN", "API sign", null, null, "wrong item channel", null),
+            ),
+        ))
+        val observed = OfficialMatrixApiObservations.observe(fixture.catalog, changed)
+        val fields = observed.getAsJsonObject("fields")
+        val expected = mapOf(
+            "SPECIES_NAMES" to ("1" to "API species"), "SPECIES_DESCRIPTIONS" to ("1" to "API species description"),
+            "MOVE_NAMES" to ("7" to "API move"), "MOVE_DESCRIPTIONS" to ("7" to "API move description"),
+            "ABILITY_NAMES" to ("3" to "API ability"), "ABILITY_DESCRIPTIONS" to ("3" to "API ability description"),
+            "TYPE_NAMES" to ("2" to "API type"), "NATURE_NAMES" to ("4" to "API nature"),
+            "ITEM_NAMES" to ("13" to "API item"), "AREA_NAMES" to ("9" to "API area"),
+            "LOCAL_MAP_NAMES" to ("map" to "API map"), "WORLD_REGION_NAMES" to ("a/b" to "API region"),
+            "ENCOUNTER_AREA_NAMES" to ("6" to "API encounter"), "POI_TEXT" to ("sign" to "API sign"),
+        )
+        expected.forEach { (cap, value) -> assertEquals(cap, value.second, fields.getAsJsonObject(cap).get(value.first).asString) }
+        assertEquals("API POI item", fields.getAsJsonObject("ITEM_NAMES").get("14").asString)
+        assertEquals("API POI item", fields.getAsJsonObject("POI_TEXT").get("item").asString)
+        val locations = fields.getAsJsonObject("WORLD_LOCATION_NAMES")
+        assertEquals("API location one", locations.getAsJsonObject("a/b").get("c").asString)
+        assertEquals("API location two", locations.getAsJsonObject("a").get("b/c").asString)
+        assertTrue(observed.getAsJsonObject("measurements").getAsJsonObject("projectionIsolation").get("mixedFields").asInt > 0)
+        assertEquals("Bulbizarre", fixture.catalog.localizedTextByLanguage.getValue(LanguageTag.FRENCH).speciesNames.getValue(1).value)
+    }
+
+    @Test fun measuresSharedBackingEvenWhenSelectedOverlayWins() {
+        val fixture = fixture()
+        val response = response(fixture)
+        val species = fixture.catalog.speciesById.getValue(1).copy(name = CatalogField.available("forbidden shared name"))
+        val contaminated = fixture.catalog.copy(speciesById = mapOf(1 to species))
+        val observed = OfficialMatrixApiObservations.observe(contaminated, response)
+        val isolation = observed.getAsJsonObject("measurements").getAsJsonObject("projectionIsolation")
+        assertEquals(1, isolation.get("sharedTextFields").asInt)
+        assertEquals(0, isolation.get("fallbackFields").asInt)
+        assertEquals("Bulbizarre", observed.getAsJsonObject("fields").getAsJsonObject("SPECIES_NAMES").get("1").asString)
+    }
+
+    @Test fun missingApiTextIsMeasuredRatherThanFilledFromTheOverlay() {
+        val fixture = fixture()
+        val response = response(fixture)
+        val api = requireNotNull(response.catalog)
+        val observed = OfficialMatrixApiObservations.observe(fixture.catalog, response.copy(catalog = api.copy(species = emptyList())))
+        assertEquals(0, observed.getAsJsonObject("fields").getAsJsonObject("SPECIES_NAMES").size())
+        assertEquals(1, observed.getAsJsonObject("measurements").getAsJsonObject("projectionIsolation").get("mixedFields").asInt)
+    }
+
+    @Test fun countsUnresolvedTypesAndDuplicateApiTypeRows() {
+        val fixture = fixture()
+        val response = response(fixture)
+        val api = requireNotNull(response.catalog)
+        val overlay = fixture.catalog.localizedTextByLanguage.getValue(LanguageTag.FRENCH).let {
+            CatalogLanguageOverlay(language = it.language, overlayVersion = it.overlayVersion, speciesNames = it.speciesNames,
+                localizedCapabilities = it.localizedCapabilities + (LocalizedTextCapability.TYPE_NAMES to
+                    LocalizedCapabilityState.unavailable(CapabilityStatus.NOT_FOUND, 1)))
+        }
+        val unresolved = fixture.catalog.copy(typesById = mapOf(2 to TypeRecord(2, CatalogField.notFound("fixture"))),
+            localization = CatalogLocalization(fixture.catalog.languageManifest, mapOf(LanguageTag.FRENCH to overlay)))
+        val type = TypeView(2, "unexpected API type", null, null, null)
+        val observed = OfficialMatrixApiObservations.observe(unresolved, response.copy(catalog = api.copy(types = listOf(type, type))))
+        val measurements = observed.getAsJsonObject("measurements")
+        val types = measurements.getAsJsonObject("typeSemantics")
+        assertEquals(1, types.get("typesChecked").asInt)
+        assertEquals(1, types.get("unresolvedTypes").asInt)
+        assertEquals(1, types.get("mismatchedTypes").asInt)
+        assertEquals(1, measurements.getAsJsonObject("projectionIsolation").get("fallbackFields").asInt)
+    }
+
+    @Test fun comparesTypesAgainstProjectionInsteadOfAgainstThemselves() {
+        val fixture = fixture()
+        val response = response(fixture)
+        val api = requireNotNull(response.catalog)
+        val overlay = fixture.catalog.localizedTextByLanguage.getValue(LanguageTag.FRENCH).let {
+            CatalogLanguageOverlay(language = it.language, overlayVersion = it.overlayVersion, speciesNames = it.speciesNames,
+                typeNames = mapOf(2 to CatalogField.available("fixture type")),
+                localizedCapabilities = it.localizedCapabilities + (LocalizedTextCapability.TYPE_NAMES to LocalizedCapabilityState.available(1)))
+        }
+        val catalog = fixture.catalog.copy(typesById = mapOf(2 to TypeRecord(2, CatalogField.notApplicable("overlay"),
+            semanticRole = CatalogField.available(TypeSemanticRole.NORMAL))),
+            localization = CatalogLocalization(fixture.catalog.languageManifest, mapOf(LanguageTag.FRENCH to overlay)))
+        val type = TypeView(2, "fixture type", null, null, null)
+        val cases = listOf(listOf(type) to 0, listOf(type, type) to 1, emptyList<TypeView>() to 1,
+            listOf(type.copy(name = "different API value")) to 1, listOf(type.copy(name = "")) to 1)
+        for ((rows, expected) in cases) {
+            val observed = OfficialMatrixApiObservations.observe(catalog, response.copy(catalog = api.copy(types = rows)))
+            val types = observed.getAsJsonObject("measurements").getAsJsonObject("typeSemantics")
+            assertEquals(1, types.get("typesChecked").asInt)
+            assertEquals(0, types.get("unresolvedTypes").asInt)
+            assertEquals(expected, types.get("mismatchedTypes").asInt)
+        }
+    }
+
+    private fun response(fixture: Fixture): BootstrapView = Gson().fromJson(
+        capture(fixture).getAsJsonObject("bootstrap").get("response"), BootstrapView::class.java,
+    )
 
     @Test fun bindsLogicalDigestToTheCatalogActuallyReturnedByRestore() {
         val fixture = fixture()

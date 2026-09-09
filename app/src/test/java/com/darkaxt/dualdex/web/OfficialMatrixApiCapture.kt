@@ -127,7 +127,10 @@ internal object OfficialMatrixApiCapture {
                     "bootstrap codec identity mismatch"
                 }
                 require(parserInvocations.get() == 0 && response.state.loading.phase == "CACHE_REOPEN") { "bootstrap was not cache-only" }
+                val observations = OfficialMatrixApiObservations.observe(restoredCatalog, response)
                 JsonObject().apply {
+                    add("fields", observations.get("fields"))
+                    add("measurements", observations.get("measurements"))
                     addProperty("acceptance", false)
                     addProperty("scope", "CACHE_ONLY_OBSERVATION")
                     addProperty("cacheSha256", expected.cacheSha256)

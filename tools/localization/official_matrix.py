@@ -338,6 +338,15 @@ def g3_capture(capture, row, observed, expected, control, plan, binding):
     require(integer(plan.get("reportSchemaVersion"), 16, 16), "REPORT_SCHEMA")
     require(isinstance(capture, dict) and capture.get("acceptance") is False and
             capture.get("scope") == "CACHE_ONLY_OBSERVATION", "API_ACCEPTANCE")
+    measurements, fields = capture.get("measurements"), capture.get("fields")
+    require(isinstance(measurements, dict) and set(measurements) == {"projectionIsolation", "typeSemantics"},
+            "REQUIRED_CHECK")
+    for name, measurement in measurements.items():
+        require(isinstance(measurement, dict) and canonical(measurement) == canonical(observed["checks"][name]["data"]),
+                "REQUIRED_CHECK")
+    require(integer(measurements["projectionIsolation"].get("fieldsChecked"), 15, 15) and
+            isinstance(fields, dict) and set(fields) == CAPABILITIES and
+            all(isinstance(value, dict) for value in fields.values()), "REQUIRED_CHECK")
     persistence, logical = row.get("persistence"), capture.get("catalogLogicalDigest")
     require(isinstance(persistence, dict) and isinstance(logical, dict) and
             integer(persistence.get("logicalDigestVersion"), 1, 1) and
