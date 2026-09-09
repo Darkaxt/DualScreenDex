@@ -39,6 +39,8 @@ application {
 
 tasks.test {
     useJUnit()
+    dependsOn(tasks.named("installDist"))
+    systemProperty("dualdex.test.cliDistribution", layout.buildDirectory.dir("install/parser-cli").get().asFile.absolutePath)
 }
 
 tasks.register<JavaExec>("mapFirst50Matrix") {

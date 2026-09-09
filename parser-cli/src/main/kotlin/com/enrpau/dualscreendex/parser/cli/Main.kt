@@ -98,6 +98,7 @@ fun main(arguments: Array<String>) {
                         catalog = materialized?.let(CatalogMetrics.Companion::from),
                         samples = materialized?.let(CatalogSamples.Companion::from),
                         catalogError = measured.value.catalog?.exceptionOrNull()?.let(::readableFailure),
+                        rawHeader = observeRawHeader(rom, measured.value.analysis.header.platform),
                     )
                 } catch (failure: Exception) {
                     CorpusResult(

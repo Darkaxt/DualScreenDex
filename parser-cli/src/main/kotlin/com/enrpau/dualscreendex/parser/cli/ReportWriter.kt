@@ -11,7 +11,9 @@ import com.enrpau.dualscreendex.parser.catalog.LocalMap
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoi
 import com.enrpau.dualscreendex.parser.catalog.LocalMapScenePlacement
 import com.enrpau.dualscreendex.parser.catalog.defaultTextProjection
+import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.ParseResult
+import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.CapabilityEvidence
 import com.enrpau.dualscreendex.parser.model.CapabilityReviewStatus
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
@@ -26,7 +28,7 @@ import java.nio.file.Path
 import java.security.MessageDigest
 import kotlin.math.round
 
-private const val CORPUS_REPORT_SCHEMA_VERSION = 14
+private const val CORPUS_REPORT_SCHEMA_VERSION = 15
 
 data class CorpusExecutionIdentity(
     val sourceCommit: String,
@@ -146,7 +148,28 @@ data class CorpusResult(
     val expectedFeatureCount: Int = calculateCompatibility(result).expectedFeatureCount,
     val manualReviewRequired: Boolean = calculateCompatibility(result).manualReviewRequired ||
         catalogError != null || persistenceError != null || error != null || samples?.referenceErrors?.isNotEmpty() == true,
+    val rawHeader: CorpusRawHeaderObservation? = null,
 )
+
+/** Hash-only observation; byteCount is the complete fixed platform header window, not ROM size. */
+data class CorpusRawHeaderObservation(
+    val rawHeaderSha256: String,
+    val byteCount: Int,
+)
+
+/** The caller supplies the platform from this same image's existing parser analysis. */
+internal fun observeRawHeader(rom: RomImage, platform: Platform): CorpusRawHeaderObservation? {
+    val (offset, byteCount) = when (platform) {
+        Platform.GB, Platform.GBC -> 0x100 to 0x50
+        Platform.GBA -> 0 to 0xC0
+        Platform.UNKNOWN -> return null
+    }
+    if (rom.size < offset + byteCount) return null
+    return CorpusRawHeaderObservation(
+        rawHeaderSha256 = sha256(rom.slice(offset, byteCount)),
+        byteCount = byteCount,
+    )
+}
 
 data class RomCompatibilityScore(
     val compatibilityPercent: Double,
