@@ -1,9 +1,10 @@
 # Stage 4 GBA loader nomination checkpoint
 
 Task 419 under Task 417 / `LNG-B002` / `LNG-B003`; diagnostic only.
-Production source remains `f9b10f808af6594857815d81952360c333027484`,
-parser/storage/codecs **65/2/1**. The collector correction is private diagnostic
-code, not an integrated production title resolver.
+The initial collector checkpoint used source
+`f9b10f808af6594857815d81952360c333027484`. The subsequent Kotlin nomination
+integration below still emits no production titles; parser/storage/codecs remain
+**65/2/1**.
 
 ## Evidence acquisition
 
@@ -126,6 +127,51 @@ capture success nor a terminated source string closes Tasks 419/417.
 | Ruby consumer capture | `1d1835075badf1206282a093926ec6f93b19ff1eb720f489d4f66fbced0cd857` |
 | Emerald consumer capture | `025dfb4abbcb6d0218681722376dd156dcab06f77a8242acfb55c62c5f30376f` |
 | Retained consumer-flow assertions | `e093b804b664124c083856e6610358e26a587b9886341bd7c2fb81787c7ad459` |
+
+## Kotlin selected-loader nomination integration
+
+`Gen3WorldMapResolver` now retains the affine candidate's loader address without
+changing its asset identity, keys, geometry or raster selection. The existing
+opt-in map trace can pass the uniquely selected candidate to
+`CompiledGbaFieldMapTitle`. Normal parsing still does not run this diagnostic scan
+or publish a region title.
+
+The bounded caller recognizer connects the state-table initialization arm through
+a complete synchronous wrapper to that loader, checks the state increment and
+separate static title arguments, and validates the printer argument ABI through
+`CompiledGbaTextPrinter`. The latter checks every instruction of the packet
+constructor and balanced return, including the formerly unchecked middle between
+source storage and dispatch. Code/data placement, literals and relative calls may
+relocate; no ROM identity, language, source text or payload hash selects a path.
+Malformed connected declarations and owner-budget exhaustion return `Incomplete`;
+conflicting declarations remain distinct. Source bytes are not decoded.
+
+Fresh host verification compiled the **entire parser-core Kotlin module** and ran
+**22 focused fabricated tests, all passed**. The retained Emerald replay also
+matched the actual caller and printer envelopes with all relevant bytes present.
+It used sparse retained spans only: **zero original reads**, no whole-original
+uniqueness claim and **`semanticAcceptance=false`**. The owned process tree was
+empty after **51.559 s**. No Gradle, corpus, app build, device or signing ran.
+
+The first printer test run reproduced the missing implementation (9 tests,
+1 failure). Module verification initially lacked a transitive compiler classpath
+dependency; after that runner correction, the new asset-identity test exposed its
+own invalid compositor fixture. The fixture was replaced with an explicit
+composition value because this test checks identity, not rendering. Neither
+failure required relaxing production parsing. The final compile retains one
+unrelated existing unused-expression warning in `SpriteCodec.kt`.
+
+This is still **nomination**, not full executable-entry/CFG, frame-renderer,
+current-domain or title authority. The printer dispatcher itself is not certified
+by the packet constructor. Ruby's missing initialization prefix and other official
+ABIs remain open under Tasks 419/417. No cache/version bump is justified by this
+trace-only change, and no final corpus was rerun.
+
+| Kotlin gate evidence | SHA-256 |
+|---|---|
+| Actual module/test/retained replay log | `88b39f3f7e4c1a9621258dd3aa5e0e3e97ffd9381574d17e0f7232477c0c1bc8` |
+| Source and dependency input pins | `5fe1643d729fb4d058d208d3b5dbe79d8cdf0d3223b7494a6a5a96e9fcac0a63` |
+| Owned-process terminal receipt | `1c44ccee6f2ff2e0d1c1ef2f483fbaa30fe94b10ec93ee759d019d5b920970d5` |
 
 ## Remaining owner / target / acceptance
 

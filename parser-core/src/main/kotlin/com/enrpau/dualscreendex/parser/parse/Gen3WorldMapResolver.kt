@@ -125,6 +125,11 @@ object Gen3WorldMapResolver {
                 "encounter map headers and region entries did not resolve uniquely",
             )
         val winner = winners.single()
+        if (mapTraceEnabled) {
+            winner.loaderFunctionStart?.let { loader ->
+                mapTrace("affine-title-nomination ${CompiledGbaFieldMapTitle.nominate(rom, loader, cancellation)}")
+            }
+        }
         val normalized = emeraldLocations(locations, winner.composition.gridWidth, winner.composition.gridHeight)
         if (normalized.isEmpty()) {
             return WorldMapResolution.Unavailable(
@@ -509,6 +514,7 @@ object Gen3WorldMapResolver {
                                         completeSites(references, palette.offset).orEmpty().any { site ->
                                             immediatePaletteLoadByteCount(rom, site) != null
                                         },
+                                        loaderFunctionStart = sharedFunction,
                                     ),
                                 )
                             }
@@ -1642,6 +1648,7 @@ object Gen3WorldMapResolver {
         val paletteOffset: Int,
         val composition: GbaWorldMapComposition.Resolved,
         val immediatePaletteLoad: Boolean = false,
+        val loaderFunctionStart: Int? = null,
     ) {
         val identity: Triple<Int, Int, Int> get() = Triple(graphicsOffset, mapOffset, paletteOffset)
     }

@@ -8,6 +8,23 @@ import org.junit.Test
 
 class Gen3WorldMapResolverTest {
     @Test
+    fun affineLoaderProvenanceDoesNotChangeAssetIdentity() {
+        val candidateType = Gen3WorldMapResolver::class.java.declaredClasses.single { it.simpleName == "AssetCandidate" }
+        val constructor = candidateType.declaredConstructors.single { it.parameterCount == 6 }.apply { isAccessible = true }
+        val composition = GbaWorldMapComposition.Resolved(
+            GbaWorldMapFormat.AFFINE_8BPP_64X64, 1, 1,
+            com.enrpau.dualscreendex.parser.catalog.RgbaSprite(8, 8, IntArray(64)),
+        )
+        val first = constructor.newInstance(0x1000, 0x2000, 0x3000, composition, true, 0x400)
+        val relocated = constructor.newInstance(0x1000, 0x2000, 0x3000, composition, true, 0x800)
+        val identity = candidateType.getDeclaredMethod("getIdentity").apply { isAccessible = true }
+        val loader = candidateType.getDeclaredMethod("getLoaderFunctionStart").apply { isAccessible = true }
+        org.junit.Assert.assertEquals(identity.invoke(first), identity.invoke(relocated))
+        org.junit.Assert.assertEquals(0x400, loader.invoke(first))
+        org.junit.Assert.assertEquals(0x800, loader.invoke(relocated))
+    }
+
+    @Test
     fun semanticPlaneNamesDoNotChangeNumericGeometry() {
         val layoutType = Gen3WorldMapResolver::class.java.declaredClasses.single { it.simpleName == "SemanticLayout" }
         val constructor = layoutType.declaredConstructors.single { it.parameterCount == 2 }.apply { isAccessible = true }
