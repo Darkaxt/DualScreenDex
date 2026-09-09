@@ -755,14 +755,23 @@ internal class CatalogSectionCodec {
         },
         onInflatedBytes: (Int) -> Unit = {},
     ) {
-        fun write(value: Any, type: Type) = encode(
-            value,
-            type,
-            output,
-            name,
-            maximumInflatedBytes,
-            onInflatedBytes,
-        )
+        withSection(catalog, name) { value, type ->
+            encode(value, type, output, name, maximumInflatedBytes, onInflatedBytes)
+        }
+    }
+
+    /** The same typed storage payload, without compression; used only for logical evidence. */
+    fun writeJsonSection(catalog: ParsedCatalog, name: String, output: OutputStream, maximumBytes: Int) {
+        withSection(catalog, name) { value, type ->
+            val bounded = CatalogInflatedOutputStream(output, name, maximumBytes)
+            val encoder = Charsets.UTF_8.newEncoder()
+                .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
+                .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT)
+            OutputStreamWriter(bounded, encoder).use { writer -> gson.toJson(value, type, writer) }
+        }
+    }
+
+    private fun withSection(catalog: ParsedCatalog, name: String, write: (Any, Type) -> Unit) {
         when (name) {
             "species" -> write(catalog.speciesById, speciesType)
             "moves" -> write(catalog.movesById, movesType)
