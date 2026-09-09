@@ -441,7 +441,14 @@ class CatalogStoreTest {
     }
 
     @Test
-    fun revision63JapaneseSignOutcomesAreRejectedAndCurrentReopensWithNativeTextAndGeometry() {
+    fun revision63JapaneseSignOutcomesAreRejectedAndCurrentReopensWithNativeTextAndGeometry() =
+        assertStaleSignRevisionRejected(63)
+
+    @Test
+    fun revision64SignHandlerOutcomesAreRejectedAndCurrentReopensWithNativeTextAndGeometry() =
+        assertStaleSignRevisionRejected(64)
+
+    private fun assertStaleSignRevisionRejected(staleRevision: Int) {
         val base = task417MixedCatalog()
         val signNames = mapOf(LanguageTag.JAPANESE to "ここは　まち", LanguageTag.KOREAN to "여기는 마을")
         val maps = LocalMapCatalog(
@@ -474,9 +481,9 @@ class CatalogStoreTest {
         val file = cache.fileFor(catalog.romSha256)
         JdbcCatalogDatabaseFactory.open(file).use { database ->
             assertEquals(catalog, CatalogReader(database).readComplete()?.catalog)
-            // Valid sections isolate invalidation of old Japanese sign outcomes from payload corruption.
-            database.execute("UPDATE catalog_metadata SET parser_schema_version = 63 WHERE id = 1")
-            assertEquals(listOf(63L to 2L), database.query(
+            // Valid sections isolate invalidation of old sign outcomes from payload corruption.
+            database.execute("UPDATE catalog_metadata SET parser_schema_version = ? WHERE id = 1", listOf(staleRevision))
+            assertEquals(listOf(staleRevision.toLong() to 2L), database.query(
                 "SELECT parser_schema_version, schema_version FROM catalog_metadata WHERE id = 1",
             ) { row -> row.long("parser_schema_version") to row.long("schema_version") })
         }
@@ -485,7 +492,7 @@ class CatalogStoreTest {
         }
         val reopened = CatalogCache(root, JdbcCatalogDatabaseFactory)
         val lookup = reopened.lookupComplete(catalog.romSha256)
-        assertEquals("revision63 must be rejected by both fresh reader and cache", listOf(false, false),
+        assertEquals("revision$staleRevision must be rejected by both fresh reader and cache", listOf(false, false),
             listOf(readerAccepted, lookup.stored != null))
         assertEquals(CatalogCacheDecision.MISS_INCOMPLETE_OR_INCOMPATIBLE, lookup.decision)
         reopened.write(catalog, source, CatalogWriteProgress.complete())
@@ -533,7 +540,7 @@ class CatalogStoreTest {
             assertEquals(if (hasStaticName) 3 else 2, pois.coveredRecords)
             assertEquals(CapabilityStatus.PARTIAL, pois.status)
         }
-        assertTrue(CatalogSchema.parserSchemaVersion > 63)
+        assertTrue(CatalogSchema.parserSchemaVersion > staleRevision)
         assertEquals(2, CatalogSchema.version)
         assertTrue(current.languageManifest.projections.all { it.codecVersion == 1 })
         assertEquals(1, JapanesePokemonTextCodecs.gen2.version)

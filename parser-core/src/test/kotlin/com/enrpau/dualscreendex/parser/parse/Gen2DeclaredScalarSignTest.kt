@@ -22,6 +22,48 @@ class Gen2DeclaredScalarSignTest {
         }
     }
 
+    @Test fun callScriptAndEndBindRunningFlagSeparatelyFromMode() {
+        for (shift in listOf(0, 0x20)) for (inline in listOf(false, true)) {
+            val f = scalarFixture(shift, 2, inline = inline)
+            // CallScript sets wScriptRunning; Script_end clears that same flag, then wScriptMode.
+            f.emit("callScript", "ea @scriptBankState 7d ea @scriptPointerState 7c ea @scriptPointerHi 3e ff ea @scriptRunning 37 c9")
+            val positive = resolve(f).pois.single()
+            assertEquals("ここは ワカバ", positive.displayName)
+            f.word(f.at("endHandler") + 8, f.at("scriptRunning") + 8, false)
+            assertEquals(positive.copy(displayName = null), resolve(f).pois.single())
+            f.word(f.at("endHandler") + 8, f.at("scriptRunning"), false)
+            f.word(f.at("endHandler") + 13, f.at("scriptRunning"), false)
+            assertEquals(positive.copy(displayName = null), resolve(f).pois.single())
+        }
+    }
+
+    @Test fun inlineCloseBindsOamSaveRestoreAndBoundedCallTargets() {
+        val mutations: List<(Gen2DeclaredSignFixture) -> Unit> = listOf(
+            { f -> f.bytes[f.at("closeHandler") + 2] = 0 },
+            { f -> f.bytes[f.at("closeHandler") + 4] = 2 },
+            { f -> f.bytes[f.at("closeHandler") + 6] = 0xdb.toByte() },
+            { f -> f.bytes[f.at("closeHandler") + 10] = 0 },
+            { f -> f.bytes[f.at("closeHandler") + 12] = 0xdb.toByte() },
+            { f -> f.bytes[f.at("closeHandler") + 16] = 0 },
+            { f -> f.word(f.at("closeHandler") + 8, 0xc000, false) },
+            { f -> f.word(f.at("closeHandler") + 14, 0xc000, false) },
+            { f -> for (offset in listOf(1, 6, 12)) f.bytes[f.at("closeHandler") + offset] = 0xdb.toByte() },
+        )
+        for (shift in listOf(0, 0x20)) for (shape in listOf("pair", "scalarSetup", "scalarInline")) for (mutate in mutations) {
+            val f = if (shape == "pair") Gen2DeclaredSignFixture(shift, 2)
+                else scalarFixture(shift, 2, inline = shape == "scalarInline")
+            f.symbol("closeTransfer", 0x3300 + shift)
+            f.symbol("closeText", 0x3400 + shift)
+            f.emit("closeHandler", "f0 da f5 3e 01 e0 da cd @closeTransfer f1 e0 da cd @closeText c9")
+            fun result() = Gen2LocalMapPoiResolver.resolve(RomImage(f.bytes), listOf(f.source), listOf(f.map),
+                EngineFamily.CRYSTAL, if (shape == "pair") KoreanGen2PokemonTextCodec.codec else JapanesePokemonTextCodecs.gen2)
+            val positive = result().pois.single()
+            assertEquals(shape, if (shape == "pair") "이곳은 연두마을" else "ここは ワカバ", positive.displayName)
+            mutate(f)
+            assertEquals(positive.copy(displayName = null), result().pois.single())
+        }
+    }
+
     @Test fun declarationRejectionsRetainBoundedReasonsWithoutLosingNumericPois() {
         val rootFailure = scalarFixture()
         val numeric = resolve(rootFailure).pois.single().copy(displayName = null)

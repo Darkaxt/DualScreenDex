@@ -34,7 +34,8 @@ internal class Gen2DeclaredSignFixture(val shift: Int = 0, val bankShift: Int = 
         symbols["scriptBankState"] = 0xD21D + shift
         symbols["scriptPointerState"] = 0xD21E + shift
         symbols["scriptPointerHi"] = 0xD21F + shift
-        symbols["scriptMode"] = 0xD21C + shift
+        symbols["scriptRunning"] = 0xD21C + shift
+        symbols["scriptMode"] = 0xD21B + shift
         symbols["textBankState"] = 0xD232 + shift
         symbols["textPointerState"] = 0xD233 + shift
         symbols["textPointerHi"] = 0xD234 + shift
@@ -105,7 +106,7 @@ internal class Gen2DeclaredSignFixture(val shift: Int = 0, val bankShift: Int = 
         emit("bgDispatch", "cd @facing 38 02 af c9 fa @bgKind 21 @bgTable ef c9")
         word(at("bgTable"), at("bgRead"))
         emit("bgRead", "cd @talk 21 @bgScript 2a 66 6f cd @getScripts cd @callScript 37 c9")
-        emit("callScript", "ea @scriptBankState 7d ea @scriptPointerState 7c ea @scriptPointerHi 3e ff ea @scriptMode 37 c9")
+        emit("callScript", "ea @scriptBankState 7d ea @scriptPointerState 7c ea @scriptPointerHi 3e ff ea @scriptRunning 37 c9")
         emit("scriptDispatch", "cd @getByte 21 @scriptTable ef c9")
         word(at("scriptTable") + 0x53 * 2, at("direct"))
         word(at("scriptTable") + 0x48 * 2, at("openHandler"))
@@ -136,7 +137,6 @@ internal class Gen2DeclaredSignFixture(val shift: Int = 0, val bankShift: Int = 
         for ((i, name) in listOf("waitHandler", "closeHandler", "endHandler", "exitSubroutine", "stopScript").withIndex()) {
             symbol(name, codeBank * 0x4000 + 0x2800 + shift + i * 0x40)
         }
-        symbol("scriptRunning", 0xD21A + shift, false)
         symbol("scriptFlags", 0xD240 + shift, false)
         word(at("scriptTable") + 0x54 * 2, at("waitHandler"))
         word(at("scriptTable") + 0x4A * 2, at("closeHandler"))

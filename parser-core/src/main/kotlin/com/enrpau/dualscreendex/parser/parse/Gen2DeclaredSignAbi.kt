@@ -137,7 +137,7 @@ internal object Gen2DeclaredSignAbi {
                 val read = r.pointer(site / BANK, r.word(table))
                 r.need(read, "CD @talk 21 @bgScript 2A 66 6F CD @getScripts CD @callScript 37 C9", c)
                 r.needHome(c, "getScripts", "FA @scriptsBankState C9")
-                r.needHome(c, "callScript", "EA @scriptBankState 7D EA @scriptPointerState 7C EA @scriptPointerHi 3E FF EA @scriptMode 37 C9")
+                r.needHome(c, "callScript", "EA @scriptBankState 7D EA @scriptPointerState 7C EA @scriptPointerHi 3E FF EA @scriptRunning 37 C9")
                 r.check(c.getValue("scriptPointerHi") == c.getValue("scriptPointerState") + 1, "script state width")
                 c
             } catch (_: Invalid) { null }
@@ -168,9 +168,10 @@ internal object Gen2DeclaredSignAbi {
                 r.need(r.slot(bank, table, e.getValue("repeatCommand")), "CD @getByte 6F CD @getByte 67 FE FF 20 11 7D FE FF 20 0C 21 @textBankState 2A 47 2A 66 6F CD @mapTextbox C9 C9", e)
                 r.need(r.slot(bank, table, e.getValue("openCommand")), "CD @openText C9", e)
                 r.need(r.slot(bank, table, e.getValue("waitCommand")), "C3 @waitButton", e)
-                r.need(r.slot(bank, table, e.getValue("closeCommand")), "CD @hdma CD @closeText C9", e)
+                bindCloseEnvelope(r, r.slot(bank, table, e.getValue("closeCommand")), e)
                 r.need(r.slot(bank, table, e.getValue("endScriptCommand")), "CD @exitSubroutine 38 01 C9 AF EA @scriptRunning 3E 00 EA @scriptMode 21 @scriptFlags CB 86 CD @stopScript C9", e)
-                for (name in listOf("waitButton", "hdma", "closeText")) r.home(e.getValue(name))
+                r.check(e.getValue("scriptRunning") != e.getValue("scriptMode"), "aliased script running flag and mode")
+                r.home(e.getValue("waitButton"))
                 for (name in listOf("exitSubroutine", "stopScript")) r.pointer(bank, e.getValue(name))
                 val inlineSetup = bindMapTextbox(r, e)
                 bindSetupEnvelope(r, e, inlineSetup)
@@ -253,6 +254,22 @@ internal object Gen2DeclaredSignAbi {
         }
 
         internal fun outcome(command: Int): Resolution { grammar(command); return declarations.getValue(command) }
+    }
+
+    private fun bindCloseEnvelope(r: Reader, offset: Int, e: MutableMap<String, Int>) {
+        val variants = listOf(
+            "hdma" to "CD @hdma CD @closeText C9",
+            "closeTransfer" to "F0 %oam F5 3E 01 E0 %oam CD @closeTransfer F1 E0 %oam CD @closeText C9",
+        )
+        r.spend()
+        val matches = variants.mapNotNull { (transfer, pattern) ->
+            r.match(offset, pattern, e.toMutableMap())?.let { transfer to it }
+        }
+        r.unique(matches.size, "CloseText envelope")
+        val (transfer, matched) = matches.single()
+        e.putAll(matched)
+        // Graphics remain opaque; inline save/restore must share the setup's OAM field.
+        r.home(e.getValue(transfer)); r.home(e.getValue("closeText"))
     }
 
     private fun bindMapTextbox(r: Reader, e: MutableMap<String, Int>): Boolean {
