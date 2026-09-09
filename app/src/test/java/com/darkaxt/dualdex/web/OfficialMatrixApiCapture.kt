@@ -3,6 +3,12 @@ package com.darkaxt.dualdex.web
 import com.darkaxt.dualdex.catalog.CatalogCache
 import com.darkaxt.dualdex.catalog.CatalogDatabaseFactory
 import com.darkaxt.dualdex.catalog.CatalogSchema
+import com.darkaxt.dualdex.catalog.CatalogLogicalDigest
+import com.darkaxt.dualdex.catalog.CatalogRepository
+import com.darkaxt.dualdex.catalog.StoredCatalog
+import com.enrpau.dualscreendex.companion.model.CompanionSettings
+import com.enrpau.dualscreendex.companion.model.KnowledgeMode
+import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonObject
@@ -23,7 +29,15 @@ internal data class MatrixCacheControl(
     val codecVersion: Int,
 )
 
-/** Captures a cache-only observation fragment; report/oracle binding is a separate boundary. */
+internal data class MatrixG3Binding(
+    val sourceCommit: String,
+    val sourceSha256: String,
+    val reportSha256: String,
+    val receiptSha256: String,
+    val generatorSha256: String,
+)
+
+/** Captures the unchanged production bootstrap and exact restored catalog; never asserts acceptance. */
 internal object OfficialMatrixApiCapture {
     private const val MAX_CACHE_BYTES = 256L * 1024 * 1024
     private val sha256 = Regex("[0-9a-f]{64}")
@@ -34,7 +48,11 @@ internal object OfficialMatrixApiCapture {
         workingDirectory: Path,
         expected: MatrixCacheControl,
         databaseFactory: CatalogDatabaseFactory,
+        binding: MatrixG3Binding,
     ): JsonObject {
+        require(binding.sourceCommit.matches(Regex("[0-9a-f]{40}")) && listOf(
+            binding.sourceSha256, binding.reportSha256, binding.receiptSha256, binding.generatorSha256,
+        ).all(sha256::matches)) { "invalid capture binding" }
         require(sha256.matches(expected.romSha256) && sha256.matches(expected.cacheSha256)) { "invalid capture identity" }
         require(expected.language.matches(Regex("[a-z]{2}")) && expected.codecId.isNotBlank() && expected.codecVersion > 0) {
             "invalid codec identity"
@@ -78,14 +96,24 @@ internal object OfficialMatrixApiCapture {
             }
             val parserInvocations = AtomicInteger()
             val cache = CatalogCache(working.toFile(), databaseFactory)
+            var restored: ParsedCatalog? = null
+            var repositoryReads = 0
+            val recording = object : CatalogRepository by cache {
+                override fun readComplete(sha256: String): StoredCatalog? {
+                    check(++repositoryReads == 1) { "capture must consume exactly one repository result" }
+                    return cache.readComplete(sha256).also { restored = it?.catalog }
+                }
+            }
             return ProductionCompanionRuntime(
-                catalogRepository = cache,
+                catalogRepository = recording,
+                initialSettings = CompanionSettings(knowledgeMode = KnowledgeMode.DISCOVERED),
                 parseCatalogWithCancellation = { _, _, _, _ ->
                     parserInvocations.incrementAndGet()
                     error("matrix cache restore must not invoke the parser")
                 },
             ).use { runtime ->
                 require(runtime.restoreCatalog(expected.romSha256)) { "pinned catalog did not reopen" }
+                val restoredCatalog = requireNotNull(restored) { "restore did not consume the repository result" }
                 val response = runtime.bootstrap()
                 val catalog = requireNotNull(response.catalog) { "missing bootstrap catalog" }
                 val language = requireNotNull(response.language) { "missing bootstrap language" }
@@ -103,6 +131,10 @@ internal object OfficialMatrixApiCapture {
                     addProperty("acceptance", false)
                     addProperty("scope", "CACHE_ONLY_OBSERVATION")
                     addProperty("cacheSha256", expected.cacheSha256)
+                    add("catalogLogicalDigest", JsonObject().apply {
+                        addProperty("version", CatalogLogicalDigest.version)
+                        addProperty("sha256", CatalogLogicalDigest.sha256(restoredCatalog))
+                    })
                     add("bootstrap", JsonObject().apply {
                         add("response", gson.toJsonTree(response))
                         addProperty("parserInvocations", parserInvocations.get())
@@ -111,6 +143,9 @@ internal object OfficialMatrixApiCapture {
                             addProperty("sourceCacheSha256", expected.cacheSha256)
                             addProperty("parserSchemaVersion", CatalogSchema.parserSchemaVersion)
                             addProperty("sqlSchemaVersion", CatalogSchema.version)
+                            addProperty("catalogLogicalDigestVersion", CatalogLogicalDigest.version)
+                            addProperty("knowledgeMode", KnowledgeMode.DISCOVERED.name)
+                            add("binding", gson.toJsonTree(binding))
                         })
                     })
                 }

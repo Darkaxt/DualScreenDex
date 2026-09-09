@@ -2,6 +2,7 @@ package com.darkaxt.dualdex.web
 
 import com.darkaxt.dualdex.catalog.CatalogCache
 import com.darkaxt.dualdex.catalog.CatalogDatabaseFactory
+import com.darkaxt.dualdex.catalog.CatalogLogicalDigest
 import com.darkaxt.dualdex.catalog.CatalogSchema
 import com.darkaxt.dualdex.catalog.CatalogSourceMetadata
 import com.darkaxt.dualdex.catalog.CatalogWriteProgress
@@ -60,6 +61,38 @@ class OfficialMatrixApiCaptureTest {
         assertEquals("RESTORE_CATALOG_BY_SHA", envelope.getAsJsonObject("captureProvenance").get("method").asString)
         assertEquals(fixture.expected.cacheSha256, digest(fixture.source))
         assertTrue(Files.isRegularFile(fixture.working.resolve("$SHA.sqlite")))
+    }
+
+    @Test fun bindsLogicalDigestToTheCatalogActuallyReturnedByRestore() {
+        val fixture = fixture()
+        val changed = fixture.catalog.copy(diagnostics = listOf("changed private working copy"))
+        var opens = 0
+        val observed = capture(fixture, CatalogDatabaseFactory { file ->
+            opens++
+            if (opens == 2) {
+                CatalogCache(file.parentFile, JdbcTestCatalogDatabaseFactory).write(
+                    changed, CatalogSourceMetadata.direct("synthetic", 512, "FIXTURE"), CatalogWriteProgress.complete(),
+                )
+            }
+            JdbcTestCatalogDatabaseFactory.open(file)
+        })
+        val logical = observed.getAsJsonObject("catalogLogicalDigest")
+        assertNotNull("capture must include the exact restored catalog digest", logical)
+        assertEquals(CatalogLogicalDigest.version, logical.get("version").asInt)
+        assertEquals(CatalogLogicalDigest.sha256(changed), logical.get("sha256").asString)
+        assertNotEquals(CatalogLogicalDigest.sha256(fixture.catalog), logical.get("sha256").asString)
+        assertEquals("capture must not read the repository a second time", 2, opens)
+        assertEquals(fixture.expected.cacheSha256, digest(fixture.source))
+    }
+
+    @Test fun explicitlyCapturesDiscoveredKnowledgeMode() {
+        val envelope = capture(fixture()).getAsJsonObject("bootstrap")
+        val provenance = envelope.getAsJsonObject("captureProvenance")
+        assertTrue("knowledge mode must be recorded", provenance.has("knowledgeMode"))
+        assertEquals("DISCOVERED", provenance.get("knowledgeMode").asString)
+        assertEquals("DISCOVERED", envelope.getAsJsonObject("response")
+            .getAsJsonObject("state").getAsJsonObject("settings").get("knowledgeMode").asString)
+        assertEquals(CatalogLogicalDigest.version, provenance.get("catalogLogicalDigestVersion").asInt)
     }
 
     @Test fun refusesWrongDigestBeforeOpeningDatabase() {
@@ -151,8 +184,41 @@ class OfficialMatrixApiCaptureTest {
         assertFalse(Files.exists(fixture.working))
     }
 
+    @Test fun embedsEveryRunBindingInsideTheHashedBootstrapEnvelope() {
+        val observed = capture(fixture())
+        val envelope = observed.getAsJsonObject("bootstrap")
+        val binding = envelope.getAsJsonObject("captureProvenance").getAsJsonObject("binding")
+        assertEquals(setOf("sourceCommit", "sourceSha256", "reportSha256", "receiptSha256", "generatorSha256"), binding.keySet())
+        assertEquals(BINDING.sourceCommit, binding.get("sourceCommit").asString)
+        assertEquals(BINDING.sourceSha256, binding.get("sourceSha256").asString)
+        assertEquals(BINDING.reportSha256, binding.get("reportSha256").asString)
+        assertEquals(BINDING.receiptSha256, binding.get("receiptSha256").asString)
+        assertEquals(BINDING.generatorSha256, binding.get("generatorSha256").asString)
+        assertFalse(envelope.has("binding"))
+        assertFalse(envelope.getAsJsonObject("response").has("captureProvenance"))
+    }
+
+    @Test fun rejectsMalformedRunBindingsBeforeCopyOrDatabaseAccess() {
+        val fixture = fixture()
+        val bad = listOf(
+            BINDING.copy(sourceCommit = "a".repeat(39)),
+            BINDING.copy(sourceSha256 = "A".repeat(64)),
+            BINDING.copy(reportSha256 = ""),
+            BINDING.copy(receiptSha256 = "f".repeat(63)),
+            BINDING.copy(generatorSha256 = "not-a-digest"),
+        )
+        bad.forEach { binding ->
+            assertThrows(IllegalArgumentException::class.java) {
+                OfficialMatrixApiCapture.capture(fixture.source, fixture.working, fixture.expected,
+                    CatalogDatabaseFactory { error("invalid binding must not open a database") }, binding)
+            }
+        }
+        assertFalse(Files.exists(fixture.working))
+        assertEquals(fixture.expected.cacheSha256, digest(fixture.source))
+    }
+
     private fun capture(fixture: Fixture, factory: CatalogDatabaseFactory = JdbcTestCatalogDatabaseFactory): JsonObject =
-        OfficialMatrixApiCapture.capture(fixture.source, fixture.working, fixture.expected, factory)
+        OfficialMatrixApiCapture.capture(fixture.source, fixture.working, fixture.expected, factory, BINDING)
 
     private fun fixture(): Fixture {
         val root = temporary.newFolder().toPath()
@@ -187,11 +253,14 @@ class OfficialMatrixApiCaptureTest {
         val cache = CatalogCache(root.resolve("input").toFile(), JdbcTestCatalogDatabaseFactory)
         cache.write(catalog, CatalogSourceMetadata.direct("synthetic", 512, "FIXTURE"), CatalogWriteProgress.complete())
         val source = cache.fileFor(SHA).toPath()
-        return Fixture(source, root.resolve("capture"), MatrixCacheControl(SHA, digest(source), EngineFamily.EMERALD, "fr", "fixture-fr", 1))
+        return Fixture(source, root.resolve("capture"), MatrixCacheControl(SHA, digest(source), EngineFamily.EMERALD, "fr", "fixture-fr", 1), catalog)
     }
 
-    private data class Fixture(val source: Path, val working: Path, val expected: MatrixCacheControl)
+    private data class Fixture(val source: Path, val working: Path, val expected: MatrixCacheControl, val catalog: ParsedCatalog)
     private fun digest(path: Path): String = MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(path))
         .joinToString("") { "%02x".format(it) }
-    private companion object { const val SHA = "1111111111111111111111111111111111111111111111111111111111111111" }
+    private companion object {
+        const val SHA = "1111111111111111111111111111111111111111111111111111111111111111"
+        val BINDING = MatrixG3Binding("a".repeat(40), "b".repeat(64), "c".repeat(64), "d".repeat(64), "e".repeat(64))
+    }
 }
