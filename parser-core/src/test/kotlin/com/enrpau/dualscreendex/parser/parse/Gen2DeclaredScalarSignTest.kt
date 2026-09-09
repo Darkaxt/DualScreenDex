@@ -22,6 +22,40 @@ class Gen2DeclaredScalarSignTest {
         }
     }
 
+    @Test fun declarationRejectionsRetainBoundedReasonsWithoutLosingNumericPois() {
+        val rootFailure = scalarFixture()
+        val numeric = resolve(rootFailure).pois.single().copy(displayName = null)
+        rootFailure.bytes[rootFailure.at("copyBytes")] = 0xc9.toByte()
+        val rootResult = resolve(rootFailure)
+        assertEquals(numeric, rootResult.pois.single())
+        assertEquals(1, rootResult.skippedReasons.size)
+        org.junit.Assert.assertTrue(rootResult.skippedReasons.single().startsWith("Gen II sign declaration INCOMPLETE:"))
+
+        val commandFailure = scalarFixture()
+        commandFailure.bytes[commandFailure.at("waitHandler")] = 0
+        val commandResult = resolve(commandFailure)
+        assertEquals(numeric, commandResult.pois.single())
+        assertEquals(1, commandResult.skippedReasons.size)
+        org.junit.Assert.assertTrue(commandResult.skippedReasons.single().startsWith("Gen II sign command 0x52 INCOMPLETE:"))
+        org.junit.Assert.assertTrue(commandResult.skippedReasons.single().contains("unsupported declaration"))
+        assertEquals(emptyList<String>(), resolve(scalarFixture()).skippedReasons)
+    }
+
+    @Test fun repeatedDiagnosticReadsNeverRetryCommands() {
+        val f = scalarFixture()
+        f.bytes[f.at("waitHandler")] = 0
+        var checks = 0
+        val declaration = Gen2DeclaredSignAbi.resolve(RomImage(f.bytes), listOf(f.source), ResolutionLimits(),
+            ParserCancellationToken { checks++ }).abi!!
+        assertEquals(emptyList<String>(), declaration.failureReasons())
+        declaration.grammar(0x52)
+        val expected = declaration.failureReasons()
+        assertEquals(1, expected.size)
+        val before = checks
+        repeat(300) { assertEquals(expected, declaration.failureReasons()) }
+        assertEquals(before, checks)
+    }
+
     @Test fun oldPairGrammarAndControlsRemainDistinct() {
         val f = Gen2DeclaredSignFixture(0x20, 2)
         assertEquals("이곳은 연두마을", Gen2LocalMapPoiResolver.resolve(RomImage(f.bytes), listOf(f.source), listOf(f.map),

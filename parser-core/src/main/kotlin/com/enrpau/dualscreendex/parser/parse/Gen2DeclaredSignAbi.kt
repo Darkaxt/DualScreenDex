@@ -246,6 +246,12 @@ internal object Gen2DeclaredSignAbi {
             }
             return null
         }
+        // Cached command outcomes only: reporting must not read ROM bytes or retry grammar.
+        fun failureReasons(): List<String> = declarations.toSortedMap().mapNotNull { (command, result) ->
+            if (result.status == Status.RESOLVED) null
+            else "Gen II sign command 0x${command.toString(16).padStart(2, '0')} ${result.status}: ${result.reason}"
+        }
+
         internal fun outcome(command: Int): Resolution { grammar(command); return declarations.getValue(command) }
     }
 

@@ -53,6 +53,10 @@ internal object Gen2LocalMapPoiResolver {
                 }
         }
         cancellation.throwIfCancellationRequested()
+        if (declaration.status != Gen2DeclaredSignAbi.Status.ABSENT && declaration.status != Gen2DeclaredSignAbi.Status.RESOLVED) {
+            skipped += "Gen II sign declaration ${declaration.status}: ${declaration.reason}"
+        }
+        skipped += declaration.abi?.failureReasons().orEmpty()
         return Resolution(pois.sortedBy(LocalMapPoi::key), skipped, references.sortedBy(Gen2ItemReference::poiKey))
     }
 
