@@ -72,7 +72,7 @@ internal object CatalogLocalizedTextExtractor {
             name.takeIf(String::isNotBlank)?.let { id to CatalogField.available(it) }
         }.toMap(linkedMapOf())
         val localMapNames = authorizedMap(capabilities[RomCapability.LOCAL_MAP]) {
-            localMaps.maps.mapNotNull { map ->
+            localMaps.maps.filter { it.nameDisposition == LocalMapNameDisposition.STATIC_NAME_REQUIRED }.mapNotNull { map ->
                 map.displayName?.takeIf(String::isNotBlank)?.let { map.key to CatalogField.available(it) }
             }.toMap(linkedMapOf())
         }
@@ -361,7 +361,7 @@ internal object CatalogLocalizedTextExtractor {
             LocalizedTextCapability.NATURE_NAMES to naturesById.size,
             LocalizedTextCapability.ITEM_NAMES to itemIds.size,
             LocalizedTextCapability.AREA_NAMES to (runtimeMetadata.areaBaseIds + runtimeMetadata.areaNamesByBaseId.keys).size,
-            LocalizedTextCapability.LOCAL_MAP_NAMES to localMaps.maps.size,
+            LocalizedTextCapability.LOCAL_MAP_NAMES to localMaps.staticNameRequiredMapKeys.size,
             LocalizedTextCapability.WORLD_REGION_NAMES to worldMaps.regions.size,
             LocalizedTextCapability.WORLD_LOCATION_NAMES to worldMaps.regions.sumOf { it.locations.size },
             LocalizedTextCapability.ENCOUNTER_AREA_NAMES to encounterAreas.size,

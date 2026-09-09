@@ -62,8 +62,10 @@ class CatalogTextProjection private constructor(
         catalog.runtimeMetadata.areaNamesByBaseId[baseAreaId]
     }
 
-    fun localMapName(key: String): String? = text(overlay?.localMapNames?.get(key)?.value) {
-        catalog.localMaps.maps.firstOrNull { it.key == key }?.displayName
+    fun localMapName(key: String): String? {
+        val map = catalog.localMaps.maps.firstOrNull { it.key == key } ?: return null
+        if (map.nameDisposition != LocalMapNameDisposition.STATIC_NAME_REQUIRED) return null
+        return text(overlay?.localMapNames?.get(key)?.value) { map.displayName }
     }
 
     fun worldRegionName(key: String): String? = text(overlay?.worldRegionNames?.get(key)?.value) {
@@ -98,7 +100,7 @@ class CatalogTextProjection private constructor(
         }
         if (!allowSharedText) return null
         return when (poi.textObligation) {
-            LocalMapPoiTextObligation.DESTINATION_NAME -> mapsByBaseArea[poi.destinationBaseAreaId]?.displayName
+            LocalMapPoiTextObligation.DESTINATION_NAME -> mapsByBaseArea[poi.destinationBaseAreaId]?.let { localMapName(it.key) }
             LocalMapPoiTextObligation.GENDERED_DIRECT_TEXT -> if (poi.displayNamesByTrainerGender.keys == setOf(0, 1)) {
                 trainerGender?.let(poi.displayNamesByTrainerGender::get)
                     ?: poi.displayNamesByTrainerGender.values.distinct().singleOrNull().takeIf { trainerGender == null }
@@ -162,6 +164,7 @@ internal class CatalogPoiTextResolver(
                 if (item.itemId != null) itemNames[item.itemId]?.value else direct?.itemDisplayName?.value
             }
             LocalMapPoiTextObligation.DESTINATION_NAME -> mapsByBaseArea[poi.destinationBaseAreaId]
+                ?.takeIf { it.nameDisposition == LocalMapNameDisposition.STATIC_NAME_REQUIRED }
                 ?.let { localMapNames[it.key]?.value }
             LocalMapPoiTextObligation.UNRESOLVED -> null
         }

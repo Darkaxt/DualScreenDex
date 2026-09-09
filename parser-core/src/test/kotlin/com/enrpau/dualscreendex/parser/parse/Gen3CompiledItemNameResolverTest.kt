@@ -18,6 +18,133 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class Gen3CompiledItemNameResolverTest {
+    @Test fun completePrefixedDynamicWrapperDerivesOnlyOrdinaryStaticAuthority() {
+        for ((stride, maximum, width) in listOf(Triple(44, 174, 14), Triple(52, 150, 18), Triple(40, 188, 10))) {
+            for (excluded in listOf(0, 31, 175)) {
+                val f = ItemConsumerFixture(root = 0x6000, sanitizer = 0x1800, nameGetter = 0x1A00,
+                    scalarStart = 0x1C00, wrapper = 0x2800, copier = 0x3200,
+                    mulStride = stride, maximumHalf = maximum, nameBytes = width, excluded = excluded)
+                f.prefixedCopyWrapper()
+                f.descriptionLineConsumer(0x4000)
+                f.bytes.fill(0xFC.toByte(), f.root, f.root + (maximum * 2 + 1) * stride)
+                val resolver = f.session().itemNameResolver
+                val proof = resolver.resolve(f.root)
+                assertEquals("complete relocated r5 wrapper: ${proof.reason}",
+                    Gen3CompiledItemNameResolver.Table(f.root, stride, maximum * 2 + 1, width, setOf(excluded)), proof.table)
+                for (route in listOf(GbaItemPublishedRoute.NotInvoked,
+                    GbaItemPublishedRoute.Invoked(GbaItemRootNomination.Nominated(f.root)))) {
+                    val authority = resolver.original(route)
+                    assertTrue("$route: $authority", authority is GbaItemNameAuthority.Available)
+                    assertEquals(excluded, (authority as GbaItemNameAuthority.Available).excludedId)
+                    assertSame(authority, resolver.original(route))
+                }
+            }
+        }
+    }
+
+    @Test fun everyPrefixedWrapperAndCopierInstructionMustBeComplete() {
+        val offsets = (0 until 40 step 2) + (44 until 62 step 2)
+        for (offset in offsets + (0 until 30 step 2).map { it + 0x200 }) {
+            val f = ItemConsumerFixture(mulStride = 44, nameBytes = 14)
+            f.prefixedCopyWrapper()
+            f.half(f.wrapper + offset, if (offset == 38) 1 else 0)
+            val proof = f.session().itemNameResolver.resolve(f.root)
+            assertNull("required r5 wrapper/copier halfword +${offset.toString(16)}: ${proof.reason}", proof.table)
+            assertTrue(f.session().itemNameResolver.original(GbaItemPublishedRoute.NotInvoked)
+                is GbaItemNameAuthority.Unavailable)
+        }
+    }
+
+    @Test fun prefixedWrapperCompetitorsCannotDisappearOrMergeWithExistingContracts() {
+        val mutations = listOf<Int?>(null) + (8 until 40 step 2) + (48 until 62 step 2)
+        for (simple in listOf(false, true)) for (offset in mutations) {
+            val f = ItemConsumerFixture(mulStride = 44, simpleWrapper = simple)
+            f.prefixedCopyWrapper(0x2000)
+            if (offset != null) f.half(0x2000 + offset, if (offset == 38) 1 else 0)
+            val proof = f.session().itemNameResolver.resolve(f.root)
+            assertNull("simple=$simple competing r5 dependency=$offset: ${proof.reason}", proof.table)
+            assertTrue(f.session().itemNameResolver.original(GbaItemPublishedRoute.NotInvoked)
+                is GbaItemNameAuthority.Unavailable)
+        }
+        val f = ItemConsumerFixture(mulStride = 44)
+        f.prefixedCopyWrapper(); f.prefixedCopyWrapper(0x2000)
+        assertNull("two complete r5 wrappers remain distinct", f.session().itemNameResolver.resolve(f.root).table)
+    }
+
+    @Test fun prefixedWrapperPoolBranchRegisterAndCallDependenciesStayClosed() {
+        val mutations = listOf<Pair<String, (ItemConsumerFixture) -> Unit>>(
+            "wrong BNE destination" to { f -> f.half(f.wrapper + 10, 0xD10D) },
+            "equal branch reaches ordinary getter" to { f -> f.half(f.wrapper + 36, 0xE002) },
+            "equal branch reaches pool" to { f -> f.half(f.wrapper + 36, 0xE000) },
+            "wrong saved source" to { f -> f.half(f.wrapper + 18, 0x1C05) },
+            "wrong ordinary destination" to { f -> f.half(f.wrapper + 50, 0x1C20) },
+            "escaped literal" to { f -> f.literalLoad(f.wrapper + 20, 1, f.wrapper + 64, 0x3000) },
+            "literal is scalar" to { f -> f.half(f.wrapper + 42, 0) },
+            "literal is RAM" to { f -> f.half(f.wrapper + 42, 0x0200) },
+            "literal is outside ROM" to { f -> f.pointer(f.wrapper + 40, f.bytes.size) },
+            "literal adds same-root consumer" to { f -> f.pointer(f.wrapper + 40, f.root) },
+            "different equal copier" to { f -> f.bl(f.wrapper + 24, 0x2800) },
+            "unknown ordinary copier" to { f -> f.bl(f.wrapper + 52, 0x2800) },
+        ) + listOf(14, 32, 52).flatMap { offset -> listOf(
+            "call+$offset outside" to { f: ItemConsumerFixture -> f.bl(f.wrapper + offset, f.bytes.size) },
+            "call+$offset local pool" to { f: ItemConsumerFixture -> f.bl(f.wrapper + offset, f.wrapper + 40) },
+            "call+$offset local ordinary" to { f: ItemConsumerFixture -> f.bl(f.wrapper + offset, f.wrapper + 44) },
+        ) }
+        for ((label, mutate) in mutations) {
+            val f = ItemConsumerFixture(mulStride = 44, nameBytes = 14)
+            f.prefixedCopyWrapper(); mutate(f)
+            assertNull(label, f.session().itemNameResolver.resolve(f.root).table)
+            assertTrue(label, f.session().itemNameResolver.original(GbaItemPublishedRoute.NotInvoked)
+                is GbaItemNameAuthority.Unavailable)
+        }
+    }
+
+    @Test fun prefixedDynamicPayloadAndOpaqueHelpersNeverGrantExcludedNameAuthority() {
+        val f = ItemConsumerFixture(mulStride = 44, nameBytes = 14)
+        f.prefixedCopyWrapper()
+        f.bytes.fill(0xFC.toByte(), 0x3000, 0x3100) // unreadable prefix payload is deliberately not traversed
+        f.emit(0x1600, 0x4770); f.emit(0x1700, 0x4770) // opaque, not independently proved string helpers
+        val proof = f.session().itemNameResolver.resolve(f.root)
+        assertNotNull("ordinary arm only: ${proof.reason}", proof.table)
+        assertEquals(setOf(f.excluded), requireNotNull(proof.table).excludedIds)
+        for (missing in listOf("pointer", "scalar", "wrapper")) {
+            val broken = ItemConsumerFixture(mulStride = 44)
+            broken.prefixedCopyWrapper()
+            val at = when (missing) { "pointer" -> broken.nameGetter; "scalar" -> broken.scalarStart; else -> broken.wrapper }
+            broken.bytes.fill(0, at, at + 64)
+            assertNull(missing, broken.session().itemNameResolver.resolve(broken.root).table)
+        }
+    }
+
+    @Test fun prefixedWrapperPreservesRecoveryCallerCapsBudgetsAndCancellation() {
+        for (siteCap in listOf(1, 16)) for (passes in listOf(2, 3)) {
+            val f = ItemConsumerFixture(mulStride = 44)
+            f.prefixedCopyWrapper()
+            val resolver = f.session(ResolutionLimits(maxCompiledReferenceSitesPerCandidate = siteCap,
+                maxDatasetExtentBytes = f.bytes.size.toLong() * passes)).itemNameResolver
+            assertEquals("siteCap=$siteCap passes=$passes", siteCap >= 14 || passes >= 3,
+                resolver.original(GbaItemPublishedRoute.NotInvoked) is GbaItemNameAuthority.Available)
+        }
+        for (callers in listOf(127, 128)) {
+            val f = ItemConsumerFixture(mulStride = 44)
+            f.prefixedCopyWrapper()
+            repeat(callers) { f.bl(0x2000 + it * 4, f.nameGetter) }
+            assertEquals("caller count includes wrapper", callers == 127,
+                f.session().itemNameResolver.original(GbaItemPublishedRoute.NotInvoked) is GbaItemNameAuthority.Available)
+        }
+        val f = ItemConsumerFixture(mulStride = 44)
+        f.prefixedCopyWrapper()
+        assertNull(f.session(ResolutionLimits(maxProbeWorkPerDataset = 8)).itemNameResolver.resolve(f.root).table)
+        var stopped = false
+        val resolver = f.session(cancellation = ParserCancellationToken {
+            if (stopped) throw ParserCancellationException()
+        }).itemNameResolver
+        assertTrue(resolver.original(GbaItemPublishedRoute.NotInvoked) is GbaItemNameAuthority.Available)
+        stopped = true
+        assertThrows(ParserCancellationException::class.java) { resolver.original(GbaItemPublishedRoute.NotInvoked) }
+        assertThrows(ParserCancellationException::class.java) { resolver.resolve(f.root) }
+    }
+
     @Test fun completeR1DescriptionConsumerReconcilesWithoutAddingScalarField() {
         for ((stride, maximum, width) in listOf(Triple(44, 174, 10), Triple(44, 188, 14), Triple(52, 150, 18))) {
             for (entry in listOf(0x2000, 0x2800)) for (siteCap in listOf(1, 16)) {
@@ -1112,6 +1239,24 @@ internal class ItemConsumerFixture(
         emit(cursor, load or (immediate shl 6), 0xBC10, 0xBC02, 0x4708)
         literalLoad(entry + 6, 4, (cursor + 11) and -4, root)
         rootSites += entry + 6
+    }
+
+    /** Complete synthetic r5-destination wrapper; the equal-ID arm remains opaque/excluded. */
+    fun prefixedCopyWrapper(entry: Int = wrapper) {
+        bytes.fill(0, entry, entry + 64)
+        emit(entry, 0xB530, 0x1C0D, 0x0400, 0x0C00, 0x2800 or excluded, 0xD10F, 0x202B)
+        bl(entry + 14, 0x1600)
+        half(entry + 18, 0x1C04)
+        literalLoad(entry + 20, 1, entry + 40, 0x3000)
+        half(entry + 22, 0x1C28)
+        bl(entry + 24, copier)
+        emit(entry + 28, 0x1C28, 0x1C21)
+        bl(entry + 32, 0x1700)
+        emit(entry + 36, 0xE008, 0)
+        bl(entry + 44, nameGetter)
+        emit(entry + 48, 0x1C01, 0x1C28)
+        bl(entry + 52, copier)
+        emit(entry + 56, 0xBC30, 0xBC01, 0x4700)
     }
 
     fun simpleCopyWrapper(entry: Int) {

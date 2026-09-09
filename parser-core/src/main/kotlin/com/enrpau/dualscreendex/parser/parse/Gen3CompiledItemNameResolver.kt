@@ -258,6 +258,10 @@ internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSess
             } else if (matches(call - 8, 0xB510, 0x1C0C, 0x0400, 0x0C00)) {
                 contracts += simpleWrapper(call, pointer.entry)
                     ?: return unavailable("incomplete simple item copy contract")
+            } else if (matches(call - 44, 0xB530, 0x1C0D, 0x0400, 0x0C00)) {
+                // Nominate before CMP/branch/tail proof so malformed competitors cannot vanish.
+                contracts += prefixedWrapper(call, pointer.entry)
+                    ?: return unavailable("incomplete prefixed static item copy contract")
             }
         }
         if (exhausted) return unavailable("item wrapper budget")
@@ -519,6 +523,33 @@ internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSess
             !matches(entry + 18, 0x1C01, 0x1C20) || bl(entry + 22) != copier ||
             !matches(entry + 26, 0x4902, 0x1C20) || bl(entry + 30) == null ||
             word(entry + 34) != 0xE007) return null
+        return CopyContract(entry, getter, copier, word(entry + 8) and 255)
+    }
+
+    /**
+     * Complete r5-destination variant: only the unequal arm grants inline-name authority.
+     * The equal arm copies an owned literal prefix then appends an opaque source saved in r4;
+     * neither payload nor helper descendants are interpreted, and its exact ID stays excluded.
+     */
+    private fun prefixedWrapper(call: Int, getter: Int): CopyContract? {
+        val entry = call - 44
+        if (entry < 0 || entry > rom.size - 62 ||
+            !matches(entry, 0xB530, 0x1C0D, 0x0400, 0x0C00) ||
+            word(entry + 8) and 0xFF00 != 0x2800 || word(entry + 10) != 0xD10F ||
+            wrapperCall(call, entry, entry + 62) != getter ||
+            !matches(call + 4, 0x1C01, 0x1C28) ||
+            !matches(call + 12, 0xBC30, 0xBC01, 0x4700)) return null
+        val copier = wrapperCall(call + 8, entry, entry + 62) ?: return null
+        if (!completeCopier(copier)) return null
+        // BNE reaches the ordinary getter; the equal arm skips pool and ordinary code to POP.
+        if (word(entry + 12) and 0xFF00 != 0x2000 ||
+            wrapperCall(entry + 14, entry, entry + 62) == null ||
+            !matches(entry + 18, 0x1C04, 0x4904, 0x1C28) ||
+            literalSlot(entry + 20) != entry + 40 || literal(entry + 20) == null ||
+            wrapperCall(entry + 24, entry, entry + 62) != copier ||
+            !matches(entry + 28, 0x1C28, 0x1C21) ||
+            wrapperCall(entry + 32, entry, entry + 62) == null ||
+            !matches(entry + 36, 0xE008, 0)) return null
         return CopyContract(entry, getter, copier, word(entry + 8) and 255)
     }
 

@@ -707,6 +707,14 @@ data class LocalMapCatalog(
     val pois: List<LocalMapPoi> = emptyList(),
     val poiAssets: Map<String, PngMapAsset> = emptyMap(),
 ) {
+    /** Inventories are derived from shared structural declarations, never missing text. */
+    val staticNameRequiredMapKeys: Set<String>
+        get() = maps.filter { it.nameDisposition == LocalMapNameDisposition.STATIC_NAME_REQUIRED }
+            .mapTo(linkedSetOf(), LocalMap::key)
+    val contextDependentMapKeys: Set<String>
+        get() = maps.filter { it.nameDisposition == LocalMapNameDisposition.CONTEXT_DEPENDENT }
+            .mapTo(linkedSetOf(), LocalMap::key)
+
     init {
         validate()
     }
@@ -732,6 +740,10 @@ data class LocalMapCatalog(
         indexedAssets.values.forEach(IndexedMapAsset::validate)
         timedAssets.values.forEach(TimedIndexedMapAsset::validate)
         maps.forEach { map ->
+            requireNotNull(map.nameDisposition) { "local maps require a name disposition" }
+            require(map.nameDisposition != LocalMapNameDisposition.CONTEXT_DEPENDENT || map.displayName == null) {
+                "context-dependent local maps cannot carry fixed display names"
+            }
             require(map.key.isNotBlank()) { "local-map keys must not be blank" }
             require(map.baseAreaId in 0..0xFFFF) { "local-map base-area IDs must fit group/map identity" }
             require(map.pixelWidth > 0 && map.pixelHeight > 0) {
@@ -859,6 +871,12 @@ data class LocalMapCatalog(
     }
 }
 
+/** CONTEXT_DEPENDENT requires positive producer evidence; absent text is not evidence. */
+enum class LocalMapNameDisposition {
+    STATIC_NAME_REQUIRED,
+    CONTEXT_DEPENDENT,
+}
+
 data class LocalMap(
     val key: String,
     val displayName: String?,
@@ -868,6 +886,7 @@ data class LocalMap(
     val gridWidth: Int,
     val gridHeight: Int,
     val imageAssetKey: String,
+    val nameDisposition: LocalMapNameDisposition = LocalMapNameDisposition.STATIC_NAME_REQUIRED,
 )
 
 enum class LocalMapPoiKind {

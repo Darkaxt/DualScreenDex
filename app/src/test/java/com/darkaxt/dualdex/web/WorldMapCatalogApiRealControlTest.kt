@@ -19,6 +19,9 @@ import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.LocalizedCapabilityState
 import com.enrpau.dualscreendex.parser.catalog.LocalizedTextCapability
 import com.enrpau.dualscreendex.parser.catalog.LocalMapAssetRenderer
+import com.enrpau.dualscreendex.parser.catalog.LocalMap
+import com.enrpau.dualscreendex.parser.catalog.LocalMapNameDisposition
+import com.enrpau.dualscreendex.companion.api.LocalMapView
 import com.enrpau.dualscreendex.parser.catalog.MapLighting
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.catalog.SpeciesRecord
@@ -543,6 +546,124 @@ class WorldMapCatalogApiRealControlTest {
         }
     }
 
+    @Test fun nativeContextualAccountingUsesOnlyTheFourReviewedControlExpectations() {
+        val scoped = nativeControls.filter { it.contextualMaps != null }
+        assertEquals(listOf("ja/GOLD_SILVER", "ja/CRYSTAL", "ko/GOLD", "ko/SILVER"), scoped.map { it.folder })
+        assertEquals(listOf(368, 388, 368, 368), scoped.map { it.contextualMaps!!.totalMaps })
+        assertEquals(listOf(364, 382, 364, 364), scoped.map { it.contextualMaps!!.staticRequired })
+        val four = setOf("local/1401", "local/1402", "local/1403", "local/1404")
+        assertEquals(listOf(four, four + setOf("local/1405", "local/1406"), four, four),
+            scoped.map { it.contextualMaps!!.contextualKeys })
+    }
+
+    @Test fun nativeContextualAccountingAcceptsExactStaticAndContextualPartition() {
+        NativeContextualFixture().checkNames()
+    }
+
+    @Test fun nativeContextualAccountingReceiptIsScopedAndPreservesActualCounters() {
+        val f = NativeContextualFixture()
+        val producer = f.checkNames()
+        val api = f.checkApi()
+        assertEquals(JsonPrimitive(3), producer["totalMaps"])
+        assertEquals(JsonPrimitive(2), producer["staticRequired"])
+        assertEquals(JsonPrimitive("AVAILABLE"), producer.getAsJsonObject("localMapNames")["status"])
+        assertEquals(JsonPrimitive("REOPENED_NUMERIC_KEY_JOIN"), api["dispositionSource"])
+        val receipt = NativeContextualMapAssertions.receipt("synthetic", "1".repeat(64), f.expectation,
+            producer, producer.deepCopy(), api, "synthetic.sqlite", 1, 0)
+        assertEquals(JsonPrimitive("GEN2_CONTEXTUAL_MAP_NAME_DISPOSITION_ONLY"), receipt["scope"])
+        assertEquals(JsonPrimitive("NOT_CLAIMED"), receipt["overallNativeSemanticAcceptance"])
+        assertEquals(JsonPrimitive(1), receipt["originalParserInvocations"])
+        assertEquals(JsonPrimitive(0), receipt["apiReparses"])
+        assertEquals(producer, receipt["producer"])
+        assertEquals(producer, receipt["sqlite"])
+        assertEquals(api, receipt["api"])
+        for ((original, reparses) in listOf(0 to 0, 2 to 0, 1 to 1)) {
+            org.junit.Assert.assertThrows(AssertionError::class.java) {
+                NativeContextualMapAssertions.receipt("synthetic", "1".repeat(64), f.expectation,
+                    producer, producer.deepCopy(), api, "synthetic.sqlite", original, reparses)
+            }
+        }
+        org.junit.Assert.assertThrows(AssertionError::class.java) {
+            NativeContextualMapAssertions.receipt("synthetic", "1".repeat(64), f.expectation,
+                producer, producer.deepCopy().apply { addProperty("totalMaps", 2) }, api, "synthetic.sqlite", 1, 0)
+        }
+    }
+
+    @Test fun nativeContextualAccountingRejectsMissingOrUnavailableOrdinaryNames() {
+        val f = NativeContextualFixture()
+        for (badNames in listOf(f.names - "local/0101",
+            f.names + ("local/0101" to CatalogField.available(" ")),
+            f.names + ("local/0101" to CatalogField.notFound<String>("synthetic missing")))) {
+            org.junit.Assert.assertThrows(AssertionError::class.java) { f.checkNames(names = badNames) }
+        }
+        org.junit.Assert.assertThrows(AssertionError::class.java) {
+            f.checkNames(projected = f.projected + ("local/0101" to null))
+        }
+    }
+
+    @Test fun nativeContextualAccountingRejectsCollapsedOrReplacedInventory() {
+        val f = NativeContextualFixture()
+        for (badMaps in listOf(f.maps.drop(1), f.maps + f.maps.first(),
+            f.maps.map { if (it.key == "local/0101") it.copy(key = "local/0201") else it })) {
+            org.junit.Assert.assertThrows(AssertionError::class.java) { f.checkNames(maps = badMaps) }
+        }
+        for (state in listOf(LocalizedCapabilityState.available(1),
+            LocalizedCapabilityState.notFound("synthetic unavailable", 2))) {
+            org.junit.Assert.assertThrows(AssertionError::class.java) { f.checkNames(state = state) }
+        }
+    }
+
+    @Test fun nativeContextualAccountingRejectsWrongExemptionsAndFixedContextLabels() {
+        val f = NativeContextualFixture()
+        org.junit.Assert.assertThrows(AssertionError::class.java) {
+            f.checkNames(maps = f.maps.map { it.copy(nameDisposition =
+                if (it.key == "local/0101") LocalMapNameDisposition.CONTEXT_DEPENDENT
+                else LocalMapNameDisposition.STATIC_NAME_REQUIRED) })
+        }
+        org.junit.Assert.assertThrows(AssertionError::class.java) {
+            f.checkNames(maps = f.maps.map { if (it.key == "local/1401") it.copy(displayName = "SYNTHETIC FIXED") else it })
+        }
+        org.junit.Assert.assertThrows(AssertionError::class.java) {
+            f.checkNames(names = f.names + ("local/1401" to CatalogField.available("SYNTHETIC FIXED")))
+        }
+        org.junit.Assert.assertThrows(AssertionError::class.java) {
+            f.checkNames(projected = f.projected + ("local/1401" to "SYNTHETIC FIXED"))
+        }
+    }
+
+    @Test fun nativeContextualAccountingApiPreservesExactInventoryAndOptionalNames() {
+        val f = NativeContextualFixture()
+        f.checkApi()
+        for (badMaps in listOf(f.api.drop(1), f.api + f.api.first(),
+            f.api.map { if (it.key == "local/1401") it.copy(displayName = "SYNTHETIC FIXED") else it },
+            f.api.map { if (it.key == "local/0101") it.copy(displayName = null) else it },
+            f.api.map { if (it.key == "local/0101") it.copy(baseAreaId = 0x202) else it },
+            f.api.map { if (it.key == "local/0101") it.copy(gridWidth = 2) else it })) {
+            org.junit.Assert.assertThrows(AssertionError::class.java) { f.checkApi(maps = badMaps) }
+        }
+        org.junit.Assert.assertThrows(AssertionError::class.java) { f.checkApi(covered = 1) }
+        org.junit.Assert.assertThrows(AssertionError::class.java) { f.checkApi(expected = 3) }
+        org.junit.Assert.assertThrows(AssertionError::class.java) { f.checkApi(status = "PARTIAL") }
+    }
+
+    private class NativeContextualFixture {
+        val expectation = NativeContextualExpectation(3, setOf("local/1401"))
+        val maps = listOf("local/0101" to 0x101, "local/0102" to 0x102, "local/1401" to 0x1401).map { (key, id) ->
+            LocalMap(key, null, id, 16, 16, 1, 1, "synthetic/$key",
+                if (key == "local/1401") LocalMapNameDisposition.CONTEXT_DEPENDENT else LocalMapNameDisposition.STATIC_NAME_REQUIRED)
+        }
+        val names = mapOf("local/0101" to CatalogField.available("SYNTHETIC ONE"),
+            "local/0102" to CatalogField.available("SYNTHETIC TWO"))
+        val projected = maps.associate { it.key to names[it.key]?.value }
+        val api = maps.map { LocalMapView(it.key, projected[it.key], it.baseAreaId, it.pixelWidth,
+            it.pixelHeight, it.gridWidth, it.gridHeight, "synthetic-image", false) }
+        fun checkNames(maps: List<LocalMap> = this.maps, names: Map<String, CatalogField<String>> = this.names,
+            projected: Map<String, String?> = this.projected, state: LocalizedCapabilityState = LocalizedCapabilityState.available(2)) =
+            NativeContextualMapAssertions.names(expectation, maps, names, projected, state)
+        fun checkApi(maps: List<LocalMapView> = api, covered: Int = 2, expected: Int = 2, status: String = "AVAILABLE") =
+            NativeContextualMapAssertions.api(expectation, this.maps, projected, maps, status, covered, expected)
+    }
+
     // Separate JUnit cases deliberately attempt all nine exact inputs even when an earlier cell is red.
     @Test fun nativeOfficialJapaneseRedBlue() = assertNativeRoundTrip(nativeControls[0], requireItemNames = true)
     @Test fun nativeOfficialJapaneseYellow() = assertNativeRoundTrip(nativeControls[1], requireItemNames = true)
@@ -1039,11 +1160,21 @@ class WorldMapCatalogApiRealControlTest {
         assertTrue(catalog.textProjection(LanguageTag.ENGLISH) == null)
     }
 
+    /** Additive Local-name assertion only; JP sign and all region-title obligations remain open. */
+    private fun assertNativeContextualMaps(catalog: ParsedCatalog, expected: NativeContextualExpectation): JsonObject {
+        val overlay = requireNotNull(catalog.defaultLocalizedText())
+        val text = catalog.defaultTextProjection()
+        return NativeContextualMapAssertions.names(expected, catalog.localMaps.maps, overlay.localMapNames,
+            catalog.localMaps.maps.associate { it.key to text.localMapName(it.key) },
+            overlay.localizedCapabilities.getValue(LocalizedTextCapability.LOCAL_MAP_NAMES))
+    }
+
     private fun assertNativeRoundTrip(control: NativeControl, requireDeclaredSigns: Boolean = false, requireItemNames: Boolean = false) {
         val configured = System.getenv("DUALDEX_NATIVE_CONTROLS")
         if (requireDeclaredSigns || requireItemNames) require(!configured.isNullOrBlank()) { "exact native sign/item gate requires DUALDEX_NATIVE_CONTROLS" }
         assumeTrue("set DUALDEX_NATIVE_CONTROLS for the nine exact native controls", !configured.isNullOrBlank())
         val checks = NativeChecks(control)
+        val originalParserInvocations = AtomicInteger()
         val itemExpectation = if (requireItemNames) itemNameExpectation(control) else null
         try {
             val rom = checks.attempt("input.sha256") {
@@ -1053,12 +1184,18 @@ class WorldMapCatalogApiRealControlTest {
                 }
                 RomImage(Files.readAllBytes(path)).also { assertEquals(control.sha256, it.sha256) }
             } ?: return
-            val attempt = checks.attempt("parse") { CatalogParser.parseCatching(rom) } ?: return
+            val attempt = checks.attempt("parse") {
+                originalParserInvocations.incrementAndGet()
+                CatalogParser.parseCatching(rom)
+            } ?: return
             checks.attempt("selection") {
                 assertEquals(SelectionStatus.SELECTED, attempt.analysis.status)
                 assertEquals(control.family, attempt.analysis.selectedFamily)
             }
             val catalog = checks.attempt("materialize") { requireNotNull(attempt.catalog).getOrThrow() } ?: return
+            val contextualProducer = control.contextualMaps?.let { expected ->
+                checks.attempt("contextual-maps.materialize") { assertNativeContextualMaps(catalog, expected) }
+            }
             if (itemExpectation != null) {
                 checks.attempt("item-names.materialize.${itemExpectation.count}.independent-samples") { assertNativeItemNames(catalog, itemExpectation) }
                 if (control.generation in 1..2) checks.attempt("item-names.exact-consumed-tokens-and-reference-gate") {
@@ -1202,6 +1339,18 @@ class WorldMapCatalogApiRealControlTest {
             // CatalogCache opens and closes a JDBC connection for each operation; this is not an in-memory round trip.
             val stored = checks.attempt("sqlite.reopen-close") { requireNotNull(cache.readComplete(rom.sha256)) } ?: return
             val reopened = stored.catalog
+            val contextualSqlite = control.contextualMaps?.let { expected ->
+                checks.attempt("contextual-maps.sqlite-reopened") {
+                    JdbcTestCatalogDatabaseFactory.open(cache.fileFor(rom.sha256)).use { database ->
+                        assertEquals(listOf(CatalogSchema.parserSchemaVersion.toLong() to CatalogSchema.version.toLong()), database.query(
+                            "SELECT parser_schema_version, schema_version FROM catalog_metadata WHERE id = 1",
+                        ) { row -> row.long("parser_schema_version") to row.long("schema_version") })
+                    }
+                    assertNativeContextualMaps(reopened, expected).also {
+                        assertEquals(requireNotNull(contextualProducer), it)
+                    }
+                }
+            }
             if (itemExpectation != null) checks.attempt("item-names.sqlite.${itemExpectation.count}.independent-samples") {
                 assertNativeItemNames(reopened, itemExpectation)
                 assertEquals(catalog.defaultLocalizedText(), reopened.defaultLocalizedText())
@@ -1310,6 +1459,23 @@ class WorldMapCatalogApiRealControlTest {
                         println("DECLARED_SIGN_API ${control.folder} samples=2 staticDeclaration=PASS zeroReparse=PASS")
                     }
                     val api = requireNotNull(bootstrap.catalog)
+                    control.contextualMaps?.let { expected ->
+                        checks.attempt("contextual-maps.api.same-capture") {
+                            assertEquals("CACHE_REOPEN", bootstrap.state.loading.phase)
+                            assertEquals(rom.sha256, api.hash)
+                            val state = requireNotNull(bootstrap.language).projections.single().localizedCapabilities
+                                .getValue(LocalizedTextCapability.LOCAL_MAP_NAMES.name)
+                            val reopenedText = reopened.defaultTextProjection()
+                            val snapshot = NativeContextualMapAssertions.api(expected, reopened.localMaps.maps,
+                                reopened.localMaps.maps.associate { it.key to reopenedText.localMapName(it.key) },
+                                api.localMaps, state.status, state.coveredRecords, state.expectedRecords)
+                            val receipt = NativeContextualMapAssertions.receipt(control.folder, rom.sha256, expected,
+                                requireNotNull(contextualProducer), requireNotNull(contextualSqlite), snapshot,
+                                cache.fileFor(rom.sha256).absolutePath, originalParserInvocations.get(), parserInvocations.get())
+                            // Private same-capture evidence; never a claim that other NativeChecks passed.
+                            println("NATIVE_CONTEXTUAL_MAP_RECEIPT $receipt")
+                        }
+                    }
                     if (itemExpectation != null) checks.attempt("item-names.api.${itemExpectation.count}.independent-samples") {
                         val apiItems = (api.balls.map { it.id to it.name } + runtime.stateView().localMapPois.mapNotNull { poi ->
                             poi.itemId?.let { it to poi.itemName }
@@ -1827,6 +1993,7 @@ class WorldMapCatalogApiRealControlTest {
         val generation: Int,
         val dexFragment: String,
         val locationName: String,
+        val contextualMaps: NativeContextualExpectation? = null,
     ) {
         // Gen I World is an encounter-point domain: the town sample belongs to Local, not World.
         val worldLocationName = if (generation == 1) "トキワのもり" else locationName
@@ -1862,6 +2029,9 @@ class WorldMapCatalogApiRealControlTest {
         const val OFFICIAL_FORECAST_BOUNDARY = "LNG-D005.forecast.official-rom-semantic-policy"
         const val FAULT_INJECTED_FORECAST_BOUNDARY = "LNG-D005.forecast.fault-injected-authority-removed"
 
+        // Task417: externally bound contextual keys from the four compiled selector/header receipts.
+        // Historical pinned SQLite inventories retain GS/KO 368=364+4 and Crystal 388=382+6 maps.
+        // These assert the unchanged numeric domain, never authorize native text from historical output.
         // Exact inputs match NativeOfficialLanguageLiveRomTest; hashes are test identities, never production routing.
         // Independent text oracles (not the production parser's output):
         // https://github.com/Narishma-gb/pokeyellow-jp/tree/f282e72ae26232790fdb780aa5a5db7ec8ebf572
@@ -1892,9 +2062,11 @@ class WorldMapCatalogApiRealControlTest {
             NativeControl("ja/YELLOW", "1349408f328f633b33e059e654edabd19810530df9c883eda03a85d5bb10161a", EngineFamily.YELLOW,
                 "gb-gen1-ja-yellow", 1, "なんにちだって", "マサラ"),
             NativeControl("ja/GOLD_SILVER", "27a07a1d3faf9c6a0b1b60d5e88ee3a4159a751a47b4c46ab09f1202d52bac3e", EngineFamily.GOLD_SILVER,
-                "gb-gen2-ja", 2, "たっぷり。たねは", "ワカバタウン"),
+                "gb-gen2-ja", 2, "たっぷり。たねは", "ワカバタウン",
+                contextualMaps = NativeContextualExpectation(368, setOf("local/1401", "local/1402", "local/1403", "local/1404"))),
             NativeControl("ja/CRYSTAL", "136ada06cb68656b7de475fa4b278d37dbeff8f5257e7dfdf7f4a4aec19a90f3", EngineFamily.CRYSTAL,
-                "gb-gen2-ja", 2, "うまれて しばらく", "ワカバタウン"),
+                "gb-gen2-ja", 2, "うまれて しばらく", "ワカバタウン",
+                contextualMaps = NativeContextualExpectation(388, setOf("local/1401", "local/1402", "local/1403", "local/1404", "local/1405", "local/1406"))),
             NativeControl("ja/RUBY_SAPPHIRE", "a7ea012b67a27da2893bfdfcb5f64915607b26904b4fc635a1055e8e40e692ab", EngineFamily.RUBY_SAPPHIRE,
                 "gba-gen3-ja-ruby-sapphire", 3, "ひなたで ひるねを", "ミシロタウン"),
             NativeControl("ja/EMERALD", "33f5610b9186b4add09fef68895deb00f552b997b3d133b5a961e5123506343c", EngineFamily.EMERALD,
@@ -1902,9 +2074,11 @@ class WorldMapCatalogApiRealControlTest {
             NativeControl("ja/FIRERED_LEAFGREEN", "cec5fc4dbe38cd8026bd6664a1a041d9dc91e8d4249bab04e7bde70c3cdf4e06", EngineFamily.FIRERED_LEAFGREEN,
                 "gba-gen3-ja-emerald-frlg", 3, "うまれたときから", "マサラタウン"),
             NativeControl("ko/GOLD", "9c273e86e6120c6a038160ccb0153b8b20425b84fc08a496281c1d1bcac492f6", EngineFamily.GOLD_SILVER,
-                "gb-gen2-ko", 2, "등의 씨앗 안에는", "연두마을"),
+                "gb-gen2-ko", 2, "등의 씨앗 안에는", "연두마을",
+                contextualMaps = NativeContextualExpectation(368, setOf("local/1401", "local/1402", "local/1403", "local/1404"))),
             NativeControl("ko/SILVER", "ebbac63c0c4309c82dbb6723e7163369784f962b4fd3e2f486075307c3008a22", EngineFamily.GOLD_SILVER,
-                "gb-gen2-ko", 2, "태어날 때부터 등에 씨앗을", "연두마을"),
+                "gb-gen2-ko", 2, "태어날 때부터 등에 씨앗을", "연두마을",
+                contextualMaps = NativeContextualExpectation(368, setOf("local/1401", "local/1402", "local/1403", "local/1404"))),
         )
         val themeControls = listOf(
             ThemeControl("DUALDEX_POKERED_ROM", "5ca7ba01642a3b27b0cc0b5349b52792795b62d3ed977e98a09390659af96b7b"),
@@ -2064,6 +2238,150 @@ class WorldMapCatalogApiRealControlTest {
                 ),
             ),
         )
+    }
+}
+
+internal data class NativeContextualExpectation(val totalMaps: Int, val contextualKeys: Set<String>) {
+    val staticRequired: Int get() = totalMaps - contextualKeys.size
+}
+
+/** Test-only accounting for the four externally bound controls; never a producer or ROM selector. */
+internal object NativeContextualMapAssertions {
+    fun names(expected: NativeContextualExpectation, maps: List<LocalMap>,
+        names: Map<String, CatalogField<String>>, projected: Map<String, String?>,
+        state: LocalizedCapabilityState): JsonObject {
+        val keys = inventory(expected, maps)
+        val staticKeys = keys - expected.contextualKeys
+        assertEquals("ordinary names cannot disappear from the obligation domain", staticKeys, names.keys)
+        assertEquals("projection must retain every numeric map key", keys, projected.keys)
+        assertTrue("materialized shared map labels must remain isolated", maps.all { it.displayName == null })
+        staticKeys.forEach { key ->
+            val name = names.getValue(key)
+            assertEquals("ordinary map $key", CapabilityStatus.AVAILABLE, name.status)
+            assertTrue("ordinary map $key lacks a fixed native name", !name.value.isNullOrBlank())
+            assertEquals("ordinary projection $key", name.value, projected.getValue(key))
+        }
+        expected.contextualKeys.forEach { key ->
+            assertTrue("contextual map $key acquired a fixed projected name", projected.getValue(key) == null)
+        }
+        coverage(expected, state.status.name, state.coveredRecords, state.expectedRecords)
+        return snapshot(expected, JsonArray().apply {
+            maps.sortedBy { it.key }.forEach { map ->
+                add(mapRow(map.key, map.baseAreaId, map.pixelWidth, map.pixelHeight, map.gridWidth,
+                    map.gridHeight, projected.getValue(map.key)).apply {
+                    addProperty("sharedDisplayName", map.displayName)
+                    addProperty("nameDisposition", map.nameDisposition.name)
+                })
+            }
+        }, staticKeys, state.status.name, state.coveredRecords, state.expectedRecords)
+    }
+
+    fun api(expected: NativeContextualExpectation, numeric: List<LocalMap>,
+        projected: Map<String, String?>, maps: List<LocalMapView>,
+        status: String, covered: Int, expectedRecords: Int): JsonObject {
+        val keys = inventory(expected, numeric)
+        assertEquals("API numeric map count", expected.totalMaps, maps.size)
+        assertEquals("API must not collapse duplicate map keys", maps.size, maps.map { it.key }.toSet().size)
+        assertEquals("API numeric map keys", keys, maps.mapTo(linkedSetOf()) { it.key })
+        assertEquals("reopened projection keys", keys, projected.keys)
+        val source = numeric.associateBy { it.key }
+        maps.forEach { map ->
+            val original = source.getValue(map.key)
+            assertEquals("API numeric identity/dimensions ${map.key}",
+                listOf(original.baseAreaId, original.pixelWidth, original.pixelHeight, original.gridWidth, original.gridHeight),
+                listOf(map.baseAreaId, map.pixelWidth, map.pixelHeight, map.gridWidth, map.gridHeight))
+            if (map.key in expected.contextualKeys) {
+                assertTrue("contextual API name ${map.key}", map.displayName == null)
+                assertTrue("contextual reopened name ${map.key}", projected.getValue(map.key) == null)
+            } else {
+                assertTrue("ordinary API name ${map.key}", !map.displayName.isNullOrBlank())
+                assertEquals("ordinary API projection ${map.key}", projected.getValue(map.key), map.displayName)
+            }
+        }
+        coverage(expected, status, covered, expectedRecords)
+        return snapshot(expected, JsonArray().apply {
+            maps.sortedBy { it.key }.forEach { map -> add(mapRow(map.key, map.baseAreaId, map.pixelWidth,
+                map.pixelHeight, map.gridWidth, map.gridHeight, map.displayName)) }
+        }, keys - expected.contextualKeys, status, covered, expectedRecords).apply {
+            addProperty("dispositionSource", "REOPENED_NUMERIC_KEY_JOIN")
+        }
+    }
+
+    fun receipt(control: String, sha256: String, expected: NativeContextualExpectation,
+        producer: JsonObject, sqlite: JsonObject, api: JsonObject, sqliteDatabase: String,
+        originalParserInvocations: Int, apiReparses: Int): JsonObject {
+        assertEquals("same capture must use exactly one original parse invocation", 1, originalParserInvocations)
+        assertEquals("cache-only API must never reparse", 0, apiReparses)
+        assertEquals("fresh SQLite must preserve complete contextual/ordinary observations", producer, sqlite)
+        return JsonObject().apply {
+            addProperty("schemaVersion", 1)
+            addProperty("scope", "GEN2_CONTEXTUAL_MAP_NAME_DISPOSITION_ONLY")
+            // Other NativeChecks can still fail; this receipt is deliberately not overall acceptance.
+            addProperty("overallNativeSemanticAcceptance", "NOT_CLAIMED")
+            addProperty("control", control)
+            addProperty("sha256", sha256)
+            addProperty("parserSchemaVersion", CatalogSchema.parserSchemaVersion)
+            addProperty("sqlSchemaVersion", CatalogSchema.version)
+            add("expectation", JsonObject().apply {
+                addProperty("totalMaps", expected.totalMaps)
+                addProperty("staticRequired", expected.staticRequired)
+                add("contextualKeys", stringArray(expected.contextualKeys))
+            })
+            add("producer", producer)
+            add("sqlite", sqlite)
+            add("api", api)
+            addProperty("sqliteDatabase", sqliteDatabase)
+            addProperty("originalParserInvocations", originalParserInvocations)
+            addProperty("apiReparses", apiReparses)
+        }
+    }
+
+    private fun mapRow(key: String, baseAreaId: Int, pixelWidth: Int, pixelHeight: Int,
+        gridWidth: Int, gridHeight: Int, displayName: String?) = JsonObject().apply {
+        addProperty("key", key)
+        addProperty("baseAreaId", baseAreaId)
+        addProperty("pixelWidth", pixelWidth)
+        addProperty("pixelHeight", pixelHeight)
+        addProperty("gridWidth", gridWidth)
+        addProperty("gridHeight", gridHeight)
+        addProperty("displayName", displayName)
+    }
+
+    private fun snapshot(expected: NativeContextualExpectation, rows: JsonArray, staticKeys: Set<String>,
+        status: String, covered: Int, expectedRecords: Int) = JsonObject().apply {
+        addProperty("totalMaps", rows.size())
+        addProperty("staticRequired", staticKeys.size)
+        add("staticNameRequiredMapKeys", stringArray(staticKeys))
+        add("contextualKeys", stringArray(rows.map { it.asJsonObject["key"].asString }.toSet() - staticKeys))
+        add("localMapNames", JsonObject().apply {
+            addProperty("status", status)
+            addProperty("coveredRecords", covered)
+            addProperty("expectedRecords", expectedRecords)
+        })
+        add("maps", rows)
+        assertEquals(expected.totalMaps, rows.size())
+    }
+
+    private fun stringArray(values: Set<String>) = JsonArray().apply { values.sorted().forEach { add(it) } }
+
+    private fun inventory(expected: NativeContextualExpectation, maps: List<LocalMap>): Set<String> {
+        assertTrue(expected.totalMaps > expected.contextualKeys.size && expected.contextualKeys.isNotEmpty())
+        assertEquals("original numeric map denominator", expected.totalMaps, maps.size)
+        val keys = maps.mapTo(linkedSetOf()) { it.key }
+        assertEquals("numeric map keys must remain unique", maps.size, keys.size)
+        assertEquals("numeric base-area IDs must remain unique", maps.size, maps.map { it.baseAreaId }.toSet().size)
+        assertEquals("exact externally bound contextual keys", expected.contextualKeys,
+            maps.filter { it.nameDisposition == LocalMapNameDisposition.CONTEXT_DEPENDENT }.mapTo(linkedSetOf()) { it.key })
+        val staticKeys = maps.filter { it.nameDisposition == LocalMapNameDisposition.STATIC_NAME_REQUIRED }.mapTo(linkedSetOf()) { it.key }
+        assertEquals("no ordinary map may be excluded", keys - expected.contextualKeys, staticKeys)
+        assertEquals("static fixed-name denominator", expected.staticRequired, staticKeys.size)
+        return keys
+    }
+
+    private fun coverage(expected: NativeContextualExpectation, status: String, covered: Int, expectedRecords: Int) {
+        assertEquals("LOCAL_MAP_NAMES status", CapabilityStatus.AVAILABLE.name, status)
+        assertEquals("LOCAL_MAP_NAMES expected ordinary domain", expected.staticRequired, expectedRecords)
+        assertEquals("LOCAL_MAP_NAMES every ordinary name covered", expected.staticRequired, covered)
     }
 }
 

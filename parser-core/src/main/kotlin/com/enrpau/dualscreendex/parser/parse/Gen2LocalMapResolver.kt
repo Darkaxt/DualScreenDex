@@ -5,6 +5,7 @@ import com.enrpau.dualscreendex.parser.catalog.IndexedMapAsset
 import com.enrpau.dualscreendex.parser.catalog.LocalMap
 import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
 import com.enrpau.dualscreendex.parser.catalog.LocalMapLightingPolicy
+import com.enrpau.dualscreendex.parser.catalog.LocalMapNameDisposition
 import com.enrpau.dualscreendex.parser.catalog.LocalMapRasterCodec
 import com.enrpau.dualscreendex.parser.catalog.MapLightingPalettes
 import com.enrpau.dualscreendex.parser.io.RomImage
@@ -112,6 +113,13 @@ internal object Gen2LocalMapResolver {
                 "resolved $totalPixels local-map pixels (limit $MAX_TOTAL_PIXELS)",
             )
         }
+        val contextualMapIds = Gen2ContextualMapNameResolver.resolve(
+            rom = session.rom,
+            mapGroupBank = authority.groups.bank,
+            mapGroupTable = authority.groups.tableOffset,
+            headers = authority.descriptors.associate { it.baseAreaId to it.header },
+            cancellation = session.cancellation,
+        )?.contextualMapIds.orEmpty()
         val landmarkNames = codec?.let {
             runCatching {
                 Gen2WorldMapResolver.resolveLandmarkNames(
@@ -155,7 +163,14 @@ internal object Gen2LocalMapResolver {
                         "compressed local-map index assets exceed $MAX_COMPRESSED_ASSET_BYTES bytes",
                     )
                 }
-                maps += descriptor.toLocalMap(landmarkNames[descriptor.landmarkId])
+                maps += descriptor.toLocalMap(
+                    landmarkNames[descriptor.landmarkId],
+                    if (descriptor.baseAreaId in contextualMapIds) {
+                        LocalMapNameDisposition.CONTEXT_DEPENDENT
+                    } else {
+                        LocalMapNameDisposition.STATIC_NAME_REQUIRED
+                    },
+                )
                 assets[descriptor.assetKey] = asset
             }.onFailure { failure ->
                 skippedReasons += "map 0x${descriptor.baseAreaId.toString(16).padStart(4, '0')} render: ${failure.message}"
@@ -227,6 +242,8 @@ internal object Gen2LocalMapResolver {
                     "resolved ${poiResolution.pois.size} bounded Local-map POIs and " +
                         "$namedMapCount map display names"
                 },
+                "classified ${maps.count { it.nameDisposition == LocalMapNameDisposition.CONTEXT_DEPENDENT }} compiled contextual map-name identities " +
+                    "separately; retained all ${maps.size} numeric maps",
                 "stored time-independent indexed rasters with native morning, day, night, and dark GBC palettes",
                 "bound all ${requiredMaps.size} encounter-authoritative group/map IDs",
             ) + skippedReasons + sceneResolution.skippedReasons + poiResolution.skippedReasons,
@@ -807,9 +824,10 @@ internal object Gen2LocalMapResolver {
             mapHeader = header,
         )
 
-        fun toLocalMap(displayName: String?): LocalMap = LocalMap(
+        fun toLocalMap(displayName: String?, nameDisposition: LocalMapNameDisposition): LocalMap = LocalMap(
             key = key,
-            displayName = displayName,
+            displayName = displayName.takeIf { nameDisposition == LocalMapNameDisposition.STATIC_NAME_REQUIRED },
+            nameDisposition = nameDisposition,
             baseAreaId = baseAreaId,
             pixelWidth = gridWidth * METATILE_PIXELS,
             pixelHeight = gridHeight * METATILE_PIXELS,

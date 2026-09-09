@@ -114,9 +114,12 @@ class ItemNameMaterializerTest {
             maps = listOf(LocalMap("m", "map", 1, 16, 16, 1, 1, "a")),
             assets = mapOf("a" to PngMapAsset(byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10))),
             pois = listOf(
-                LocalMapPoi("item", "m", 1, 0, 0, LocalMapPoiKind.VISIBLE_ITEM, item = LocalMapPoiItem(4, collectionFlagId = 23)),
-                LocalMapPoi("dynamic", "m", 1, 0, 0, LocalMapPoiKind.VISIBLE_ITEM, item = LocalMapPoiItem(175)),
-                LocalMapPoi("sign", "m", 1, 0, 0, LocalMapPoiKind.PLACE, displayName = "native sign", destinationBaseAreaId = 2),
+                LocalMapPoi("item", "m", 1, 0, 0, LocalMapPoiKind.VISIBLE_ITEM, item = LocalMapPoiItem(4, collectionFlagId = 23),
+                    textObligation = LocalMapPoiTextObligation.ITEM_NAME),
+                LocalMapPoi("dynamic", "m", 1, 0, 0, LocalMapPoiKind.VISIBLE_ITEM, item = LocalMapPoiItem(175),
+                    textObligation = LocalMapPoiTextObligation.ITEM_NAME),
+                LocalMapPoi("sign", "m", 1, 0, 0, LocalMapPoiKind.PLACE, displayName = "native sign", destinationBaseAreaId = 2,
+                    textObligation = LocalMapPoiTextObligation.DIRECT_TEXT),
             ),
         )
         val joined = ItemNameMaterializer.join(names, balls, maps)
@@ -135,7 +138,14 @@ class ItemNameMaterializerTest {
         assertEquals("A", overlay.itemNames.getValue(4).value)
         assertEquals(LocalizedCapabilityState(CapabilityStatus.PARTIAL, 1.0, 1, 2),
             overlay.localizedCapabilities.getValue(LocalizedTextCapability.ITEM_NAMES))
-        assertEquals(1, overlay.localizedCapabilities.getValue(LocalizedTextCapability.POI_TEXT).coveredRecords)
+        assertEquals(LocalizedCapabilityState(CapabilityStatus.PARTIAL, 1.0, 2, 3),
+            overlay.localizedCapabilities.getValue(LocalizedTextCapability.POI_TEXT))
+        assertEquals(listOf("item", "dynamic", "sign"), extracted.localMaps.pois.map(LocalMapPoi::key))
+        val poiText = CatalogPoiTextResolver(extracted.localMaps, overlay.poiTexts, overlay.itemNames, overlay.localMapNames)
+        assertEquals("A", poiText.label(extracted.localMaps.pois[0]))
+        assertNull(poiText.label(extracted.localMaps.pois[1]))
+        assertFalse(175 in overlay.itemNames)
+        assertEquals("native sign", poiText.label(extracted.localMaps.pois[2]))
         assertEquals("native sign", overlay.poiTexts.getValue("sign").displayName?.value)
         assertNull(extracted.localization.overlay(LanguageTag.FRENCH))
     }

@@ -18,6 +18,90 @@ import org.junit.Test
 
 class CatalogLanguageOverlayTest {
     @Test
+    fun task417OnlyExplicitContextExcludesStaticNamesAndPreservesTheSharedInventory() {
+        val maps = task417Maps()
+        val extraction = poiExtraction(maps)
+        val catalog = poiCatalog(extraction)
+        val shared = catalog.localMaps
+        assertEquals(3, shared.maps.size)
+        assertEquals(setOf("local/1", "local/3"), shared.staticNameRequiredMapKeys)
+        assertEquals(setOf("local/2"), shared.contextDependentMapKeys)
+        assertEquals(shared.maps.size, shared.staticNameRequiredMapKeys.size + shared.contextDependentMapKeys.size)
+        assertEquals(maps.maps.map { it.copy(displayName = null) }, shared.maps)
+        assertEquals(maps.assets, shared.assets)
+        assertEquals(maps.scenes, shared.scenes)
+        assertEquals(maps.pois.map { it.copy(displayName = null, displayNamesByTrainerGender = emptyMap()) }, shared.pois)
+        assertEquals(LocalMapNameDisposition.STATIC_NAME_REQUIRED, shared.maps.single { it.key == "local/3" }.nameDisposition)
+        for (language in listOf(LanguageTag.ENGLISH, LanguageTag.FRENCH)) {
+            val text = requireNotNull(catalog.textProjection(language))
+            val state = text.localizedCapabilities.getValue(LocalizedTextCapability.LOCAL_MAP_NAMES)
+            assertEquals(2, state.expectedRecords)
+            assertEquals(if (language == LanguageTag.ENGLISH) 1 else 0, state.coveredRecords)
+            assertEquals(if (language == LanguageTag.ENGLISH) CapabilityStatus.PARTIAL else CapabilityStatus.NOT_FOUND, state.status)
+            assertEquals(if (language == LanguageTag.ENGLISH) "Town" else null, text.localMapName("local/1"))
+            assertNull(text.localMapName("local/2"))
+            assertNull(text.localMapName("local/3"))
+            assertNull(text.poiDisplayName("warp"))
+            assertNull(text.poiDisplayName("missing-sign"))
+            assertEquals(6, text.localizedCapabilities.getValue(LocalizedTextCapability.POI_TEXT).expectedRecords)
+            assertEquals(if (language == LanguageTag.ENGLISH) 3 else 0,
+                text.localizedCapabilities.getValue(LocalizedTextCapability.POI_TEXT).coveredRecords)
+        }
+    }
+
+    @Test
+    fun task417NamedContextualMapAndContradictoryOverlayCannotBePublished() {
+        assertThrows(IllegalArgumentException::class.java) {
+            poiMaps().let { source -> source.copy(maps = source.maps.map {
+                if (it.key == "local/2") it.copy(nameDisposition = LocalMapNameDisposition.CONTEXT_DEPENDENT) else it
+            }) }
+        }
+        val extraction = poiExtraction(task417Maps())
+        val original = requireNotNull(extraction.localization.defaultOverlay())
+        for (forgedText in listOf(false, true)) {
+            val state = if (forgedText) LocalizedCapabilityState.available(2)
+                else LocalizedCapabilityState(CapabilityStatus.PARTIAL, 1.0, 1, 3)
+            val invalid = CatalogLanguageOverlay(
+                original.language, original.overlayVersion,
+                original.localizedCapabilities + (LocalizedTextCapability.LOCAL_MAP_NAMES to state),
+                itemNames = original.itemNames,
+                localMapNames = original.localMapNames + if (forgedText) mapOf("local/2" to CatalogField.available("Fabricated room")) else emptyMap(),
+                poiTexts = original.poiTexts,
+            )
+            assertThrows(IllegalArgumentException::class.java) {
+                poiCatalog(extraction.copy(localization = CatalogLocalization(extraction.localization.manifest,
+                    extraction.localization.overlays + (original.language to invalid))))
+            }
+        }
+    }
+
+    @Test
+    fun task417MissingOrdinaryNamesNeverBecomeContextual() {
+        val source = poiMaps()
+        val unnamed = source.copy(maps = source.maps.map { it.copy(displayName = null) })
+        val ordinary = poiCatalog(poiExtraction(unnamed))
+        val state = ordinary.defaultTextProjection().localizedCapabilities.getValue(LocalizedTextCapability.LOCAL_MAP_NAMES)
+        assertEquals(2, state.expectedRecords)
+        assertEquals(0, state.coveredRecords)
+        assertEquals(CapabilityStatus.NOT_FOUND, state.status)
+        assertEquals(emptySet<String>(), ordinary.localMaps.contextDependentMapKeys)
+        val contextual = unnamed.copy(maps = unnamed.maps.map { it.copy(nameDisposition = LocalMapNameDisposition.CONTEXT_DEPENDENT) })
+        val selected = poiCatalog(poiExtraction(contextual))
+        val contextualState = selected.defaultTextProjection().localizedCapabilities.getValue(LocalizedTextCapability.LOCAL_MAP_NAMES)
+        assertEquals(0, contextualState.expectedRecords)
+        assertEquals(CapabilityStatus.NOT_APPLICABLE, contextualState.status)
+        assertEquals(2, selected.localMaps.maps.size)
+        assertEquals(2, selected.localMaps.contextDependentMapKeys.size)
+        assertEquals(6, selected.defaultTextProjection().localizedCapabilities.getValue(LocalizedTextCapability.POI_TEXT).expectedRecords)
+    }
+
+    private fun task417Maps() = poiMaps().let { source -> source.copy(
+        maps = source.maps.map {
+            if (it.key == "local/2") it.copy(displayName = null, nameDisposition = LocalMapNameDisposition.CONTEXT_DEPENDENT) else it
+        } + LocalMap("local/3", null, 3, 16, 16, 1, 1, "map"),
+    ) }
+
+    @Test
     fun itemReferenceSatisfiesPoiCoverageWithoutDuplicatingItemText() {
         val localMaps = LocalMapCatalog(
             maps = listOf(LocalMap("local/1", "Town", 1, 16, 16, 1, 1, "map")),

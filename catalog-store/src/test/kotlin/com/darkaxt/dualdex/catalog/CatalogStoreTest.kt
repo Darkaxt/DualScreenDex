@@ -46,6 +46,7 @@ import com.enrpau.dualscreendex.parser.catalog.LevelUpRulesetSelector
 import com.enrpau.dualscreendex.parser.catalog.LocalMap
 import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
 import com.enrpau.dualscreendex.parser.catalog.LocalMapLightingPolicy
+import com.enrpau.dualscreendex.parser.catalog.LocalMapNameDisposition
 import com.enrpau.dualscreendex.parser.catalog.textProjection
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiTextObligation
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoi
@@ -127,6 +128,209 @@ import org.junit.Test
 
 class CatalogStoreTest {
     @Test
+    fun task417ContextDependentFixedOverlayLabelIsRejectedAfterSqliteReopen() {
+        val file = task417StoredMapFixture("Unproven room title")
+        mutateTask417Section(file, "local_maps") { json ->
+            json.getAsJsonArray("maps")[0].asJsonObject.addProperty("nameDisposition", "CONTEXT_DEPENDENT")
+        }
+        JdbcCatalogDatabaseFactory.open(file).use { database ->
+            assertThrows(IllegalArgumentException::class.java) { CatalogReader(database).readComplete() }
+        }
+    }
+
+    @Test
+    fun task417UnknownNameDispositionIsRejectedAfterSqliteReopen() {
+        val file = task417StoredMapFixture(null)
+        mutateTask417Section(file, "local_maps") { json ->
+            json.getAsJsonArray("maps")[0].asJsonObject.addProperty("nameDisposition", "NOT_A_DISPOSITION")
+        }
+        JdbcCatalogDatabaseFactory.open(file).use { database ->
+            assertThrows(IllegalArgumentException::class.java) { CatalogReader(database).readComplete() }
+        }
+    }
+
+    @Test
+    fun task417PositiveContextualStaticDomainReopensWithoutDroppingTheMap() {
+        val file = task417StoredMapFixture(null)
+        mutateTask417Section(file, "local_maps") { json ->
+            json.getAsJsonArray("maps")[0].asJsonObject.addProperty("nameDisposition", "CONTEXT_DEPENDENT")
+        }
+        mutateTask417Section(file, "language_overlay:en") { json ->
+            val state = json.getAsJsonArray("localizedCapabilities").single {
+                it.asJsonObject.get("capability").asString == "LOCAL_MAP_NAMES"
+            }.asJsonObject
+            state.addProperty("expectedRecords", 0)
+            state.addProperty("status", "NOT_APPLICABLE")
+        }
+        val result = runCatching {
+            JdbcCatalogDatabaseFactory.open(file).use { database -> CatalogReader(database).readComplete() }
+        }
+        assertTrue("explicit contextual map with zero static-name obligations must reopen: ${result.exceptionOrNull()}", result.isSuccess)
+        val reopened = requireNotNull(result.getOrThrow()).catalog
+        assertEquals(listOf("local/1"), reopened.localMaps.maps.map(LocalMap::key))
+        assertEquals(0, reopened.defaultLocalizedText()?.localizedCapabilities?.getValue(LocalizedTextCapability.LOCAL_MAP_NAMES)?.expectedRecords)
+        assertNull(reopened.textProjection(LanguageTag.ENGLISH)?.localMapName("local/1"))
+    }
+
+    @Test
+    fun task417MixedStaticAndContextualMapsSurviveSqliteAndCacheOnlyProjection() {
+        val catalog = task417MixedCatalog()
+        val root = newRoot().toFile()
+        val file = CatalogCache(root, JdbcCatalogDatabaseFactory).fileFor(catalog.romSha256)
+        JdbcCatalogDatabaseFactory.open(file).use { database ->
+            CatalogWriter(database).write(catalog, CatalogSourceMetadata.direct("Synthetic.gbc", 32768, "SYNTHETIC"), CatalogWriteProgress.complete())
+        }
+        JdbcCatalogDatabaseFactory.open(file).use { database ->
+            assertEquals(catalog, CatalogReader(database).readComplete()?.catalog)
+        }
+        // Only persisted catalog data is available to this fresh cache/projection, never ROM bytes.
+        val reopened = requireNotNull(CatalogCache(root, JdbcCatalogDatabaseFactory).readComplete(catalog.romSha256)).catalog
+        assertEquals(catalog, reopened)
+        assertEquals(catalog.localMaps, reopened.localMaps)
+        assertEquals(3, reopened.localMaps.maps.size)
+        assertEquals(setOf("local/1", "local/3"), reopened.localMaps.staticNameRequiredMapKeys)
+        assertEquals(setOf("local/2"), reopened.localMaps.contextDependentMapKeys)
+        assertEquals(reopened.localMaps.maps.size, reopened.localMaps.staticNameRequiredMapKeys.size + reopened.localMaps.contextDependentMapKeys.size)
+        for (language in listOf(LanguageTag.JAPANESE, LanguageTag.KOREAN)) {
+            val text = requireNotNull(reopened.textProjection(language))
+            val state = text.localizedCapabilities.getValue(LocalizedTextCapability.LOCAL_MAP_NAMES)
+            val hasStaticName = language == LanguageTag.JAPANESE
+            assertEquals(2, state.expectedRecords)
+            assertEquals(if (hasStaticName) 1 else 0, state.coveredRecords)
+            assertEquals(if (hasStaticName) CapabilityStatus.PARTIAL else CapabilityStatus.NOT_FOUND, state.status)
+            assertEquals("runtime ordinary", text.areaName(1))
+            assertEquals("runtime context", text.areaName(2))
+            assertNull(text.localMapName("local/1"))
+            assertNull(text.localMapName("local/2"))
+            assertEquals(if (hasStaticName) "どうくつ" else null, text.localMapName("local/3"))
+            assertNull(text.poiDisplayName("context-warp"))
+            assertNull(text.poiDisplayName("sign"))
+            assertEquals(if (hasStaticName) "どうくつ" else null, text.poiDisplayName("static-warp"))
+            assertEquals(if (hasStaticName) "ボール" else "볼", text.poiItemName("item", 4))
+            assertEquals(4, text.localizedCapabilities.getValue(LocalizedTextCapability.POI_TEXT).expectedRecords)
+            assertEquals(if (hasStaticName) 2 else 1, text.localizedCapabilities.getValue(LocalizedTextCapability.POI_TEXT).coveredRecords)
+        }
+    }
+
+    @Test
+    fun task417PersistedMissingNullOrConflictingNameDispositionsFailClosed() {
+        val catalog = task417MixedCatalog()
+        for (mutation in listOf("missing", "null", "unknown", "shared-label", "context-became-static", "stale-coverage", "overlay-label")) {
+            val file = newRoot().resolve("$mutation.sqlite").toFile()
+            JdbcCatalogDatabaseFactory.open(file).use { database ->
+                CatalogWriter(database).write(catalog, CatalogSourceMetadata.direct("Synthetic.gbc", 32768, "SYNTHETIC"), CatalogWriteProgress.complete())
+            }
+            if (mutation == "stale-coverage" || mutation == "overlay-label") {
+                mutateTask417Section(file, "language_overlay:ja") { json ->
+                    val state = json.getAsJsonArray("localizedCapabilities").single {
+                        it.asJsonObject.get("capability").asString == "LOCAL_MAP_NAMES"
+                    }.asJsonObject
+                    if (mutation == "stale-coverage") state.addProperty("expectedRecords", 3)
+                    else {
+                        json.getAsJsonObject("localMapNames").add("local/2", com.google.gson.JsonParser.parseString(
+                            """{"status":"AVAILABLE","value":"Fabricated room","reasons":[]}"""))
+                        state.addProperty("coveredRecords", 2)
+                        state.addProperty("status", "AVAILABLE")
+                    }
+                }
+            } else {
+                mutateTask417Section(file, "local_maps") { json ->
+                    val map = json.getAsJsonArray("maps")[1].asJsonObject
+                    when (mutation) {
+                        "missing" -> map.remove("nameDisposition")
+                        "null" -> map.add("nameDisposition", com.google.gson.JsonNull.INSTANCE)
+                        "unknown" -> map.addProperty("nameDisposition", "NOT_A_DISPOSITION")
+                        "shared-label" -> map.addProperty("displayName", "Fabricated room")
+                        else -> map.addProperty("nameDisposition", "STATIC_NAME_REQUIRED")
+                    }
+                }
+            }
+            JdbcCatalogDatabaseFactory.open(file).use { database ->
+                assertThrows(mutation, IllegalArgumentException::class.java) { CatalogReader(database).readComplete() }
+            }
+        }
+    }
+
+    private fun task417MixedCatalog(): ParsedCatalog {
+        val maps = LocalMapCatalog(
+            maps = listOf(
+                LocalMap("local/1", null, 1, 16, 16, 1, 1, "map"),
+                LocalMap("local/2", null, 2, 16, 16, 1, 1, "map", LocalMapNameDisposition.CONTEXT_DEPENDENT),
+                LocalMap("local/3", null, 3, 16, 16, 1, 1, "map"),
+            ),
+            assets = mapOf("map" to PngMapAsset(byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10))),
+            scenes = listOf(LocalMapScene("scene", 3, 1, listOf(
+                LocalMapScenePlacement("local/1", 1, 0, 0), LocalMapScenePlacement("local/2", 2, 1, 0), LocalMapScenePlacement("local/3", 3, 2, 0),
+            ))),
+            pois = listOf(
+                LocalMapPoi("item", "local/1", 1, 0, 0, LocalMapPoiKind.VISIBLE_ITEM, item = LocalMapPoiItem(4), textObligation = LocalMapPoiTextObligation.ITEM_NAME),
+                LocalMapPoi("context-warp", "local/1", 1, 0, 0, LocalMapPoiKind.PLACE, destinationBaseAreaId = 2, textObligation = LocalMapPoiTextObligation.DESTINATION_NAME),
+                LocalMapPoi("static-warp", "local/1", 1, 0, 0, LocalMapPoiKind.PLACE, destinationBaseAreaId = 3, textObligation = LocalMapPoiTextObligation.DESTINATION_NAME),
+                LocalMapPoi("sign", "local/1", 1, 0, 0, LocalMapPoiKind.PLACE, destinationBaseAreaId = 3, textObligation = LocalMapPoiTextObligation.DIRECT_TEXT),
+            ),
+        )
+        val languages = listOf(LanguageTag.JAPANESE, LanguageTag.KOREAN)
+        val manifest = RomLanguageManifest(defaultLanguage = languages.first(), status = LanguageResolutionStatus.RESOLVED,
+            projections = languages.map { RomLanguageProjection(it, "fixture-${it.value}", 1, LocalizedTableLayout(), emptyList(), LanguageResolutionStatus.RESOLVED) })
+        val overlays = languages.associateWith { language ->
+            val named = language == LanguageTag.JAPANESE
+            CatalogLanguageOverlay(language, 1, LocalizedTextCapability.entries.associateWith { capability ->
+                val (covered, expected) = when (capability) {
+                    LocalizedTextCapability.ITEM_NAMES -> 1 to 1
+                    LocalizedTextCapability.AREA_NAMES -> 2 to 2
+                    LocalizedTextCapability.LOCAL_MAP_NAMES -> (if (named) 1 else 0) to 2
+                    LocalizedTextCapability.POI_TEXT -> (if (named) 2 else 1) to 4
+                    else -> 0 to 0
+                }
+                when {
+                    expected == 0 -> LocalizedCapabilityState.notApplicable("empty fixture domain")
+                    covered == 0 -> LocalizedCapabilityState.notFound("missing static text", expected)
+                    covered == expected -> LocalizedCapabilityState.available(expected)
+                    else -> LocalizedCapabilityState(CapabilityStatus.PARTIAL, 1.0, covered, expected)
+                }
+            }, itemNames = mapOf(4 to CatalogField.available(if (named) "ボール" else "볼")),
+                areaNames = mapOf(1 to CatalogField.available("runtime ordinary"), 2 to CatalogField.available("runtime context")),
+                localMapNames = if (named) mapOf("local/3" to CatalogField.available("どうくつ")) else emptyMap())
+        }
+        return ParsedCatalog(romSha256 = "d".repeat(64), romCrc32 = "1234ABCD", family = EngineFamily.GOLD_SILVER, platform = Platform.GBC,
+            localMaps = maps, runtimeMetadata = CatalogRuntimeMetadata(areaBaseIds = setOf(1, 2)), localization = CatalogLocalization(manifest, overlays))
+    }
+
+    private fun task417StoredMapFixture(name: String?): java.io.File {
+        val maps = LocalMapCatalog(
+            maps = listOf(LocalMap("local/1", name, 1, 16, 16, 1, 1, "map")),
+            assets = mapOf("map" to PngMapAsset(byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10))),
+        )
+        val catalog = localizedFixtureCatalog(completeCatalog("c".repeat(64)), localMaps = maps)
+        val file = newRoot().resolve("contextual-map.sqlite").toFile()
+        JdbcCatalogDatabaseFactory.open(file).use { database ->
+            CatalogWriter(database).write(catalog, CatalogSourceMetadata.direct("Synthetic.gbc", 32768, "SYNTHETIC"), CatalogWriteProgress.complete())
+        }
+        return file
+    }
+
+    private fun mutateTask417Section(file: java.io.File, section: String, mutation: (com.google.gson.JsonObject) -> Unit) {
+        JdbcCatalogDatabaseFactory.open(file).use { database ->
+            val encoded = database.query(
+                "SELECT payload FROM catalog_section_chunks WHERE section_name = ? ORDER BY chunk_index", listOf(section),
+            ) { row -> requireNotNull(row.bytes("payload")) }.fold(ByteArrayOutputStream()) { output, bytes -> output.apply { write(bytes) } }.toByteArray()
+            val json = GZIPInputStream(ByteArrayInputStream(encoded)).use {
+                com.google.gson.JsonParser.parseString(it.readBytes().toString(Charsets.UTF_8)).asJsonObject
+            }
+            mutation(json)
+            val payload = ByteArrayOutputStream().also { output ->
+                GZIPOutputStream(output).use { it.write(json.toString().toByteArray(Charsets.UTF_8)) }
+            }.toByteArray()
+            database.execute("DELETE FROM catalog_section_chunks WHERE section_name = ?", listOf(section))
+            payload.asList().chunked(CatalogSchema.sectionChunkBytes).forEachIndexed { index, bytes ->
+                database.execute("INSERT INTO catalog_section_chunks(section_name, chunk_index, payload) VALUES (?, ?, ?)", listOf(section, index, bytes.toByteArray()))
+            }
+            database.execute("UPDATE catalog_sections SET payload = ? WHERE name = ?",
+                listOf(java.security.MessageDigest.getInstance("SHA-256").digest(payload), section))
+        }
+    }
+
+    @Test
     fun task415PoiReferencesSurviveActualSqliteCloseReopenWithoutTextDuplication() {
         val maps = LocalMapCatalog(
             maps = listOf(
@@ -190,7 +394,7 @@ class CatalogStoreTest {
             CatalogWriter(database).write(catalog, CatalogSourceMetadata.direct("Synthetic.gbc", 32768, "SYNTHETIC"), CatalogWriteProgress.complete())
         }
         val reopened = JdbcCatalogDatabaseFactory.open(file).use { database ->
-            assertEquals(listOf(62L to 2L), database.query(
+            assertEquals(listOf(CatalogSchema.parserSchemaVersion.toLong() to CatalogSchema.version.toLong()), database.query(
                 "SELECT parser_schema_version, schema_version FROM catalog_metadata WHERE id = 1",
             ) { row -> row.long("parser_schema_version") to row.long("schema_version") })
             requireNotNull(CatalogReader(database).readComplete()).catalog
@@ -237,7 +441,51 @@ class CatalogStoreTest {
     }
 
     @Test
-    fun revision61GetterPoiObligationsAndRegionTitlesAreRejectedAnd62Reopens() {
+    fun revision62StaticNameDomainsAreRejectedAnd63ReopensWithContextualInventory() {
+        val root = newRoot().toFile()
+        val cache = CatalogCache(root, JdbcCatalogDatabaseFactory)
+        val catalog = task417MixedCatalog()
+        val source = CatalogSourceMetadata.direct("Synthetic.gbc", 32768, "SYNTHETIC")
+        cache.write(catalog, source, CatalogWriteProgress.complete())
+        JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
+            // Otherwise valid sections isolate the parser-revision boundary from payload corruption.
+            database.execute("UPDATE catalog_metadata SET parser_schema_version = 62 WHERE id = 1")
+            assertEquals(listOf(62L to 2L), database.query(
+                "SELECT parser_schema_version, schema_version FROM catalog_metadata WHERE id = 1",
+            ) { row -> row.long("parser_schema_version") to row.long("schema_version") })
+        }
+        val readerAccepted = JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
+            CatalogReader(database).readComplete() != null
+        }
+        val reopened = CatalogCache(root, JdbcCatalogDatabaseFactory)
+        val lookup = reopened.lookupComplete(catalog.romSha256)
+        assertEquals("revision62 must be rejected by both fresh reader and cache", listOf(false, false),
+            listOf(readerAccepted, lookup.stored != null))
+        assertEquals(CatalogCacheDecision.MISS_INCOMPLETE_OR_INCOMPATIBLE, lookup.decision)
+        reopened.write(catalog, source, CatalogWriteProgress.complete())
+        JdbcCatalogDatabaseFactory.open(reopened.fileFor(catalog.romSha256)).use { database ->
+            assertEquals(listOf(63L to 2L), database.query(
+                "SELECT parser_schema_version, schema_version FROM catalog_metadata WHERE id = 1",
+            ) { row -> row.long("parser_schema_version") to row.long("schema_version") })
+            assertEquals(catalog, CatalogReader(database).readComplete()?.catalog)
+        }
+        val current = requireNotNull(CatalogCache(root, JdbcCatalogDatabaseFactory).readComplete(catalog.romSha256)).catalog
+        assertEquals(catalog, current)
+        assertEquals(3, current.localMaps.maps.size)
+        assertEquals(setOf("local/1", "local/3"), current.localMaps.staticNameRequiredMapKeys)
+        assertEquals(setOf("local/2"), current.localMaps.contextDependentMapKeys)
+        val text = requireNotNull(current.textProjection(LanguageTag.JAPANESE))
+        assertEquals(2, text.localizedCapabilities.getValue(LocalizedTextCapability.LOCAL_MAP_NAMES).expectedRecords)
+        assertNull(text.localMapName("local/2"))
+        assertEquals("どうくつ", text.localMapName("local/3"))
+        assertEquals(63, CatalogSchema.parserSchemaVersion)
+        assertEquals(2, CatalogSchema.version)
+        assertTrue(current.languageManifest.projections.all { it.codecVersion == 1 })
+        assertEquals(1, PokemonTextCodec.gbaEnglish.version)
+    }
+
+    @Test
+    fun revision61GetterPoiObligationsAndRegionTitlesAreRejectedAndCurrentReopens() {
         val root = newRoot().toFile()
         val cache = CatalogCache(root, JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("b".repeat(64))
@@ -258,18 +506,18 @@ class CatalogStoreTest {
         assertNull("revision61 must not bootstrap through the cache", reopened.readComplete(catalog.romSha256))
         reopened.write(catalog, source, CatalogWriteProgress.complete())
         JdbcCatalogDatabaseFactory.open(reopened.fileFor(catalog.romSha256)).use { database ->
-            assertEquals(listOf(62L to 2L), database.query(
+            assertEquals(listOf(CatalogSchema.parserSchemaVersion.toLong() to CatalogSchema.version.toLong()), database.query(
                 "SELECT parser_schema_version, schema_version FROM catalog_metadata WHERE id = 1",
             ) { row -> row.long("parser_schema_version") to row.long("schema_version") })
             assertEquals(catalog, CatalogReader(database).readComplete()?.catalog)
         }
         assertEquals(catalog, CatalogCache(root, JdbcCatalogDatabaseFactory).readComplete(catalog.romSha256)?.catalog)
-        assertEquals(62, CatalogSchema.parserSchemaVersion)
+        assertCurrentCatalogRevision(cache.fileFor(catalog.romSha256))
         assertEquals(2, CatalogSchema.version)
     }
 
     @Test
-    fun revision60ItemConsumerOutcomesAreRejectedAnd62Reopens() {
+    fun revision60ItemConsumerOutcomesAreRejectedAndCurrentReopens() {
         val root = newRoot().toFile()
         val cache = CatalogCache(root, JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("1".repeat(64))
@@ -287,11 +535,11 @@ class CatalogStoreTest {
         val current = CatalogCache(root, JdbcCatalogDatabaseFactory)
         assertEquals(catalog, current.readComplete(catalog.romSha256)?.catalog)
         JdbcCatalogDatabaseFactory.open(current.fileFor(catalog.romSha256)).use { database ->
-            assertEquals(listOf(62L to 2L), database.query(
+            assertEquals(listOf(CatalogSchema.parserSchemaVersion.toLong() to CatalogSchema.version.toLong()), database.query(
                 "SELECT parser_schema_version, schema_version FROM catalog_metadata WHERE id = 1",
             ) { row -> row.long("parser_schema_version") to row.long("schema_version") })
         }
-        assertEquals(62, CatalogSchema.parserSchemaVersion)
+        assertCurrentCatalogRevision(cache.fileFor(catalog.romSha256))
         assertEquals(2, CatalogSchema.version)
         assertEquals(1, PokemonTextCodec.gbaEnglish.version)
     }
@@ -312,7 +560,7 @@ class CatalogStoreTest {
         assertNull("schema59 may persist unavailable Gen I French/German literal plus names", cache.readComplete(catalog.romSha256))
         cache.write(catalog, source, CatalogWriteProgress.complete())
         assertEquals(catalog, cache.readComplete(catalog.romSha256)?.catalog)
-        assertEquals(62, CatalogSchema.parserSchemaVersion)
+        assertCurrentCatalogRevision(cache.fileFor(catalog.romSha256))
         assertEquals(2, CatalogSchema.version)
     }
 
@@ -332,7 +580,7 @@ class CatalogStoreTest {
         assertNull("schema58 may persist unavailable Western GenII ordinary static54 labels", cache.readComplete(catalog.romSha256))
         cache.write(catalog, source, CatalogWriteProgress.complete())
         assertEquals(catalog, cache.readComplete(catalog.romSha256)?.catalog)
-        assertEquals(62, CatalogSchema.parserSchemaVersion)
+        assertCurrentCatalogRevision(cache.fileFor(catalog.romSha256))
         assertEquals(2, CatalogSchema.version)
     }
 
@@ -352,7 +600,7 @@ class CatalogStoreTest {
         assertNull("schema57 may persist names with a split GenII prefix borrowing generated digits", cache.readComplete(catalog.romSha256))
         cache.write(catalog, source, CatalogWriteProgress.complete())
         assertEquals(catalog, cache.readComplete(catalog.romSha256)?.catalog)
-        assertEquals(62, CatalogSchema.parserSchemaVersion)
+        assertCurrentCatalogRevision(cache.fileFor(catalog.romSha256))
         assertEquals(2, CatalogSchema.version)
     }
 
@@ -368,7 +616,7 @@ class CatalogStoreTest {
         assertNull("schema56 without reference-scoped GenII names must not bootstrap", cache.readComplete(catalog.romSha256))
         cache.write(catalog, source, CatalogWriteProgress.complete())
         assertEquals(catalog, cache.readComplete(catalog.romSha256)?.catalog)
-        assertEquals(62, CatalogSchema.parserSchemaVersion)
+        assertCurrentCatalogRevision(cache.fileFor(catalog.romSha256))
         assertEquals(2, CatalogSchema.version)
     }
 
@@ -384,7 +632,7 @@ class CatalogStoreTest {
         assertNull("schema55 without reference-scoped Gen I names must not bootstrap", cache.readComplete(catalog.romSha256))
         cache.write(catalog, source, CatalogWriteProgress.complete())
         assertEquals(catalog, cache.readComplete(catalog.romSha256)?.catalog)
-        assertEquals(62, CatalogSchema.parserSchemaVersion)
+        assertCurrentCatalogRevision(cache.fileFor(catalog.romSha256))
         assertEquals(2, CatalogSchema.version)
     }
 
@@ -400,7 +648,7 @@ class CatalogStoreTest {
         assertNull("schema54 without headerless item names must not bootstrap", cache.readComplete(catalog.romSha256))
         cache.write(catalog, source, CatalogWriteProgress.complete())
         assertEquals(catalog, cache.readComplete(catalog.romSha256)?.catalog)
-        assertEquals(62, CatalogSchema.parserSchemaVersion)
+        assertCurrentCatalogRevision(cache.fileFor(catalog.romSha256))
         assertEquals(2, CatalogSchema.version)
     }
 
@@ -1612,7 +1860,7 @@ class CatalogStoreTest {
         )
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(62, CatalogSchema.parserSchemaVersion)
+        assertCurrentCatalogRevision(cache.fileFor(catalog.romSha256))
         assertEquals(catalog.worldMaps, reopened?.catalog?.worldMaps)
         assertEquals(catalog.localMaps.maps, reopened?.catalog?.localMaps?.maps)
         assertEquals(catalog.localMaps.scenes, reopened?.catalog?.localMaps?.scenes)
@@ -1966,7 +2214,7 @@ class CatalogStoreTest {
         cache.write(catalog, source, CatalogWriteProgress.complete())
         val reopened = cache.readComplete(catalog.romSha256)
 
-        assertEquals(62, CatalogSchema.parserSchemaVersion)
+        assertCurrentCatalogRevision(cache.fileFor(catalog.romSha256))
         assertEquals(source, reopened?.source)
         assertEquals(catalog, reopened?.catalog)
         assertEquals(
@@ -2115,7 +2363,6 @@ class CatalogStoreTest {
 
     @Test
     fun `revision 42 caches are invalidated so hybrid move details are rebuilt`() {
-        assertEquals(62, CatalogSchema.parserSchemaVersion)
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("4".repeat(64)).copy(diagnostics = listOf("pre-hybrid move output"))
@@ -2133,11 +2380,11 @@ class CatalogStoreTest {
         val reparsed = catalog.copy(diagnostics = listOf("hybrid move output rebuilt"))
         cache.write(reparsed, source, CatalogWriteProgress.complete())
         assertEquals(reparsed, cache.readComplete(catalog.romSha256)?.catalog)
+        assertCurrentCatalogRevision(cache.fileFor(catalog.romSha256))
     }
 
     @Test
     fun `revision 43 caches are invalidated so optional relationship evidence is rebuilt`() {
-        assertEquals(62, CatalogSchema.parserSchemaVersion)
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("5".repeat(64)).copy(diagnostics = listOf("pre-isolation relationship output"))
@@ -2155,11 +2402,11 @@ class CatalogStoreTest {
         val reparsed = catalog.copy(diagnostics = listOf("relationship evidence rebuilt"))
         cache.write(reparsed, source, CatalogWriteProgress.complete())
         assertEquals(reparsed, cache.readComplete(catalog.romSha256)?.catalog)
+        assertCurrentCatalogRevision(cache.fileFor(catalog.romSha256))
     }
 
     @Test
     fun `revision 44 caches are invalidated so bounded detached Gen I evidence is rebuilt`() {
-        assertEquals(62, CatalogSchema.parserSchemaVersion)
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("6".repeat(64)).copy(diagnostics = listOf("pre-bounded detached Gen I output"))
@@ -2177,11 +2424,11 @@ class CatalogStoreTest {
         val reparsed = catalog.copy(diagnostics = listOf("bounded detached Gen I output rebuilt"))
         cache.write(reparsed, source, CatalogWriteProgress.complete())
         assertEquals(reparsed, cache.readComplete(catalog.romSha256)?.catalog)
+        assertCurrentCatalogRevision(cache.fileFor(catalog.romSha256))
     }
 
     @Test
     fun `revision 45 caches are invalidated so Gen I applicability and bounded fallbacks are rebuilt`() {
-        assertEquals(62, CatalogSchema.parserSchemaVersion)
         val root = newRoot()
         val cache = CatalogCache(root.toFile(), JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("7".repeat(64)).copy(
@@ -2201,6 +2448,7 @@ class CatalogStoreTest {
         val reparsed = catalog.copy(diagnostics = listOf("Gen I applicability and bounded fallbacks rebuilt"))
         cache.write(reparsed, source, CatalogWriteProgress.complete())
         assertEquals(reparsed, cache.readComplete(catalog.romSha256)?.catalog)
+        assertCurrentCatalogRevision(cache.fileFor(catalog.romSha256))
     }
 
     @Test
@@ -2473,6 +2721,14 @@ class CatalogStoreTest {
                 writtenChunkBytes += arguments.filterIsInstance<ByteArray>().sumOf(ByteArray::size)
             }
             delegate.execute(sql, arguments)
+        }
+    }
+
+    private fun assertCurrentCatalogRevision(file: java.io.File) {
+        JdbcCatalogDatabaseFactory.open(file).use { database ->
+            assertEquals(listOf(CatalogSchema.parserSchemaVersion.toLong() to CatalogSchema.version.toLong()), database.query(
+                "SELECT parser_schema_version, schema_version FROM catalog_metadata WHERE id = 1",
+            ) { row -> row.long("parser_schema_version") to row.long("schema_version") })
         }
     }
 
