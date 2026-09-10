@@ -51,6 +51,20 @@ class Gen2LandmarkNameCodecTest {
         )
     }
 
+    @Test fun localizedTownMapLineSplitDoesNotInsertASemanticSpace() {
+        assertEquals(
+            "FIORPESCOPOLI",
+            decode(
+                bytes(
+                    0x85, 0x88, 0x8e, 0x91, 0x8f, 0x84, 0x92, 0x82, 0x8e,
+                    0x1e,
+                    0x8f, 0x8e, 0x8b, 0x88, 0x50,
+                ),
+                codec = WesternPokemonTextCodecs.gen2Italian,
+            ),
+        )
+    }
+
     @Test fun expandedDialectDecodesShiftedDigitsAndPunctuation() {
         assertEquals(
             "FUKUHARA №.4",

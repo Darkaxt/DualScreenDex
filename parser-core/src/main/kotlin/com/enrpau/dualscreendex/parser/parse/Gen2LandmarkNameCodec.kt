@@ -65,6 +65,10 @@ internal object Gen2LandmarkNameCodec {
                         continue
                     }
                     NULL -> return null // PlaceString substitutes runtime debug text; no stable semantic name.
+                    NAME_LINE_CONTINUATION -> {
+                        cursor++
+                        continue
+                    }
                     BSP, LF, WBR, NEXT, LINE -> {
                         output.append(' ')
                         cursor++
@@ -273,6 +277,7 @@ internal object Gen2LandmarkNameCodec {
         }
 
     private const val NULL = 0x00
+    private const val NAME_LINE_CONTINUATION = 0x1e
     private const val BSP = 0x1f
     private const val LF = 0x22
     private const val POKE = 0x24
