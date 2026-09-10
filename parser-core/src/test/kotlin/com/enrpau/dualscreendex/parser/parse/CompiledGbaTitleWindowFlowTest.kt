@@ -115,7 +115,7 @@ class CompiledGbaTitleWindowFlowTest {
         }
     }
 
-    private class Fixture(val frame: Int = 0x400, printer: Int = 0x100) {
+    internal class Fixture(val frame: Int = 0x400, printer: Int = 0x100) {
         val code = CompiledGbaTextPrinterTest.Fixture(printer)
         val dispatcher = code.dispatcher
 

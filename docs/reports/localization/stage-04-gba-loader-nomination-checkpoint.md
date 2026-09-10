@@ -205,11 +205,52 @@ The supervisor's `finalEvidenceAccepted=false` and replay's
 | Source and dependency input pins | `9f310c99f2ae53d1e85b8d140805ed8276225ff94f7eb3afb0802f8013ad2dd4` |
 | Owned-process terminal receipt | `f2949b660d698ec703d363afa24d639fbd9af11998159fe2413c0199f8c7f426` |
 
-## Remaining owner / target / acceptance
+## Complete field-map owner checkpoint
 
-**Tasks 419/417:** use the retained loader/caller evidence to bind actual title
-declarations, then implement generic production authority or independently justify
-each shared/contextual/graphics-only disposition. Preserve keys, geometry and
+`CompiledGbaFieldMapOwnerFlow` now recognizes the complete supported
+Emerald-style field-region-map owner instead of treating the two title-bearing
+states as sufficient authority. The relocatable recognizer checks the exact
+seven-arm dispatch table, all executable instruction runs, every internal branch,
+the shared state increment and balanced epilogue, repeated handler/state/fade
+roots, and bounded external call edges. It additionally requires the static title
+frame and the dynamic section frame to use the same tile/palette parameters while
+remaining on distinct windows, and requires the dynamic section printer used by
+state 1 and state 4 to begin immediately after the owner envelope. Known owner,
+printer, dispatcher, frame and downstream entry code cannot masquerade as the
+static title source.
+
+The result remains an optional field on a nominated declaration. Damage in a
+later owner arm or its independent frame/dispatcher proof removes owner authority
+without removing the contender, so malformed connected owners cannot manufacture
+uniqueness. The adjacent dynamic section-printer body and other called functions
+remain uncertified leaves. No source bytes are decoded and no `WorldMapRegion`
+title is emitted. Versions therefore remain **65/2/1**.
+
+Fresh direct compilation of the entire parser-core module and **36 focused tests
+passed**. The focused RED runs first demonstrated the absent seven-state authority
+(29 tests / 2 failures) and accepted code-source alias (31 tests / 1 failure).
+The final pinned retained Emerald replay matched owner `0x170088`, adjacent dynamic
+section printer `0x170214`, fade target `0x0a139c`, and the previously proven
+printer/dispatcher/frame flow. It used sparse retained spans only: **zero original
+reads**, no whole-original uniqueness claim, and **`semanticAcceptance=false`**.
+The owned process completed without timeout and with an empty process tree. No
+Gradle, corpus, app build, Android/device, signing or release work ran. The existing
+unrelated `SpriteCodec.kt` warning remains unchanged.
+
+| Owner-flow gate evidence | SHA-256 |
+|---|---|
+| Missing-owner-authority RED log | `b98e85f4144fc8d2c18cea66c684a990a4d41b9cc61b45e0abb358c62c4a4a85` |
+| Code-source-alias RED log | `a8dad5cf2903ae899584a935cfc03df3a9a0a69b6d3ae8793c6e1567d48a6985` |
+| Actual module/test/retained replay log | `e2d9b591618cd986f41e151becb8d739c4747937fbcdd045afb20f24f2cd5ab1` |
+| Source and dependency input pins | `8f17de2839a3d366e27eabe28d4de9242d2e3d1d83a265a11f6fcf106731c0d1` |
+| Owned-process terminal receipt | `a580fb0186fee63d6d73f1d0b4c532876509ce0e8fce36bd22c63ddb58c70f50` |
+
+## Remaining target / decoding / acceptance
+
+**Tasks 419/417:** extend title authority beyond the supported Emerald-style owner,
+then decode and publish only declarations that retain independent owner and window
+flow authority plus whole-original uniqueness. Independently justify every other
+shared/contextual/graphics-only disposition. Preserve keys, geometry and
 rasters; require sibling, relocation, decoy, cancellation, SQLite reopen and API
 acceptance. The optional window-plan stop does not justify widening caps or
 rereading originals. Any genuinely missing acquisition needs its own fresh,

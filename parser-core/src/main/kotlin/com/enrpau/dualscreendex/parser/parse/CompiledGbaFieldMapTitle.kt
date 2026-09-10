@@ -13,6 +13,7 @@ internal object CompiledGbaFieldMapTitle {
         val printer: Int,
         val frame: Int,
         val windowFlow: CompiledGbaTitleWindowFlow? = null,
+        val ownerFlow: CompiledGbaFieldMapOwnerFlow? = null,
     )
 
     sealed interface Result {
@@ -105,7 +106,9 @@ internal object CompiledGbaFieldMapTitle {
         CompiledGbaTextPrinter.resolve(r.rom, printer, cancellation) ?: return null
         // Missing consumer flow must not remove a contender or turn a nomination into title authority.
         val flow = CompiledGbaTitleWindowFlow.resolve(r.rom, printer, frame, window, cancellation)
-        return Declaration(owner, loader, source, window, printer, frame, flow)
+        val declaration = Declaration(owner, loader, source, window, printer, frame, flow)
+        val ownerFlow = CompiledGbaFieldMapOwnerFlow.resolve(r.rom, declaration, cancellation)
+        return declaration.copy(ownerFlow = ownerFlow)
     }
 
     private class Reader(val rom: RomImage) {
