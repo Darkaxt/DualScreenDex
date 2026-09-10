@@ -4,7 +4,11 @@ import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.io.RomImage
 
 /** A printer argument ABI, not authority for any title or selected raster. */
-internal class CompiledGbaTextPrinter private constructor(val dispatcherOffset: Int) {
+internal class CompiledGbaTextPrinter private constructor(
+    val dispatcherOffset: Int,
+    val fontRoot: Long,
+    val fontLiteralOffset: Int,
+) {
     val sourceRegister: Int = 2
     val windowRegister: Int = 0
 
@@ -42,7 +46,7 @@ internal class CompiledGbaTextPrinter private constructor(val dispatcherOffset: 
                 target in pool until pool + 4
             ) return null
             cancellation.throwIfCancellationRequested()
-            return CompiledGbaTextPrinter(target.toInt())
+            return CompiledGbaTextPrinter(target.toInt(), root, pool.toInt())
         }
 
         private const val FUNCTION_BYTES = 0xA8

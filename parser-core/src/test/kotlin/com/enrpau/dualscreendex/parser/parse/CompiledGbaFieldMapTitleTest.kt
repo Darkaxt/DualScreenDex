@@ -18,6 +18,7 @@ class CompiledGbaFieldMapTitleTest {
             assertEquals(f.source, title.source)
             assertEquals(3, title.window)
             assertEquals(f.printer.entry, title.printer)
+            assertNull("unproved frame/dispatcher must retain the nomination", title.windowFlow)
             // Zero-filled source is deliberately not a plausible terminated title.
             assertEquals(0, f.printer.bytes[f.source].toInt())
         }

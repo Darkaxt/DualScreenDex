@@ -173,6 +173,38 @@ trace-only change, and no final corpus was rerun.
 | Source and dependency input pins | `5fe1643d729fb4d058d208d3b5dbe79d8cdf0d3223b7494a6a5a96e9fcac0a63` |
 | Owned-process terminal receipt | `1c44ccee6f2ff2e0d1c1ef2f483fbaa30fe94b10ec93ee759d019d5b920970d5` |
 
+## Dispatcher and frame window-flow checkpoint
+
+`CompiledGbaTitleWindowFlow` now checks the complete dispatcher and frame-wrapper
+instruction envelopes. It binds the constructor's font root, sixteen-byte template
+copy, separate window-byte consumers, bounded immediate-print loop, and the shared
+window-copy call target. Literal pools, atomic calls, return paths, RAM bounds and
+non-overlapping state fields are checked; code and RAM addresses may relocate.
+Callees cannot point into these envelopes or the constructor's font literal.
+
+The existing trace-only declaration retains this optional flow result. An unproved
+flow does **not** remove a competing declaration. No source text is decoded and no
+catalog title is emitted. The renderer, frame callback and other leaf callees are
+still targets, not certified implementations; current-domain, executable-entry and
+whole-original uniqueness obligations remain open. Versions remain **65/2/1**.
+
+Fresh direct compilation of the entire parser-core module and **31 focused tests
+passed**, including nine new window-flow tests. The pinned retained Emerald replay
+matched the caller, printer, dispatcher and frame-window link with actual coverage
+of every checked envelope and literal. **Zero original reads** occurred. The final
+owned Job completed in **82.457 s**, without timeout and with an empty process tree.
+The initial stub produced the expected positive-test failure (27 tests / 1 failure).
+A generated-copy visibility warning was corrected; only the existing unrelated
+`SpriteCodec.kt` warning remains. No Gradle, corpus, app build, device or signing ran.
+The supervisor's `finalEvidenceAccepted=false` and replay's
+`semanticAcceptance=false` remain unchanged: this is not Stage 4 final acceptance.
+
+| Window-flow gate evidence | SHA-256 |
+|---|---|
+| Actual module/test/retained replay log | `b8312798dbf3ed16ba3ab2dddee0c95bcc5e4ee4b32ccfc71bf26ea42c5922d8` |
+| Source and dependency input pins | `9f310c99f2ae53d1e85b8d140805ed8276225ff94f7eb3afb0802f8013ad2dd4` |
+| Owned-process terminal receipt | `f2949b660d698ec703d363afa24d639fbd9af11998159fe2413c0199f8c7f426` |
+
 ## Remaining owner / target / acceptance
 
 **Tasks 419/417:** use the retained loader/caller evidence to bind actual title

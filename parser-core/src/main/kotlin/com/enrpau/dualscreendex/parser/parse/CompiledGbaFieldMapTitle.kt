@@ -12,6 +12,7 @@ internal object CompiledGbaFieldMapTitle {
         val window: Int,
         val printer: Int,
         val frame: Int,
+        val windowFlow: CompiledGbaTitleWindowFlow? = null,
     )
 
     sealed interface Result {
@@ -102,8 +103,9 @@ internal object CompiledGbaFieldMapTitle {
         ) return null
         val printer = r.call(title + 30) ?: return null
         CompiledGbaTextPrinter.resolve(r.rom, printer, cancellation) ?: return null
-        // Do not read/decode the source: later authority must bind frame, domain, and all contenders.
-        return Declaration(owner, loader, source, window, printer, frame)
+        // Missing consumer flow must not remove a contender or turn a nomination into title authority.
+        val flow = CompiledGbaTitleWindowFlow.resolve(r.rom, printer, frame, window, cancellation)
+        return Declaration(owner, loader, source, window, printer, frame, flow)
     }
 
     private class Reader(val rom: RomImage) {
