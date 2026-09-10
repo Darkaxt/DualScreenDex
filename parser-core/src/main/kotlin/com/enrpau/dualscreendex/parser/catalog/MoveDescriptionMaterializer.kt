@@ -88,8 +88,14 @@ object MoveDescriptionMaterializer {
         return when (val outcome = referencedPointerTable(rom, codec, pointerCount, gbaReferenceIndex, cancellation, budget)) {
             is DescriptionSearchOutcome.Resolved -> outcome.result
             is DescriptionSearchOutcome.Unavailable -> if (outcome.reason == DescriptionSearchFailure.NO_AUTHORITY) {
-                // Preserve the legacy Western-only pointer search, but never erase conflict/overflow.
-                fallbackPointerTable(rom, codec, pointerCount, cancellation, budget)
+                // A completed reference search must not consume the independent fallback's allowance.
+                fallbackPointerTable(
+                    rom,
+                    codec,
+                    pointerCount,
+                    cancellation,
+                    budget.independent(),
+                )
             } else null
         }
     }
@@ -561,27 +567,22 @@ object MoveDescriptionMaterializer {
             if (evidence.count <= 0 || offset % 4 != 0 || offset < 0 ||
                 offset.toLong() + tableBytes > rom.size.toLong()
             ) continue
-            budget.recordRoot(offset)
-            var pointersValid = true
-            for (index in 0 until pointerCount) {
-                checkCancellation(index, cancellation)
-                budget.recordWork()
-                if (rom.gbaPointer(offset + index * 4) == null) {
-                    pointersValid = false
-                    break
+            val samples = intArrayOf(0, pointerCount / 2, pointerCount - 1).distinct()
+            if (samples.any { index ->
+                    budget.recordWork()
+                    rom.gbaPointer(offset + index * 4) == null
                 }
-            }
-            if (!pointersValid) continue
+            ) continue
+            budget.recordRoot(offset)
             budget.recordCandidate()
-            val candidate = decodeCandidate(
+            val candidate = decodeCompleteCandidate(
                 rom,
                 codec,
                 offset,
                 pointerCount,
                 cancellation,
                 budget,
-                allowExplicitPlaceholders = true,
-            )?.takeIf { it.descriptions.size == pointerCount } ?: continue
+            ) ?: continue
             if (selected != null) return DescriptionSearchOutcome.Unavailable(DescriptionSearchFailure.CONFLICT)
             selected = candidate
         }
@@ -761,6 +762,34 @@ object MoveDescriptionMaterializer {
         return best
     }
 
+    private fun decodeCompleteCandidate(
+        rom: RomImage,
+        codec: PokemonTextCodec,
+        offset: Int,
+        pointerCount: Int,
+        cancellation: ParserCancellationToken,
+        budget: MoveDescriptionBudget,
+    ): MoveDescriptionResult? {
+        val descriptions = linkedMapOf<Int, String>()
+        repeat(pointerCount) { index ->
+            checkCancellation(index, cancellation)
+            budget.recordWork()
+            val textOffset = runCatching { rom.gbaPointer(offset + index * 4) }.getOrNull() ?: return null
+            val length = minOf(192, rom.size - textOffset)
+            val decoded = runCatching { codec.decodeDetailed(rom.slice(textOffset, length)) }.getOrNull()
+                ?: return null
+            val normalized = decoded.text.replace(Regex("\\s+"), " ").trim()
+            if (!decoded.terminated || decoded.validRatio < 0.85 ||
+                normalized.length < 5 && !isExplicitPlaceholder(normalized)
+            ) return null
+            descriptions[index + 1] = normalized
+        }
+        val naturalDescriptionCount = descriptions.values.count { looksLikeNaturalDescription(it, codec) }
+        val naturalLanguageRatio = naturalDescriptionCount.toDouble() / descriptions.size
+        return MoveDescriptionResult(offset, naturalLanguageRatio, descriptions)
+            .takeIf { naturalLanguageRatio >= 0.75 }
+    }
+
     private fun decodeCandidate(
         rom: RomImage,
         codec: PokemonTextCodec,
@@ -829,6 +858,8 @@ object MoveDescriptionMaterializer {
         private var work = 0L
         private var scanBytes = 0L
         private var retainedReferences = 0
+
+        fun independent() = MoveDescriptionBudget(limits)
 
         fun recordRecoveredReference(observedForTarget: Int) {
             recordWork()

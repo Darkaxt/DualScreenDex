@@ -187,6 +187,27 @@ class MoveDescriptionMaterializerTest {
     }
 
     @Test
+    fun boundedReferencedSearchCannotStarveWesternFallback() {
+        val bytes = ByteArray(0x2000)
+        repeat(3) { id ->
+            putGbaPointer(bytes, 0x100 + id * 4, 0x1000 + id * 0x40)
+            encodeGbaText(bytes, 0x1000 + id * 0x40, "A small flame attack.")
+        }
+        val decoys = (0 until 16).associate { index ->
+            val root = 0x200 + index * 0x10
+            repeat(3) { id -> putGbaPointer(bytes, root + id * 4, 0x1800 + id * 0x20) }
+            root to 1
+        }
+
+        val result = MoveDescriptionMaterializer.materialize(
+            RomImage(bytes), layout(4), GbaReferenceIndex.countsOnlyForTesting(decoys),
+            limits = ResolutionLimits(maxProbeWorkPerDataset = 64),
+        )
+
+        assertEquals(0x100, result?.sourceOffset)
+    }
+
+    @Test
     fun overflowingWesternReferencesCannotReenterTheUnprovenFallback() {
         val bytes = ByteArray(0x1000)
         repeat(3) { id ->
