@@ -9,6 +9,8 @@ import com.enrpau.dualscreendex.parser.dataset.descriptions.ResolvedDescriptionL
 import com.enrpau.dualscreendex.parser.resolution.DatasetResolution
 import com.enrpau.dualscreendex.parser.text.GbInlineDescriptions
 import com.enrpau.dualscreendex.parser.text.KoreanGen2PokemonTextCodec
+import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
+import com.enrpau.dualscreendex.parser.text.WesternPokemonTextCodecs
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.dataset.descriptions.DescriptionCodec
 import com.enrpau.dualscreendex.parser.dataset.descriptions.DescriptionRowOutcome
@@ -20,6 +22,7 @@ import com.enrpau.dualscreendex.parser.model.RomHeader
 import com.enrpau.dualscreendex.parser.text.JapanesePokemonTextCodecs
 import com.enrpau.dualscreendex.parser.language.*
 import com.enrpau.dualscreendex.parser.model.*
+import com.enrpau.dualscreendex.parser.catalog.DescriptionRecord
 import com.enrpau.dualscreendex.parser.catalog.RelationshipMaterializers
 import org.junit.Assert.*
 import org.junit.Test
@@ -111,6 +114,75 @@ class NativeDescriptionAbiTest {
             RomImage(bytes),entries[128]!!,codec)!!.text)
         bytes[0x410c]=3
         assertNull(Gen2CompiledDescriptionResolver.resolve(session(bytes),251,codec))
+    }
+
+    @Test fun genTwoWesternGoldConsumerBindsPointerRootAndSequentialBanks() {
+        val bytes = westernGen2Rows(listOf(8, 9, 10, 11))
+        putGoldDexConsumer(bytes, 0x4100, 0x4800, 8)
+        val codec = WesternPokemonTextCodecs.gen2German
+
+        val table = Gen2CompiledDescriptionResolver.resolve(session(bytes), 251, codec)
+
+        assertNotNull(table)
+        assertEquals(0x4800, table!!.offset)
+        assertEquals(listOf(8, 9, 10, 11), table.banks)
+        assertEquals(3, table.gbDescriptionMetadataBytes)
+        assertNull(table.gbDescriptions)
+        val first = westernDescriptionRecord(bytes, table, codec, EngineFamily.GOLD_SILVER, 1)
+        assertEquals("FIRST", first?.text)
+        assertEquals(7, first?.height)
+        assertEquals(69, first?.weight)
+        assertEquals(
+            "SEVENTH",
+            westernDescriptionRecord(bytes, table, codec, EngineFamily.GOLD_SILVER, 7)?.text,
+        )
+    }
+
+    @Test fun genTwoWesternPageConsumerSelectsFourByteMetadata() {
+        val bytes = westernGen2Rows(listOf(8, 9, 10, 11), metadataBytes = 4)
+        putGoldDexConsumer(bytes, 0x4100, 0x4800, 8, metadataBytes = 4)
+        val codec = WesternPokemonTextCodecs.gen2English
+
+        val table = requireNotNull(Gen2CompiledDescriptionResolver.resolve(session(bytes), 251, codec))
+
+        assertEquals(4, table.gbDescriptionMetadataBytes)
+        val first = westernDescriptionRecord(bytes, table, codec, EngineFamily.GOLD_SILVER, 1)
+        assertEquals("FIRST", first?.text)
+        assertEquals(7, first?.height)
+        assertEquals(69, first?.weight)
+    }
+
+    @Test fun genTwoWesternCrystalConsumerBindsPointerRootAndExplicitBanks() {
+        val banks = listOf(8, 10, 12, 14)
+        val bytes = westernGen2Rows(banks)
+        putCrystalDexConsumer(bytes, 0x4100, 0x4800, 0x4130, banks)
+        val codec = WesternPokemonTextCodecs.gen2French
+
+        val table = Gen2CompiledDescriptionResolver.resolve(session(bytes), 251, codec)
+
+        assertNotNull(table)
+        assertEquals(0x4800, table!!.offset)
+        assertEquals(banks, table.banks)
+        assertEquals(3, table.gbDescriptionMetadataBytes)
+        assertNull(table.gbDescriptions)
+        val first = westernDescriptionRecord(bytes, table, codec, EngineFamily.CRYSTAL, 1)
+        assertEquals("FIRST", first?.text)
+        assertEquals(7, first?.height)
+        assertEquals(69, first?.weight)
+    }
+
+    @Test fun genTwoWesternConsumerRejectsMalformedAndAmbiguousAuthority() {
+        val codec = WesternPokemonTextCodecs.gen2Spanish
+        val malformed = westernGen2Rows(listOf(8, 9, 10, 11))
+        putGoldDexConsumer(malformed, 0x4100, 0x4800, 8)
+        malformed[0x4111] = 2
+        assertNull(Gen2CompiledDescriptionResolver.resolve(session(malformed), 251, codec))
+
+        val ambiguous = westernGen2Rows(listOf(8, 9, 10, 11))
+        putGoldDexConsumer(ambiguous, 0x4100, 0x4800, 8)
+        ambiguous.copyInto(ambiguous, 0x8800, 0x4800, 0x4800 + 251 * 2)
+        putGoldDexConsumer(ambiguous, 0x8100, 0x4800, 8)
+        assertNull(Gen2CompiledDescriptionResolver.resolve(session(ambiguous), 251, codec))
     }
 
     @Test fun nativeGbMaterializationUsesInlineHeightWeightAndProse() {
@@ -265,6 +337,119 @@ class NativeDescriptionAbiTest {
         val evidence = DatasetResolvers.gen3Descriptions(limited,2,null,JapanesePokemonTextCodecs.gen3Later)
         assertFalse(evidence.compatible)
         assertTrue(evidence.reviewRecommended)
+    }
+
+    private fun westernGen2Rows(banks: List<Int>, metadataBytes: Int = 3): ByteArray =
+        ByteArray((banks.maxOrNull()!! + 1) * 0x4000).also { bytes ->
+            repeat(251) { index ->
+                val address = 0x4000 + index % 64 * 24
+                put16(bytes, 0x4800 + index * 2, address)
+                val entry = banks[index / 64] * 0x4000 + address - 0x4000
+                var cursor = putWesternText(bytes, entry, "SEED")
+                if (metadataBytes == 3) {
+                    bytes[cursor] = 7
+                    put16(bytes, cursor + 1, 69)
+                } else {
+                    put16(bytes, cursor, 7)
+                    put16(bytes, cursor + 2, 69)
+                }
+                cursor += metadataBytes
+                putWesternText(
+                    bytes,
+                    cursor,
+                    when (index) {
+                        0 -> "FIRST"
+                        6 -> "SEVENTH"
+                        else -> "ENTRY"
+                    },
+                )
+            }
+        }
+
+    private fun putGoldDexConsumer(
+        bytes: ByteArray,
+        offset: Int,
+        rootAddress: Int,
+        firstBank: Int,
+        metadataBytes: Int = 3,
+    ) {
+        listOf(
+            0xe5, 0x21, rootAddress and 0xff, rootAddress ushr 8,
+            0x78, 0x3d, 0x16, 0x00, 0x5f, 0x19, 0x19, 0x5e, 0x23, 0x56,
+            0x07, 0x07, 0xe6, 0x03, 0xc6, firstBank, 0x47, 0xe1, 0xc9,
+        ).forEachIndexed { index, value -> bytes[offset + index] = value.toByte() }
+        putDexPageConsumer(bytes, offset + 0x40, 0x4000 + offset % 0x4000, metadataBytes)
+    }
+
+    private fun putCrystalDexConsumer(
+        bytes: ByteArray,
+        offset: Int,
+        rootAddress: Int,
+        bankTableAddress: Int,
+        banks: List<Int>,
+    ) {
+        listOf(
+            0xe5, 0x21, rootAddress and 0xff, rootAddress ushr 8,
+            0x78, 0x3d, 0x16, 0x00, 0x5f, 0x19, 0x19, 0x5e, 0x23, 0x56, 0xd5,
+            0x07, 0x07, 0xe6, 0x03,
+            0x21, bankTableAddress and 0xff, bankTableAddress ushr 8,
+            0x16, 0x00, 0x5f, 0x19, 0x46, 0xd1, 0xe1, 0xc9,
+        ).forEachIndexed { index, value -> bytes[offset + index] = value.toByte() }
+        banks.forEachIndexed { index, bank -> bytes[bankTableAddress + index] = bank.toByte() }
+        putDexPageConsumer(bytes, offset + 0x40, 0x4000 + offset % 0x4000, 3)
+    }
+
+    private fun putDexPageConsumer(bytes: ByteArray, offset: Int, rootConsumerAddress: Int, metadataBytes: Int) {
+        listOf(
+            0xcd, rootConsumerAddress and 0xff, rootConsumerAddress ushr 8,
+            0xe5, 0x62, 0x6b, 0x78, 0xcd, 0x34, 0x52, 0x23, 0xfe, 0x50, 0x20, 0xf7,
+        ).forEachIndexed { index, value -> bytes[offset + index] = value.toByte() }
+        repeat(metadataBytes) { bytes[offset + 15 + it] = 0x23 }
+        listOf(0x0d, 0x28, 0x09).forEachIndexed { index, value ->
+            bytes[offset + 15 + metadataBytes + index] = value.toByte()
+        }
+    }
+
+    private fun putWesternText(bytes: ByteArray, offset: Int, value: String): Int {
+        value.forEachIndexed { index, character ->
+            require(character in 'A'..'Z')
+            bytes[offset + index] = (0x80 + (character - 'A')).toByte()
+        }
+        bytes[offset + value.length] = 0x50
+        return offset + value.length + 1
+    }
+
+    private fun westernDescriptionRecord(
+        bytes: ByteArray,
+        table: TableLayout,
+        codec: PokemonTextCodec,
+        family: EngineFamily,
+        speciesId: Int,
+    ): DescriptionRecord? {
+        val manifest = RomLanguageManifest(
+            codec.language,
+            listOf(
+                RomLanguageProjection(
+                    codec.language,
+                    codec.id,
+                    codec.version,
+                    LocalizedTableLayout(descriptions = table),
+                    emptyList(),
+                    LanguageResolutionStatus.RESOLVED,
+                ),
+            ),
+            LanguageResolutionStatus.RESOLVED,
+        )
+        val layout = ResolvedRomLayout(
+            family,
+            2,
+            Platform.GBC,
+            251,
+            1,
+            ProfileTables(descriptions = table),
+            languageManifest = manifest,
+        )
+        return RelationshipMaterializers.descriptions(RomImage(bytes), layout)[speciesId]
     }
 
     private fun putConsumer28(bytes: ByteArray, offset: Int, root: Int) {

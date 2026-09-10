@@ -171,6 +171,7 @@ internal class SemanticDomainStrategy : FamilyProbePhaseStrategy {
             2 -> tables.descriptions?.let {
                 PokemonDatasetValidators.gen2Descriptions(
                     rom, it.offset, it.count, it.banks.toIntArray(), codec = textCodec,
+                    metadataBytes = it.gbDescriptionMetadataBytes,
                 )
             } ?: missingEvidence("Gen 2 Pokédex description table not resolved")
             else -> identity.headerlessUnifiedSpecies?.descriptionsEvidence

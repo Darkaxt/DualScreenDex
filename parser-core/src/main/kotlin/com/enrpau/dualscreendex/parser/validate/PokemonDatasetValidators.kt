@@ -84,12 +84,16 @@ object PokemonDatasetValidators {
         entryBanks: IntArray,
         entriesPerBank: Int = 64,
         codec: PokemonTextCodec,
+        metadataBytes: Int = 4,
     ): ValidationEvidence = safely(pointerTableOffset, 2, count) {
+        if (metadataBytes !in 3..4) {
+            return@safely result(0, count, pointerTableOffset, 2, "valid Gen 2 Pokédex entries")
+        }
         var valid = 0
         repeat(count) { index ->
             val bank = entryBanks.getOrNull(index / entriesPerBank)
             val entry = bank?.let { rom.gbBankAddress(it, rom.u16le(pointerTableOffset + index * 2)) }
-            if (entry != null && validGen2Description(rom, entry, codec)) valid++
+            if (entry != null && validGen2Description(rom, entry, codec, metadataBytes)) valid++
         }
         result(valid, count, pointerTableOffset, 2, "valid Gen 2 Pokédex entries")
     }
@@ -568,9 +572,14 @@ object PokemonDatasetValidators {
         return decodeAt(rom, offset, 24, codec, 0.70) && description.validRatio >= 0.55
     }
 
-    private fun validGen2Description(rom: RomImage, offset: Int, codec: PokemonTextCodec): Boolean {
+    private fun validGen2Description(
+        rom: RomImage,
+        offset: Int,
+        codec: PokemonTextCodec,
+        metadataBytes: Int,
+    ): Boolean {
         val categoryEnd = terminatorOffset(rom, offset, 24, codec.terminator) ?: return false
-        val description = categoryEnd + 5
+        val description = categoryEnd + 1 + metadataBytes
         return decodeAt(rom, offset, 24, codec, 0.70) &&
             terminatorOffset(rom, description, 512, codec.terminator) != null
     }

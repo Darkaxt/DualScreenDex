@@ -348,16 +348,19 @@ object RelationshipMaterializers {
                 ) ?: error("Gen I description is not terminated")
                 DescriptionRecord(description, category = category).requireText()
             } else {
-                require(rom.contains(metadata, 4)) { "description metadata exceeds ROM" }
+                val metadataBytes = table.gbDescriptionMetadataBytes
+                require(metadataBytes in 3..4 && rom.contains(metadata, metadataBytes)) {
+                    "description metadata exceeds ROM"
+                }
                 DescriptionRecord(
                     text = decodeTerminated(
                         rom,
-                        metadata + 4,
+                        metadata + metadataBytes,
                         MAX_DESCRIPTION_BYTES,
                         codec,
                     ),
-                    height = rom.u16le(metadata),
-                    weight = rom.u16le(metadata + 2),
+                    height = if (metadataBytes == 3) rom.u8(metadata) else rom.u16le(metadata),
+                    weight = rom.u16le(metadata + metadataBytes - 2),
                     category = category,
                 ).requireText()
             }

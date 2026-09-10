@@ -87,7 +87,7 @@ data class TableLayout(
     val format: TableRecordFormat = TableRecordFormat.STANDARD,
     /** Compiled GB inline Pokédex ABI; absent for Western far-text layouts. */
     val gbDescriptions: GbInlineDescriptionLayout? = null,
-    /** Bytes between a Western Gen I category terminator and its far-text command. */
+    /** Bytes after a Western GB dex category: metadata before Gen II prose or before Gen I far text. */
     val gbDescriptionMetadataBytes: Int = 4,
 )
 

@@ -106,6 +106,21 @@ class PokemonDatasetValidatorsTest {
     }
 
     @Test
+    fun acceptsGen2ThreeByteLocalizedMetadata() {
+        val bytes = ByteArray(0xc000)
+        putU16(bytes, 0x100, 0x4200)
+        putGen2DexEntry(bytes, 0x8200, "SEED", "FIRST PAGE", "SECOND PAGE", metadataBytes = 3)
+
+        val result = PokemonDatasetValidators.gen2Descriptions(
+            RomImage(bytes), pointerTableOffset = 0x100, count = 1,
+            entryBanks = intArrayOf(2), codec = PokemonTextCodec.gbEnglish,
+            metadataBytes = 3,
+        )
+
+        assertTrue(result.compatible)
+    }
+
+    @Test
     fun acceptsGen3SinglePagePokedexEntries() {
         val bytes = ByteArray(0x800)
         putGen3DexEntry(bytes, 0x100, recordSize = 32, textOffsets = intArrayOf(0x500))
@@ -885,9 +900,16 @@ class PokemonDatasetValidatorsTest {
         assertEquals(0, result.validRecords)
     }
 
-    private fun putGen2DexEntry(bytes: ByteArray, offset: Int, category: String, first: String, second: String) {
+    private fun putGen2DexEntry(
+        bytes: ByteArray,
+        offset: Int,
+        category: String,
+        first: String,
+        second: String,
+        metadataBytes: Int = 4,
+    ) {
         var cursor = putGbText(bytes, offset, category)
-        repeat(4) { bytes[cursor++] = 1 }
+        repeat(metadataBytes) { bytes[cursor++] = 1 }
         cursor = putGbText(bytes, cursor, first)
         putGbText(bytes, cursor, second)
     }
