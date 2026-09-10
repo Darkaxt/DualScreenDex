@@ -332,10 +332,13 @@ object RelationshipMaterializers {
             val category = codec.decode(rom.slice(entry, categoryLength))
             val metadata = entry + categoryLength
             if (layout.generation == 1) {
-                require(rom.contains(metadata + 5, 3)) { "description metadata exceeds ROM" }
+                val command = metadata + table.gbDescriptionMetadataBytes
+                require(rom.contains(command, 4) && rom.u8(command) == GEN1_TEXT_FAR) {
+                    "description far-text command is malformed"
+                }
                 val text = rom.gbBankAddress(
-                    rom.u8(metadata + 7),
-                    rom.u16le(metadata + 5),
+                    rom.u8(command + 3),
+                    rom.u16le(command + 1),
                 ) ?: error("invalid far-text pointer")
                 val description = Gen1DescriptionTextCodec.decode(
                     rom,
@@ -585,6 +588,7 @@ object RelationshipMaterializers {
 
     private const val MAX_DESCRIPTION_BYTES = 512
     private const val MAX_CATEGORY_BYTES = 24
+    private const val GEN1_TEXT_FAR = 0x17
     private const val MAX_EXPANSION_LEARNSET_ENTRIES = 256
     private const val MAX_EXPANSION_EVOLUTION_ENTRIES = 32
     private const val MAX_GEN12_EVOLUTION_ENTRIES = 16

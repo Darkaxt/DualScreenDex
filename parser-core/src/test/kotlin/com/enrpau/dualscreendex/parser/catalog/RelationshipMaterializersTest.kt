@@ -735,6 +735,40 @@ class RelationshipMaterializersTest {
     }
 
     @Test
+    fun followsMetricGenOneFarTextPointerForDescription() {
+        val bytes = ByteArray(0x8000)
+        putU16(bytes, 0, 0x4020)
+        encodeGbText(bytes, 0x4020, "SEED")
+        val metadata = 0x4020 + 5
+        bytes[metadata + 3] = 0x17
+        putU16(bytes, metadata + 4, 0x4060)
+        bytes[metadata + 6] = 1
+        encodeGbText(bytes, 0x4060, "A SEED")
+        val layout = ResolvedRomLayout(
+            family = EngineFamily.RED_BLUE,
+            generation = 1,
+            platform = Platform.GB,
+            speciesCount = 1,
+            moveCount = 1,
+            tables = ProfileTables(
+                descriptions = TableLayout(
+                    0,
+                    1,
+                    2,
+                    bank = 1,
+                    gbDescriptionMetadataBytes = 3,
+                ),
+            ),
+            languageManifest = resolvedLanguageManifest(PokemonTextCodec.gbEnglish),
+        )
+
+        val description = RelationshipMaterializers.descriptions(RomImage(bytes), layout).getValue(1)
+
+        assertEquals("SEED", description.category)
+        assertEquals("A SEED", description.text)
+    }
+
+    @Test
     fun stopsGenOneDescriptionAtDoneTextCommand() {
         val bytes = ByteArray(0x8000)
         putU16(bytes, 0, 0x4020)

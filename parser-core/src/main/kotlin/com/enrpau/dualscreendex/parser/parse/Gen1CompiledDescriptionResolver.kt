@@ -27,8 +27,9 @@ internal object Gen1CompiledDescriptionResolver {
             .filter { it in 1..MAX_SPECIES && it != preferredCount }
             .distinct()
         counts.forEach { count ->
-            val candidates = roots.mapNotNull { root -> validatedLayout(rom, root, count, codec, cancellation) }
-                .distinct()
+            val candidates = roots.flatMap { root ->
+                validatedLayouts(rom, root, count, codec, cancellation)
+            }.distinct()
             if (candidates.size > 1) return null
             candidates.singleOrNull()?.let { return it }
         }
@@ -63,13 +64,13 @@ internal object Gen1CompiledDescriptionResolver {
         }
     }
 
-    private fun validatedLayout(
+    private fun validatedLayouts(
         rom: RomImage,
         root: Int,
         count: Int,
         codec: PokemonTextCodec,
         cancellation: ParserCancellationToken,
-    ): TableLayout? {
+    ): List<TableLayout> {
         cancellation.throwIfCancellationRequested()
         val bank = root / BANK_BYTES
         if (codec.language == LanguageTag.JAPANESE) {
@@ -79,23 +80,32 @@ internal object Gen1CompiledDescriptionResolver {
             val entries = GbInlineDescriptions.entries(rom, inline)
             val valid = entries.count { it != null &&
                 GbInlineDescriptions.decode(rom, it, codec, cancellation) != null }
-            if (valid < kotlin.math.ceil(count * 0.75).toInt()) return null
-            return TableLayout(root, count, POINTER_BYTES, bank = bank, gbDescriptions = inline)
+            if (valid < kotlin.math.ceil(count * 0.75).toInt()) return emptyList()
+            return listOf(TableLayout(root, count, POINTER_BYTES, bank = bank, gbDescriptions = inline))
         }
-        val evidence = PokemonDatasetValidators.gen1Descriptions(
-            rom = rom,
-            pointerTableOffset = root,
-            count = count,
-            entryBank = bank,
-            codec = codec,
-            expectedDexCount = count,
-        )
-        if (!evidence.compatible) return null
-        return TableLayout(root, count, POINTER_BYTES, bank = bank)
+        return WESTERN_METADATA_WIDTHS.mapNotNull { metadataBytes ->
+            val evidence = PokemonDatasetValidators.gen1Descriptions(
+                rom = rom,
+                pointerTableOffset = root,
+                count = count,
+                entryBank = bank,
+                codec = codec,
+                expectedDexCount = count,
+                metadataBytes = metadataBytes,
+            )
+            TableLayout(
+                root,
+                count,
+                POINTER_BYTES,
+                bank = bank,
+                gbDescriptionMetadataBytes = metadataBytes,
+            ).takeIf { evidence.compatible }
+        }
     }
 
     private val SWITCHABLE_ADDRESS_RANGE = 0x4000..0x7FFF
     private val WRAM_ADDRESS_RANGE = 0xC000..0xDFFF
+    private val WESTERN_METADATA_WIDTHS = listOf(4, 3)
     private const val BANK_BYTES = 0x4000
     private const val POINTER_BYTES = 2
     private const val CONSUMER_BYTES = 15

@@ -85,8 +85,10 @@ data class TableLayout(
     val valuesArePointers: Boolean = false,
     /** Byte-level record interpretation after structural validation. */
     val format: TableRecordFormat = TableRecordFormat.STANDARD,
-    /** Compiled GB inline Pokédex ABI; absent for Western far-text/four-byte metadata. */
+    /** Compiled GB inline Pokédex ABI; absent for Western far-text layouts. */
     val gbDescriptions: GbInlineDescriptionLayout? = null,
+    /** Bytes between a Western Gen I category terminator and its far-text command. */
+    val gbDescriptionMetadataBytes: Int = 4,
 )
 
 /** Scalar-only immutable description segments, in species-index order. */

@@ -197,6 +197,30 @@ class Gen1CompiledTableResolverTest {
     }
 
     @Test
+    fun resolvesMetricPokedexDescriptionMetadata() {
+        val bytes = ByteArray(0xC000)
+        writeDescriptionConsumer(bytes, 0x4100, 0x5000)
+        writeDescriptionTable(
+            bytes,
+            offset = 0x5000,
+            count = 3,
+            firstEntryAddress = 0x5200,
+            textBank = 2,
+            metadataBytes = 3,
+        )
+
+        val layout = Gen1CompiledDescriptionResolver.resolve(
+            RomImage(bytes),
+            preferredCount = 3,
+            fallbackCounts = emptyList(),
+        )
+
+        assertNotNull(layout)
+        assertEquals(0x5000, layout?.offset)
+        assertEquals(3, layout?.gbDescriptionMetadataBytes)
+    }
+
+    @Test
     fun rejectsAmbiguousPokedexDescriptionConsumers() {
         val bytes = ByteArray(0x14000)
         writeDescriptionConsumer(bytes, 0x4100, 0x5000)
@@ -248,6 +272,7 @@ class Gen1CompiledTableResolverTest {
         firstEntryAddress: Int,
         textBank: Int,
         commandText: Boolean = false,
+        metadataBytes: Int = 4,
     ) {
         val tableBank = offset / 0x4000
         repeat(count) { index ->
@@ -256,10 +281,10 @@ class Gen1CompiledTableResolverTest {
             val entry = tableBank * 0x4000 + entryAddress - 0x4000
             byteArrayOf(0x82.toByte(), 0x80.toByte(), 0x93.toByte(), 0x50).copyInto(bytes, entry)
             val textAddress = 0x4200 + index * 0x10
-            byteArrayOf(
-                0, 0, 0, 0, 0x17,
-                textAddress.toByte(), (textAddress ushr 8).toByte(), textBank.toByte(), 0,
-            ).copyInto(bytes, entry + 4)
+            bytes[entry + 4 + metadataBytes] = 0x17
+            bytes[entry + 5 + metadataBytes] = textAddress.toByte()
+            bytes[entry + 6 + metadataBytes] = (textAddress ushr 8).toByte()
+            bytes[entry + 7 + metadataBytes] = textBank.toByte()
             val text = textBank * 0x4000 + textAddress - 0x4000
             val textBytes = if (commandText) {
                 byteArrayOf(

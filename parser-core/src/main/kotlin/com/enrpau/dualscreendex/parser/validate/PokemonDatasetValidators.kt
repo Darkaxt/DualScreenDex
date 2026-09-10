@@ -60,11 +60,12 @@ object PokemonDatasetValidators {
         entryBank: Int,
         codec: PokemonTextCodec,
         expectedDexCount: Int = count,
+        metadataBytes: Int = 4,
     ): ValidationEvidence = safely(pointerTableOffset, 2, count) {
         var valid = 0
         repeat(count) { index ->
             val entry = rom.gbBankAddress(entryBank, rom.u16le(pointerTableOffset + index * 2))
-            if (entry != null && validGen1Description(rom, entry, codec)) valid++
+            if (entry != null && validGen1Description(rom, entry, codec, metadataBytes)) valid++
         }
         // The 190-slot Gen I internal index contains MissingNo entries without Pokédex data.
         val raw = result(valid, count, pointerTableOffset, 2, "valid Gen 1 Pokédex entries", 0.75)
@@ -551,11 +552,18 @@ object PokemonDatasetValidators {
         )
     }
 
-    private fun validGen1Description(rom: RomImage, offset: Int, codec: PokemonTextCodec): Boolean {
+    private fun validGen1Description(
+        rom: RomImage,
+        offset: Int,
+        codec: PokemonTextCodec,
+        metadataBytes: Int,
+    ): Boolean {
+        if (metadataBytes !in 3..4) return false
         val categoryEnd = terminatorOffset(rom, offset, 24, codec.terminator) ?: return false
         val metadata = categoryEnd + 1
-        if (metadata + 9 > rom.size || rom.u8(metadata + 4) != GEN1_TEXT_FAR) return false
-        val target = rom.gbBankAddress(rom.u8(metadata + 7), rom.u16le(metadata + 5)) ?: return false
+        val command = metadata + metadataBytes
+        if (command + 4 > rom.size || rom.u8(command) != GEN1_TEXT_FAR) return false
+        val target = rom.gbBankAddress(rom.u8(command + 3), rom.u16le(command + 1)) ?: return false
         val description = Gen1DescriptionTextCodec.decodeDetailed(rom, target, 512, codec) ?: return false
         return decodeAt(rom, offset, 24, codec, 0.70) && description.validRatio >= 0.55
     }
