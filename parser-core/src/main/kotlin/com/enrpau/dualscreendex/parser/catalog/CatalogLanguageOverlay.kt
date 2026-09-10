@@ -271,11 +271,12 @@ class CatalogLanguageOverlay(
         requireSubset(areaNames.keys, catalog.runtimeMetadata.areaBaseIds, "area name", "area")
         val staticLocalMapKeys = catalog.localMaps.staticNameRequiredMapKeys
         requireSubset(localMapNames.keys, staticLocalMapKeys, "local-map name", "static-name-required map")
+        val staticWorldRegionKeys = catalog.worldMaps.staticNameRequiredRegionKeys
         requireSubset(
             worldRegionNames.keys,
-            catalog.worldMaps.regions.mapTo(hashSetOf(), WorldMapRegion::key),
+            staticWorldRegionKeys,
             "world-region name",
-            "region",
+            "static-name-required region",
         )
         val worldLocationKeys = catalog.worldMaps.regions.flatMapTo(hashSetOf()) { region ->
             region.locations.map { WorldLocationKey(region.key, it.key) }
@@ -318,7 +319,7 @@ class CatalogLanguageOverlay(
         requireExpected(LocalizedTextCapability.ITEM_NAMES, itemIds.size)
         requireExpected(LocalizedTextCapability.AREA_NAMES, catalog.runtimeMetadata.areaBaseIds.size)
         requireExpected(LocalizedTextCapability.LOCAL_MAP_NAMES, staticLocalMapKeys.size)
-        requireExpected(LocalizedTextCapability.WORLD_REGION_NAMES, catalog.worldMaps.regions.size)
+        requireExpected(LocalizedTextCapability.WORLD_REGION_NAMES, staticWorldRegionKeys.size)
         requireExpected(LocalizedTextCapability.WORLD_LOCATION_NAMES, worldLocationKeys.size)
         requireExpected(LocalizedTextCapability.ENCOUNTER_AREA_NAMES, catalog.encounterAreas.size)
         requireExpected(LocalizedTextCapability.POI_TEXT, catalog.localMaps.pois.size)

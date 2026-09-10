@@ -984,6 +984,14 @@ data class WorldMapCatalog(
     val regions: List<WorldMapRegion> = emptyList(),
     val assets: Map<String, RgbaSprite> = emptyMap(),
 ) {
+    /** Inventories are derived from structural presentation roles, never missing text. */
+    val staticNameRequiredRegionKeys: Set<String>
+        get() = regions.filter { it.nameDisposition == WorldMapRegionNameDisposition.STATIC_NAME_REQUIRED }
+            .mapTo(linkedSetOf(), WorldMapRegion::key)
+    val graphicsOnlyRegionKeys: Set<String>
+        get() = regions.filter { it.nameDisposition == WorldMapRegionNameDisposition.GRAPHICS_ONLY }
+            .mapTo(linkedSetOf(), WorldMapRegion::key)
+
     init {
         validate()
     }
@@ -997,6 +1005,10 @@ data class WorldMapCatalog(
             "world-map assets must exactly match region asset keys"
         }
         regions.forEach { region ->
+            requireNotNull(region.nameDisposition) { "world-map regions require a name disposition" }
+            require(region.nameDisposition != WorldMapRegionNameDisposition.GRAPHICS_ONLY || region.displayName == null) {
+                "graphics-only world-map regions cannot carry fixed display names"
+            }
             require(region.key.isNotBlank()) { "world-map region keys must not be blank" }
             require(region.pixelWidth > 0 && region.pixelHeight > 0) {
                 "world-map pixel dimensions must be positive"
@@ -1041,6 +1053,11 @@ data class WorldMapCatalog(
     }
 }
 
+enum class WorldMapRegionNameDisposition {
+    STATIC_NAME_REQUIRED,
+    GRAPHICS_ONLY,
+}
+
 data class WorldMapRegion(
     val key: String,
     val displayName: String?,
@@ -1050,6 +1067,7 @@ data class WorldMapRegion(
     val gridHeight: Int,
     val imageAssetKey: String,
     val locations: List<WorldMapLocation>,
+    val nameDisposition: WorldMapRegionNameDisposition = WorldMapRegionNameDisposition.STATIC_NAME_REQUIRED,
 )
 
 data class WorldMapLocation(

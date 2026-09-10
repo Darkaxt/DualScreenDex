@@ -5,7 +5,8 @@ serial nomination, authority and publication checkpoints. The initial collector
 checkpoint used source `f9b10f808af6594857815d81952360c333027484` and all
 checkpoints through complete owner recognition emitted no production titles at
 **65/2/1**. Emerald publication moved the revisions to **66/2/1**; the supported
-Ruby/Sapphire legacy title ABI now moves them to **67/2/1**.
+Ruby/Sapphire legacy title ABI moved them to **67/2/1**; explicit structural
+region-name applicability now moves them to **68/2/1**.
 
 ## Evidence acquisition
 
@@ -352,6 +353,41 @@ cannot replace the final official-control/matrix gate.
 | `graphics/region_map/region_map.png` | `7c402c5461d5547191cbfefb279727964e19c6dd60d33f5b0bb052ea20545184` |
 | `graphics/region_map/background.png` | `bd4dc43b7b5e6eea379c3f1a57b474d17917aabb0bdac0504cfa514859bdcee7` |
 | `graphics/region_map/switch_map_menu.png` | `3eba3aa0f513204507ab684481f55fd00dd48462a06932bf210f19f32f15729a` |
+
+## Structural region-name applicability checkpoint
+
+`WorldMapRegion` now carries an explicit structural name disposition:
+`STATIC_NAME_REQUIRED` or `GRAPHICS_ONLY`. Only the former enters the
+`WORLD_REGION_NAMES` overlay domain and expected-record count. Graphics-only
+regions reject fixed `displayName` values, preventing missing text from silently
+becoming an obligation or a fabricated English fallback.
+
+The Gen I raster, both Gen II regional rasters, and the branch-owned Gen III
+multi-region/text-map paths are graphics-only. This binds the source-proven
+FireRed/LeafGreen design into production behavior while preserving affine
+Ruby/Sapphire/Emerald title publication as static-name-required. Region keys,
+locations, geometry and raster assets are unchanged. The language bootstrap API
+publishes graphics-only region-title capability as `NOT_APPLICABLE` with `0/0`
+coverage and exposes no invented region name.
+
+Fresh focused verification passed **55 executed parser/catalog/map tests**, with
+zero failures/errors and two existing environment-gated resolver tests skipped;
+**3/3 catalog-store world-map/cache tests**; and **1/1 companion API test**. The
+SQLite close/reopen test preserves `GRAPHICS_ONLY`, rejects revision-67 caches,
+and confirms the cache-only semantic projection remains `NOT_APPLICABLE` at
+`0/0`. Parser revision **68** therefore supersedes revision 67; SQL schema and
+codec revisions remain **2/1**. No full parser corpus, app/Android build,
+device/emulator, ADB, signing or release work ran.
+
+| Region applicability gate evidence | SHA-256 |
+|---|---|
+| Catalog overlay tests | `05f770439f6ee377c5967e0ad6269defe589932b45dddbef87c1755bbd197979` |
+| Catalog model tests | `221151e8abb35b05a1b58417770b9970ec3b87be84e8a36164fc1fc50ebb2e6f` |
+| Gen I world-map tests | `43afce3de6fccf00ced33534861fa597f84619b578ee7dd7113e67987effb224` |
+| Gen II world-map tests | `fccb922f93230eedbdf501f6cc6aa1fb9b4ec9584cb4be256466c008552fb92a` |
+| Gen III world-map tests | `e7e53cee003a6dc7da57b0a9d9552226edcb7c9e21e8d2efab0b52bf6056d5aa` |
+| Three-test catalog-store XML | `a9aa461405bd55b1b83f8805917624c6995c391825907cb816f3b2f3aa338295` |
+| One-test companion API XML | `d9dc19a6004d8a3de9431b4ce5035ea9a5cb984f312c4a3fc2d858471ffd9682` |
 
 ## Remaining target / decoding / acceptance
 

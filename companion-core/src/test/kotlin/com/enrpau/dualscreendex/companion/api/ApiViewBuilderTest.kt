@@ -63,6 +63,7 @@ import com.enrpau.dualscreendex.parser.catalog.WorldMapCatalog
 import com.enrpau.dualscreendex.parser.catalog.WorldMapCell
 import com.enrpau.dualscreendex.parser.catalog.WorldMapLocation
 import com.enrpau.dualscreendex.parser.catalog.WorldMapRegion
+import com.enrpau.dualscreendex.parser.catalog.WorldMapRegionNameDisposition
 import com.enrpau.dualscreendex.parser.language.LanguageResolutionStatus
 import com.enrpau.dualscreendex.parser.language.LanguageTag
 import com.enrpau.dualscreendex.parser.language.LocalizedTableLayout
@@ -1379,6 +1380,7 @@ class ApiViewBuilderTest {
                     LocalizedTextCapability.SPECIES_NAMES,
                     LocalizedTextCapability.SPECIES_DESCRIPTIONS,
                     -> 2
+                    LocalizedTextCapability.WORLD_LOCATION_NAMES -> 1
                     else -> 0
                 }
                 when {
@@ -1413,6 +1415,33 @@ class ApiViewBuilderTest {
                     sprite = CatalogField.notFound("fixture"),
                 )
             },
+            worldMaps = WorldMapCatalog(
+                regions = listOf(
+                    WorldMapRegion(
+                        key = "graphics-only",
+                        displayName = null,
+                        pixelWidth = 1,
+                        pixelHeight = 1,
+                        gridWidth = 1,
+                        gridHeight = 1,
+                        imageAssetKey = "world/graphics-only",
+                        locations = listOf(
+                            WorldMapLocation(
+                                key = "location",
+                                displayName = null,
+                                baseAreaIds = setOf(1),
+                                geometry = listOf(WorldMapCell(0, 0, 1, 1)),
+                            ),
+                        ),
+                        nameDisposition =
+                            WorldMapRegionNameDisposition.GRAPHICS_ONLY,
+                    ),
+                ),
+                assets = mapOf(
+                    "world/graphics-only" to
+                        RgbaSprite(1, 1, intArrayOf(0)),
+                ),
+            ),
             localization = CatalogLocalization(
                 manifest,
                 mapOf(
@@ -1441,6 +1470,12 @@ class ApiViewBuilderTest {
         )
         assertEquals(1, language.projections.first().localizedCapabilities.getValue("SPECIES_NAMES").coveredRecords)
         assertEquals(2, language.projections.first().localizedCapabilities.getValue("SPECIES_NAMES").expectedRecords)
+        val regionNames = language.projections.first().localizedCapabilities
+            .getValue("WORLD_REGION_NAMES")
+        assertEquals("NOT_APPLICABLE", regionNames.status)
+        assertEquals(0, regionNames.coveredRecords)
+        assertEquals(0, regionNames.expectedRecords)
+        assertNull(bootstrap.catalog.worldMaps.single().displayName)
     }
 
     private fun identityOnlyTrainerCard(name: String, gender: Int) = TrainerCardState(

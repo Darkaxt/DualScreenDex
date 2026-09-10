@@ -6,6 +6,7 @@ import com.enrpau.dualscreendex.parser.catalog.WorldMapCatalog
 import com.enrpau.dualscreendex.parser.catalog.WorldMapCell
 import com.enrpau.dualscreendex.parser.catalog.WorldMapLocation
 import com.enrpau.dualscreendex.parser.catalog.WorldMapRegion
+import com.enrpau.dualscreendex.parser.catalog.WorldMapRegionNameDisposition
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import com.enrpau.dualscreendex.parser.text.PokemonTextToken
@@ -65,13 +66,14 @@ object Gen1WorldMapResolver {
             regions = listOf(
                 WorldMapRegion(
                     key = regionKey,
-                    displayName = codec?.let { "Kanto" },
+                    displayName = null,
                     pixelWidth = PIXEL_WIDTH,
                     pixelHeight = PIXEL_HEIGHT,
                     gridWidth = GRID_WIDTH,
                     gridHeight = GRID_HEIGHT,
                     imageAssetKey = assetKey,
                     locations = locations,
+                    nameDisposition = WorldMapRegionNameDisposition.GRAPHICS_ONLY,
                 ),
             ),
             assets = mapOf(assetKey to raster),

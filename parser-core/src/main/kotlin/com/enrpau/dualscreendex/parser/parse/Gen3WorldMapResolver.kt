@@ -10,6 +10,7 @@ import com.enrpau.dualscreendex.parser.catalog.WorldMapCatalog
 import com.enrpau.dualscreendex.parser.catalog.WorldMapCell
 import com.enrpau.dualscreendex.parser.catalog.WorldMapLocation
 import com.enrpau.dualscreendex.parser.catalog.WorldMapRegion
+import com.enrpau.dualscreendex.parser.catalog.WorldMapRegionNameDisposition
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.sprite.GbaDecodeContract
 import com.enrpau.dualscreendex.parser.sprite.GbaRomCompression
@@ -244,6 +245,7 @@ object Gen3WorldMapResolver {
                 composition.gridHeight,
                 assetKey,
                 locations,
+                WorldMapRegionNameDisposition.GRAPHICS_ONLY,
             )
             assets[assetKey] = composition.raster
         }
@@ -355,6 +357,7 @@ object Gen3WorldMapResolver {
                 regionAsset.asset.composition.gridHeight,
                 assetKey,
                 normalized,
+                WorldMapRegionNameDisposition.GRAPHICS_ONLY,
             )
             assets[assetKey] = regionAsset.asset.composition.raster
         }

@@ -81,6 +81,7 @@ import com.enrpau.dualscreendex.parser.catalog.WorldMapCatalog
 import com.enrpau.dualscreendex.parser.catalog.WorldMapCell
 import com.enrpau.dualscreendex.parser.catalog.WorldMapLocation
 import com.enrpau.dualscreendex.parser.catalog.WorldMapRegion
+import com.enrpau.dualscreendex.parser.catalog.WorldMapRegionNameDisposition
 import com.enrpau.dualscreendex.parser.language.LanguageEvidence
 import com.enrpau.dualscreendex.parser.language.LanguageEvidenceKind
 import com.enrpau.dualscreendex.parser.language.LanguageResolutionStatus
@@ -438,6 +439,82 @@ class CatalogStoreTest {
                     sections + ("local_maps" to payload))
             }
         }
+    }
+
+    @Test
+    fun revision67CachesWithoutRegionNameDispositionAreRejectedAndCurrentReopens() {
+        val root = newRoot().toFile()
+        val cache = CatalogCache(root, JdbcCatalogDatabaseFactory)
+        val worldMaps = WorldMapCatalog(
+            regions = listOf(
+                WorldMapRegion(
+                    "gen3-region-0",
+                    null,
+                    1,
+                    1,
+                    1,
+                    1,
+                    "world/gen3-region-0",
+                    listOf(
+                        WorldMapLocation(
+                            "section-0",
+                            null,
+                            setOf(1),
+                            listOf(WorldMapCell(0, 0, 1, 1)),
+                        ),
+                    ),
+                    WorldMapRegionNameDisposition.GRAPHICS_ONLY,
+                ),
+            ),
+            assets = mapOf(
+                "world/gen3-region-0" to
+                    RgbaSprite(1, 1, intArrayOf(0xff102030.toInt())),
+            ),
+        ).validate()
+        val catalog = localizedFixtureCatalog(
+            completeCatalog("5".repeat(64)),
+            worldMaps = worldMaps,
+        )
+        cache.write(
+            catalog,
+            CatalogSourceMetadata.direct("Synthetic.gba", 65_536, "SYNTHETIC"),
+            CatalogWriteProgress.complete(),
+        )
+        val file = cache.fileFor(catalog.romSha256)
+        JdbcCatalogDatabaseFactory.open(file).use { database ->
+            database.execute(
+                "UPDATE catalog_metadata SET parser_schema_version = 67 WHERE id = 1",
+            )
+            assertNull(CatalogReader(database).readComplete())
+        }
+        assertNull(
+            CatalogCache(root, JdbcCatalogDatabaseFactory)
+                .readComplete(catalog.romSha256),
+        )
+        cache.write(
+            catalog,
+            CatalogSourceMetadata.direct("Synthetic.gba", 65_536, "SYNTHETIC"),
+            CatalogWriteProgress.complete(),
+        )
+
+        val reopened = requireNotNull(
+            CatalogCache(root, JdbcCatalogDatabaseFactory)
+                .readComplete(catalog.romSha256),
+        ).catalog
+        assertEquals(emptySet<String>(), reopened.worldMaps.staticNameRequiredRegionKeys)
+        assertEquals(setOf("gen3-region-0"), reopened.worldMaps.graphicsOnlyRegionKeys)
+        assertEquals(
+            WorldMapRegionNameDisposition.GRAPHICS_ONLY,
+            reopened.worldMaps.regions.single().nameDisposition,
+        )
+        assertNull(reopened.defaultLocalizedText()?.worldRegionNames?.get("gen3-region-0"))
+        assertEquals(
+            LocalizedCapabilityState.notApplicable("empty fixture domain"),
+            reopened.defaultLocalizedText()?.localizedCapabilities?.get(
+                LocalizedTextCapability.WORLD_REGION_NAMES,
+            ),
+        )
+        assertCurrentCatalogRevision(cache.fileFor(catalog.romSha256))
     }
 
     @Test
@@ -2955,7 +3032,7 @@ class CatalogStoreTest {
         val itemIds = base.captureBallsById.keys + localMaps.pois.mapNotNull { it.item?.itemId }
         val areaIds = runtimeMetadata.areaBaseIds + runtimeMetadata.areaNamesByBaseId.keys
         val localMapKeys = localMaps.maps.mapTo(linkedSetOf(), LocalMap::key)
-        val regionKeys = worldMaps.regions.mapTo(linkedSetOf(), WorldMapRegion::key)
+        val regionKeys = worldMaps.staticNameRequiredRegionKeys
         val locationKeys = worldMaps.regions.flatMapTo(linkedSetOf()) { region ->
             region.locations.map { WorldLocationKey(region.key, it.key) }
         }
@@ -2979,9 +3056,14 @@ class CatalogStoreTest {
         val localMapNames = localMaps.maps.mapNotNull { map ->
             map.displayName?.let { map.key to CatalogField.available(it) }
         }.toMap()
-        val worldRegionNames = worldMaps.regions.mapNotNull { region ->
-            region.displayName?.let { region.key to CatalogField.available(it) }
-        }.toMap()
+        val worldRegionNames = worldMaps.regions
+            .filter {
+                it.nameDisposition ==
+                    WorldMapRegionNameDisposition.STATIC_NAME_REQUIRED
+            }
+            .mapNotNull { region ->
+                region.displayName?.let { region.key to CatalogField.available(it) }
+            }.toMap()
         val worldLocationNames = worldMaps.regions.flatMap { region ->
             region.locations.mapNotNull { location ->
                 location.displayName?.let {

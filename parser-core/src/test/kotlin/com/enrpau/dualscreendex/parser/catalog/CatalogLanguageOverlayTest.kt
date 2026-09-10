@@ -102,6 +102,40 @@ class CatalogLanguageOverlayTest {
     ) }
 
     @Test
+    fun task417GraphicsOnlyRegionsDoNotCreateStaticTitleObligations() {
+        fun region(key: String, title: String?, disposition: WorldMapRegionNameDisposition) = WorldMapRegion(
+            key, title, 1, 1, 1, 1, "world/$key",
+            listOf(WorldMapLocation("location", null, setOf(1), listOf(WorldMapCell(0, 0, 1, 1)))),
+            disposition,
+        )
+        val world = WorldMapCatalog(
+            regions = listOf(
+                region("static", "HOENN", WorldMapRegionNameDisposition.STATIC_NAME_REQUIRED),
+                region("graphics", null, WorldMapRegionNameDisposition.GRAPHICS_ONLY),
+            ),
+            assets = mapOf(
+                "world/static" to RgbaSprite(1, 1, intArrayOf(0)),
+                "world/graphics" to RgbaSprite(1, 1, intArrayOf(0)),
+            ),
+        )
+        val extraction = CatalogLocalizedTextExtractor.extract(
+            manifest = englishManifest(), speciesById = emptyMap(), movesById = emptyMap(),
+            abilitiesById = emptyMap(), naturesById = emptyMap(), capabilities = emptyMap(), worldMaps = world,
+        )
+        val overlay = requireNotNull(extraction.localization.defaultOverlay())
+        assertEquals(setOf("static"), world.staticNameRequiredRegionKeys)
+        assertEquals(setOf("graphics"), world.graphicsOnlyRegionKeys)
+        assertEquals(setOf("static"), overlay.worldRegionNames.keys)
+        assertEquals(LocalizedCapabilityState.available(1),
+            overlay.localizedCapabilities.getValue(LocalizedTextCapability.WORLD_REGION_NAMES))
+        assertThrows(IllegalArgumentException::class.java) {
+            world.copy(regions = world.regions.map {
+                if (it.key == "graphics") it.copy(displayName = "Fabricated") else it
+            })
+        }
+    }
+
+    @Test
     fun itemReferenceSatisfiesPoiCoverageWithoutDuplicatingItemText() {
         val localMaps = LocalMapCatalog(
             maps = listOf(LocalMap("local/1", "Town", 1, 16, 16, 1, 1, "map")),

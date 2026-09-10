@@ -7,6 +7,7 @@ import com.enrpau.dualscreendex.parser.catalog.WorldMapCatalog
 import com.enrpau.dualscreendex.parser.catalog.WorldMapCell
 import com.enrpau.dualscreendex.parser.catalog.WorldMapLocation
 import com.enrpau.dualscreendex.parser.catalog.WorldMapRegion
+import com.enrpau.dualscreendex.parser.catalog.WorldMapRegionNameDisposition
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.sprite.Lz3Decoder
 import com.enrpau.dualscreendex.parser.sprite.TileRenderer
@@ -133,6 +134,7 @@ object Gen2WorldMapResolver {
                         geometry = listOf(WorldMapCell(landmark.x, landmark.y, 1, 1)),
                     )
                 },
+                nameDisposition = WorldMapRegionNameDisposition.GRAPHICS_ONLY,
             )
         }
         val catalog = WorldMapCatalog(
