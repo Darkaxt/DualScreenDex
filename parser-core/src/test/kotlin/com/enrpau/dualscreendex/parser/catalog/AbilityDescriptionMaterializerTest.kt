@@ -176,6 +176,45 @@ class AbilityDescriptionMaterializerTest {
     }
 
     @Test
+    fun prefersDescriptionRootCoReferencedWithAbilityNamesOverDenseBattleText() {
+        val bytes = ByteArray(0x4000) { 0xFF.toByte() }
+        val namesOffset = 0x400
+        val descriptionsOffset = 0x1000
+        val battleTextOffset = 0x1800
+        repeat(4) { id ->
+            encodeGbaText(bytes, namesOffset + id * 13, if (id == 0) "-------" else "ABILITY", width = 13)
+        }
+        listOf("NO SPECIAL ABILITY", "HELPS REPEL WILD POKEMON", "SUMMONS RAIN IN BATTLE", "BOOSTS SPEED EACH TURN")
+            .forEachIndexed { id, description ->
+                val textOffset = 0x2000 + id * 0x40
+                putGbaPointer(bytes, descriptionsOffset + id * 4, textOffset)
+                encodeGbaText(bytes, textOffset, description)
+            }
+        repeat(4) { id ->
+            val textOffset = 0x2400 + id * 0x40
+            putGbaPointer(bytes, battleTextOffset + id * 4, textOffset)
+            encodeGbaText(bytes, textOffset, "BATTLER GAINED EXPERIENCE")
+        }
+        putThumbLiteralReference(bytes, 0x200, 0x280, namesOffset)
+        putThumbLiteralReference(bytes, 0x202, 0x284, descriptionsOffset)
+        repeat(3) { index ->
+            putThumbLiteralReference(bytes, 0x300 + index * 2, 0x380 + index * 4, battleTextOffset)
+        }
+        val session = com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession(
+            RomImage(bytes),
+            com.enrpau.dualscreendex.parser.model.RomHeader(Platform.GBA, "PAIRED LITERAL TEST"),
+        )
+        val resolved = layout(namesOffset).copy(
+            compiledGbaReferences = requireNotNull(session.gbaReferenceIndex).asLegacyCounts(),
+        )
+
+        val result = AbilityDescriptionMaterializer.materialize(RomImage(bytes), resolved)
+
+        assertEquals(descriptionsOffset, result?.sourceOffset)
+        assertEquals("HELPS REPEL WILD POKEMON", result?.descriptions?.get(1))
+    }
+
+    @Test
     fun preservesValidTailAfterAnIntentionalShortPlaceholderDescription() {
         val bytes = ByteArray(0x2000) { 0xFF.toByte() }
         val descriptionsOffset = 0x400

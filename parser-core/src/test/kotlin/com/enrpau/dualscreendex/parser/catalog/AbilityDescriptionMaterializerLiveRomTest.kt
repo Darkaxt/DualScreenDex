@@ -46,6 +46,56 @@ class AbilityDescriptionMaterializerLiveRomTest {
         }
     }
 
+    @Test
+    fun `official western Ruby descriptions follow the ability-name consumer`() {
+        listOf(
+            OfficialControl(
+                environmentVariable = "DUALDEX_OFFICIAL_RS_EN",
+                sha256 = "0fdd36e92b75bed65d09df4635ab0b707b288c2bf1dc4c6e7a4a4f0eebe9d64c",
+                stenchDescription = "Helps repel wild POKéMON.",
+            ),
+            OfficialControl(
+                environmentVariable = "DUALDEX_OFFICIAL_RS_DE",
+                sha256 = "e0b620d576bc503e083bb9d2af1f5ffc40127b84e6ca734e3c45534d0d008043",
+                stenchDescription = "Wehrt wilde POKéMON ab.",
+            ),
+            OfficialControl(
+                environmentVariable = "DUALDEX_OFFICIAL_RS_FR",
+                sha256 = "9678645ca67932a42c92b1d6bac118925a6be9f67135ae8fe7747df85cdabdd0",
+                stenchDescription = "Repousse POKéMON sauvage.",
+            ),
+            OfficialControl(
+                environmentVariable = "DUALDEX_OFFICIAL_RS_IT",
+                sha256 = "be116b6fa8d8c12d7ccff3faefd5defd886faa427ff2c85c06d245cbe4e531b2",
+                stenchDescription = "Allontana POKéMON selvat.",
+            ),
+            OfficialControl(
+                environmentVariable = "DUALDEX_OFFICIAL_RS_ES",
+                sha256 = "0db39958c19abcedc7670fb16fd3274a5b205df794eb7491bea0580aa752e095",
+                stenchDescription = "Aleja a POKéMON salvajes.",
+            ),
+        ).forEach { control ->
+            val configured = System.getenv(control.environmentVariable)
+            assumeTrue("set ${control.environmentVariable} to run this live-ROM regression", !configured.isNullOrBlank())
+            val rom = RomImage(Files.readAllBytes(Path.of(configured)))
+            assertEquals(control.sha256, rom.sha256)
+
+            val catalog = requireNotNull(CatalogParser.parse(rom).catalog)
+            val text = catalog.defaultTextProjection()
+            val evidence = text.localizedCapabilities.getValue(LocalizedTextCapability.ABILITY_DESCRIPTIONS)
+            assertEquals(CapabilityStatus.AVAILABLE, evidence.status)
+            assertEquals(77, evidence.coveredRecords)
+            assertEquals(77, evidence.expectedRecords)
+            assertEquals(control.stenchDescription, text.abilityDescription(1))
+        }
+    }
+
+    private data class OfficialControl(
+        val environmentVariable: String,
+        val sha256: String,
+        val stenchDescription: String,
+    )
+
     private data class Control(
         val path: String,
         val sha256: String,

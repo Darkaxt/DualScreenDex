@@ -89,6 +89,11 @@ object AbilityDescriptionMaterializer {
         val referenceIndex = layout.compiledGbaReferences
         if (publishedRoot == null && (referenceIndex == null || referenceIndex.overflowed)) return null
         val references = referenceIndex?.takeUnless { it.overflowed }?.counts.orEmpty()
+        val pairedRoots = if (publishedRoot == null) {
+            compiledDescriptionRootsPairedWithNames(rom, names.offset, referenceIndex?.siteEvidence)
+        } else {
+            emptySet()
+        }
         if (publishedRoot == null) {
             var eligibleCandidates = 0
             references.keys.forEach { offset ->
@@ -101,7 +106,8 @@ object AbilityDescriptionMaterializer {
         }
         val prefix = abilityNamePrefix(rom, names, codec, cancellation)
 
-        return candidates.asSequence()
+        val decodedCandidates = candidates.asSequence()
+            .filter { pairedRoots.isEmpty() || it in pairedRoots }
             .mapNotNull { offset ->
                 cancellation.throwIfCancellationRequested()
                 val published = offset == publishedRoot
@@ -125,13 +131,50 @@ object AbilityDescriptionMaterializer {
                 }
             }
             .filter(DescriptionCandidate::semanticallyAligned)
-            .maxWithOrNull(
+            .toList()
+        return if (pairedRoots.isNotEmpty()) {
+            decodedCandidates.singleOrNull()?.result
+        } else {
+            decodedCandidates.maxWithOrNull(
                 compareBy<DescriptionCandidate> { if (it.published) 1 else 0 }
                     .thenBy { it.references }
                     .thenBy { it.result.confidence }
                     .thenByDescending { abs(it.result.sourceOffset - expectedOffset) },
-            )
-            ?.result
+            )?.result
+        }
+    }
+
+    private fun compiledDescriptionRootsPairedWithNames(
+        rom: RomImage,
+        namesOffset: Int,
+        index: com.enrpau.dualscreendex.parser.analysis.GbaReferenceIndex?,
+    ): Set<Int> {
+        val nameEvidence = index?.target(namesOffset)?.takeIf { it.siteEvidenceAvailable } ?: return emptySet()
+        val nameSites = nameEvidence.instructionSites.mapNotNull { site ->
+            compiledLiteralOffset(rom, site)?.let { site to it }
+        }
+        if (nameSites.isEmpty()) return emptySet()
+        // Retail summary code loads both roots from adjacent literal-pool slots before indexing them by ability ID.
+        return index.targets.mapNotNullTo(linkedSetOf()) { (target, evidence) ->
+            if (target == namesOffset || !evidence.siteEvidenceAvailable) return@mapNotNullTo null
+            val paired = evidence.instructionSites.any { candidateSite ->
+                val candidateLiteral = compiledLiteralOffset(rom, candidateSite) ?: return@any false
+                nameSites.any { (nameSite, nameLiteral) ->
+                    abs(candidateSite - nameSite) <= MAX_PAIRED_INSTRUCTION_DISTANCE &&
+                        abs(candidateLiteral - nameLiteral) == 4
+                }
+            }
+            target.takeIf { paired }
+        }
+    }
+
+    private fun compiledLiteralOffset(rom: RomImage, instructionOffset: Int): Int? {
+        if (instructionOffset !in 0..rom.size - 2) return null
+        val instruction = rom.u16le(instructionOffset)
+        if (instruction and THUMB_LITERAL_LOAD_MASK != THUMB_LITERAL_LOAD_OPCODE) return null
+        val alignedPc = (instructionOffset + 4) and 3.inv()
+        val literalOffset = alignedPc.toLong() + (instruction and 0xFF).toLong() * 4L
+        return literalOffset.toInt().takeIf { literalOffset in 0..rom.size.toLong() - 4L }
     }
 
     private fun decodeCandidate(
@@ -262,6 +305,9 @@ object AbilityDescriptionMaterializer {
     private fun align4(value: Int): Int = (value + 3) and 3.inv()
 
     private const val MAX_DESCRIPTION_CANDIDATES = 512
+    private const val MAX_PAIRED_INSTRUCTION_DISTANCE = 64
+    private const val THUMB_LITERAL_LOAD_MASK = 0xF800
+    private const val THUMB_LITERAL_LOAD_OPCODE = 0x4800
 
     private data class AbilityNamePrefix(
         val sentinelIsStructural: Boolean,
