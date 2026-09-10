@@ -442,6 +442,25 @@ class CatalogStoreTest {
     }
 
     @Test
+    fun revision73CachesWithStaticDynamicWorldLocationsAreRejectedAndCurrentReopens() {
+        val root = newRoot().toFile()
+        val cache = CatalogCache(root, JdbcCatalogDatabaseFactory)
+        val catalog = completeCatalog("7".repeat(64))
+        val source = CatalogSourceMetadata.direct("Synthetic.gba", 65536, "SYNTHETIC")
+        cache.write(catalog, source, CatalogWriteProgress.complete())
+        JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
+            database.execute("UPDATE catalog_metadata SET parser_schema_version = 73 WHERE id = 1")
+        }
+
+        assertNull(CatalogCache(root, JdbcCatalogDatabaseFactory).readComplete(catalog.romSha256))
+        cache.write(catalog, source, CatalogWriteProgress.complete())
+        val reopened = requireNotNull(CatalogCache(root, JdbcCatalogDatabaseFactory).readComplete(catalog.romSha256))
+        assertEquals(catalog, reopened.catalog)
+        assertCurrentCatalogRevision(cache.fileFor(catalog.romSha256))
+        assertEquals(2, CatalogSchema.version)
+    }
+
+    @Test
     fun revision67CachesWithoutRegionNameDispositionAreRejectedAndCurrentReopens() {
         val root = newRoot().toFile()
         val cache = CatalogCache(root, JdbcCatalogDatabaseFactory)

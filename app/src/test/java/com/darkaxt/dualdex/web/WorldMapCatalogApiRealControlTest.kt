@@ -1341,6 +1341,12 @@ class WorldMapCatalogApiRealControlTest {
             checks.attempt("LNG-B002.sample.world-location") {
                 assertTrue(requireNotNull(overlay).worldLocationNames.values.any { it.value == control.worldLocationName })
             }
+            if (control.family in setOf(EngineFamily.RUBY_SAPPHIRE, EngineFamily.EMERALD) && language == LanguageTag.JAPANESE) {
+                checks.attempt("LNG-B002.contextual-world-location") {
+                    assertTrue(catalog.worldMaps.regions.flatMap { it.locations }.none { it.key == "section-87" })
+                    assertTrue(requireNotNull(overlay).worldLocationNames.values.none { it.value == "とくしゅ" })
+                }
+            }
             checks.attempt("LNG-B002.sample.local-location") {
                 assertTrue(requireNotNull(overlay).localMapNames.values.any { it.value == control.locationName })
             }

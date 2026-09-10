@@ -2,6 +2,10 @@ package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.analysis.GbaReferenceIndex
 import com.enrpau.dualscreendex.parser.analysis.GbaTargetReferenceEvidence
+import com.enrpau.dualscreendex.parser.catalog.Gen3MapLocationResolution
+import com.enrpau.dualscreendex.parser.catalog.Gen3RegionMapEntry
+import com.enrpau.dualscreendex.parser.catalog.WorldMapLocation
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -40,6 +44,28 @@ class Gen3WorldMapResolverTest {
         org.junit.Assert.assertEquals("マサラタウン", named.displayName)
         org.junit.Assert.assertEquals(cells, named.geometry)
         org.junit.Assert.assertEquals(named.copy(displayName = null), locations(emptyMap()).single())
+    }
+
+    @Test
+    fun contextualDynamicSectionsDoNotBecomeStaticWorldLocations() {
+        val resolution = Gen3MapLocationResolution(
+            sectionByBaseArea = mapOf(0x100 to 1, 0x101 to 87),
+            entriesBySection = mapOf(
+                1 to Gen3RegionMapEntry(1, 4, 5, 1, 1, "Static Place"),
+                87 to Gen3RegionMapEntry(87, 0, 0, 1, 1, "Dynamic Place"),
+            ),
+            contextualSections = setOf(87),
+        )
+        val method = Gen3WorldMapResolver::class.java.declaredMethods.single {
+            it.name == "emeraldLocations"
+        }.apply { isAccessible = true }
+
+        @Suppress("UNCHECKED_CAST")
+        val locations = method.invoke(Gen3WorldMapResolver, resolution, 32, 20) as List<WorldMapLocation>
+
+        assertEquals(listOf("section-1"), locations.map(WorldMapLocation::key))
+        assertEquals(mapOf(0x100 to 1, 0x101 to 87), resolution.sectionByBaseArea)
+        assertEquals(setOf(1, 87), resolution.entriesBySection.keys)
     }
 
     @Test

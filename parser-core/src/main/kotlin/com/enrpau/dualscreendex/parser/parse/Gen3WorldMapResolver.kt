@@ -377,6 +377,7 @@ object Gen3WorldMapResolver {
     ): List<WorldMapLocation> {
         val baseAreasBySection = locations.sectionByBaseArea.entries.groupBy({ it.value }, { it.key })
         return locations.entriesBySection.values.sortedBy(Gen3RegionMapEntry::sectionId).mapNotNull { entry ->
+            if (entry.sectionId in locations.contextualSections) return@mapNotNull null
             val baseAreaIds = baseAreasBySection[entry.sectionId].orEmpty().toSet()
             if (baseAreaIds.isEmpty() || entry.x + entry.width > gridWidth || entry.y + entry.height > gridHeight) {
                 return@mapNotNull null

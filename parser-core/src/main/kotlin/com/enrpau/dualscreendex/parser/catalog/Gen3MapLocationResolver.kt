@@ -50,11 +50,26 @@ object Gen3MapLocationResolver {
     ): Map<Int, String> {
         cancellation.throwIfCancellationRequested()
         if (codec == null) return emptyMap()
-        val entries = resolveDetailed(rom, encounterBaseIds, references, codec, cancellation)?.entriesBySection
-        if (entries != null) return entries.mapNotNull { (section, entry) -> entry.displayName?.let { section to it } }.toMap()
+        val resolution = resolveDetailed(rom, encounterBaseIds, references, codec, cancellation)
+        if (resolution != null) {
+            return resolution.entriesBySection.mapNotNull { (section, entry) ->
+                entry.displayName?.takeIf { section !in resolution.contextualSections }?.let { section to it }
+            }.toMap()
+        }
         val sections = resolveHeaderByBaseArea(rom, encounterBaseIds, references, cancellation).values
             .map { rom.u8(it + REGION_SECTION_OFFSET) }.toSet()
-        return com.enrpau.dualscreendex.parser.parse.CompiledRegionSectionNames.resolve(rom, references, sections, codec, cancellation, extentLimit)
+        val names = com.enrpau.dualscreendex.parser.parse.CompiledRegionSectionNames.resolve(
+            rom,
+            references,
+            sections,
+            codec,
+            cancellation,
+            extentLimit,
+        )
+        val contextualSections = findRegionEntryResolution(rom, sections, codec, cancellation)?.let { entries ->
+            resolveContextualSections(rom, entries.root, sections, cancellation)
+        }.orEmpty()
+        return names - contextualSections
     }
 
     internal fun resolveDetailed(
@@ -87,7 +102,14 @@ object Gen3MapLocationResolver {
             cancellation.throwIfCancellationRequested()
             decodeRegionEntry(rom, regionEntries.root, section, codec, cancellation)?.let { section to it }
         }.toMap(linkedMapOf())
-        return Gen3MapLocationResolution(sections, entries).takeIf { it.entriesBySection.isNotEmpty() }
+        val contextualSections = resolveContextualSections(
+            rom,
+            regionEntries.root,
+            sections.values.toSet(),
+            cancellation,
+        )
+        return Gen3MapLocationResolution(sections, entries, contextualSections)
+            .takeIf { it.entriesBySection.isNotEmpty() }
     }
 
     internal fun resolveSectionByBaseArea(
@@ -453,8 +475,22 @@ object Gen3MapLocationResolver {
         cancellation: ParserCancellationToken,
     ): Gen3MapLocationResolution {
         val sections = enumerateMapSections(rom, layout, cancellation).orEmpty()
-        val entries = findRegionEntries(rom, sections.values.toSet(), codec, cancellation).orEmpty()
-        return Gen3MapLocationResolution(sections, entries)
+        val regionEntries = findRegionEntryResolution(
+            rom,
+            sections.values.toSet(),
+            codec,
+            cancellation,
+        )
+        val entries = regionEntries?.entries.orEmpty()
+        val contextualSections = regionEntries?.let { resolution ->
+            resolveContextualSections(
+                rom,
+                resolution.root,
+                sections.values.toSet(),
+                cancellation,
+            )
+        }.orEmpty()
+        return Gen3MapLocationResolution(sections, entries, contextualSections)
     }
 
     private fun findMapGroupsRoots(
@@ -569,13 +605,224 @@ object Gen3MapLocationResolver {
         return rom.u16le(offset + 0x12) != 0
     }
 
-    private fun findRegionEntries(
+    /**
+     * Identifies a compiled MAPSEC_DYNAMIC-style placeholder only when one bounded consumer both
+     * replaces it from another map header and uses the selected region-entry root afterward.
+     */
+    private fun resolveContextualSections(
         rom: RomImage,
+        regionRoot: Int,
         sectionIds: Set<Int>,
-        codec: PokemonTextCodec,
         cancellation: ParserCancellationToken,
-    ): Map<Int, Gen3RegionMapEntry>? =
-        findRegionEntryResolution(rom, sectionIds, codec, cancellation)?.entries
+    ): Set<Int> {
+        val evidence = mutableListOf<ContextualSectionEvidence>()
+        var offset = 0
+        while (offset.toLong() + CONTEXTUAL_SECTION_PREFIX_BYTES <= rom.size.toLong()) {
+            if (offset % CANCELLATION_CHECK_INTERVAL_BYTES == 0) {
+                cancellation.throwIfCancellationRequested()
+            }
+            contextualSectionEvidenceAt(rom, offset, regionRoot, sectionIds)?.let(evidence::add)
+            offset += 2
+        }
+        return evidence.distinct().singleOrNull()?.sectionId?.let(::setOf).orEmpty()
+    }
+
+    private fun contextualSectionEvidenceAt(
+        rom: RomImage,
+        offset: Int,
+        regionRoot: Int,
+        sectionIds: Set<Int>,
+    ): ContextualSectionEvidence? {
+        val holderLoad = rom.u16le(offset)
+        val holderRegister = literalLoadRegister(holderLoad) ?: return null
+        val stateAuthority = literalValue(rom, offset, holderLoad)
+            ?.takeIf(::isWritableGbaAddress)
+            ?: return null
+        val (stateRegister, loadedHolder) = wordLoadAtZero(rom.u16le(offset + 2)) ?: return null
+        if (loadedHolder != holderRegister) return null
+
+        val headerLoad = rom.u16le(offset + 4)
+        val headerRegister = literalLoadRegister(headerLoad) ?: return null
+        literalValue(rom, offset + 4, headerLoad)
+            ?.takeIf(::isWritableGbaAddress)
+            ?: return null
+        if (!isByteLoad(rom.u16le(offset + 6), headerRegister, headerRegister, REGION_SECTION_OFFSET)) {
+            return null
+        }
+        val stateFieldOffset = halfwordStoreOffset(
+            rom.u16le(offset + 8),
+            source = headerRegister,
+            base = stateRegister,
+        ) ?: return null
+
+        val compare = rom.u16le(offset + 10)
+        if (compare and THUMB_COMPARE_IMMEDIATE_MASK != THUMB_COMPARE_IMMEDIATE_OPCODE) return null
+        if (compare ushr THUMB_REGISTER_SHIFT and THUMB_REGISTER_MASK != headerRegister) return null
+        val sectionId = compare and 0xFF
+        if (sectionId !in sectionIds) return null
+
+        val branchOffset = offset + 12
+        val branch = rom.u16le(branchOffset)
+        if (branch and THUMB_CONDITIONAL_BRANCH_MASK != THUMB_BRANCH_EQUAL_OPCODE) return null
+        val replacement = conditionalBranchDestination(branchOffset, branch)
+            ?.takeIf { it > branchOffset && it.toLong() + 2 <= rom.size.toLong() }
+            ?: return null
+        if (!replacementRewritesSection(rom, replacement, holderRegister, stateFieldOffset)) return null
+        if (!referencesRegionAuthority(rom, offset + 14, regionRoot, stateAuthority)) return null
+        return ContextualSectionEvidence(sectionId, offset)
+    }
+
+    private fun replacementRewritesSection(
+        rom: RomImage,
+        replacement: Int,
+        holderRegister: Int,
+        stateFieldOffset: Int,
+    ): Boolean {
+        val end = minOf(rom.size - 2, replacement + MAX_CONTEXTUAL_REPLACEMENT_BYTES)
+        var call = replacement
+        while (call + 4 <= end) {
+            if (isThumbBl(rom, call)) {
+                val moveEnd = minOf(end, call + 4 + MAX_CONTEXTUAL_RESULT_MOVE_BYTES)
+                var move = call + 4
+                while (move <= moveEnd) {
+                    val headerRegister = moveFromReturnRegister(rom.u16le(move))
+                    if (headerRegister != null) {
+                        val storeEnd = minOf(end, move + 2 + MAX_CONTEXTUAL_STORE_BYTES)
+                        var store = move + 2
+                        while (store + 6 <= storeEnd) {
+                            val (stateRegister, baseRegister) = wordLoadAtZero(rom.u16le(store)) ?: run {
+                                store += 2
+                                continue
+                            }
+                            if (
+                                baseRegister == holderRegister &&
+                                isByteLoad(
+                                    rom.u16le(store + 2),
+                                    destination = 0,
+                                    base = headerRegister,
+                                    immediate = REGION_SECTION_OFFSET,
+                                    allowAnyDestination = true,
+                                )
+                            ) {
+                                val sectionRegister = rom.u16le(store + 2) and THUMB_REGISTER_MASK
+                                if (
+                                    halfwordStoreOffset(
+                                        rom.u16le(store + 4),
+                                        sectionRegister,
+                                        stateRegister,
+                                    ) == stateFieldOffset
+                                ) {
+                                    return true
+                                }
+                            }
+                            store += 2
+                        }
+                    }
+                    move += 2
+                }
+            }
+            call += 2
+        }
+        return false
+    }
+
+    private fun referencesRegionAuthority(
+        rom: RomImage,
+        start: Int,
+        regionRoot: Int,
+        stateAuthority: Long,
+    ): Boolean {
+        val end = minOf(rom.size - 2, start + MAX_REGION_ROOT_USAGE_BYTES)
+        var regionRootLoaded = false
+        var stateAuthorityLoaded = false
+        var offset = start
+        while (offset <= end) {
+            val instruction = rom.u16le(offset)
+            val literal = literalOffset(rom, offset, instruction)
+            if (literal != null) {
+                if (rom.gbaPointer(literal) == regionRoot) regionRootLoaded = true
+                if (rom.u32le(literal) == stateAuthority) stateAuthorityLoaded = true
+            }
+            offset += 2
+        }
+        return regionRootLoaded && stateAuthorityLoaded
+    }
+
+    private fun literalLoadRegister(instruction: Int): Int? =
+        if (instruction and THUMB_LITERAL_LOAD_MASK == THUMB_LITERAL_LOAD_OPCODE) {
+            instruction ushr THUMB_REGISTER_SHIFT and THUMB_REGISTER_MASK
+        } else {
+            null
+        }
+
+    private fun literalOffset(rom: RomImage, instructionOffset: Int, instruction: Int): Int? {
+        if (literalLoadRegister(instruction) == null) return null
+        val literal = ((instructionOffset + 4) and -4) + (instruction and 0xFF) * 4
+        return literal.takeIf { it >= 0 && it.toLong() + 4 <= rom.size.toLong() }
+    }
+
+    private fun literalValue(rom: RomImage, instructionOffset: Int, instruction: Int): Long? =
+        literalOffset(rom, instructionOffset, instruction)?.let(rom::u32le)
+
+    private fun wordLoadAtZero(instruction: Int): Pair<Int, Int>? =
+        if (instruction and THUMB_LOAD_STORE_IMMEDIATE_MASK == THUMB_LDR_WORD_IMMEDIATE_OPCODE &&
+            instruction ushr THUMB_LOAD_STORE_IMMEDIATE_SHIFT and THUMB_LOAD_STORE_IMMEDIATE_MASK_VALUE == 0
+        ) {
+            (instruction and THUMB_REGISTER_MASK) to
+                (instruction ushr 3 and THUMB_REGISTER_MASK)
+        } else {
+            null
+        }
+
+    private fun isByteLoad(
+        instruction: Int,
+        destination: Int,
+        base: Int,
+        immediate: Int,
+        allowAnyDestination: Boolean = false,
+    ): Boolean = instruction and THUMB_LOAD_STORE_IMMEDIATE_MASK == THUMB_LDR_BYTE_IMMEDIATE_OPCODE &&
+        instruction ushr THUMB_LOAD_STORE_IMMEDIATE_SHIFT and THUMB_LOAD_STORE_IMMEDIATE_MASK_VALUE == immediate &&
+        instruction ushr 3 and THUMB_REGISTER_MASK == base &&
+        (allowAnyDestination || instruction and THUMB_REGISTER_MASK == destination)
+
+    private fun halfwordStoreOffset(instruction: Int, source: Int, base: Int): Int? =
+        if (
+            instruction and THUMB_LOAD_STORE_IMMEDIATE_MASK == THUMB_STR_HALFWORD_IMMEDIATE_OPCODE &&
+            instruction and THUMB_REGISTER_MASK == source &&
+            instruction ushr 3 and THUMB_REGISTER_MASK == base
+        ) {
+            (instruction ushr THUMB_LOAD_STORE_IMMEDIATE_SHIFT and
+                THUMB_LOAD_STORE_IMMEDIATE_MASK_VALUE) * 2
+        } else {
+            null
+        }
+
+    private fun moveFromReturnRegister(instruction: Int): Int? {
+        if (instruction and THUMB_ADD_SUBTRACT_MASK == THUMB_ADD_IMMEDIATE_3_OPCODE &&
+            instruction ushr 6 and 0x7 == 0 &&
+            instruction ushr 3 and THUMB_REGISTER_MASK == 0
+        ) {
+            return instruction and THUMB_REGISTER_MASK
+        }
+        if (instruction and THUMB_HIGH_REGISTER_MASK == THUMB_HIGH_REGISTER_MOVE_OPCODE) {
+            val source = instruction ushr 3 and 0xF
+            if (source == 0) return (instruction and THUMB_REGISTER_MASK) or (instruction ushr 4 and 0x8)
+        }
+        return null
+    }
+
+    private fun conditionalBranchDestination(offset: Int, instruction: Int): Int? {
+        if (instruction and THUMB_CONDITIONAL_BRANCH_MASK != THUMB_BRANCH_EQUAL_OPCODE) return null
+        return offset + 4 + ((instruction and 0xFF).toByte().toInt() shl 1)
+    }
+
+    private fun isThumbBl(rom: RomImage, offset: Int): Boolean =
+        offset >= 0 && offset.toLong() + 4 <= rom.size.toLong() &&
+            rom.u16le(offset) and THUMB_BL_FIRST_MASK == THUMB_BL_FIRST_OPCODE &&
+            rom.u16le(offset + 2) and THUMB_BL_SECOND_MASK == THUMB_BL_SECOND_OPCODE
+
+    private fun isWritableGbaAddress(address: Long): Boolean =
+        address in GBA_EWRAM_RANGE || address in GBA_IWRAM_RANGE
 
     private fun findRegionEntryResolution(
         rom: RomImage,
@@ -795,11 +1042,41 @@ object Gen3MapLocationResolver {
     private const val THUMB_BX_LR = 0x4770
     private const val THUMB_LITERAL_LOAD_MASK = 0xF800
     private const val THUMB_LITERAL_LOAD_OPCODE = 0x4800
+    private const val THUMB_LOAD_STORE_IMMEDIATE_MASK = 0xF800
+    private const val THUMB_LOAD_STORE_IMMEDIATE_SHIFT = 6
+    private const val THUMB_LOAD_STORE_IMMEDIATE_MASK_VALUE = 0x1F
+    private const val THUMB_LDR_WORD_IMMEDIATE_OPCODE = 0x6800
+    private const val THUMB_LDR_BYTE_IMMEDIATE_OPCODE = 0x7800
+    private const val THUMB_STR_HALFWORD_IMMEDIATE_OPCODE = 0x8000
+    private const val THUMB_COMPARE_IMMEDIATE_MASK = 0xF800
+    private const val THUMB_COMPARE_IMMEDIATE_OPCODE = 0x2800
+    private const val THUMB_CONDITIONAL_BRANCH_MASK = 0xFF00
+    private const val THUMB_BRANCH_EQUAL_OPCODE = 0xD000
+    private const val THUMB_ADD_SUBTRACT_MASK = 0xFE00
+    private const val THUMB_ADD_IMMEDIATE_3_OPCODE = 0x1C00
+    private const val THUMB_HIGH_REGISTER_MASK = 0xFF00
+    private const val THUMB_HIGH_REGISTER_MOVE_OPCODE = 0x4600
+    private const val THUMB_BL_FIRST_MASK = 0xF800
+    private const val THUMB_BL_FIRST_OPCODE = 0xF000
+    private const val THUMB_BL_SECOND_MASK = 0xF800
+    private const val THUMB_BL_SECOND_OPCODE = 0xF800
     private const val THUMB_REGISTER_SHIFT = 8
     private const val THUMB_REGISTER_MASK = 0x7
     private const val MAX_MAP_GROUPS = 256
     private const val MAX_MAPS_PER_GROUP = 256
+    private const val CONTEXTUAL_SECTION_PREFIX_BYTES = 14L
+    private const val MAX_CONTEXTUAL_REPLACEMENT_BYTES = 96
+    private const val MAX_CONTEXTUAL_RESULT_MOVE_BYTES = 16
+    private const val MAX_CONTEXTUAL_STORE_BYTES = 24
+    private const val MAX_REGION_ROOT_USAGE_BYTES = 384
+    private val GBA_EWRAM_RANGE = 0x0200_0000L..0x0203_FFFFL
+    private val GBA_IWRAM_RANGE = 0x0300_0000L..0x0300_7FFFL
 }
+
+private data class ContextualSectionEvidence(
+    val sectionId: Int,
+    val consumerOffset: Int,
+)
 
 private data class MapGroupsLayout(
     val root: Int,
@@ -814,9 +1091,12 @@ private data class RegionEntryResolution(
 internal data class Gen3MapLocationResolution(
     val sectionByBaseArea: Map<Int, Int>,
     val entriesBySection: Map<Int, Gen3RegionMapEntry>,
+    val contextualSections: Set<Int> = emptySet(),
 ) {
     val namesByBaseArea: Map<Int, String> = sectionByBaseArea.mapNotNull { (baseId, sectionId) ->
-        entriesBySection[sectionId]?.displayName?.let { baseId to it }
+        entriesBySection[sectionId]?.displayName
+            ?.takeIf { sectionId !in contextualSections }
+            ?.let { baseId to it }
     }.toMap(linkedMapOf())
 }
 

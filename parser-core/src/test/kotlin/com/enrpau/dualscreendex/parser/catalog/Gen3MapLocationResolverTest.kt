@@ -107,6 +107,120 @@ class Gen3MapLocationResolverTest {
     }
 
     @Test
+    fun recognizesRelocatedCompiledDynamicSectionReplacement() {
+        fun resolutionAt(
+            consumerOffset: Int,
+            copyStateToHighRegister: Boolean,
+            rootAfterIndex: Boolean,
+        ): Gen3MapLocationResolution {
+            val bytes = ByteArray(0x1400)
+            writeIndexedU16CompactConsumer(bytes, 0x40, 0x180)
+            putPointer(bytes, 0x180, 0x240)
+            putPointer(bytes, 0x240, 0x300)
+            putPointer(bytes, 0x244, 0x31C)
+            writeMapHeader(bytes, 0x300, 1)
+            writeMapHeader(bytes, 0x31C, 87)
+            writeRegionEntry(bytes, 0x500, 1, 0x900, "Static Place")
+            writeRegionEntry(bytes, 0x500, 87, 0x920, "Dynamic Place")
+            putPointer(bytes, 0xA00, 0x500)
+            writeDynamicSectionConsumer(
+                bytes,
+                consumerOffset,
+                0x500,
+                87,
+                stateFieldOffset = if (rootAfterIndex) 20 else 0,
+                copyStateToHighRegister = copyStateToHighRegister,
+                rootAfterIndex = rootAfterIndex,
+            )
+
+            val rom = RomImage(bytes)
+            val references = GbaReferenceIndex.countsOnlyForTesting(mapOf(0x900 to 1))
+            val resolution = requireNotNull(
+                Gen3MapLocationResolver.resolveDetailed(
+                    rom,
+                    setOf(0, 1),
+                    references,
+                    PokemonTextCodec.gbaEnglish,
+                ),
+            )
+            assertEquals(
+                mapOf(1 to "Static Place"),
+                Gen3MapLocationResolver.resolveNamesBySection(
+                    rom,
+                    setOf(0, 1),
+                    references,
+                    PokemonTextCodec.gbaEnglish,
+                ),
+            )
+            return resolution
+        }
+
+        listOf(
+            Triple(0xB00, false, false),
+            Triple(0xC00, true, false),
+            Triple(0xD00, false, true),
+        ).forEach { (offset, copyState, rootAfterIndex) ->
+            val resolution = resolutionAt(offset, copyState, rootAfterIndex)
+            assertEquals(setOf(87), resolution.contextualSections)
+            assertEquals(mapOf(0 to 1, 1 to 87), resolution.sectionByBaseArea)
+            assertEquals(setOf(1, 87), resolution.entriesBySection.keys)
+            assertEquals(mapOf(0 to "Static Place"), resolution.namesByBaseArea)
+        }
+    }
+
+    @Test
+    fun dynamicSectionRequiresTheSelectedRegionRootAndCompleteEnvelope() {
+        val bytes = ByteArray(0x1400)
+        writeDynamicSectionConsumer(bytes, 0xB00, 0x500, 87)
+        val method = Gen3MapLocationResolver::class.java.getDeclaredMethod(
+            "resolveContextualSections",
+            RomImage::class.java,
+            Int::class.javaPrimitiveType,
+            Set::class.java,
+            ParserCancellationToken::class.java,
+        ).apply { isAccessible = true }
+        fun resolve(candidate: ByteArray, root: Int): Set<*> = method.invoke(
+            Gen3MapLocationResolver,
+            RomImage(candidate),
+            root,
+            setOf(87),
+            ParserCancellationToken.NONE,
+        ) as Set<*>
+
+        assertEquals(setOf(87), resolve(bytes, 0x500))
+        assertTrue(resolve(bytes, 0x520).isEmpty())
+        assertTrue(resolve(bytes.copyOf(0xB40), 0x500).isEmpty())
+    }
+
+    @Test
+    fun dynamicSectionClassificationFailsClosedOnConflictingCompiledEvidence() {
+        val bytes = ByteArray(0x1400)
+        writeIndexedU16CompactConsumer(bytes, 0x40, 0x180)
+        putPointer(bytes, 0x180, 0x240)
+        putPointer(bytes, 0x240, 0x300)
+        putPointer(bytes, 0x244, 0x31C)
+        writeMapHeader(bytes, 0x300, 1)
+        writeMapHeader(bytes, 0x31C, 87)
+        writeRegionEntry(bytes, 0x500, 1, 0x900, "Static Place")
+        writeRegionEntry(bytes, 0x500, 87, 0x920, "Dynamic Place")
+        putPointer(bytes, 0xA00, 0x500)
+        writeDynamicSectionConsumer(bytes, 0xB00, 0x500, 87)
+        writeDynamicSectionConsumer(bytes, 0xC00, 0x500, 87)
+
+        val resolution = requireNotNull(
+            Gen3MapLocationResolver.resolveDetailed(
+                RomImage(bytes),
+                setOf(0, 1),
+                GbaReferenceIndex.countsOnlyForTesting(mapOf(0x900 to 1)),
+                PokemonTextCodec.gbaEnglish,
+            ),
+        )
+
+        assertTrue(resolution.contextualSections.isEmpty())
+        assertEquals("Dynamic Place", resolution.namesByBaseArea[1])
+    }
+
+    @Test
     fun cancelsDuringFullRomMapAuthorityScanning() {
         var checks = 0
         val cancellation = ParserCancellationToken {
@@ -358,6 +472,85 @@ class Gen3MapLocationResolverTest {
 
         putU32(nullEvents, 0x51C + 4, 0x07000000)
         assertTrue(resolveCompact(nullEvents).isEmpty())
+    }
+
+    private fun writeDynamicSectionConsumer(
+        bytes: ByteArray,
+        offset: Int,
+        regionRoot: Int,
+        sectionId: Int,
+        stateFieldOffset: Int = 0,
+        copyStateToHighRegister: Boolean = false,
+        rootAfterIndex: Boolean = false,
+    ) {
+        require(stateFieldOffset in 0..62 && stateFieldOffset % 2 == 0)
+        val stateLiteral = offset + 0x80
+        val headerLiteral = offset + 0x84
+        val warpLiteral = offset + 0x88
+        val regionRootLiteral = offset + 0x8C
+
+        putU16(bytes, offset, 0xB510)
+        putU16(bytes, offset + 2, literalLoad(4, offset + 2, stateLiteral))
+        putU16(bytes, offset + 4, 0x6820)
+        putU16(bytes, offset + 6, literalLoad(1, offset + 6, headerLiteral))
+        putU16(bytes, offset + 8, 0x7D09)
+        putU16(bytes, offset + 10, halfwordStore(1, 0, stateFieldOffset))
+        putU16(bytes, offset + 12, 0x2900 or sectionId)
+        putU16(bytes, offset + 14, 0xD007)
+        putU16(bytes, offset + 16, 0xE016)
+
+        putU16(bytes, offset + 0x20, literalLoad(0, offset + 0x20, warpLiteral))
+        putU16(bytes, offset + 0x22, 0x6800)
+        putU16(bytes, offset + 0x24, 0x7D00)
+        putU16(bytes, offset + 0x26, 0x2101)
+        putU16(bytes, offset + 0x28, 0xF000)
+        putU16(bytes, offset + 0x2A, 0xF800)
+        putU16(bytes, offset + 0x2C, 0x1C05)
+        putU16(bytes, offset + 0x2E, 0x6821)
+        putU16(bytes, offset + 0x30, 0x7D28)
+        putU16(bytes, offset + 0x32, halfwordStore(0, 1, stateFieldOffset))
+
+        var cursor = offset + 0x40
+        if (rootAfterIndex) {
+            putU16(bytes, cursor, literalLoad(4, cursor, stateLiteral))
+            putU16(bytes, cursor + 2, 0x6820)
+            putU16(bytes, cursor + 4, halfwordLoad(7, 0, stateFieldOffset))
+            putU16(bytes, cursor + 6, 0x00F8)
+            putU16(bytes, cursor + 8, literalLoad(5, cursor + 8, regionRootLiteral))
+            putU16(bytes, cursor + 10, 0x1940)
+            putU16(bytes, cursor + 12, 0xBD10)
+        } else {
+            putU16(bytes, cursor, literalLoad(5, cursor, regionRootLiteral))
+            putU16(bytes, cursor + 2, literalLoad(4, cursor + 2, stateLiteral))
+            putU16(bytes, cursor + 4, 0x6820)
+            cursor += 6
+            if (copyStateToHighRegister) {
+                putU16(bytes, cursor, 0x4682)
+                cursor += 2
+            }
+            putU16(bytes, cursor, halfwordLoad(7, 0, stateFieldOffset))
+            putU16(bytes, cursor + 2, 0x00F8)
+            putU16(bytes, cursor + 4, 0x1940)
+            putU16(bytes, cursor + 6, 0xBD10)
+        }
+
+        putU32(bytes, stateLiteral, 0x02000000)
+        putU32(bytes, headerLiteral, 0x02000100)
+        putU32(bytes, warpLiteral, 0x02000200)
+        putPointer(bytes, regionRootLiteral, regionRoot)
+    }
+
+    private fun halfwordLoad(destination: Int, base: Int, byteOffset: Int): Int =
+        0x8800 or ((byteOffset / 2) shl 6) or (base shl 3) or destination
+
+    private fun halfwordStore(source: Int, base: Int, byteOffset: Int): Int =
+        0x8000 or ((byteOffset / 2) shl 6) or (base shl 3) or source
+
+    private fun literalLoad(register: Int, instructionOffset: Int, literalOffset: Int): Int {
+        val base = (instructionOffset + 4) and -4
+        val displacement = literalOffset - base
+        require(displacement >= 0 && displacement % 4 == 0 && displacement / 4 <= 0xFF)
+        return 0x4800 or (register shl 8) or (displacement / 4)
     }
 
     private fun resolveCompact(bytes: ByteArray): Map<Int, Int> =
