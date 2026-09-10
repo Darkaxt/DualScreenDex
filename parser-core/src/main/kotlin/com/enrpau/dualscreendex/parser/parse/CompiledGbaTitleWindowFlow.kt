@@ -16,9 +16,13 @@ internal data class CompiledGbaTitleWindowFlow private constructor(
             cancellation.throwIfCancellationRequested()
             if (window !in 0..255) return null
             val packet = CompiledGbaTextPrinter.resolve(rom, printer, cancellation) ?: return null
-            val d = Envelope(rom, packet.dispatcherOffset, 0xE8)
+            val layout = DISPATCHER_LAYOUTS.firstOrNull { candidate ->
+                val envelope = Envelope(rom, packet.dispatcherOffset, candidate.size)
+                envelope.valid && envelope.matches(candidate.runs)
+            } ?: return null
+            val d = Envelope(rom, packet.dispatcherOffset, layout.size)
             val f = Envelope(rom, frame, 0x48)
-            if (!d.valid || !f.valid || !d.matches(DISPATCHER) || !f.matches(FRAME)) return null
+            if (!f.valid || !f.matches(FRAME)) return null
             val envelopes = listOf(printer.toLong() until printer.toLong() + 0xA8, d.range, f.range,
                 packet.fontLiteralOffset.toLong() until packet.fontLiteralOffset.toLong() + 4)
             if (envelopes.indices.any { i -> (i + 1 until envelopes.size).any { j ->
@@ -26,27 +30,36 @@ internal data class CompiledGbaTitleWindowFlow private constructor(
             } }) return null
 
             if (d.literal(0x0A, 0, 0x18) != packet.fontRoot) return null
-            val temporary = d.literal(0x1C, 0, 0x84) ?: return null
-            if (d.literal(0x8C, 1, 0x98) != temporary || d.literal(0xAA, 0, 0xDC) != temporary ||
-                d.literal(0xB8, 0, 0xDC) != temporary || d.literal(0x94, 7, 0x9C) != 0x3FFL
+            val temporary = d.literal(0x1C, 0, layout.temporaryPool) ?: return null
+            if (d.literal(layout.temporaryReload, 1, layout.temporaryReloadPool) != temporary ||
+                d.literal(layout.rendererRootLoad, 0, layout.rendererRootPool) != temporary ||
+                d.literal(layout.copyRootLoad, 0, layout.copyRootPool) != temporary ||
+                d.literal(layout.maskLoad, 7, layout.maskPool) != 0x3FFL
             ) return null
-            val printers = d.literal(0x6A, 0, 0x88) ?: return null
-            if (d.literal(0xC2, 0, 0xE0) != printers) return null
-            val flag = d.literal(0xCE, 1, 0xE4) ?: return null
+            val printers = d.literal(
+                layout.printersLoad, layout.printersRegister, layout.printersPool) ?: return null
+            if (d.literal(
+                    layout.printersReload,
+                    layout.printersReloadRegister,
+                    layout.printersReloadPool,
+                ) != printers
+            ) return null
+            val flag = d.literal(layout.flagLoad, 1, layout.flagPool) ?: return null
             val tiles = f.literal(0x0C, 0, 0x3C) ?: return null
             val palette = f.literal(0x10, 0, 0x40) ?: return null
             if (temporary and 3L != 0L || printers and 3L != 0L || tiles and 1L != 0L) return null
             // Include preceding slots: the nominated window must not alias another packet or frame state.
             val fields = listOf(packet.fontRoot until packet.fontRoot + 4,
-                temporary until temporary + 32, printers until printers + (window + 1) * 32L,
+                temporary until temporary + layout.printerBytes,
+                printers until printers + (window + 1) * layout.printerBytes.toLong(),
                 flag..flag, tiles until tiles + 2, palette..palette)
             if (fields.any { !ram(it) } || fields.indices.any { i ->
                 (i + 1 until fields.size).any { j -> overlaps(fields[i], fields[j]) }
             }) return null
 
-            val color = d.call(0x58) ?: return null
-            val renderer = d.call(0xAC) ?: return null
-            val copy = d.call(0xBE) ?: return null
+            val color = d.call(layout.colorCall) ?: return null
+            val renderer = d.call(layout.rendererCall) ?: return null
+            val copy = d.call(layout.copyCall) ?: return null
             val frameDispatch = f.call(0x18) ?: return null
             val fill = f.call(0x20) ?: return null
             val tilemap = f.call(0x26) ?: return null
@@ -70,7 +83,7 @@ internal data class CompiledGbaTitleWindowFlow private constructor(
 
         // Complete instruction runs, including all branches and returns. The omitted words are only
         // checked literal operands, atomic BLs, or padding skipped by a checked unconditional branch.
-        private val DISPATCHER = listOf(
+        private val COMPACT_DISPATCHER = listOf(
             0x00 to intArrayOf(0xB5F0, 0x1C06, 0x4694, 0x0609, 0x0E0D),
             0x0C to intArrayOf(0x6800, 0x2800, 0xD104, 0x2000, 0xE05F),
             0x1E to intArrayOf(0x2200, 0x2101, 0x76C1, 0x7702, 0x7745, 0x7782, 0x77C2,
@@ -87,6 +100,67 @@ internal data class CompiledGbaTitleWindowFlow private constructor(
             0xBA to intArrayOf(0x7900, 0x2102),
             0xC4 to intArrayOf(0x7931, 0x0149, 0x1809, 0x2000, 0x76C8),
             0xD0 to intArrayOf(0x2000, 0x7008, 0x2001, 0xBCF0, 0xBC02, 0x4708),
+        )
+
+        private val WESTERN_DISPATCHER = listOf(
+            0x00 to intArrayOf(0xB5F0, 0x1C06, 0x4694, 0x0609, 0x0E0D),
+            0x0C to intArrayOf(0x6800, 0x2800, 0xD104, 0x2000, 0xE069),
+            0x1E to intArrayOf(0x2200, 0x2101, 0x76C1, 0x7702, 0x7745, 0x7782, 0x77C2,
+                0x1C04, 0x2106, 0x301A, 0x7002, 0x3801, 0x3901, 0x2900, 0xDAFA,
+                0x1C21, 0x1C30, 0xC88C, 0xC18C, 0x6800, 0x6008, 0x4660, 0x6120),
+            0x4C to intArrayOf(0x1C20, 0x3020, 0x2100, 0x7001, 0x3001, 0x7001,
+                0x7B30, 0x0900, 0x7B72, 0x0711, 0x0F09, 0x0912),
+            0x68 to intArrayOf(0x2DFF, 0xD017, 0x2D00, 0xD015, 0x7F60, 0x3801, 0x7760),
+            0x78 to intArrayOf(0x7930, 0x00C1, 0x1809, 0x0089, 0x1889, 0x1C20, 0xC81C,
+                0xC11C, 0xC88C, 0xC18C, 0xC894, 0xC194, 0xE027),
+            0x9E to intArrayOf(0x2000, 0x7748, 0x2400),
+            0xA6 to intArrayOf(0xE006),
+            0xB0 to intArrayOf(0x1C60, 0x0400, 0x0C04, 0x42BC, 0xD804),
+            0xC0 to intArrayOf(0x2801, 0xD1F5, 0x2DFF, 0xD004),
+            0xCA to intArrayOf(0x7900, 0x2102),
+            0xD4 to intArrayOf(0x7931, 0x00C8, 0x1840, 0x0080, 0x1880, 0x2100, 0x76C1),
+            0xE4 to intArrayOf(0x2000, 0x7008, 0x2001, 0xBCF0, 0xBC02, 0x4708),
+        )
+
+        private data class DispatcherLayout(
+            val size: Int,
+            val runs: List<Pair<Int, IntArray>>,
+            val temporaryPool: Int,
+            val temporaryReload: Int,
+            val temporaryReloadPool: Int,
+            val rendererRootLoad: Int,
+            val rendererRootPool: Int,
+            val copyRootLoad: Int,
+            val copyRootPool: Int,
+            val maskLoad: Int,
+            val maskPool: Int,
+            val printersLoad: Int,
+            val printersRegister: Int,
+            val printersPool: Int,
+            val printersReload: Int,
+            val printersReloadRegister: Int,
+            val printersReloadPool: Int,
+            val flagLoad: Int,
+            val flagPool: Int,
+            val colorCall: Int,
+            val rendererCall: Int,
+            val copyCall: Int,
+            val printerBytes: Int,
+        )
+
+        private val DISPATCHER_LAYOUTS = listOf(
+            DispatcherLayout(
+                0xE8, COMPACT_DISPATCHER,
+                0x84, 0x8C, 0x98, 0xAA, 0xDC, 0xB8, 0xDC, 0x94, 0x9C,
+                0x6A, 0, 0x88, 0xC2, 0, 0xE0, 0xCE, 0xE4,
+                0x58, 0xAC, 0xBE, 32,
+            ),
+            DispatcherLayout(
+                0xFC, WESTERN_DISPATCHER,
+                0x94, 0x9C, 0xA8, 0xBA, 0xF0, 0xC8, 0xF0, 0xA4, 0xAC,
+                0x76, 2, 0x98, 0xD2, 2, 0xF4, 0xE2, 0xF8,
+                0x64, 0xBC, 0xCE, 36,
+            ),
         )
 
         private val FRAME = listOf(

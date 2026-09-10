@@ -286,6 +286,24 @@ class CompiledGbaFieldMapTitleTest {
     }
 
     @Test
+    fun nominatesWesternInternationalTitleWithPublishedTextPrinterState() {
+        val f = Fixture(international = true, westernFlow = true)
+        f.printer.bytes[f.source] = 0xc2.toByte()
+        f.printer.bytes[f.source + 1] = 0xc9.toByte()
+        f.printer.bytes[f.source + 2] = 0xbf.toByte()
+        f.printer.bytes[f.source + 3] = 0xc8.toByte()
+        f.printer.bytes[f.source + 4] = 0xc8.toByte()
+        f.printer.bytes[f.source + 5] = 0xff.toByte()
+
+        val declaration = (f.nominate() as CompiledGbaFieldMapTitle.Result.Complete).declarations.single()
+        assertNotNull(declaration.windowFlow)
+        assertNotNull(declaration.ownerFlow)
+        val resolved = CompiledGbaFieldMapTitleText.resolve(
+            RomImage(f.printer.bytes), f.loader, PokemonTextCodec.gbaEnglish, ParserCancellationToken.NONE)
+        assertEquals("HOENN", (resolved as CompiledGbaFieldMapTitleText.Result.Resolved).value)
+    }
+
+    @Test
     fun legacyOwnerMayReachTheSelectedAssetLoaderThroughItsPublishedWrapper() {
         val f = LegacyFixture()
         f.routeOwnerThroughLoaderWrapper()
@@ -328,6 +346,27 @@ class CompiledGbaFieldMapTitleTest {
         f.word(f.owner + 0xB8, 0x08000000 + f.loaderWrapper)
         val declaration = (f.nominate() as CompiledGbaFieldMapTitle.Result.Complete).declarations.single()
         assertNull(declaration.ownerFlow)
+    }
+
+    @Test
+    fun nominatesPublishedWesternLegacyTitleThroughCenteredPrinter() {
+        val f = WesternLegacyFixture()
+        f.hoenn.copyInto(f.bytes, f.source)
+
+        val declaration = (f.nominate() as CompiledGbaFieldMapTitle.Result.Complete).declarations.single()
+        assertEquals(f.source, declaration.source)
+        assertNotNull(declaration.windowFlow)
+        assertNotNull(declaration.ownerFlow)
+        val resolved = CompiledGbaFieldMapTitleText.resolve(
+            RomImage(f.bytes), f.loader, PokemonTextCodec.gbaEnglish, ParserCancellationToken.NONE)
+        assertEquals("HOENN", (resolved as CompiledGbaFieldMapTitleText.Result.Resolved).value)
+    }
+
+    @Test
+    fun westernLegacyDamageRetainsAConnectedIncompleteContender() {
+        val f = WesternLegacyFixture()
+        f.op(f.owner + 0x76, 0x46c0)
+        assertTrue(f.nominate() is CompiledGbaFieldMapTitle.Result.Incomplete)
     }
 
     @Test
@@ -468,8 +507,121 @@ class CompiledGbaFieldMapTitleTest {
         }
     }
 
-    private class Fixture(val owner: Int = 0x400, private val international: Boolean = false) {
-        val printer = CompiledGbaTitleWindowFlowTest.Fixture(0x1480, 0x1800).code
+    private class WesternLegacyFixture(val owner: Int = 0x400) {
+        val bytes = ByteArray(0x4000)
+        val loader = 0x1800
+        val source = 0x3000
+        val frame = 0x1200
+        val printer = 0x1000
+        val hoenn = byteArrayOf(
+            0xc2.toByte(), 0xc9.toByte(), 0xbf.toByte(), 0xc8.toByte(), 0xc8.toByte(), 0xff.toByte())
+        private val centered = 0x1400
+        private val wrapper = 0x1d00
+        private val sharedWindow = 0x02001000
+
+        init {
+            ops(frame, 0xb570, 0xb081, 0x1c04, 0x1c0d, 0x1c16, 0x0624, 0x0e24, 0x062d,
+                0x0e2d, 0x0636, 0x0e36, 0x061b, 0x0e1b)
+            literal(frame + 0x1a, 0, frame + 0x34, sharedWindow)
+            ops(frame + 0x1c, 0x6800, 0x9300, 0x1c21, 0x1c2a, 0x1c33)
+            bl(frame + 0x26, 0x1780)
+            ops(frame + 0x2a, 0xb001, 0xbc70, 0xbc01, 0x4700)
+
+            ops(printer, 0xb570, 0xb082, 0x1c06, 0x1c0c, 0x0624, 0x0e24, 0x0612, 0x0e12,
+                0x041b, 0x0c1b)
+            literal(printer + 0x14, 0, printer + 0x34, sharedWindow)
+            op(printer + 0x16, 0x6800)
+            literal(printer + 0x18, 1, printer + 0x38, 0x02001004)
+            ops(printer + 0x1a, 0x880d, 0x9200, 0x9301, 0x1c31, 0x1c2a, 0x1c23)
+            bl(printer + 0x26, centered)
+            ops(printer + 0x2a, 0xb002, 0xbc70, 0xbc01, 0x4700)
+
+            ops(centered, 0xb570, 0x464e, 0x4645, 0xb460, 0xb082, 0x4680, 0x4689, 0x1c1c,
+                0x9e08, 0x9d09, 0x0412, 0x0c12, 0x0624, 0x0e24, 0x0636, 0x0e36,
+                0x042d, 0x9201)
+            bl(centered + 0x24, 0x17a0)
+            ops(centered + 0x28, 0x0c6d, 0x0600, 0x0e40, 0x1a2d, 0x062d, 0x0e2d, 0x08e8,
+                0x1824, 0x0624, 0x0e24, 0x9600, 0x4640, 0x4649, 0x9a01, 0x1c23)
+            bl(centered + 0x46, 0x17c0)
+            op(centered + 0x4a, 0x4640)
+            bl(centered + 0x4c, 0x17e0)
+            ops(centered + 0x50, 0x2107, 0x4029, 0x4640, 0x2200)
+            bl(centered + 0x58, 0x1820)
+            op(centered + 0x5c, 0x4640)
+            bl(centered + 0x5e, 0x1840)
+            ops(centered + 0x62, 0x0600, 0x0e00, 0xb002, 0xbc18, 0x4698, 0x46a1, 0xbc70,
+                0xbc02, 0x4708)
+
+            ops(wrapper, 0xb500, 0x0609, 0x0e09)
+            bl(wrapper + 6, 0x1860)
+            bl(wrapper + 10, loader)
+            ops(wrapper + 14, 0x0600, 0x2800, 0xd1fa, 0xbc01, 0x4700)
+
+            ops(owner, 0xb510, 0xb081, 0x2080, 0x04c0, 0x2100, 0x8001, 0x3010, 0x8001,
+                0x3002, 0x8001, 0x3002, 0x8001, 0x3002, 0x8001, 0x3002, 0x8001,
+                0x3002, 0x8001, 0x3002, 0x8001, 0x3002, 0x8001)
+            bl(owner + 0x2c, 0x1880)
+            bl(owner + 0x30, 0x18a0)
+            literal(owner + 0x34, 0, owner + 0xb4, 0x02000008)
+            op(owner + 0x36, 0x2100)
+            bl(owner + 0x38, wrapper)
+            ops(owner + 0x3c, 0x2000, 0x2100)
+            bl(owner + 0x40, 0x18c0)
+            ops(owner + 0x44, 0x2001, 0x2101)
+            bl(owner + 0x48, 0x18e0)
+            literal(owner + 0x4c, 4, owner + 0xb8, 0x08003200)
+            op(owner + 0x4e, 0x1c20)
+            bl(owner + 0x50, 0x1900)
+            op(owner + 0x54, 0x1c20)
+            bl(owner + 0x56, 0x1920)
+            bl(owner + 0x5a, 0x1940)
+            literal(owner + 0x5e, 1, owner + 0xbc, 0x04000008)
+            ops(owner + 0x60, 0x22f8, 0x0152, 0x1c10, 0x8008, 0x2015, 0x2100, 0x221d, 0x2303)
+            bl(owner + 0x70, frame)
+            literal(owner + 0x74, 0, owner + 0xc0, 0x08000000 + source)
+            ops(owner + 0x76, 0x2116, 0x2201, 0x2338)
+            bl(owner + 0x7c, printer)
+            ops(owner + 0x80, 0x2010, 0x2110, 0x221d, 0x2313)
+            bl(owner + 0x88, frame)
+            bl(owner + 0x8c, 0x1960)
+            literal(owner + 0x90, 0, owner + 0xc4, 0x08001981)
+            bl(owner + 0x92, 0x19a0)
+            literal(owner + 0x96, 0, owner + 0xc8, 0x080019c1)
+            bl(owner + 0x98, 0x19e0)
+            ops(owner + 0x9c, 0x2001, 0x4240, 0x2100, 0x9100, 0x2210, 0x2300)
+            bl(owner + 0xa8, 0x1a00)
+            ops(owner + 0xac, 0xb001, 0xbc10, 0xbc01, 0x4700)
+        }
+
+        fun nominate() = CompiledGbaFieldMapTitle.nominate(
+            RomImage(bytes), loader, ParserCancellationToken.NONE)
+        fun op(at: Int, value: Int) {
+            bytes[at] = value.toByte()
+            bytes[at + 1] = (value ushr 8).toByte()
+        }
+        private fun ops(at: Int, vararg values: Int) =
+            values.forEachIndexed { index, value -> op(at + index * 2, value) }
+        private fun word(at: Int, value: Int) =
+            repeat(4) { bytes[at + it] = (value ushr (it * 8)).toByte() }
+        private fun literal(at: Int, register: Int, pool: Int, value: Int) {
+            val delta = pool - ((at + 4) and -4)
+            require(delta in 0..1020 && delta and 3 == 0)
+            op(at, 0x4800 or (register shl 8) or (delta / 4))
+            word(pool, value)
+        }
+        private fun bl(at: Int, target: Int) {
+            val delta = (target - at - 4) and 0x7fffff
+            op(at, 0xf000 or (delta ushr 12))
+            op(at + 2, 0xf800 or ((delta ushr 1) and 0x7ff))
+        }
+    }
+
+    private class Fixture(
+        val owner: Int = 0x400,
+        private val international: Boolean = false,
+        westernFlow: Boolean = false,
+    ) {
+        val printer = CompiledGbaTitleWindowFlowTest.Fixture(0x1480, 0x1800, westernFlow).code
         val loader = 0x1200
         val wrapper = 0x1300
         val source = 0x1c00
