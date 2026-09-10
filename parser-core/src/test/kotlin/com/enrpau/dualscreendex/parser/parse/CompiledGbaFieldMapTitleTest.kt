@@ -267,6 +267,70 @@ class CompiledGbaFieldMapTitleTest {
     }
 
     @Test
+    fun nominatesInternationalFieldMapTitleFromThePublishedCompiledLayout() {
+        val f = Fixture(international = true)
+        f.printer.bytes[f.source] = 0xc2.toByte()
+        f.printer.bytes[f.source + 1] = 0xc9.toByte()
+        f.printer.bytes[f.source + 2] = 0xbf.toByte()
+        f.printer.bytes[f.source + 3] = 0xc8.toByte()
+        f.printer.bytes[f.source + 4] = 0xc8.toByte()
+        f.printer.bytes[f.source + 5] = 0xff.toByte()
+
+        val declaration = (f.nominate() as CompiledGbaFieldMapTitle.Result.Complete).declarations.single()
+        assertEquals(f.source, declaration.source)
+        assertNotNull(declaration.windowFlow)
+        assertNotNull(declaration.ownerFlow)
+        val resolved = CompiledGbaFieldMapTitleText.resolve(
+            RomImage(f.printer.bytes), f.loader, PokemonTextCodec.gbaEnglish, ParserCancellationToken.NONE)
+        assertEquals("HOENN", (resolved as CompiledGbaFieldMapTitleText.Result.Resolved).value)
+    }
+
+    @Test
+    fun legacyOwnerMayReachTheSelectedAssetLoaderThroughItsPublishedWrapper() {
+        val f = LegacyFixture()
+        f.routeOwnerThroughLoaderWrapper()
+        f.hoenn.copyInto(f.bytes, f.source)
+
+        val declaration = (f.nominate() as CompiledGbaFieldMapTitle.Result.Complete).declarations.single()
+        assertNotNull(declaration.ownerFlow)
+        val resolved = CompiledGbaFieldMapTitleText.resolve(
+            RomImage(f.bytes), f.loader, PokemonTextCodec.gbaEnglish, ParserCancellationToken.NONE)
+        assertEquals("HOENN", (resolved as CompiledGbaFieldMapTitleText.Result.Resolved).value)
+    }
+
+    @Test
+    fun malformedLegacyLoaderWrapperRemainsAnIncompleteContender() {
+        val f = LegacyFixture()
+        f.routeOwnerThroughLoaderWrapper()
+        f.op(f.loaderWrapper + 16, 0xd0fa)
+        assertTrue(f.nominate() is CompiledGbaFieldMapTitle.Result.Incomplete)
+    }
+
+    @Test
+    fun internationalLayoutDamageCannotRetainTitleAuthority() {
+        for (relative in listOf(0x7E, 0x84, 0x88, 0x9C, 0xA2, 0xB2, 0xB6, 0xC2, 0xD4, 0x158)) {
+            val f = Fixture(international = true)
+            f.printer.op(f.owner + relative, 0x46C0)
+            val result = f.nominate()
+            if (relative <= 0xC2) {
+                assertTrue("owner relative=$relative", result is CompiledGbaFieldMapTitle.Result.Incomplete)
+            } else {
+                val declaration = (result as CompiledGbaFieldMapTitle.Result.Complete).declarations.single()
+                assertNull("owner relative=$relative", declaration.ownerFlow)
+            }
+        }
+    }
+
+    @Test
+    fun legacyWrapperCannotAliasTheStaticTitleSource() {
+        val f = LegacyFixture()
+        f.routeOwnerThroughLoaderWrapper()
+        f.word(f.owner + 0xB8, 0x08000000 + f.loaderWrapper)
+        val declaration = (f.nominate() as CompiledGbaFieldMapTitle.Result.Complete).declarations.single()
+        assertNull(declaration.ownerFlow)
+    }
+
+    @Test
     fun cancellationOccursDuringScanAndBeforeInvalidInput() {
         val f = Fixture()
         var checks = 0
@@ -299,6 +363,7 @@ class CompiledGbaFieldMapTitleTest {
     private class LegacyFixture(val owner: Int = 0x400) {
         val bytes = ByteArray(0x4000)
         val loader = 0x1800
+        val loaderWrapper = 0x1d00
         val source = 0x3000
         val frame = 0x1200
         val printer = 0x1000
@@ -374,6 +439,14 @@ class CompiledGbaFieldMapTitleTest {
             ops(owner + 0xa8, 0xb001, 0xbc01, 0x4700)
         }
 
+        fun routeOwnerThroughLoaderWrapper() {
+            ops(loaderWrapper, 0xb500, 0x0609, 0x0e09)
+            bl(loaderWrapper + 6, 0x1e00)
+            bl(loaderWrapper + 10, loader)
+            ops(loaderWrapper + 14, 0x0600, 0x2800, 0xd1fa, 0xbc01, 0x4700)
+            bl(owner + 0x38, loaderWrapper)
+        }
+
         fun nominate(maximumOwners: Int = 32) = CompiledGbaFieldMapTitle.nominate(
             RomImage(bytes), loader, ParserCancellationToken.NONE, maximumOwners)
         fun op(at: Int, value: Int) {
@@ -395,7 +468,7 @@ class CompiledGbaFieldMapTitleTest {
         }
     }
 
-    private class Fixture(val owner: Int = 0x400) {
+    private class Fixture(val owner: Int = 0x400, private val international: Boolean = false) {
         val printer = CompiledGbaTitleWindowFlowTest.Fixture(0x1480, 0x1800).code
         val loader = 0x1200
         val wrapper = 0x1300
@@ -411,11 +484,14 @@ class CompiledGbaFieldMapTitleTest {
         }
 
         fun addOwner(owner: Int, source: Int) {
+            val lateShift = if (international) 0xc else 0
+            fun late(relative: Int) = owner + relative + lateShift
             val table = owner + 0x2c
             val initial = owner + 0x48
             val title = owner + 0x70
-            val increment = owner + 0x13c
-            val end = owner + 0x17a
+            val increment = late(0x13c)
+            val end = late(0x17a)
+            val dynamic = late(0x18c)
             val handlerRoot = 0x02000100
             val stateOffset = 0x220
             val fadeRoot = 0x02000800
@@ -429,7 +505,7 @@ class CompiledGbaFieldMapTitleTest {
             literal(owner + 0x18, 1, owner + 0x28, 0x08000000 + table)
             printer.ops(owner + 0x1a, 0x1840, 0x6800, 0x4687)
             listOf(0x48, 0x70, 0xbc, 0xe4, 0xf8, 0x124, 0x14c).forEachIndexed { i, arm ->
-                printer.word(table + i * 4, 0x08000000 + owner + arm)
+                printer.word(table + i * 4, 0x08000000 + owner + arm + if (i >= 2) lateShift else 0)
             }
 
             printer.ops(initial, 0x6820, 0x3008, 0x2100)
@@ -443,84 +519,102 @@ class CompiledGbaFieldMapTitleTest {
             printer.op(initial + 30, 0x1809)
             branch(initial + 32, increment)
 
-            printer.ops(title, 0x2003, 0x2100, 0x2227, 0x230d)
-            printer.bl(title + 8, 0x1480)
-            literal(title + 12, 2, owner + 0xb8, 0x08000000 + source)
-            printer.ops(title + 14, 0x2002, 0x9000, 0x2400, 0x9401, 0x9402, 0x2003, 0x2101, 0x2300)
-            printer.bl(title + 30, printer.entry)
-            printer.op(title + 34, 0x2000)
-            printer.bl(title + 36, 0x1720)
-            printer.ops(title + 40, 0x2000, 0x2100, 0x2227, 0x230d)
-            printer.bl(title + 48, 0x1480)
-            printer.bl(title + 52, owner + 0x18c)
-            printer.ops(title + 56, 0x2001, 0x4240, 0x9400, 0x2100, 0x2210, 0x2300)
-            branch(title + 68, owner + 0x130)
+            if (international) {
+                printer.ops(title, 0x2001, 0x2100, 0x2227, 0x230d)
+                printer.bl(title + 8, 0x1480)
+                literal(title + 12, 5, late(0xb8), 0x08000000 + source)
+                printer.ops(title + 14, 0x2001, 0x1c29, 0x2238)
+                printer.bl(title + 20, 0x1420)
+                printer.ops(title + 24, 0x1c03, 0x061b, 0x0e1b, 0x2001, 0x9000, 0x2400,
+                    0x9401, 0x9402, 0x2101, 0x1c2a)
+                printer.bl(title + 44, printer.entry)
+                printer.op(title + 48, 0x2000)
+                printer.bl(title + 50, 0x1720)
+                printer.ops(title + 54, 0x2000, 0x2100, 0x2227, 0x230d)
+                printer.bl(title + 62, 0x1480)
+                printer.bl(title + 66, dynamic)
+                printer.ops(title + 70, 0x2001, 0x4240, 0x9400, 0x2100, 0x2210, 0x2300)
+                branch(title + 82, late(0x130))
+            } else {
+                printer.ops(title, 0x2003, 0x2100, 0x2227, 0x230d)
+                printer.bl(title + 8, 0x1480)
+                literal(title + 12, 2, owner + 0xb8, 0x08000000 + source)
+                printer.ops(title + 14, 0x2002, 0x9000, 0x2400, 0x9401, 0x9402, 0x2003, 0x2101, 0x2300)
+                printer.bl(title + 30, printer.entry)
+                printer.op(title + 34, 0x2000)
+                printer.bl(title + 36, 0x1720)
+                printer.ops(title + 40, 0x2000, 0x2100, 0x2227, 0x230d)
+                printer.bl(title + 48, 0x1480)
+                printer.bl(title + 52, dynamic)
+                printer.ops(title + 56, 0x2001, 0x4240, 0x9400, 0x2100, 0x2210, 0x2300)
+                branch(title + 68, late(0x130))
+            }
 
-            printer.ops(owner + 0xbc, 0x2182, 0x0149, 0x2000)
-            printer.bl(owner + 0xc2, 0x1a00)
-            printer.op(owner + 0xc6, 0x2000)
-            printer.bl(owner + 0xc8, 0x1a20)
-            printer.op(owner + 0xcc, 0x2002)
-            printer.bl(owner + 0xce, 0x1a20)
-            literal(owner + 0xd2, 0, owner + 0xdc, handlerRoot)
-            printer.op(owner + 0xd4, 0x6801)
-            literal(owner + 0xd6, 0, owner + 0xe0, stateOffset)
-            printer.op(owner + 0xd8, 0x1809)
-            branch(owner + 0xda, increment)
+            printer.ops(late(0xbc), 0x2182, 0x0149, 0x2000)
+            printer.bl(late(0xc2), 0x1a00)
+            printer.op(late(0xc6), 0x2000)
+            printer.bl(late(0xc8), 0x1a20)
+            printer.op(late(0xcc), 0x2002)
+            printer.bl(late(0xce), 0x1a20)
+            literal(late(0xd2), 0, late(0xdc), handlerRoot)
+            printer.op(late(0xd4), 0x6801)
+            literal(late(0xd6), 0, late(0xe0), stateOffset)
+            printer.op(late(0xd8), 0x1809)
+            branch(late(0xda), increment)
 
-            literal(owner + 0xe4, 0, owner + 0xf4, fadeRoot)
-            printer.ops(owner + 0xe6, 0x79c1, 0x2080, 0x4008, 0x2800)
-            conditionalBranch(owner + 0xee, 1, end)
-            printer.op(owner + 0xf0, 0x6821)
-            branch(owner + 0xf2, owner + 0x138)
+            literal(late(0xe4), 0, late(0xf4), fadeRoot)
+            printer.ops(late(0xe6), 0x79c1, 0x2080, 0x4008, 0x2800)
+            conditionalBranch(late(0xee), 1, end)
+            printer.op(late(0xf0), 0x6821)
+            branch(late(0xf2), late(0x138))
 
-            printer.bl(owner + 0xf8, 0x1a40)
-            printer.ops(owner + 0xfc, 0x0600, 0x0e00, 0x2803)
-            conditionalBranch(owner + 0x102, 1, owner + 0x10a)
-            printer.bl(owner + 0x104, owner + 0x18c)
-            branch(owner + 0x108, end)
-            printer.op(owner + 0x10a, 0x2803)
-            conditionalBranch(owner + 0x10c, 0xb, end)
-            printer.op(owner + 0x10e, 0x2805)
-            conditionalBranch(owner + 0x110, 0xc, end)
-            literal(owner + 0x112, 0, owner + 0x11c, handlerRoot)
-            printer.op(owner + 0x114, 0x6801)
-            literal(owner + 0x116, 0, owner + 0x120, stateOffset)
-            printer.op(owner + 0x118, 0x1809)
-            branch(owner + 0x11a, increment)
+            printer.bl(late(0xf8), 0x1a40)
+            printer.ops(late(0xfc), 0x0600, 0x0e00, 0x2803)
+            conditionalBranch(late(0x102), 1, late(0x10a))
+            printer.bl(late(0x104), dynamic)
+            branch(late(0x108), end)
+            printer.op(late(0x10a), 0x2803)
+            conditionalBranch(late(0x10c), 0xb, end)
+            printer.op(late(0x10e), 0x2805)
+            conditionalBranch(late(0x110), 0xc, end)
+            literal(late(0x112), 0, late(0x11c), handlerRoot)
+            printer.op(late(0x114), 0x6801)
+            literal(late(0x116), 0, late(0x120), stateOffset)
+            printer.op(late(0x118), 0x1809)
+            branch(late(0x11a), increment)
 
-            printer.ops(owner + 0x124, 0x2001, 0x4240, 0x2100, 0x9100, 0x2200, 0x2310)
-            printer.bl(owner + 0x130, 0x1760)
-            literal(owner + 0x134, 0, owner + 0x144, handlerRoot)
-            printer.op(owner + 0x136, 0x6801)
-            literal(owner + 0x138, 2, owner + 0x148, stateOffset)
-            printer.op(owner + 0x13a, 0x1889)
+            printer.ops(late(0x124), 0x2001, 0x4240, 0x2100, 0x9100, 0x2200, 0x2310)
+            printer.bl(late(0x130), 0x1760)
+            literal(late(0x134), 0, late(0x144), handlerRoot)
+            printer.op(late(0x136), 0x6801)
+            literal(late(0x138), 2, late(0x148), stateOffset)
+            printer.op(late(0x13a), 0x1889)
             printer.ops(increment, 0x8808, 0x3001, 0x8008)
             branch(increment + 6, end)
 
-            literal(owner + 0x14c, 0, owner + 0x184, fadeRoot)
-            printer.ops(owner + 0x14e, 0x79c1, 0x2080, 0x4008, 0x0600, 0x0e05, 0x2d00)
-            conditionalBranch(owner + 0x15a, 1, end)
-            printer.bl(owner + 0x15c, 0x1a60)
-            literal(owner + 0x160, 4, owner + 0x188, handlerRoot)
-            printer.ops(owner + 0x162, 0x6820, 0x6800)
-            printer.bl(owner + 0x166, 0x1a80)
-            printer.ops(owner + 0x16a, 0x6820, 0x2800)
-            conditionalBranch(owner + 0x16e, 0, owner + 0x176)
-            printer.bl(owner + 0x170, 0x1aa0)
-            printer.op(owner + 0x174, 0x6025)
-            printer.bl(owner + 0x176, 0x1ac0)
+            literal(late(0x14c), 0, late(0x184), fadeRoot)
+            printer.ops(late(0x14e), 0x79c1, 0x2080, 0x4008, 0x0600, 0x0e05, 0x2d00)
+            conditionalBranch(late(0x15a), 1, end)
+            printer.bl(late(0x15c), 0x1a60)
+            literal(late(0x160), 4, late(0x188), handlerRoot)
+            printer.ops(late(0x162), 0x6820, 0x6800)
+            printer.bl(late(0x166), 0x1a80)
+            printer.ops(late(0x16a), 0x6820, 0x2800)
+            conditionalBranch(late(0x16e), 0, late(0x176))
+            printer.bl(late(0x170), 0x1aa0)
+            printer.op(late(0x174), 0x6025)
+            printer.bl(late(0x176), 0x1ac0)
             printer.ops(end, 0xb003, 0xbc30, 0xbc01, 0x4700)
 
-            printer.word(owner + 0xdc, handlerRoot)
-            printer.word(owner + 0xe0, stateOffset)
-            printer.word(owner + 0xf4, fadeRoot)
-            printer.word(owner + 0x11c, handlerRoot)
-            printer.word(owner + 0x120, stateOffset)
-            printer.word(owner + 0x144, handlerRoot)
-            printer.word(owner + 0x148, stateOffset)
-            printer.word(owner + 0x184, fadeRoot)
-            printer.word(owner + 0x188, handlerRoot)
+            printer.word(late(0xdc), handlerRoot)
+            printer.word(late(0xe0), stateOffset)
+            printer.word(late(0xf4), fadeRoot)
+            printer.word(late(0x11c), handlerRoot)
+            printer.word(late(0x120), stateOffset)
+            printer.word(late(0x144), handlerRoot)
+            printer.word(late(0x148), stateOffset)
+            printer.word(late(0x184), fadeRoot)
+            printer.word(late(0x188), handlerRoot)
         }
 
         fun nominate(selected: Int = loader, maximumOwners: Int = 32) = CompiledGbaFieldMapTitle.nominate(

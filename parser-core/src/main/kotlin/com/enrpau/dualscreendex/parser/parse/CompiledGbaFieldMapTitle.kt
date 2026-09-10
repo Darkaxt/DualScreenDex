@@ -65,7 +65,16 @@ internal object CompiledGbaFieldMapTitle {
         return Result.Complete(declarations.toList())
     }
 
-    private fun declaration(r: Reader, owner: Int, loader: Int, cancellation: ParserCancellationToken): Declaration? {
+    private fun declaration(r: Reader, owner: Int, loader: Int, cancellation: ParserCancellationToken): Declaration? =
+        compactDeclaration(r, owner, loader, cancellation)
+            ?: internationalDeclaration(r, owner, loader, cancellation)
+
+    private fun compactDeclaration(
+        r: Reader,
+        owner: Int,
+        loader: Int,
+        cancellation: ParserCancellationToken,
+    ): Declaration? {
         if (!r.ops(owner, 0xB530, 0xB083) || !r.ops(owner + 6, 0x6808) ||
             !r.ops(owner + 0xA, 0x1880, 0x8800, 0x1C0C, 0x2806, 0xD900) ||
             !r.ops(owner + 0x16, 0x0080) || !r.ops(owner + 0x1A, 0x1840, 0x6800, 0x4687)
@@ -113,6 +122,74 @@ internal object CompiledGbaFieldMapTitle {
         val printer = r.call(title + 30) ?: return null
         CompiledGbaTextPrinter.resolve(r.rom, printer, cancellation) ?: return null
         // Missing consumer flow must not remove a contender or turn a nomination into title authority.
+        val flow = CompiledGbaTitleWindowFlow.resolve(r.rom, printer, frame, window, cancellation)
+        val declaration = Declaration(owner, loader, source, window, printer, frame, flow)
+        val ownerFlow = CompiledGbaFieldMapOwnerFlow.resolve(r.rom, declaration, cancellation)
+        return declaration.copy(ownerFlow = ownerFlow)
+    }
+
+    private fun internationalDeclaration(
+        r: Reader,
+        owner: Int,
+        loader: Int,
+        cancellation: ParserCancellationToken,
+    ): Declaration? {
+        if (!r.ops(owner, 0xB530, 0xB083) || !r.ops(owner + 6, 0x6808) ||
+            !r.ops(owner + 0xA, 0x1880, 0x8800, 0x1C0C, 0x2806, 0xD900) ||
+            !r.ops(owner + 0x16, 0x0080) || !r.ops(owner + 0x1A, 0x1840, 0x6800, 0x4687)
+        ) return null
+        val root = r.literal(owner + 4, 1) ?: return null
+        if (!r.ramWord(root)) return null
+        val stateOffset = r.literal(owner + 8, 2) ?: return null
+        if (stateOffset !in 0..0xFFFF || stateOffset and 1L != 0L) return null
+        val table = r.literal(owner + 0x18, 1)?.let(r::romOffset) ?: return null
+        if (table and 3 != 0 || table < owner + 32 || !r.range(table, 28)) return null
+        val arms = (0..6).map { r.pointer(table + it * 4) ?: return null }
+        if (arms.distinct().size != 7 || arms.any { it < table + 28 || it.toLong() > owner.toLong() + 512 })
+            return null
+        val end = r.branch(owner + 0x14) ?: return null
+        if (end <= arms.max() || end.toLong() > owner.toLong() + 512 ||
+            !r.ops(end, 0xB003, 0xBC30, 0xBC01, 0x4700)
+        ) return null
+        val initial = arms[0]
+        if (!r.ops(initial, 0x6820, 0x3008, 0x2100)) return null
+        val wrapper = r.call(initial + 6) ?: return null
+        if (!r.ops(wrapper, 0xB500, 0x060A, 0x0E12, 0x2100) ||
+            r.call(wrapper + 8) == null || r.call(wrapper + 12) != loader ||
+            !r.ops(wrapper + 16, 0x0600, 0x2800, 0xD1FA, 0xBC01, 0x4700)
+        ) return null
+        if (!r.ops(initial + 10, 0x2000, 0x2100) || r.call(initial + 14) == null ||
+            !r.ops(initial + 18, 0x2001, 0x2101) || r.call(initial + 22) == null ||
+            !r.ops(initial + 26, 0x6821) || r.literal(initial + 28, 0) != stateOffset ||
+            !r.ops(initial + 30, 0x1809)
+        ) return null
+        val increment = r.branch(initial + 32) ?: return null
+        if (increment <= arms[1] || increment >= end || !r.ops(increment, 0x8808, 0x3001, 0x8008) ||
+            r.branch(increment + 6) != end
+        ) return null
+
+        val title = arms[1]
+        if (title < initial + 34 || title + 88 != arms[2]) return null
+        val window = r.immediate(title, 0) ?: return null
+        if (window == 0 || !r.ops(title + 2, 0x2100) || r.immediate(title + 4, 2) == null ||
+            r.immediate(title + 6, 3) == null
+        ) return null
+        val frame = r.call(title + 8) ?: return null
+        val source = r.literal(title + 12, 5)?.let(r::romOffset) ?: return null
+        if (!r.ops(title + 14, 0x2001, 0x1C29, 0x2238) || r.call(title + 20) == null ||
+            !r.ops(title + 24, 0x1C03, 0x061B, 0x0E1B, 0x2001, 0x9000, 0x2400,
+                0x9401, 0x9402, 0x2101, 0x1C2A)
+        ) return null
+        val printer = r.call(title + 44) ?: return null
+        if (!r.ops(title + 48, 0x2000) || r.call(title + 50) == null ||
+            !r.ops(title + 54, 0x2000, 0x2100) ||
+            r.immediate(title + 58, 2) != r.immediate(title + 4, 2) ||
+            r.immediate(title + 60, 3) != r.immediate(title + 6, 3) ||
+            r.call(title + 62) != frame || r.call(title + 66) == null ||
+            !r.ops(title + 70, 0x2001, 0x4240, 0x9400, 0x2100, 0x2210, 0x2300) ||
+            r.branch(title + 82) == null
+        ) return null
+        CompiledGbaTextPrinter.resolve(r.rom, printer, cancellation) ?: return null
         val flow = CompiledGbaTitleWindowFlow.resolve(r.rom, printer, frame, window, cancellation)
         val declaration = Declaration(owner, loader, source, window, printer, frame, flow)
         val ownerFlow = CompiledGbaFieldMapOwnerFlow.resolve(r.rom, declaration, cancellation)

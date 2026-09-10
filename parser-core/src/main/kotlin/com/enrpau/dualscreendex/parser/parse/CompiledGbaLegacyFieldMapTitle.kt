@@ -21,7 +21,25 @@ internal object CompiledGbaLegacyFieldMapTitle {
             r.externalCall(owner + 0x2C, owner, OWNER_SIZE) &&
             r.externalCall(owner + 0x30, owner, OWNER_SIZE) &&
             r.literal(owner + 0x34, 0)?.let(::ramWord) == true &&
-            r.ops(owner + 0x36, 0x2100) && r.call(owner + 0x38) == selectedLoader
+            r.ops(owner + 0x36, 0x2100) && loaderConnected(r, owner, selectedLoader)
+    }
+
+    private fun loaderConnected(r: Reader, owner: Int, selectedLoader: Int): Boolean {
+        val entry = r.call(owner + 0x38) ?: return false
+        return entry == selectedLoader ||
+            (r.ops(entry, 0xB500, 0x0609, 0x0E09) && r.call(entry + 10) == selectedLoader)
+    }
+
+    internal fun loaderEntry(r: Reader, owner: Int, selectedLoader: Int): Int? {
+        val entry = r.call(owner + 0x38) ?: return null
+        if (entry == selectedLoader) return entry
+        if (selectedLoader in entry until entry + LOADER_WRAPPER_SIZE ||
+            !r.ops(entry, 0xB500, 0x0609, 0x0E09) ||
+            !r.externalCall(entry + 6, entry, LOADER_WRAPPER_SIZE) ||
+            r.call(entry + 10) != selectedLoader ||
+            !r.ops(entry + 14, 0x0600, 0x2800, 0xD1FA, 0xBC01, 0x4700)
+        ) return null
+        return entry
     }
 
     fun declaration(
@@ -32,7 +50,7 @@ internal object CompiledGbaLegacyFieldMapTitle {
     ): CompiledGbaFieldMapTitle.Declaration? {
         cancellation.throwIfCancellationRequested()
         val r = Reader(rom)
-        if (!connected(r, owner, selectedLoader)) return null
+        if (!connected(r, owner, selectedLoader) || loaderEntry(r, owner, selectedLoader) == null) return null
         val stateRoot = r.literal(owner + 0x34, 0) ?: return null
         if (!r.ops(owner + 0x3C, 0x2000, 0x2100) ||
             !r.externalCall(owner + 0x40, owner, OWNER_SIZE) ||
@@ -77,6 +95,7 @@ internal object CompiledGbaLegacyFieldMapTitle {
         (raw in 0x02000000L..0x0203FFFCL || raw in 0x03000000L..0x03007FFCL)
 
     private const val OWNER_SIZE = 0xC4
+    private const val LOADER_WRAPPER_SIZE = 0x18
     private const val DISPLAY_CONTROL = 0x04000008L
 
     internal class Reader(val rom: RomImage) {
@@ -191,13 +210,16 @@ internal class CompiledGbaLegacyFieldMapOwnerFlow private constructor(
             val flow = declaration.windowFlow as? CompiledGbaLegacyTitleWindowFlow ?: return null
             if (declaration.window.toLong() != flow.windowRoot || declaration.owner < 0xC0 ||
                 declaration.owner and 3 != 0 || !ramWord(stateRoot)) return null
-            val ranges = listOf(
-                declaration.owner to 0xC4,
-                declaration.printer to 0x32,
-                declaration.frame to 0x38,
-                flow.centeredOffset to 0x30,
-                flow.initializerOffset to 0x20,
-            )
+            val loaderEntry = CompiledGbaLegacyFieldMapTitle.loaderEntry(
+                CompiledGbaLegacyFieldMapTitle.Reader(rom), declaration.owner, declaration.loader) ?: return null
+            val ranges = buildList {
+                add(declaration.owner to 0xC4)
+                add(declaration.printer to 0x32)
+                add(declaration.frame to 0x38)
+                add(flow.centeredOffset to 0x30)
+                add(flow.initializerOffset to 0x20)
+                if (loaderEntry != declaration.loader) add(loaderEntry to 0x18)
+            }
             val source = declaration.source
             if (source < 0xC0 || source >= rom.size || ranges.any { (start, size) ->
                     source in start until start + size
