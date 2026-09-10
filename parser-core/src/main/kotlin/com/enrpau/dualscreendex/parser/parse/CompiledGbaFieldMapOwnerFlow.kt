@@ -7,7 +7,7 @@ import com.enrpau.dualscreendex.parser.io.RomImage
 internal class CompiledGbaFieldMapOwnerFlow private constructor(
     val dynamicSectionPrinterOffset: Int,
     val fadeOffset: Int,
-) {
+) : CompiledGbaFieldMapOwnerAuthority {
     companion object {
         fun resolve(
             rom: RomImage,
@@ -15,7 +15,7 @@ internal class CompiledGbaFieldMapOwnerFlow private constructor(
             cancellation: ParserCancellationToken,
         ): CompiledGbaFieldMapOwnerFlow? {
             cancellation.throwIfCancellationRequested()
-            val windowFlow = declaration.windowFlow ?: return null
+            val windowFlow = declaration.windowFlow as? CompiledGbaTitleWindowFlow ?: return null
             if (declaration.window == 0) return null
             val r = Reader(rom)
             val owner = declaration.owner

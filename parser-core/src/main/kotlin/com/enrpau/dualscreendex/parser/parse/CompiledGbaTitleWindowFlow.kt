@@ -9,7 +9,7 @@ internal data class CompiledGbaTitleWindowFlow private constructor(
     val rendererOffset: Int,
     val frameCallbackOffset: Int,
     val windowCopyOffset: Int,
-) {
+) : CompiledGbaTitleWindowAuthority {
     companion object {
         fun resolve(rom: RomImage, printer: Int, frame: Int, window: Int,
             cancellation: ParserCancellationToken): CompiledGbaTitleWindowFlow? {

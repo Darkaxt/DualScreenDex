@@ -441,7 +441,7 @@ class CatalogStoreTest {
     }
 
     @Test
-    fun revision65CachesWithoutAuthorizedRegionTitlesAreRejectedAndCurrentReopens() {
+    fun revision66CachesWithoutLegacyRegionTitlesAreRejectedAndCurrentReopens() {
         val root = newRoot().toFile()
         val cache = CatalogCache(root, JdbcCatalogDatabaseFactory)
         val map = WorldMapCatalog(
@@ -461,8 +461,8 @@ class CatalogStoreTest {
         val source = CatalogSourceMetadata.direct("Synthetic.gba", 65536, "SYNTHETIC")
         cache.write(catalog, source, CatalogWriteProgress.complete())
         JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
-            database.execute("UPDATE catalog_metadata SET parser_schema_version = 65 WHERE id = 1")
-            assertNull("revision65 could persist a null or unproved GBA region title",
+            database.execute("UPDATE catalog_metadata SET parser_schema_version = 66 WHERE id = 1")
+            assertNull("revision66 could persist a null Ruby/Sapphire region title",
                 CatalogReader(database).readComplete())
         }
         assertNull(CatalogCache(root, JdbcCatalogDatabaseFactory).readComplete(catalog.romSha256))

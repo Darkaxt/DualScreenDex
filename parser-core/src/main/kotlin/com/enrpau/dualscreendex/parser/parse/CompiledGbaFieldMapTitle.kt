@@ -12,8 +12,8 @@ internal object CompiledGbaFieldMapTitle {
         val window: Int,
         val printer: Int,
         val frame: Int,
-        val windowFlow: CompiledGbaTitleWindowFlow? = null,
-        val ownerFlow: CompiledGbaFieldMapOwnerFlow? = null,
+        val windowFlow: CompiledGbaTitleWindowAuthority? = null,
+        val ownerFlow: CompiledGbaFieldMapOwnerAuthority? = null,
     )
 
     sealed interface Result {
@@ -32,6 +32,7 @@ internal object CompiledGbaFieldMapTitle {
             selectedLoader.toLong() + 2 > rom.size || maximumOwners !in 1..32
         ) return Result.Incomplete("invalid selected loader or owner budget")
         val reader = Reader(rom)
+        val legacy = CompiledGbaLegacyFieldMapTitle.scanner(rom)
         val declarations = mutableListOf<Declaration>()
         var observed = 0
         var owner = 0xC0
@@ -50,6 +51,13 @@ internal object CompiledGbaFieldMapTitle {
                         ?: return Result.Incomplete("connected field-map declaration is unproved")
                     declarations += declaration
                 }
+            } else if (legacy.connected(owner, selectedLoader)) {
+                observed++
+                if (observed > maximumOwners) return Result.Incomplete("field-map owner budget exceeded")
+                val declaration = CompiledGbaLegacyFieldMapTitle.declaration(
+                    rom, owner, selectedLoader, cancellation)
+                    ?: return Result.Incomplete("connected legacy field-map declaration is unproved")
+                declarations += declaration
             }
             owner += 2
         }

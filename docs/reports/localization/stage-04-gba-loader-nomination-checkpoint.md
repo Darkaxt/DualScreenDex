@@ -4,8 +4,8 @@ Task 419 under Task 417 / `LNG-B002` / `LNG-B003`; this report records the
 serial nomination, authority and publication checkpoints. The initial collector
 checkpoint used source `f9b10f808af6594857815d81952360c333027484` and all
 checkpoints through complete owner recognition emitted no production titles at
-**65/2/1**. The latest supported Emerald-style publication checkpoint below moves
-the parser/storage/codec revisions to **66/2/1**.
+**65/2/1**. Emerald publication moved the revisions to **66/2/1**; the supported
+Ruby/Sapphire legacy title ABI now moves them to **67/2/1**.
 
 ## Evidence acquisition
 
@@ -290,16 +290,78 @@ remains unchanged.
 | Two-test catalog-store XML | `a395b9121796dd69e40e49377a1dd5929f0aedc70e76353d1817dd2d27231484` |
 | One-test API XML | `5424c758dcd650de4d850b7dd74e8d0ddcd299a3d764c14b8a9a3c16c59cf99b` |
 
+## Ruby/Sapphire legacy title authority checkpoint
+
+Ruby/Sapphire's field-region-map owner uses the older menu-window ABI rather than
+the Emerald packet/dispatcher ABI. A second structural recognizer now proves the
+complete retained owner sequence, selected map-loader call, title-frame geometry,
+static title literal, centered-printer chain, shared menu-window root, main and
+VBlank callbacks, fade call and balanced return. The previously missing exact
+**32-byte** initializer prefix was supplied by its separately reviewed retained
+capture; no new original access occurred during implementation or verification.
+The recognizer shares the existing 32-owner ceiling and one complete-ROM scan with
+the Emerald recognizer. Code, data and RAM roots may relocate. No ROM identity,
+hash, language or decoded payload selects either ABI.
+
+The generalized window/owner authority interfaces preserve the two independent
+proofs without letting a legacy declaration enter the Emerald resolver. Connected
+legacy damage returns `Incomplete`; consumer damage retains an unauthorized
+contender; source/code aliases, multiple owners and owner-budget exhaustion all
+fail closed. Strict title decoding and normal `WorldMapRegion.displayName`
+publication remain unchanged.
+
+Fresh focused Gradle verification passed **31/31** fabricated title/consumer-flow
+tests and the revision-66 cache rejection/current-reopen test (**1/1**). The retained-only Ruby
+replay matched owner `0x139b2c`, selected loader `0x0f5854`, source `0x3e69ac`,
+printer `0x06f16c`, title frame `0x06f224`, centered wrapper `0x0030a8`, initializer
+`0x002cfc`, renderer target `0x06212c`, window root `0x0202e6e8`, main callback
+`0x139c04` and VBlank callback `0x139bf0`. The exact Ruby/Sapphire Japanese codec
+decoded `ホウエンちほう`. The packet contains **27,943 retained bytes / 61 spans**,
+used **zero original reads**, and proves semantic acceptance for this declaration,
+not whole-original uniqueness. Parser revision **67** rejects revision-66 caches
+that could retain a null Ruby/Sapphire title; SQL schema and codec revisions remain
+**2/1**. No parser corpus, app/Android build, device/emulator, ADB, signing or
+release work ran.
+
+| Ruby legacy gate evidence | SHA-256 |
+|---|---|
+| 22-test title XML | `83f78b82a00b1425e942a26fa4178c1f056d30df8bd7326b1c0093ea460fdb44` |
+| Nine-test consumer-flow XML | `32a65ba46405463a4baf5fce0d5928001ef106624e858f57927185c23bec83a6` |
+| One-test revision-66 cache XML | `6b86c23d57f089e15f01e596b8727652df286c45ac0429416473a29e343a81b7` |
+| Retained Ruby packet | `f79d72f911b0b03a2648f717a077c490b7260edec64faa885decaadb775265bd` |
+| Retained input pins | `f664cbc9a3d2fef7c23622a02c67cf4971a5860cee8574b4f5db988a13e4b025` |
+| Retained semantic replay log | `2cfeb84f573c7ef560808bc33e6f745c0f325b70c69ffdfeafaaf023a631dec2` |
+
+## FireRed/LeafGreen static-title applicability
+
+The shared official FireRed/LeafGreen source at commit
+`c75f352304d529f6ba92d4f74b9cf8b5c3810788` defines four raster regions:
+`REGIONMAP_KANTO`, `REGIONMAP_SEVII123`, `REGIONMAP_SEVII45` and
+`REGIONMAP_SEVII67`. Its region-map text consumers print runtime map-section names,
+dungeon names and flavor text, preview text, and top-bar instructions. They do not
+print a static textual title naming Kanto or any Sevii raster. Direct inspection of
+the three referenced raster/UI assets likewise finds map and interface graphics,
+not embedded static title glyphs. This establishes the source-bound
+`WORLD_REGION_NAMES` disposition as **not applicable** for the official
+FireRed/LeafGreen design; it does not infer arbitrary compiled-ROM behavior and
+cannot replace the final official-control/matrix gate.
+
+| FireRed/LeafGreen source boundary | SHA-256 |
+|---|---|
+| `src/region_map.c` | `b761f02803a1c5aada4465b9a93bf2b02c5ef1118432e677a30a5a4a4b78e0cb` |
+| `graphics/region_map/region_map.png` | `7c402c5461d5547191cbfefb279727964e19c6dd60d33f5b0bb052ea20545184` |
+| `graphics/region_map/background.png` | `bd4dc43b7b5e6eea379c3f1a57b474d17917aabb0bdac0504cfa514859bdcee7` |
+| `graphics/region_map/switch_map_menu.png` | `3eba3aa0f513204507ab684481f55fd00dd48462a06932bf210f19f32f15729a` |
+
 ## Remaining target / decoding / acceptance
 
-**Tasks 419/417:** extend equivalent title authority beyond the supported
-Emerald-style owner and establish whole-original uniqueness on eligible controls.
-Ruby's missing initialization prefix and the Ruby/Sapphire/FireRed/LeafGreen title
-ABIs remain open. Independently justify every other shared/contextual/graphics-only
+**Tasks 419/417:** establish whole-original uniqueness on eligible Ruby/Sapphire
+controls and bind the FireRed/LeafGreen source disposition into the final official
+matrix. Independently justify every other shared/contextual/graphics-only
 disposition. Preserve keys, geometry and rasters; require sibling, relocation,
-decoy, cancellation and official-control acceptance. The optional window-plan stop
-does not justify widening caps or rereading originals. Any genuinely missing
-acquisition needs its own fresh, bounded reviewed scope and reservation.
+decoy, cancellation and official-control acceptance. Sparse semantic replay does
+not waive whole-original uniqueness. Any genuinely missing acquisition needs its
+own fresh, bounded reviewed scope and reservation.
 
 **Tasks 386 and 373–375:** complete all fifteen capability dispositions, the final
 current **43-cell/44-control matrix**, final eligible source-bound corpus and

@@ -194,6 +194,79 @@ class CompiledGbaFieldMapTitleTest {
     }
 
     @Test
+    fun nominatesRelocatedLegacyCenteredTitleWithIndependentAuthorities() {
+        for (owner in listOf(0x400, 0x800, 0xc00)) {
+            val f = LegacyFixture(owner)
+            val declaration = (f.nominate() as CompiledGbaFieldMapTitle.Result.Complete).declarations.single()
+            assertEquals(owner, declaration.owner)
+            assertEquals(f.loader, declaration.loader)
+            assertEquals(f.source, declaration.source)
+            assertEquals(f.sharedWindow, declaration.window)
+            assertEquals(f.printer, declaration.printer)
+            assertEquals(f.frame, declaration.frame)
+            assertNotNull(declaration.windowFlow)
+            assertNotNull(declaration.ownerFlow)
+
+            f.hoenn.copyInto(f.bytes, f.source)
+            val resolved = CompiledGbaFieldMapTitleText.resolve(
+                RomImage(f.bytes), f.loader, PokemonTextCodec.gbaEnglish, ParserCancellationToken.NONE)
+            assertEquals("HOENN", (resolved as CompiledGbaFieldMapTitleText.Result.Resolved).value)
+        }
+    }
+
+    @Test
+    fun legacyConnectedDamageRemainsAnIncompleteContender() {
+        for (relative in listOf(0x3c, 0x52, 0x58, 0x66, 0x68, 0x6a, 0x6c, 0x6e, 0x72, 0x74, 0x76, 0x78,
+            0x7c, 0x7e, 0x80, 0x82, 0x84, 0x88, 0x8c, 0x92, 0x98, 0xa4, 0xa8, 0xaa, 0xac)) {
+            val f = LegacyFixture()
+            f.op(f.owner + relative, 0x46c0)
+            assertTrue("legacy owner relative=$relative", f.nominate() is CompiledGbaFieldMapTitle.Result.Incomplete)
+        }
+    }
+
+    @Test
+    fun legacyConsumerRequiresSharedWindowAndCompleteCenteredSourceFlow() {
+        for ((at, replacement) in listOf(
+            0x10 to 0x46c0,
+            0x1a to 0x46c0,
+            0x1e to 0x46c0,
+            0x22 to 0x46c0,
+        )) {
+            val f = LegacyFixture()
+            f.op(f.printer + at, replacement)
+            val declaration = (f.nominate() as CompiledGbaFieldMapTitle.Result.Complete).declarations.single()
+            assertNull("legacy printer relative=$at", declaration.windowFlow)
+            assertNull(declaration.ownerFlow)
+        }
+        val disconnected = LegacyFixture()
+        disconnected.word(disconnected.printer + 0x2c, 0x02002000)
+        val declaration = (disconnected.nominate() as CompiledGbaFieldMapTitle.Result.Complete).declarations.single()
+        assertNull(declaration.windowFlow)
+        assertNull(declaration.ownerFlow)
+    }
+
+    @Test
+    fun legacyOwnerRejectsStaticSourceAliasingKnownCode() {
+        for (source in listOf(0x400, 0x1000, 0x1200, 0x1400, 0x1600)) {
+            val f = LegacyFixture()
+            f.word(f.owner + 0xb8, 0x08000000 + source)
+            val declaration = (f.nominate() as CompiledGbaFieldMapTitle.Result.Complete).declarations.single()
+            assertEquals(source, declaration.source)
+            assertNotNull(declaration.windowFlow)
+            assertNull("legacy source=$source", declaration.ownerFlow)
+        }
+    }
+
+    @Test
+    fun legacyOwnersRemainAmbiguousAndRespectTheSharedBudget() {
+        val f = LegacyFixture()
+        f.addOwner(0x800, f.source + 16)
+        val result = f.nominate() as CompiledGbaFieldMapTitle.Result.Complete
+        assertEquals(setOf(f.source, f.source + 16), result.declarations.map { it.source }.toSet())
+        assertTrue(f.nominate(maximumOwners = 1) is CompiledGbaFieldMapTitle.Result.Incomplete)
+    }
+
+    @Test
     fun cancellationOccursDuringScanAndBeforeInvalidInput() {
         val f = Fixture()
         var checks = 0
@@ -220,6 +293,105 @@ class CompiledGbaFieldMapTitleTest {
         }
         for (loader in listOf(-1, 0x40, 0x101, Int.MAX_VALUE - 1, f.printer.bytes.size)) {
             assertTrue(f.nominate(loader) is CompiledGbaFieldMapTitle.Result.Incomplete)
+        }
+    }
+
+    private class LegacyFixture(val owner: Int = 0x400) {
+        val bytes = ByteArray(0x4000)
+        val loader = 0x1800
+        val source = 0x3000
+        val frame = 0x1200
+        val printer = 0x1000
+        val sharedWindow = 0x02001000
+        val hoenn = byteArrayOf(
+            0xc2.toByte(), 0xc9.toByte(), 0xbf.toByte(), 0xc8.toByte(), 0xc8.toByte(), 0xff.toByte())
+        private val centered = 0x1400
+        private val initializer = 0x1600
+
+        init {
+            ops(frame, 0xb570, 0xb081, 0x1c04, 0x1c0d, 0x1c16, 0x0624, 0x0e24, 0x062d, 0x0e2d,
+                0x0636, 0x0e36, 0x061b, 0x0e1b)
+            literal(frame + 0x1a, 0, frame + 0x34, sharedWindow)
+            ops(frame + 0x1c, 0x6800, 0x9300, 0x1c21, 0x1c2a, 0x1c33)
+            bl(frame + 0x26, 0x1740)
+            ops(frame + 0x2a, 0xb001, 0xbc70, 0xbc01, 0x4700)
+
+            ops(printer, 0xb530, 0xb081, 0x1c05, 0x1c0b, 0x061b, 0x0e1b, 0x0612, 0x0e12)
+            literal(printer + 0x10, 0, printer + 0x2c, sharedWindow)
+            ops(printer + 0x12, 0x6800)
+            literal(printer + 0x14, 1, printer + 0x30, 0x02001004)
+            ops(printer + 0x16, 0x880c, 0x9200, 0x1c29, 0x1c22)
+            bl(printer + 0x1e, centered)
+            ops(printer + 0x22, 0xb001, 0xbc30, 0xbc01, 0x4700)
+
+            ops(centered, 0xb510, 0xb081, 0x1c04, 0x9803, 0x0412, 0x0c12, 0x061b, 0x0e1b, 0x0600,
+                0x0e00, 0x9000, 0x1c20)
+            bl(centered + 0x18, initializer)
+            ops(centered + 0x1c, 0x1c20)
+            bl(centered + 0x1e, 0x1720)
+            ops(centered + 0x22, 0x0600, 0x0e00, 0xb001, 0xbc10, 0xbc02, 0x4708)
+
+            ops(initializer, 0xb510, 0xb081, 0x9c03, 0x0412, 0x0c12, 0x061b, 0x0e1b, 0x0624, 0x0e24,
+                0x9400)
+            bl(initializer + 0x14, 0x1700)
+            ops(initializer + 0x18, 0xb001, 0xbc10, 0xbc01, 0x4700)
+            addOwner(owner, source)
+        }
+
+        fun addOwner(owner: Int, source: Int) {
+            ops(owner, 0xb500, 0xb081, 0x2080, 0x04c0, 0x2100, 0x8001, 0x3010, 0x8001,
+                0x3002, 0x8001, 0x3002, 0x8001, 0x3002, 0x8001, 0x3002, 0x8001,
+                0x3002, 0x8001, 0x3002, 0x8001, 0x3002, 0x8001)
+            bl(owner + 0x2c, 0x1780)
+            bl(owner + 0x30, 0x17a0)
+            literal(owner + 0x34, 0, owner + 0xb0, 0x02000008)
+            op(owner + 0x36, 0x2100)
+            bl(owner + 0x38, loader)
+            ops(owner + 0x3c, 0x2000, 0x2100)
+            bl(owner + 0x40, 0x17c0)
+            ops(owner + 0x44, 0x2001, 0x2101)
+            bl(owner + 0x48, 0x17e0)
+            op(owner + 0x4c, 0x2025)
+            bl(owner + 0x4e, 0x1820)
+            op(owner + 0x52, 0x2025)
+            bl(owner + 0x54, 0x1840)
+            bl(owner + 0x58, 0x1860)
+            literal(owner + 0x5c, 1, owner + 0xb4, 0x04000008)
+            ops(owner + 0x5e, 0x22f8, 0x0152, 0x1c10, 0x8008, 0x2015, 0x2100, 0x221d, 0x2303)
+            bl(owner + 0x6e, frame)
+            literal(owner + 0x72, 0, owner + 0xb8, 0x08000000 + source)
+            ops(owner + 0x74, 0x2116, 0x2201)
+            bl(owner + 0x78, printer)
+            ops(owner + 0x7c, 0x2010, 0x2110, 0x221d, 0x2313)
+            bl(owner + 0x84, frame)
+            bl(owner + 0x88, 0x1880)
+            literal(owner + 0x8c, 0, owner + 0xbc, 0x08001901)
+            bl(owner + 0x8e, 0x18a0)
+            literal(owner + 0x92, 0, owner + 0xc0, 0x08001921)
+            bl(owner + 0x94, 0x18c0)
+            ops(owner + 0x98, 0x2001, 0x4240, 0x2100, 0x9100, 0x2210, 0x2300)
+            bl(owner + 0xa4, 0x18e0)
+            ops(owner + 0xa8, 0xb001, 0xbc01, 0x4700)
+        }
+
+        fun nominate(maximumOwners: Int = 32) = CompiledGbaFieldMapTitle.nominate(
+            RomImage(bytes), loader, ParserCancellationToken.NONE, maximumOwners)
+        fun op(at: Int, value: Int) {
+            bytes[at] = value.toByte()
+            bytes[at + 1] = (value ushr 8).toByte()
+        }
+        fun ops(at: Int, vararg values: Int) = values.forEachIndexed { index, value -> op(at + index * 2, value) }
+        fun word(at: Int, value: Int) = repeat(4) { bytes[at + it] = (value ushr (it * 8)).toByte() }
+        fun literal(at: Int, register: Int, pool: Int, value: Int) {
+            val delta = pool - ((at + 4) and -4)
+            require(delta in 0..1020 && delta and 3 == 0)
+            op(at, 0x4800 or (register shl 8) or (delta / 4))
+            word(pool, value)
+        }
+        fun bl(at: Int, target: Int) {
+            val delta = (target - at - 4) and 0x7fffff
+            op(at, 0xf000 or (delta ushr 12))
+            op(at + 2, 0xf800 or ((delta ushr 1) and 0x7ff))
         }
     }
 
