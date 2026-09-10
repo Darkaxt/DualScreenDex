@@ -136,6 +136,69 @@ class CatalogLanguageOverlayTest {
     }
 
     @Test
+    fun encounterNamesPublishOnlyRomNativeBaseLabels() {
+        val areas = listOf(
+            EncounterArea(11, CatalogField.available("Map 1 - grass"), 1, emptyList()),
+            EncounterArea(22, CatalogField.available("Map 2 - water"), 2, emptyList()),
+        )
+        val maps = LocalMapCatalog(
+            maps = listOf(LocalMap("local/2", "Route 2", 2, 16, 16, 1, 1, "map")),
+            assets = mapOf("map" to PngMapAsset(byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10))),
+        )
+        val extraction = CatalogLocalizedTextExtractor.extract(
+            manifest = englishManifest(), speciesById = emptyMap(), movesById = emptyMap(),
+            abilitiesById = emptyMap(), naturesById = emptyMap(), capabilities = emptyMap(),
+            encounterAreas = areas,
+            runtimeMetadata = CatalogRuntimeMetadata(areaNamesByBaseId = mapOf(1 to "Route 1")),
+            localMaps = maps,
+        )
+        val overlay = requireNotNull(extraction.localization.defaultOverlay())
+        assertEquals(mapOf(11 to "Route 1", 22 to "Route 2"), overlay.encounterAreaNames.mapValues { it.value.value })
+        assertEquals(LocalizedCapabilityState.available(2),
+            overlay.localizedCapabilities.getValue(LocalizedTextCapability.ENCOUNTER_AREA_NAMES))
+        val catalog = ParsedCatalog(
+            romSha256 = "e".repeat(64), family = EngineFamily.GOLD_SILVER, platform = Platform.GBC,
+            encounterAreas = extraction.encounterAreas, runtimeMetadata = extraction.runtimeMetadata,
+            localMaps = extraction.localMaps, capabilities = extraction.capabilities,
+            localization = extraction.localization,
+        )
+        assertEquals("Route 1", catalog.defaultTextProjection().encounterAreaName(11))
+        val forged = CatalogLanguageOverlay(
+            overlay.language, overlay.overlayVersion, overlay.localizedCapabilities,
+            areaNames = overlay.areaNames, localMapNames = overlay.localMapNames,
+            encounterAreaNames = overlay.encounterAreaNames + (11 to CatalogField.available("Route 1 - grass")),
+        )
+        assertThrows(IllegalArgumentException::class.java) {
+            catalog.copy(localization = CatalogLocalization(extraction.localization.manifest, mapOf(overlay.language to forged)))
+        }
+    }
+
+    @Test
+    fun syntheticAndConflictingEncounterLabelsStayUnavailable() {
+        val areas = listOf(EncounterArea(11, CatalogField.available("Map 1 - grass"), 1, emptyList()))
+        val maps = LocalMapCatalog(
+            maps = listOf(LocalMap("local/1", "Route One", 1, 16, 16, 1, 1, "map")),
+            assets = mapOf("map" to PngMapAsset(byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10))),
+        )
+        for ((metadata, localMaps) in listOf(
+            CatalogRuntimeMetadata() to LocalMapCatalog(),
+            CatalogRuntimeMetadata(areaNamesByBaseId = mapOf(1 to "Route 1")) to maps,
+        )) {
+            val extraction = CatalogLocalizedTextExtractor.extract(
+                manifest = englishManifest(), speciesById = emptyMap(), movesById = emptyMap(),
+                abilitiesById = emptyMap(), naturesById = emptyMap(), capabilities = emptyMap(),
+                encounterAreas = areas, runtimeMetadata = metadata, localMaps = localMaps,
+            )
+            val overlay = requireNotNull(extraction.localization.defaultOverlay())
+            assertEquals(emptyMap<Int, CatalogField<String>>(), overlay.encounterAreaNames)
+            val state = overlay.localizedCapabilities.getValue(LocalizedTextCapability.ENCOUNTER_AREA_NAMES)
+            assertEquals(CapabilityStatus.NOT_FOUND, state.status)
+            assertEquals(0, state.coveredRecords)
+            assertEquals(1, state.expectedRecords)
+        }
+    }
+
+    @Test
     fun itemReferenceSatisfiesPoiCoverageWithoutDuplicatingItemText() {
         val localMaps = LocalMapCatalog(
             maps = listOf(LocalMap("local/1", "Town", 1, 16, 16, 1, 1, "map")),

@@ -423,6 +423,14 @@ The coordinator reviewed the full implementation/tests and retained RED/GREEN ar
 
 **Owner/target/acceptance:** Task 373 retains G0 final source-bound inputs, G1 actual normalized checks, G2 freshly executed codec-vector records, G3 actual same-capture API exports and G4 complete independently reviewed capability oracles/proofs, followed by unchanged-validator acceptance. Task 386's remaining required-content gaps and Tasks 374–375's final eligible corpus/ledger/publication remain mandatory. **Zero final accepted controls** is unchanged; Stage 4 stays open and Stages 5–6 blocked. No originals, real caches, corpus, devices/emulators, APK, signing or release were executed for this checkpoint.
 
+## Verified encounter-name boundary checkpoint
+
+[Encounter-name boundary checkpoint](stage-04-encounter-name-checkpoint.md) completes **Task 436's implementation slice** under Task 386 / `LNG-B002` without closing the remaining semantic audit. `ENCOUNTER_AREA_NAMES` now publishes only the unique ROM-native base label authorized by `AREA_NAMES` or static `LOCAL_MAP_NAMES`; synthesized map/method/time labels and native-name-plus-English-suffix values are excluded. Missing or conflicting authority fails closed without removing encounter records. Shared `methodId` and `windows` retain method/time semantics for Stage 6 interface translation.
+
+Parser revision **73** invalidates parser-72 caches containing the old semantics; storage remains **2** and codec version **1**. A forged suffix-contaminated overlay is rejected by catalog validation. The final focused gates passed **146 cases with six existing optional skips and zero failures/errors** across language-overlay/parser, persistence and matrix-API capture tests. Read-only reconciliation of superseded 44-control diagnostics found zero missing/conflicting native base labels, but it is not current parser-73 matrix evidence and does not issue a final oracle.
+
+Task 386 retains the remaining all-capability semantic audit. Tasks 373–375 retain all 660 final dispositions, current 43-cell/44-control matrix ratification, final source-bound corpus after executable changes stabilize, ledger audit and Stage 4 publication. **Zero final accepted controls** is unchanged. Stage 4 remains open and Stages 5–6 blocked; no full corpus, final matrix, originals, devices, signing or release work occurred.
+
 ## Audit rule
 
 An item without a durable ID, exact spec clause, evidence, owner, target, acceptance condition, and fail-closed temporary disposition is a `STOP-CORE` blocker. Required official language-family cells in Stages 3 and 4 cannot be deferred.

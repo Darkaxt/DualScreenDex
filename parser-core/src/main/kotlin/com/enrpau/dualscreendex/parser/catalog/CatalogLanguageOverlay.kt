@@ -283,6 +283,17 @@ class CatalogLanguageOverlay(
         }
         requireSubset(worldLocationNames.keys, worldLocationKeys, "world-location name", "location")
         requireSubset(encounterAreaNames.keys, catalog.encounterAreas.mapTo(hashSetOf(), EncounterArea::id), "encounter name", "area")
+        val authoritativeEncounterAreaNames = CatalogLocalizedTextExtractor.resolveEncounterAreaNames(
+            catalog.encounterAreas,
+            areaNames,
+            catalog.localMaps,
+            localMapNames,
+        )
+        encounterAreaNames.forEach { (areaId, field) ->
+            require(field.value == authoritativeEncounterAreaNames[areaId]?.value) {
+                "localized encounter name must equal its unique ROM-native base-area label"
+            }
+        }
         requireSubset(poiTexts.keys, catalog.localMaps.pois.mapTo(hashSetOf(), LocalMapPoi::key), "POI text", "POI")
         catalog.localMaps.pois.forEach { poi ->
             val text = poiTexts[poi.key] ?: return@forEach

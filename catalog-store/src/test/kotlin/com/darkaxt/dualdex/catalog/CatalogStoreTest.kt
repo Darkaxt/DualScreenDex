@@ -3056,6 +3056,18 @@ class CatalogStoreTest {
         val localMapNames = localMaps.maps.mapNotNull { map ->
             map.displayName?.let { map.key to CatalogField.available(it) }
         }.toMap()
+        val encounterNameCandidates = buildList {
+            areaNames.forEach { (baseAreaId, field) -> field.value?.let { add(baseAreaId to it) } }
+            localMaps.maps.forEach { map ->
+                localMapNames[map.key]?.value?.let { add(map.baseAreaId to it) }
+            }
+        }.groupBy({ it.first }, { it.second })
+        val encounterNamesByBaseId = encounterNameCandidates.mapNotNull { (baseAreaId, values) ->
+            values.distinct().singleOrNull()?.let { baseAreaId to it }
+        }.toMap()
+        val encounterAreaNames = base.encounterAreas.mapNotNull { area ->
+            encounterNamesByBaseId[area.id / 10]?.let { area.id to CatalogField.available(it) }
+        }.toMap()
         val worldRegionNames = worldMaps.regions
             .filter {
                 it.nameDisposition ==
@@ -3096,7 +3108,7 @@ class CatalogStoreTest {
             LocalizedTextCapability.LOCAL_MAP_NAMES to localMapNames,
             LocalizedTextCapability.WORLD_REGION_NAMES to worldRegionNames,
             LocalizedTextCapability.WORLD_LOCATION_NAMES to worldLocationNames,
-            LocalizedTextCapability.ENCOUNTER_AREA_NAMES to prior.encounterAreaNames,
+            LocalizedTextCapability.ENCOUNTER_AREA_NAMES to encounterAreaNames,
             LocalizedTextCapability.POI_TEXT to poiTexts,
         )
         val expected = mapOf(
@@ -3150,7 +3162,7 @@ class CatalogStoreTest {
             localMapNames = localMapNames,
             worldRegionNames = worldRegionNames,
             worldLocationNames = worldLocationNames,
-            encounterAreaNames = prior.encounterAreaNames,
+            encounterAreaNames = encounterAreaNames,
             poiTexts = poiTexts,
         )
         return base.copy(
@@ -3281,7 +3293,7 @@ class CatalogStoreTest {
             natureNames = mapOf(0 to CatalogField.available("Resolute")),
             itemNames = mapOf(4 to CatalogField.available("Poké Ball")),
             areaNames = mapOf(0x0010 to CatalogField.available("Route 101")),
-            encounterAreaNames = mapOf(1 to CatalogField.available("Route 1")),
+            encounterAreaNames = mapOf(0x0010 * 10 to CatalogField.available("Route 101")),
         )
         val localized = CatalogLocalization(manifest, mapOf(LanguageTag.ENGLISH to overlay))
         val localizedPlaceholder = CatalogField.notApplicable<String>("stored in language overlay")
@@ -3320,7 +3332,7 @@ class CatalogStoreTest {
             typeChart = listOf(TypeMatchup(10, 12, 200)),
             encounterAreas = listOf(
                 EncounterArea(
-                    1,
+                    0x0010 * 10,
                     localizedPlaceholder,
                     0,
                     listOf(EncounterSlot(6, 34, 36, 10)),

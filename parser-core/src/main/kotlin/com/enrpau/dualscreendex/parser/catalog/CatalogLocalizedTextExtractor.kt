@@ -92,10 +92,9 @@ internal object CatalogLocalizedTextExtractor {
                 }
             }.toMap(linkedMapOf())
         }
-        val encounterAreaNames = authorizedFields(
-            encounterAreas.associateBy(EncounterArea::id),
-            capabilities[RomCapability.AREA_ENCOUNTERS],
-        ) { it.name }
+        val encounterAreaNames = authorizedMap(capabilities[RomCapability.AREA_ENCOUNTERS]) {
+            resolveEncounterAreaNames(encounterAreas, areaNames, localMaps, localMapNames)
+        }
         val poiTexts = authorizedMap(capabilities[RomCapability.LOCAL_MAP]) {
             extractPoiTexts(localMaps)
         }
@@ -294,6 +293,26 @@ internal object CatalogLocalizedTextExtractor {
                 mechanics.copy(value = sharedMechanics)
             },
         )
+    }
+
+    internal fun resolveEncounterAreaNames(
+        encounterAreas: List<EncounterArea>,
+        areaNames: Map<Int, CatalogField<String>>,
+        localMaps: LocalMapCatalog,
+        localMapNames: Map<String, CatalogField<String>>,
+    ): Map<Int, CatalogField<String>> {
+        val candidates = buildList {
+            areaNames.forEach { (baseAreaId, field) -> field.value?.let { add(baseAreaId to it) } }
+            localMaps.maps.forEach { map ->
+                localMapNames[map.key]?.value?.let { add(map.baseAreaId to it) }
+            }
+        }.groupBy({ it.first }, { it.second })
+        val namesByBaseId = candidates.mapNotNull { (baseAreaId, values) ->
+            values.distinct().singleOrNull()?.let { baseAreaId to it }
+        }.toMap()
+        return encounterAreas.mapNotNull { area ->
+            namesByBaseId[area.id / 10]?.let { area.id to CatalogField.available(it) }
+        }.toMap(linkedMapOf())
     }
 
     private fun extractItemNames(
