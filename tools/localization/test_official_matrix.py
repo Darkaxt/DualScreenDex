@@ -521,9 +521,9 @@ class MatrixTests(unittest.TestCase):
         self.fx.mutate_cache("UPDATE catalog_section_chunks SET chunk_index=2 WHERE section_name='species'")
         self.blocked("CACHE_CHUNKS")
 
-    def test_oversized_json_is_bounded(self):
+    def test_oversized_api_is_bounded(self):
         p = self.fx.root / "oversized.json"
-        p.write_bytes(b" " * (self.mod.MAX_JSON_BYTES + 1))
+        p.write_bytes(b" " * (self.mod.MAX_API_BYTES + 1))
         self.fx.plan["runs"][0]["api"] = {"path": str(p), "sha256": sha(p.read_bytes())}
         self.fx.save_plan()
         self.blocked("INPUT_LIMIT")

@@ -62,9 +62,10 @@ coverage decision or semantic oracle is true; those require independent review.
 Existing reports alone lack normalized checks/API captures/independent coverage
 and exclusion references. No adapter synthesizes them from parser status.
 
-Read bounds: 32 MiB JSON/source, 128 MiB aggregate JSON, 128 MiB database,
-32 MiB inflated section, 128 MiB inflated catalog, 64 MiB encoded catalog;
-SQLite VM deadline 5 seconds per cache. Larger evidence is an explicit blocker.
+Read bounds: 32 MiB ordinary JSON/source, 384 MiB parser report, 128 MiB API capture,
+512 MiB aggregate evidence, 128 MiB database, 32 MiB inflated section,
+128 MiB inflated catalog, 64 MiB encoded catalog; SQLite VM deadline 5 seconds per cache.
+Larger evidence is an explicit blocker.
 SQLite uses mode=ro, immutable=1, query_only, trusted_schema=OFF, a read
 transaction and integrity_check; WAL/journal sidecars are rejected. All chunks
 and encoded digests are checked, not just the two localization sections.
@@ -87,8 +88,10 @@ CAPABILITIES = frozenset("SPECIES_NAMES SPECIES_DESCRIPTIONS MOVE_NAMES MOVE_DES
 SECTIONS = frozenset("language_manifest species moves types abilities natures type_chart encounters capture_balls learnset_rulesets runtime_metadata world_maps trainer_assets local_maps theme capabilities diagnostics".split())
 CHECKS = frozenset("rawHeader codecGoldenVectors structuralAuthority reopenParity projectionIsolation typeSemantics apiBootstrap".split())
 MAX_JSON_BYTES = 32 * 1024 * 1024
+MAX_REPORT_BYTES = 384 * 1024 * 1024
+MAX_API_BYTES = 128 * 1024 * 1024
 MAX_DATABASE_BYTES = 128 * 1024 * 1024
-MAX_AGGREGATE_BYTES = 128 * 1024 * 1024
+MAX_AGGREGATE_BYTES = 512 * 1024 * 1024
 MAX_RECORDS = 100000
 
 
@@ -163,10 +166,10 @@ class Inputs:
         require(self.bytes_read <= MAX_AGGREGATE_BYTES, "INPUT_LIMIT")
         return data
 
-    def document(self, ref):
+    def document(self, ref, limit=MAX_JSON_BYTES):
         key = (ref["path"], ref["sha256"])
         if key not in self.documents:
-            self.documents[key] = parse_json(self.raw(ref))
+            self.documents[key] = parse_json(self.raw(ref, limit))
         return self.documents[key]
 
 
@@ -477,7 +480,8 @@ def validate_run(run, plan, controls, inputs, source):
         expected = controls[identity]
         require((c["family"], c["language"]) == (expected["family"], expected["language"]) and
                 (c["language"] != "ko" or c.get("release") == expected["release"]), "CONTROL_IDENTITY")
-    report, receipt = inputs.document(run["report"]), inputs.document(run["receipt"])
+    report = inputs.document(run["report"], MAX_REPORT_BYTES)
+    receipt = inputs.document(run["receipt"])
     require(type(report.get("schemaVersion")) is int and type(receipt.get("schemaVersion")) is int and
             report["schemaVersion"] == plan["reportSchemaVersion"] and receipt["schemaVersion"] == 1,
             "REPORT_SCHEMA")
@@ -492,7 +496,9 @@ def validate_run(run, plan, controls, inputs, source):
     binding = {"sourceCommit": plan["sourceCommit"], "sourceSha256": plan["source"]["sha256"],
                "reportSha256": run["report"]["sha256"], "receiptSha256": run["receipt"]["sha256"],
                "generatorSha256": generator}
-    evidence, api, oracle = (inputs.document(run[k]) for k in ("evidence", "api", "oracle"))
+    evidence = inputs.document(run["evidence"])
+    api = inputs.document(run["api"], MAX_API_BYTES)
+    oracle = inputs.document(run["oracle"])
     require(len({run[k]["sha256"] for k in ("report", "evidence", "api", "oracle")}) == 4, "EVIDENCE_BINDING")
     for doc in (evidence, api, oracle):
         bound_document(doc, binding)

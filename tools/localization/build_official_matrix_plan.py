@@ -111,9 +111,9 @@ class MetadataInputs(matrix.Inputs):
         self.reference(ref)
         return super().raw(ref, limit)
 
-    def document(self, ref):
+    def document(self, ref, limit=matrix.MAX_JSON_BYTES):
         self.reference(ref, document=True)
-        return super().document(ref)
+        return super().document(ref, limit)
 
     def independent(self, ref):
         key = self.reference(ref)
@@ -188,7 +188,8 @@ def run_metadata(run, plan, controls, inputs, source):
             expected = controls[identity]
             matrix.require((c["family"], c["language"]) == (expected["family"], expected["language"]) and
                            (c["language"] != "ko" or c.get("release") == expected["release"]), "CONTROL_IDENTITY")
-        report, receipt = inputs.document(run["report"]), inputs.document(run["receipt"])
+        report = inputs.document(run["report"], matrix.MAX_REPORT_BYTES)
+        receipt = inputs.document(run["receipt"])
         matrix.require(type(report.get("schemaVersion")) is int and type(receipt.get("schemaVersion")) is int and
                        report["schemaVersion"] == plan["reportSchemaVersion"] and receipt["schemaVersion"] == 1, "REPORT_SCHEMA")
         generator = run["generatorSha256"]
@@ -209,7 +210,8 @@ def run_metadata(run, plan, controls, inputs, source):
         with gap(RUN_ROLES[name]):
             if name == "oracle":
                 inputs.independent(run[name])
-            doc = inputs.document(run[name])
+            limit = matrix.MAX_API_BYTES if name == "api" else matrix.MAX_JSON_BYTES
+            doc = inputs.document(run[name], limit)
             matrix.bound_document(doc, binding)
             matrix.require(isinstance(doc.get("controls"), dict) and set(doc["controls"]) == set(rows), "CONTROL_IDENTITY")
             documents[name] = doc["controls"]

@@ -96,9 +96,9 @@ def build(refs, source_commit):
     inputs = matrix.Inputs()
     source = inputs.raw(refs["source"])
     matrix.require(bool(source), "INPUT_MISSING")
-    report = inputs.document(refs["report"])
+    report = inputs.document(refs["report"], matrix.MAX_REPORT_BYTES)
     receipt = inputs.document(refs["receipt"])
-    api = inputs.document(refs["api"])
+    api = inputs.document(refs["api"], matrix.MAX_API_BYTES)
     codecs = codec_checks(inputs.document(refs["codec"]), source_commit)
     generator = report.get("execution", {}).get("generatorSha256")
     binding = {

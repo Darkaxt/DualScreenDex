@@ -514,10 +514,16 @@ class AssemblyTests(unittest.TestCase):
         self.fx.save()
         self.blocked("G6_ASSEMBLY_REQUEST")
 
+    def test_role_specific_large_report_and_api_are_accepted(self):
+        self.fx.data[0]["report"]["padding"] = "r" * matrix.MAX_JSON_BYTES
+        self.fx.data[0]["api"]["padding"] = "a" * matrix.MAX_JSON_BYTES
+        self.fx.refresh()
+        self.assertEqual(self.assemble()["status"], "PLAN_ASSEMBLED")
+
     def test_bounded_metadata_and_aggregate_reads(self):
         self.fx.request["runs"][0]["api"] = {"path": str(self.fx.root / "oversized.json"), "sha256": "0" * 64}
         with (self.fx.root / "oversized.json").open("wb") as handle:
-            handle.truncate(matrix.MAX_JSON_BYTES + 1)
+            handle.truncate(matrix.MAX_API_BYTES + 1)
         self.fx.save()
         self.blocked("G3_API_CAPTURE")
         self.fx.refresh()

@@ -76,7 +76,7 @@ class OfficialMatrixApiCaptureRunnerTest {
         )
         val bytes = (GsonBuilder().disableHtmlEscaping().serializeNulls().create().toJson(result) + "\n")
             .toByteArray(Charsets.UTF_8)
-        require(bytes.size <= 32 * 1024 * 1024) { "API capture byte bound exceeded" }
+        require(bytes.size <= 128 * 1024 * 1024) { "API capture byte bound exceeded" }
         Files.newOutputStream(output, CREATE_NEW, WRITE).use { stream ->
             require(runCatching { stream.write(bytes) }.isSuccess) { "API capture write failed" }
         }

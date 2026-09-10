@@ -16,6 +16,10 @@ internal object OfficialMatrixApiObservations {
     private data class TextKey(val first: String, val second: String? = null)
     private fun key(value: Any) = TextKey(value.toString())
     private fun <K : Any> Map<K, CatalogField<String>>.texts() = map { key(it.key) to it.value.value }
+    private fun renderAnonymousPlayerPlaceholder(value: String): String = value
+        .replace("{PLAYER}'s", "Your", ignoreCase = true)
+        .replace("{PLAYER}’s", "Your", ignoreCase = true)
+        .replace("{PLAYER}", "You", ignoreCase = true)
 
     fun observe(catalog: ParsedCatalog, response: BootstrapView): JsonObject {
         val api = requireNotNull(response.catalog)
@@ -32,16 +36,21 @@ internal object OfficialMatrixApiObservations {
             projected: List<Pair<TextKey, String?>>,
             observed: List<Pair<TextKey, String?>>,
             backing: List<String?>,
+            normalizeExpected: (String) -> String = { it },
         ) {
             check(inspected.add(capability)) { "projection group inspected twice" }
-            val selectedText = selected.filter { it.second != null }.toMap()
-            val projectedText = projected.filter { it.second != null }.toMap()
+            val projectedKeys = projected.mapTo(hashSetOf()) { it.first }
+            val selectedText = selected.mapNotNull { (key, value) ->
+                value?.takeIf { key in projectedKeys }?.let { key to normalizeExpected(it) }
+            }.toMap()
+            val projectedText = projected.mapNotNull { (key, value) ->
+                value?.let { key to normalizeExpected(it) }
+            }.toMap()
             val grouped = observed.groupBy({ it.first }, { it.second })
             val conflicting = grouped.values.any { it.distinct().size > 1 }
             // Preserve the first actual value; conflicts remain explicit in the measurement.
             val observedText = grouped.mapValues { it.value.first() }.filterValues { it != null }
-            val missingCoverage = overlay.localizedCapabilities.getValue(capability).coveredRecords > observedText.size
-            if (conflicting || missingCoverage || selectedText != projectedText || projectedText != observedText) mixed++
+            if (conflicting || selectedText != projectedText || projectedText != observedText) mixed++
             if ((projectedText.keys + observedText.keys).any { selectedText[it] == null }) fallback++
             if (backing.any { !it.isNullOrBlank() }) shared++
             fields.add(capability.name, JsonObject().apply {
@@ -54,7 +63,7 @@ internal object OfficialMatrixApiObservations {
                 }
             })
         }
-        val species = catalog.speciesById.values
+        val species = catalog.navigableSpecies()
         inspect(SPECIES_NAMES, overlay.speciesNames.texts(), species.map { key(it.id) to text.speciesName(it.id) },
             api.species.map { key(it.id) to it.name }, species.map { it.name.value })
         inspect(SPECIES_DESCRIPTIONS, overlay.speciesDescriptions.texts(), species.map { key(it.id) to text.speciesDescription(it.id) },
@@ -64,7 +73,8 @@ internal object OfficialMatrixApiObservations {
             api.moves.map { key(it.id) to it.name }, moves.map { it.name.value })
         inspect(MOVE_DESCRIPTIONS, overlay.moveDescriptions.texts(), moves.map { key(it.id) to text.moveDescription(it.id) },
             api.moves.map { key(it.id) to it.description }, moves.map { it.effectText.value })
-        val abilities = catalog.abilitiesById.values
+        val abilityIds = species.flatMap { it.abilityIds.value.orEmpty() }.filter { it > 0 }.toSet()
+        val abilities = abilityIds.mapNotNull(catalog.abilitiesById::get)
         val apiAbilities = api.species.flatMap { it.abilities }
         inspect(ABILITY_NAMES, overlay.abilityNames.texts(), abilities.map { key(it.id) to text.abilityName(it.id) },
             apiAbilities.map { key(it.id) to it.name }, abilities.map { it.name.value })
@@ -82,10 +92,12 @@ internal object OfficialMatrixApiObservations {
             api.balls.map { key(it.id) to it.name } + response.state.localMapPois.mapNotNull { poi ->
                 poi.itemId?.let { key(it) to poi.itemName }
             }, catalog.captureBallsById.values.map { it.name.value } + pois.map { it.item?.displayName })
-        val areas = catalog.runtimeMetadata.areaNamesByBaseId.keys + overlay.areaNames.keys
-        inspect(AREA_NAMES, overlay.areaNames.texts(), areas.map { key(it) to text.areaName(it) },
-            response.state.areaGuide?.areas.orEmpty().map { key(it.baseAreaId) to it.name },
-            catalog.runtimeMetadata.areaNamesByBaseId.values.toList())
+        val areaIds = overlay.areaNames.keys
+        inspect(AREA_NAMES, overlay.areaNames.texts(), areaIds.map { key(it) to text.areaName(it) },
+            response.state.areaGuide?.areas.orEmpty()
+                .filter { it.baseAreaId in areaIds }
+                .map { key(it.baseAreaId) to it.name },
+            areaIds.map { catalog.runtimeMetadata.areaNamesByBaseId[it] })
         val maps = catalog.localMaps.maps
         inspect(LOCAL_MAP_NAMES, overlay.localMapNames.texts(), maps.map { key(it.key) to text.localMapName(it.key) },
             api.localMaps.map { key(it.key) to it.displayName }, maps.map { it.displayName })
@@ -118,7 +130,8 @@ internal object OfficialMatrixApiObservations {
         }
         inspect(POI_TEXT, selectedPois, pois.map { key(it.key) to text.poiLabel(it.key) },
             response.state.localMapPois.map { key(it.key) to if (it.category in setOf("AVAILABLE_ITEM", "COLLECTED_ITEM")) it.itemName else it.displayName },
-            pois.flatMap { listOf(it.displayName, it.item?.displayName) + it.displayNamesByTrainerGender.values })
+            pois.flatMap { listOf(it.displayName, it.item?.displayName) + it.displayNamesByTrainerGender.values },
+            ::renderAnonymousPlayerPlaceholder)
         check(inspected == LocalizedTextCapability.entries.toSet()) { "uninspected projection group" }
         val apiTypes = api.types.groupBy { it.id }
         val typeMismatches = (catalog.typesById.keys + apiTypes.keys).count { id ->

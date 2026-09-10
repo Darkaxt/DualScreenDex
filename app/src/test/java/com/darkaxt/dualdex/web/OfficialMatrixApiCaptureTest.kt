@@ -20,11 +20,19 @@ import com.enrpau.dualscreendex.companion.api.NatureView
 import com.enrpau.dualscreendex.companion.api.TypeView
 import com.enrpau.dualscreendex.companion.api.WorldMapLocationView
 import com.enrpau.dualscreendex.companion.api.WorldMapRegionView
+import com.enrpau.dualscreendex.parser.catalog.AbilityRecord
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
-import com.enrpau.dualscreendex.parser.catalog.TypeRecord
-import com.enrpau.dualscreendex.parser.catalog.TypeSemanticRole
 import com.enrpau.dualscreendex.parser.catalog.CatalogLanguageOverlay
 import com.enrpau.dualscreendex.parser.catalog.CatalogLocalization
+import com.enrpau.dualscreendex.parser.catalog.CatalogPoiText
+import com.enrpau.dualscreendex.parser.catalog.LocalMap
+import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
+import com.enrpau.dualscreendex.parser.catalog.LocalMapPoi
+import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiKind
+import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiTextObligation
+import com.enrpau.dualscreendex.parser.catalog.PngMapAsset
+import com.enrpau.dualscreendex.parser.catalog.TypeRecord
+import com.enrpau.dualscreendex.parser.catalog.TypeSemanticRole
 import com.enrpau.dualscreendex.parser.catalog.LocalizedCapabilityState
 import com.enrpau.dualscreendex.parser.catalog.LocalizedTextCapability
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
@@ -137,11 +145,12 @@ class OfficialMatrixApiCaptureTest {
             "MOVE_NAMES" to ("7" to "API move"), "MOVE_DESCRIPTIONS" to ("7" to "API move description"),
             "ABILITY_NAMES" to ("3" to "API ability"), "ABILITY_DESCRIPTIONS" to ("3" to "API ability description"),
             "TYPE_NAMES" to ("2" to "API type"), "NATURE_NAMES" to ("4" to "API nature"),
-            "ITEM_NAMES" to ("13" to "API item"), "AREA_NAMES" to ("9" to "API area"),
+            "ITEM_NAMES" to ("13" to "API item"),
             "LOCAL_MAP_NAMES" to ("map" to "API map"), "WORLD_REGION_NAMES" to ("a/b" to "API region"),
             "ENCOUNTER_AREA_NAMES" to ("6" to "API encounter"), "POI_TEXT" to ("sign" to "API sign"),
         )
         expected.forEach { (cap, value) -> assertEquals(cap, value.second, fields.getAsJsonObject(cap).get(value.first).asString) }
+        assertEquals(0, fields.getAsJsonObject("AREA_NAMES").size())
         assertEquals("API POI item", fields.getAsJsonObject("ITEM_NAMES").get("14").asString)
         assertEquals("API POI item", fields.getAsJsonObject("POI_TEXT").get("item").asString)
         val locations = fields.getAsJsonObject("WORLD_LOCATION_NAMES")
@@ -170,6 +179,140 @@ class OfficialMatrixApiCaptureTest {
         val observed = OfficialMatrixApiObservations.observe(fixture.catalog, response.copy(catalog = api.copy(species = emptyList())))
         assertEquals(0, observed.getAsJsonObject("fields").getAsJsonObject("SPECIES_NAMES").size())
         assertEquals(1, observed.getAsJsonObject("measurements").getAsJsonObject("projectionIsolation").get("mixedFields").asInt)
+    }
+
+    @Test fun excludesReservedCatalogRowsOutsideThePublicApiDomain() {
+        val fixture = fixture()
+        val response = response(fixture)
+        val reserved = SpeciesRecord(
+            id = 31, dexNumber = CatalogField.available(0), name = CatalogField.notApplicable("overlay"),
+            typeIds = CatalogField.notFound("fixture"), baseStats = CatalogField.notFound("fixture"),
+            sprite = CatalogField.notFound("fixture"),
+        )
+        val capabilities = LocalizedTextCapability.entries.associateWith {
+            when (it) {
+                LocalizedTextCapability.SPECIES_NAMES -> LocalizedCapabilityState.available(2)
+                LocalizedTextCapability.SPECIES_DESCRIPTIONS ->
+                    LocalizedCapabilityState.unavailable(CapabilityStatus.NOT_FOUND, 2)
+                LocalizedTextCapability.ABILITY_NAMES,
+                LocalizedTextCapability.ABILITY_DESCRIPTIONS,
+                -> LocalizedCapabilityState.available(1)
+                else -> LocalizedCapabilityState.unavailable(CapabilityStatus.NOT_APPLICABLE, 0, 1.0)
+            }
+        }
+        val overlay = CatalogLanguageOverlay(
+            language = LanguageTag.FRENCH, overlayVersion = 7, localizedCapabilities = capabilities,
+            speciesNames = mapOf(
+                1 to CatalogField.available("Bulbizarre"),
+                31 to CatalogField.available("MISSINGNO."),
+            ),
+            abilityNames = mapOf(76 to CatalogField.available("CACOPHONY")),
+            abilityDescriptions = mapOf(76 to CatalogField.available("Avoids sound-based moves.")),
+        )
+        val catalog = fixture.catalog.copy(
+            speciesById = fixture.catalog.speciesById + (31 to reserved),
+            abilitiesById = mapOf(76 to AbilityRecord(
+                76, CatalogField.notApplicable("overlay"), CatalogField.notApplicable("overlay"),
+            )),
+            localization = CatalogLocalization(fixture.catalog.languageManifest, mapOf(LanguageTag.FRENCH to overlay)),
+        )
+
+        val isolation = OfficialMatrixApiObservations.observe(catalog, response)
+            .getAsJsonObject("measurements").getAsJsonObject("projectionIsolation")
+        assertEquals(0, isolation.get("mixedFields").asInt)
+        assertEquals(0, isolation.get("fallbackFields").asInt)
+    }
+
+    @Test fun doesNotChargeLocalMapAreaGuideLabelsToAreaNames() {
+        val fixture = fixture()
+        val response = response(fixture)
+        val map = LocalMap("map", null, 9, 16, 16, 1, 1, "map.png")
+        val localMaps = LocalMapCatalog(listOf(map), mapOf("map.png" to pngAsset()))
+        val capabilities = LocalizedTextCapability.entries.associateWith {
+            when (it) {
+                LocalizedTextCapability.SPECIES_NAMES,
+                LocalizedTextCapability.LOCAL_MAP_NAMES,
+                -> LocalizedCapabilityState.available(1)
+                LocalizedTextCapability.SPECIES_DESCRIPTIONS ->
+                    LocalizedCapabilityState.unavailable(CapabilityStatus.NOT_FOUND, 1)
+                else -> LocalizedCapabilityState.unavailable(CapabilityStatus.NOT_APPLICABLE, 0, 1.0)
+            }
+        }
+        val overlay = CatalogLanguageOverlay(
+            language = LanguageTag.FRENCH, overlayVersion = 7, localizedCapabilities = capabilities,
+            speciesNames = mapOf(1 to CatalogField.available("Bulbizarre")),
+            localMapNames = mapOf("map" to CatalogField.available("Jadielle")),
+        )
+        val catalog = fixture.catalog.copy(
+            localMaps = localMaps,
+            localization = CatalogLocalization(fixture.catalog.languageManifest, mapOf(LanguageTag.FRENCH to overlay)),
+        )
+        val api = requireNotNull(response.catalog).copy(
+            localMaps = listOf(LocalMapView("map", "Jadielle", 9, 16, 16, 1, 1, "", false)),
+        )
+        val areaGuide = AreaGuideView(null, listOf(AreaGuideAreaView(
+            9, "Jadielle", AreaGuideOverviewView(0, null, 0, emptyList()),
+            emptyList(), emptyList(), emptyList(), emptyList(), emptyList(),
+        )))
+
+        val observed = OfficialMatrixApiObservations.observe(catalog, response.copy(
+            catalog = api, state = response.state.copy(areaGuide = areaGuide),
+        ))
+        assertEquals(0, observed.getAsJsonObject("fields").getAsJsonObject("AREA_NAMES").size())
+        val isolation = observed.getAsJsonObject("measurements").getAsJsonObject("projectionIsolation")
+        assertEquals(0, isolation.get("mixedFields").asInt)
+        assertEquals(0, isolation.get("fallbackFields").asInt)
+    }
+
+    @Test fun comparesPoiTemplatesAfterAnonymousPlayerRendering() {
+        val fixture = fixture()
+        val response = response(fixture)
+        val map = LocalMap("map", null, 9, 16, 16, 1, 1, "map.png")
+        val pois = listOf(
+            LocalMapPoi("house", "map", 9, 0, 0, LocalMapPoiKind.PLACE,
+                textObligation = LocalMapPoiTextObligation.DIRECT_TEXT),
+            LocalMapPoi("notebook", "map", 9, 0, 0, LocalMapPoiKind.PLACE,
+                textObligation = LocalMapPoiTextObligation.DIRECT_TEXT),
+        )
+        val localMaps = LocalMapCatalog(listOf(map), mapOf("map.png" to pngAsset()), pois = pois)
+        val capabilities = LocalizedTextCapability.entries.associateWith {
+            when (it) {
+                LocalizedTextCapability.SPECIES_NAMES,
+                LocalizedTextCapability.LOCAL_MAP_NAMES,
+                -> LocalizedCapabilityState.available(1)
+                LocalizedTextCapability.POI_TEXT -> LocalizedCapabilityState.available(2)
+                LocalizedTextCapability.SPECIES_DESCRIPTIONS ->
+                    LocalizedCapabilityState.unavailable(CapabilityStatus.NOT_FOUND, 1)
+                else -> LocalizedCapabilityState.unavailable(CapabilityStatus.NOT_APPLICABLE, 0, 1.0)
+            }
+        }
+        val overlay = CatalogLanguageOverlay(
+            language = LanguageTag.FRENCH, overlayVersion = 7, localizedCapabilities = capabilities,
+            speciesNames = mapOf(1 to CatalogField.available("Bulbizarre")),
+            localMapNames = mapOf("map" to CatalogField.available("Jadielle")),
+            poiTexts = mapOf(
+                "house" to CatalogPoiText(displayName = CatalogField.available("{PLAYER}'s house")),
+                "notebook" to CatalogPoiText(displayName = CatalogField.available("{PLAYER} flipped open the notebook.")),
+            ),
+        )
+        val catalog = fixture.catalog.copy(
+            localMaps = localMaps,
+            localization = CatalogLocalization(fixture.catalog.languageManifest, mapOf(LanguageTag.FRENCH to overlay)),
+        )
+        val api = requireNotNull(response.catalog).copy(
+            localMaps = listOf(LocalMapView("map", "Jadielle", 9, 16, 16, 1, 1, "", false)),
+        )
+        val observed = OfficialMatrixApiObservations.observe(catalog, response.copy(
+            catalog = api,
+            state = response.state.copy(localMapPois = listOf(
+                LocalMapPoiView("house", "map", 9, 0, 0, "PLACE", "KNOWN", "Your house", null, null, null, null),
+                LocalMapPoiView("notebook", "map", 9, 0, 0, "PLACE", "KNOWN",
+                    "You flipped open the notebook.", null, null, null, null),
+            )),
+        ))
+        val isolation = observed.getAsJsonObject("measurements").getAsJsonObject("projectionIsolation")
+        assertEquals(0, isolation.get("mixedFields").asInt)
+        assertEquals(0, isolation.get("fallbackFields").asInt)
     }
 
     @Test fun countsUnresolvedTypesAndDuplicateApiTypeRows() {
@@ -418,6 +561,7 @@ class OfficialMatrixApiCaptureTest {
     private fun digest(path: Path): String = MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(path))
         .joinToString("") { "%02x".format(it) }
     private companion object {
+        fun pngAsset() = PngMapAsset(byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10))
         const val SHA = "1111111111111111111111111111111111111111111111111111111111111111"
         val BINDING = MatrixG3Binding("a".repeat(40), "b".repeat(64), "c".repeat(64), "d".repeat(64), "e".repeat(64))
     }
