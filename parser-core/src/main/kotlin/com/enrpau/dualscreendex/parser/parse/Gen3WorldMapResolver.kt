@@ -125,9 +125,15 @@ object Gen3WorldMapResolver {
                 "encounter map headers and region entries did not resolve uniquely",
             )
         val winner = winners.single()
-        if (mapTraceEnabled) {
-            winner.loaderFunctionStart?.let { loader ->
-                mapTrace("affine-title-nomination ${CompiledGbaFieldMapTitle.nominate(rom, loader, cancellation)}")
+        val title = winner.loaderFunctionStart?.let { loader ->
+            when (val resolved = CompiledGbaFieldMapTitleText.resolve(rom, loader, codec, cancellation)) {
+                is CompiledGbaFieldMapTitleText.Result.Resolved -> resolved.value.also {
+                    mapTrace("affine-title resolved")
+                }
+                is CompiledGbaFieldMapTitleText.Result.Unavailable -> {
+                    mapTrace("affine-title unavailable=${resolved.reason}")
+                    null
+                }
             }
         }
         val normalized = emeraldLocations(locations, winner.composition.gridWidth, winner.composition.gridHeight)
@@ -141,7 +147,7 @@ object Gen3WorldMapResolver {
         val assetKey = "world/$regionKey"
         val region = WorldMapRegion(
             regionKey,
-            null,
+            title,
             winner.composition.raster.width,
             winner.composition.raster.height,
             winner.composition.gridWidth,

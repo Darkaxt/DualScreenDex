@@ -20,6 +20,11 @@ import com.enrpau.dualscreendex.parser.catalog.MoveAcquisitionMethod
 import com.enrpau.dualscreendex.parser.catalog.MoveCategory
 import com.enrpau.dualscreendex.parser.catalog.MoveRecord
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
+import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
+import com.enrpau.dualscreendex.parser.catalog.WorldMapCatalog
+import com.enrpau.dualscreendex.parser.catalog.WorldMapCell
+import com.enrpau.dualscreendex.parser.catalog.WorldMapLocation
+import com.enrpau.dualscreendex.parser.catalog.WorldMapRegion
 import com.enrpau.dualscreendex.parser.catalog.SpeciesRecord
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
@@ -29,6 +34,42 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ApiViewBuilderTest {
+    @Test
+    fun exposesAuthorizedRomNativeWorldRegionTitle() {
+        val catalog = ParsedCatalog(
+            romSha256 = "sha",
+            family = EngineFamily.EMERALD,
+            platform = Platform.GBA,
+            worldMaps = WorldMapCatalog(
+                regions = listOf(
+                    WorldMapRegion(
+                        key = "gen3-region-0",
+                        displayName = "HOENN",
+                        pixelWidth = 1,
+                        pixelHeight = 1,
+                        gridWidth = 1,
+                        gridHeight = 1,
+                        imageAssetKey = "world/gen3-region-0",
+                        locations = listOf(
+                            WorldMapLocation(
+                                key = "location-0",
+                                displayName = null,
+                                baseAreaIds = setOf(1),
+                                geometry = listOf(WorldMapCell(0, 0, 1, 1)),
+                            ),
+                        ),
+                    ),
+                ),
+                assets = mapOf("world/gen3-region-0" to RgbaSprite(1, 1, intArrayOf(0xff102030.toInt()))),
+            ),
+        )
+
+        val region = ApiViewBuilder.catalog(catalog).worldMaps.single()
+
+        assertEquals("gen3-region-0", region.key)
+        assertEquals("HOENN", region.displayName)
+    }
+
     @Test
     fun exposesPersistentObservedMoveHistoryOutsideBattle() {
         val view = ApiViewBuilder.state(

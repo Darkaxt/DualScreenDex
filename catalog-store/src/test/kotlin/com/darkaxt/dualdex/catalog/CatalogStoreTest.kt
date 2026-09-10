@@ -441,6 +441,39 @@ class CatalogStoreTest {
     }
 
     @Test
+    fun revision65CachesWithoutAuthorizedRegionTitlesAreRejectedAndCurrentReopens() {
+        val root = newRoot().toFile()
+        val cache = CatalogCache(root, JdbcCatalogDatabaseFactory)
+        val map = WorldMapCatalog(
+            regions = listOf(WorldMapRegion(
+                "gen3-region-0", "HOENN", 1, 1, 1, 1, "world/gen3-region-0",
+                listOf(WorldMapLocation("section-0", null, setOf(1), listOf(WorldMapCell(0, 0, 1, 1)))),
+            )),
+            assets = mapOf("world/gen3-region-0" to RgbaSprite(1, 1, intArrayOf(0xff102030.toInt()))),
+        ).validate()
+        val catalog = ParsedCatalog(
+            romSha256 = "6".repeat(64),
+            romCrc32 = "1234ABCD",
+            family = EngineFamily.EMERALD,
+            platform = Platform.GBA,
+            worldMaps = map,
+        )
+        val source = CatalogSourceMetadata.direct("Synthetic.gba", 65536, "SYNTHETIC")
+        cache.write(catalog, source, CatalogWriteProgress.complete())
+        JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
+            database.execute("UPDATE catalog_metadata SET parser_schema_version = 65 WHERE id = 1")
+            assertNull("revision65 could persist a null or unproved GBA region title",
+                CatalogReader(database).readComplete())
+        }
+        assertNull(CatalogCache(root, JdbcCatalogDatabaseFactory).readComplete(catalog.romSha256))
+        cache.write(catalog, source, CatalogWriteProgress.complete())
+        val reopened = requireNotNull(CatalogCache(root, JdbcCatalogDatabaseFactory)
+            .readComplete(catalog.romSha256)).catalog
+        assertEquals("HOENN", reopened.worldMaps.regions.single().displayName)
+        assertCurrentCatalogRevision(cache.fileFor(catalog.romSha256))
+    }
+
+    @Test
     fun revision63JapaneseSignOutcomesAreRejectedAndCurrentReopensWithNativeTextAndGeometry() =
         assertStaleSignRevisionRejected(63)
 
@@ -1876,7 +1909,7 @@ class CatalogStoreTest {
             regions = listOf(
                 WorldMapRegion(
                     key = "region-0",
-                    displayName = null,
+                    displayName = "HOENN",
                     pixelWidth = 2,
                     pixelHeight = 2,
                     gridWidth = 22,
@@ -1970,6 +2003,8 @@ class CatalogStoreTest {
 
         assertCurrentCatalogRevision(cache.fileFor(catalog.romSha256))
         assertEquals(catalog.worldMaps, reopened?.catalog?.worldMaps)
+        assertNull(reopened?.catalog?.worldMaps?.regions?.single()?.displayName)
+        assertEquals("HOENN", reopened?.catalog?.defaultLocalizedText()?.worldRegionNames?.get("region-0")?.value)
         assertEquals(catalog.localMaps.maps, reopened?.catalog?.localMaps?.maps)
         assertEquals(catalog.localMaps.scenes, reopened?.catalog?.localMaps?.scenes)
         assertEquals(catalog.localMaps.pois, reopened?.catalog?.localMaps?.pois)

@@ -3,6 +3,7 @@ package com.enrpau.dualscreendex.parser.parse
 import com.enrpau.dualscreendex.parser.analysis.ParserCancellationException
 import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -135,6 +136,64 @@ class CompiledGbaFieldMapTitleTest {
     }
 
     @Test
+    fun decodesUniqueAuthorizedStaticRegionTitle() {
+        val f = Fixture()
+        byteArrayOf(0xc2.toByte(), 0xc9.toByte(), 0xbf.toByte(), 0xc8.toByte(), 0xc8.toByte(), 0xff.toByte())
+            .copyInto(f.printer.bytes, f.source)
+        val result = CompiledGbaFieldMapTitleText.resolve(
+            RomImage(f.printer.bytes), f.loader, PokemonTextCodec.gbaEnglish, ParserCancellationToken.NONE)
+        assertEquals("HOENN", (result as CompiledGbaFieldMapTitleText.Result.Resolved).value)
+    }
+
+    @Test
+    fun rejectsUnterminatedMalformedOrImplausibleStaticTitles() {
+        val invalid = listOf(
+            byteArrayOf(0xc2.toByte(), 0xc9.toByte(), 0x30, 0xff.toByte()),
+            byteArrayOf(0xc2.toByte(), 0xfa.toByte(), 0xff.toByte()),
+            byteArrayOf(0xdc.toByte(), 0xe3.toByte(), 0xd9.toByte(), 0xe2.toByte(), 0xe2.toByte(), 0xff.toByte()),
+            ByteArray(64) { 0xbb.toByte() },
+        )
+        for (value in invalid) {
+            val f = Fixture()
+            value.copyInto(f.printer.bytes, f.source)
+            assertTrue(
+                "bytes=${value.joinToString { (it.toInt() and 255).toString(16) }}",
+                CompiledGbaFieldMapTitleText.resolve(
+                    RomImage(f.printer.bytes), f.loader, PokemonTextCodec.gbaEnglish,
+                    ParserCancellationToken.NONE) is CompiledGbaFieldMapTitleText.Result.Unavailable,
+            )
+        }
+    }
+
+    @Test
+    fun titleTextRequiresExactCodecUniqueNominationAndBothFlows() {
+        fun Fixture.writeHoenn() {
+            byteArrayOf(0xc2.toByte(), 0xc9.toByte(), 0xbf.toByte(), 0xc8.toByte(), 0xc8.toByte(), 0xff.toByte())
+                .copyInto(printer.bytes, source)
+        }
+        val unsupported = Fixture().apply { writeHoenn() }
+        assertTrue(CompiledGbaFieldMapTitleText.resolve(
+            RomImage(unsupported.printer.bytes), unsupported.loader, PokemonTextCodec.gbEnglish,
+            ParserCancellationToken.NONE) is CompiledGbaFieldMapTitleText.Result.Unavailable)
+
+        val ambiguous = Fixture().apply {
+            writeHoenn()
+            addOwner(0x800, source + 16)
+        }
+        assertTrue(CompiledGbaFieldMapTitleText.resolve(
+            RomImage(ambiguous.printer.bytes), ambiguous.loader, PokemonTextCodec.gbaEnglish,
+            ParserCancellationToken.NONE) is CompiledGbaFieldMapTitleText.Result.Unavailable)
+
+        val incomplete = Fixture().apply {
+            writeHoenn()
+            printer.op(owner + 0xbc, 0x46c0)
+        }
+        assertTrue(CompiledGbaFieldMapTitleText.resolve(
+            RomImage(incomplete.printer.bytes), incomplete.loader, PokemonTextCodec.gbaEnglish,
+            ParserCancellationToken.NONE) is CompiledGbaFieldMapTitleText.Result.Unavailable)
+    }
+
+    @Test
     fun cancellationOccursDuringScanAndBeforeInvalidInput() {
         val f = Fixture()
         var checks = 0
@@ -145,6 +204,10 @@ class CompiledGbaFieldMapTitleTest {
         assertEquals(3, checks)
         assertThrows(ParserCancellationException::class.java) {
             CompiledGbaFieldMapTitle.nominate(RomImage(ByteArray(0)), -1,
+                ParserCancellationToken { throw ParserCancellationException() })
+        }
+        assertThrows(ParserCancellationException::class.java) {
+            CompiledGbaFieldMapTitleText.resolve(RomImage(ByteArray(0)), -1, null,
                 ParserCancellationToken { throw ParserCancellationException() })
         }
     }

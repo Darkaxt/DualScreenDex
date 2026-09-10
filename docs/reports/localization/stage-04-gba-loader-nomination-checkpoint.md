@@ -1,10 +1,11 @@
 # Stage 4 GBA loader nomination checkpoint
 
-Task 419 under Task 417 / `LNG-B002` / `LNG-B003`; diagnostic only.
-The initial collector checkpoint used source
-`f9b10f808af6594857815d81952360c333027484`. The subsequent Kotlin nomination
-integration below still emits no production titles; parser/storage/codecs remain
-**65/2/1**.
+Task 419 under Task 417 / `LNG-B002` / `LNG-B003`; this report records the
+serial nomination, authority and publication checkpoints. The initial collector
+checkpoint used source `f9b10f808af6594857815d81952360c333027484` and all
+checkpoints through complete owner recognition emitted no production titles at
+**65/2/1**. The latest supported Emerald-style publication checkpoint below moves
+the parser/storage/codec revisions to **66/2/1**.
 
 ## Evidence acquisition
 
@@ -245,16 +246,60 @@ unrelated `SpriteCodec.kt` warning remains unchanged.
 | Source and dependency input pins | `8f17de2839a3d366e27eabe28d4de9242d2e3d1d83a265a11f6fcf106731c0d1` |
 | Owned-process terminal receipt | `a580fb0186fee63d6d73f1d0b4c532876509ce0e8fce36bd22c63ddb58c70f50` |
 
+## Strict title decoding and publication checkpoint
+
+`CompiledGbaFieldMapTitleText` now turns a supported declaration into a typed
+result only when the selected loader has exactly one nomination, both independent
+window and complete-owner proofs remain present, and the supplied codec explicitly
+supports generation 3 on GBA. It decodes at most 64 bytes and accepts only a
+terminated 1–32-unit static label with no invalid, control or substitution units,
+at least one glyph and letter/digit, and language-aware standalone-fixed-name
+plausibility. Every other outcome is `Unavailable`; numeric map geometry and raster
+publication continue unchanged.
+
+The normal affine path now places an accepted value in
+`WorldMapRegion.displayName`. Catalog localization normalization moves this
+ROM-native value into the default language overlay, persistence reopens it there,
+and the API projection returns it. Parser revision **66** rejects revision-65
+caches that may have stored null or unproved region titles; SQL schema and codec
+revision remain **2/1**.
+
+Fresh direct compilation of the entire parser-core module and **39 focused tests
+passed**. They cover the strict successful decode, unsupported codec, ambiguity,
+missing owner authority, invalid/control/lowercase-implausible/unterminated text,
+and cancellation before invalid input. A pinned retained Japanese Emerald replay
+matched the complete owner, dispatcher and frame-window paths and decoded the
+retained eight-byte source as `ホウエンちほう` through the exact later-Japanese GBA
+codec. It used sparse retained evidence with **zero original reads** and therefore
+establishes semantic acceptance for that retained declaration but not
+whole-original uniqueness. The supervised process exited 0 without timeout and
+with an empty owned process tree; its generic supervisor field remained
+`finalEvidenceAccepted=false` because this is not final Stage 4 closure.
+
+A focused Gradle gate then passed **2 catalog-store tests and 1 companion-server
+API test**. It verifies default-overlay persistence, revision-65 rejection/current
+reopen, and API exposure. No parser corpus, app/Android build, device/emulator,
+ADB, signing or release work ran. The existing unrelated `SpriteCodec.kt` warning
+remains unchanged.
+
+| Title-publication gate evidence | SHA-256 |
+|---|---|
+| Module tests and retained semantic replay log | `83b8fc202b437efe6135150458a6524dba22953db04149c1f8d597f72384333f` |
+| Source and dependency input pins | `362de57ec09b342bf6cd699828961313fa0121496a4ad61052ec0383314bad70` |
+| Owned-process terminal receipt | `e9adff555844e7c5519a35cb36475de7ce492bd8648a5eb67ce01b51555afbec` |
+| Two-test catalog-store XML | `a395b9121796dd69e40e49377a1dd5929f0aedc70e76353d1817dd2d27231484` |
+| One-test API XML | `5424c758dcd650de4d850b7dd74e8d0ddcd299a3d764c14b8a9a3c16c59cf99b` |
+
 ## Remaining target / decoding / acceptance
 
-**Tasks 419/417:** extend title authority beyond the supported Emerald-style owner,
-then decode and publish only declarations that retain independent owner and window
-flow authority plus whole-original uniqueness. Independently justify every other
-shared/contextual/graphics-only disposition. Preserve keys, geometry and
-rasters; require sibling, relocation, decoy, cancellation, SQLite reopen and API
-acceptance. The optional window-plan stop does not justify widening caps or
-rereading originals. Any genuinely missing acquisition needs its own fresh,
-bounded reviewed scope and reservation.
+**Tasks 419/417:** extend equivalent title authority beyond the supported
+Emerald-style owner and establish whole-original uniqueness on eligible controls.
+Ruby's missing initialization prefix and the Ruby/Sapphire/FireRed/LeafGreen title
+ABIs remain open. Independently justify every other shared/contextual/graphics-only
+disposition. Preserve keys, geometry and rasters; require sibling, relocation,
+decoy, cancellation and official-control acceptance. The optional window-plan stop
+does not justify widening caps or rereading originals. Any genuinely missing
+acquisition needs its own fresh, bounded reviewed scope and reservation.
 
 **Tasks 386 and 373–375:** complete all fifteen capability dispositions, the final
 current **43-cell/44-control matrix**, final eligible source-bound corpus and
