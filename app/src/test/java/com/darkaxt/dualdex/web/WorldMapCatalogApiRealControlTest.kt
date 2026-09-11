@@ -547,14 +547,21 @@ class WorldMapCatalogApiRealControlTest {
         }
     }
 
-    @Test fun nativeContextualAccountingUsesOnlyTheFourReviewedControlExpectations() {
+    @Test fun nativeContextualAccountingUsesOnlyReviewedControlExpectations() {
         val scoped = nativeControls.filter { it.contextualMaps != null }
-        assertEquals(listOf("ja/GOLD_SILVER", "ja/CRYSTAL", "ko/GOLD", "ko/SILVER"), scoped.map { it.folder })
-        assertEquals(listOf(368, 388, 368, 368), scoped.map { it.contextualMaps!!.totalMaps })
-        assertEquals(listOf(364, 382, 364, 364), scoped.map { it.contextualMaps!!.staticRequired })
+        assertEquals(listOf("ja/GOLD_SILVER", "ja/CRYSTAL", "ja/RUBY_SAPPHIRE", "ja/EMERALD", "ko/GOLD", "ko/SILVER"),
+            scoped.map { it.folder })
+        assertEquals(listOf(368, 388, 394, 518, 368, 368), scoped.map { it.contextualMaps!!.totalMaps })
+        assertEquals(listOf(364, 382, 375, 482, 364, 364), scoped.map { it.contextualMaps!!.staticRequired })
         val four = setOf("local/1401", "local/1402", "local/1403", "local/1404")
-        assertEquals(listOf(four, four + setOf("local/1405", "local/1406"), four, four),
-            scoped.map { it.contextualMaps!!.contextualKeys })
+        assertEquals(listOf(
+            four,
+            four + setOf("local/1405", "local/1406"),
+            rubySapphireDynamicMaps,
+            emeraldDynamicMaps,
+            four,
+            four,
+        ), scoped.map { it.contextualMaps!!.contextualKeys })
     }
 
     @Test fun nativeContextualAccountingAcceptsExactStaticAndContextualPartition() {
@@ -2218,9 +2225,17 @@ class WorldMapCatalogApiRealControlTest {
         // Gen II charmap checkout's English game text is NOT used as a Japanese description oracle.
         // Location labels: Gen I source names; JA Gen II compiled landmark names at 0x92632/0x926d7;
         // JA Gen III compiled names at Ruby 0x3becb0/Emerald 0x57c6e0 (and FireRed's native map-name table).
+        // pret map declarations independently bind section 0x57 to MAPSEC_DYNAMIC; its region-map consumer
+        // selects location context instead of treating the blank section-table entry as a fixed map name.
         // Applicable native town/description absence is LNG-B002, not waived by historical Western NOT_FOUND.
         // Forecast acceptance here is ROM-only conditional type policy through actual move references and SQLite reopen.
         // No battle sample/formula is supplied; live damage accuracy and engine weather applicability are not claimed.
+        val rubySapphireDynamicMaps = mapKeys("""
+            1918 1919 191a 191b 191c 191d 191e 191f 1920 1921 1922 1923 1924 1925 1926 1927 1929 192a 192b
+        """)
+        val emeraldDynamicMaps = rubySapphireDynamicMaps + mapKeys("""
+            192c 192d 192e 192f 1930 1931 1932 1933 1934 1935 1936 1937 1938 1939 193a 193b 193c
+        """)
         val nativeControls = listOf(
             NativeControl("ja/RED_BLUE", "3f0dc460ca8d06be1c9ac96307c939c0ea7baa366b40c2f1f4ad63242b6c4816", EngineFamily.RED_BLUE,
                 "gb-gen1-ja-red-blue", 1, "うまれたときから", "マサラ"),
@@ -2233,9 +2248,11 @@ class WorldMapCatalogApiRealControlTest {
                 "gb-gen2-ja", 2, "うまれて しばらく", "ワカバタウン",
                 contextualMaps = NativeContextualExpectation(388, setOf("local/1401", "local/1402", "local/1403", "local/1404", "local/1405", "local/1406"))),
             NativeControl("ja/RUBY_SAPPHIRE", "a7ea012b67a27da2893bfdfcb5f64915607b26904b4fc635a1055e8e40e692ab", EngineFamily.RUBY_SAPPHIRE,
-                "gba-gen3-ja-ruby-sapphire", 3, "ひなたで ひるねを", "ミシロタウン"),
+                "gba-gen3-ja-ruby-sapphire", 3, "ひなたで ひるねを", "ミシロタウン",
+                contextualMaps = NativeContextualExpectation(394, rubySapphireDynamicMaps)),
             NativeControl("ja/EMERALD", "33f5610b9186b4add09fef68895deb00f552b997b3d133b5a961e5123506343c", EngineFamily.EMERALD,
-                "gba-gen3-ja-emerald-frlg", 3, "ひなたで ひるねを", "ミシロタウン"),
+                "gba-gen3-ja-emerald-frlg", 3, "ひなたで ひるねを", "ミシロタウン",
+                contextualMaps = NativeContextualExpectation(518, emeraldDynamicMaps)),
             NativeControl("ja/FIRERED_LEAFGREEN", "cec5fc4dbe38cd8026bd6664a1a041d9dc91e8d4249bab04e7bde70c3cdf4e06", EngineFamily.FIRERED_LEAFGREEN,
                 "gba-gen3-ja-emerald-frlg", 3, "うまれたときから", "マサラタウン"),
             NativeControl("ko/GOLD", "9c273e86e6120c6a038160ccb0153b8b20425b84fc08a496281c1d1bcac492f6", EngineFamily.GOLD_SILVER,
@@ -2252,6 +2269,11 @@ class WorldMapCatalogApiRealControlTest {
             ThemeControl("DUALDEX_UNBOUND_ROM", "7aa25bbf568f7cfcf6ee1cf2e9e6ff637350b3d0705c2375cabb6baa7d9739f7"),
             ThemeControl("DUALDEX_ODYSSEY_ROM", "44c7e3eafab19c39df7c39d54bafb78a1d9caf7c371244b6f5efb12cfd98d0d0"),
         )
+        private fun mapKeys(source: String): Set<String> = source.trimIndent()
+            .split(Regex("\\s+"))
+            .filter(String::isNotBlank)
+            .mapTo(linkedSetOf()) { "local/$it" }
+
         val GEN2_PNGS = listOf(
             "23739bddf01b2c98a03ca1c4af28ade7d751623ec8063311dd2b8b366c81c516",
             "c06748683d60a89e4d2984bbcb565dc854ddd7942295d5039b80bcabe223258d",
@@ -2410,7 +2432,7 @@ internal data class NativeContextualExpectation(val totalMaps: Int, val contextu
     val staticRequired: Int get() = totalMaps - contextualKeys.size
 }
 
-/** Test-only accounting for the four externally bound controls; never a producer or ROM selector. */
+/** Test-only accounting for externally bound controls; never a producer or ROM selector. */
 internal object NativeContextualMapAssertions {
     fun names(expected: NativeContextualExpectation, maps: List<LocalMap>,
         names: Map<String, CatalogField<String>>, projected: Map<String, String?>,

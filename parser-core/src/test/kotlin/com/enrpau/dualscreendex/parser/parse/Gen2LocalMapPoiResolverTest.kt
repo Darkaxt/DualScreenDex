@@ -5,6 +5,7 @@ import com.enrpau.dualscreendex.parser.analysis.ParserCancellationException
 import com.enrpau.dualscreendex.parser.analysis.ResolutionLimits
 import com.enrpau.dualscreendex.parser.catalog.LocalMap
 import com.enrpau.dualscreendex.parser.catalog.LocalMapNameDisposition
+import com.enrpau.dualscreendex.parser.catalog.LocalMapPoi
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiTextObligation
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiKind
 import com.enrpau.dualscreendex.parser.io.RomImage
@@ -272,12 +273,12 @@ class Gen2LocalMapPoiResolverTest {
     }
 
     @Test
-    fun missingTerminationMalformedSecondLineAndReadBoundNeverYieldHeadline() {
+    fun malformedDeclarationsFailClosedAfterAnyProvenHeadline() {
         val mutations: List<Pair<String, (Gen2DeclaredSignFixture) -> Unit>> = listOf(
             "missing DONE" to { f -> f.bytes[f.text + 23] = 0xff.toByte() },
             "malformed second line" to { f -> f.bytes[f.text + 17] = 0xff.toByte() },
             "missing START" to { f -> f.bytes[f.text] = 0xff.toByte() },
-            "DONE beyond bounded extent" to { f -> f.bytes.fill(0x7f, f.text + 16, f.text + 129); f.bytes[f.text + 129] = 0x5e },
+            "DONE beyond bounded extent" to { f -> f.bytes.fill(0x7f, f.text + 16, f.text + 256); f.bytes[f.text + 256] = 0x5e },
             "bank crossing trail" to { f -> val end = (f.dataBank + 1) * 0x4000; f.word(f.script + 1, end - 4); f.raw(end - 4, "00 01 67 01") },
             "text inside attributes" to { f -> f.word(f.script + 1, f.attributes + 1) },
             "text inside event object" to { f -> f.word(f.script + 1, f.events) },
@@ -291,12 +292,11 @@ class Gen2LocalMapPoiResolverTest {
             assertEquals("이곳은 연두마을", positive.displayName)
             mutate(f)
             val negative = resolveDeclared(f).pois.single()
-            val obligation = if (name == "script pointer inside event object") {
-                LocalMapPoiTextObligation.UNRESOLVED
-            } else {
-                LocalMapPoiTextObligation.DIRECT_TEXT
-            }
-            assertEquals(name, positive.copy(displayName = null, textObligation = obligation), negative)
+            assertEquals(
+                name,
+                positive.copy(displayName = null, textObligation = LocalMapPoiTextObligation.UNRESOLVED),
+                negative,
+            )
         }
         val f = Gen2DeclaredSignFixture()
         assertEquals("이곳은 연두마을", resolveDeclared(f).pois.single().displayName)
@@ -560,7 +560,16 @@ class Gen2LocalMapPoiResolverTest {
         assertEquals(0x101, positive.single { it.key.endsWith("/warp/0") }.destinationBaseAreaId)
         // This lead byte would consume the next record's START as its valid token trail.
         f.bytes[f.text + 23] = 0x02
-        assertEquals(positive.map { if (it.key.endsWith("/bg/0")) it.copy(displayName = null) else it }, resolveDeclared(f).pois)
+        assertEquals(
+            positive.map {
+                if (it.key.endsWith("/bg/0")) {
+                    it.copy(displayName = null, textObligation = LocalMapPoiTextObligation.UNRESOLVED)
+                } else {
+                    it
+                }
+            },
+            resolveDeclared(f).pois,
+        )
     }
 
     @Test
@@ -570,10 +579,20 @@ class Gen2LocalMapPoiResolverTest {
         assertEquals("이곳은 연두마을", positive.single { it.key.endsWith("/bg/0") }.displayName)
         // Unsupported prose does not erase an independently bound declaration's boundary.
         f.bytes[f.text + 24] = 0x01 // not START, but a valid trail for the preceding 0x02 lead
+        fun unresolved(poi: LocalMapPoi) = poi.copy(
+            displayName = null,
+            textObligation = LocalMapPoiTextObligation.UNRESOLVED,
+        )
         val malformedNeighbor = resolveDeclared(f).pois
-        assertEquals(positive.map { if (it.key.endsWith("/bg/1") || it.key.endsWith("/bg/2")) it.copy(displayName = null) else it }, malformedNeighbor)
+        assertEquals(
+            positive.map { if (it.key.endsWith("/bg/1") || it.key.endsWith("/bg/2")) unresolved(it) else it },
+            malformedNeighbor,
+        )
         f.bytes[f.text + 23] = 0x02
-        assertEquals(malformedNeighbor.map { if (it.key.endsWith("/bg/0")) it.copy(displayName = null) else it }, resolveDeclared(f).pois)
+        assertEquals(
+            malformedNeighbor.map { if (it.key.endsWith("/bg/0")) unresolved(it) else it },
+            resolveDeclared(f).pois,
+        )
     }
 
     private fun twoDeclaredRecordsWithItems() = Gen2DeclaredSignFixture().apply {

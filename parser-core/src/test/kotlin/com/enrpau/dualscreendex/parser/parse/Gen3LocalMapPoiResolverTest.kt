@@ -1,10 +1,12 @@
 package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.catalog.LocalMap
+import com.enrpau.dualscreendex.parser.catalog.LocalMapNameDisposition
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiTextObligation
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiKind
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.EngineFamily
+import com.enrpau.dualscreendex.parser.text.JapanesePokemonTextCodecs
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -77,6 +79,73 @@ class Gen3LocalMapPoiResolverTest {
     }
 
     @Test
+    fun warpsToDynamicMapSectionsRequireContextualText() {
+        val bytes = ByteArray(0x800)
+        putPointer(bytes, MAP_HEADER + 4, EVENTS)
+        bytes[EVENTS + 1] = 1
+        putPointer(bytes, EVENTS + 8, WARPS)
+        putU16(bytes, WARPS, 2)
+        putU16(bytes, WARPS + 2, 3)
+        bytes[WARPS + 6] = 2
+
+        val warp = Gen3LocalMapPoiResolver.resolve(
+            RomImage(bytes),
+            mapOf(1 to MAP_HEADER),
+            listOf(
+                localMap(),
+                localMap(2, LocalMapNameDisposition.CONTEXT_DEPENDENT),
+            ),
+            EngineFamily.EMERALD,
+            null,
+        ).pois.single()
+
+        assertEquals(2, warp.destinationBaseAreaId)
+        assertEquals(LocalMapPoiTextObligation.CONTEXTUAL_TEXT, warp.textObligation)
+    }
+
+    @Test
+    fun acceptsBoundedNonPlayerPlaceholderInJapaneseSignHeadline() {
+        val bytes = singleSignFixture(SCRIPT)
+        writeSimpleSign(bytes, SCRIPT, TEXT)
+        byteArrayOf(0x01, 0xfd.toByte(), 0x08, 0x02, 0xff.toByte()).copyInto(bytes, TEXT)
+
+        val poi = resolveSingleSign(bytes)
+
+        assertEquals(LocalMapPoiTextObligation.DIRECT_TEXT, poi.textObligation)
+        assertEquals("あ い", poi.displayName)
+    }
+
+    @Test
+    fun decodesGenderedJapaneseSignBranchAfterBoundedSoundPrelude() {
+        val bytes = singleSignFixture(SCRIPT)
+        byteArrayOf(
+            0x69, 0xa0.toByte(),
+            0x21, 0x0d, 0x80.toByte(), 0x00, 0x00,
+            0x06, 0x01, 0x00, 0x06, 0x00, 0x08,
+            0x21, 0x0d, 0x80.toByte(), 0x01, 0x00,
+            0x06, 0x01, 0x20, 0x06, 0x00, 0x08,
+            0x02,
+        ).copyInto(bytes, SCRIPT)
+        writeSimpleSign(bytes, 0x600, TEXT)
+        byteArrayOf(0x01, 0x02, 0xff.toByte()).copyInto(bytes, TEXT)
+        byteArrayOf(
+            0x16, 0x04, 0x80.toByte(), 0x01, 0x00,
+            0x25, 0xd6.toByte(), 0x00,
+            0x2f, 0x04, 0x00,
+            0x0f, 0x00, 0x10, 0x07, 0x00, 0x08,
+            0x09, 0x04,
+            0x25, 0xf9.toByte(), 0x00,
+            0x27, 0x6b, 0x02,
+        ).copyInto(bytes, 0x620)
+        byteArrayOf(0x03, 0x04, 0xff.toByte()).copyInto(bytes, 0x710)
+
+        val poi = resolveSingleSign(bytes)
+
+        assertEquals(LocalMapPoiTextObligation.GENDERED_DIRECT_TEXT, poi.textObligation)
+        assertEquals(mapOf(0 to "あい", 1 to "うえ"), poi.displayNamesByTrainerGender)
+    }
+
+    @Test
     fun preservesStructuralSignsWarpsAndItemsWithoutTextAuthority() {
         val bytes = ByteArray(0x800)
         putPointer(bytes, MAP_HEADER + 4, EVENTS)
@@ -124,15 +193,45 @@ class Gen3LocalMapPoiResolverTest {
         assertEquals(1007, item.item?.collectionFlagId)
     }
 
-    private fun localMap() = LocalMap(
-        key = "local/1",
+    private fun singleSignFixture(script: Int): ByteArray = ByteArray(0x800).also { bytes ->
+        putPointer(bytes, MAP_HEADER + 4, EVENTS)
+        bytes[EVENTS + 3] = 1
+        putPointer(bytes, EVENTS + 0x10, BACKGROUNDS)
+        putU16(bytes, BACKGROUNDS, 2)
+        putU16(bytes, BACKGROUNDS + 2, 3)
+        putPointer(bytes, BACKGROUNDS + 8, script)
+    }
+
+    private fun resolveSingleSign(bytes: ByteArray) = Gen3LocalMapPoiResolver.resolve(
+        RomImage(bytes),
+        mapOf(1 to MAP_HEADER),
+        listOf(localMap()),
+        EngineFamily.RUBY_SAPPHIRE,
+        JapanesePokemonTextCodecs.gen3RubySapphire,
+    ).pois.single()
+
+    private fun writeSimpleSign(bytes: ByteArray, script: Int, text: Int) {
+        bytes[script] = 0x0f
+        bytes[script + 1] = 0
+        putPointer(bytes, script + 2, text)
+        bytes[script + 6] = 0x09
+        bytes[script + 7] = 0x03
+        bytes[script + 8] = 0x02
+    }
+
+    private fun localMap(
+        baseAreaId: Int = 1,
+        nameDisposition: LocalMapNameDisposition = LocalMapNameDisposition.STATIC_NAME_REQUIRED,
+    ) = LocalMap(
+        key = "local/$baseAreaId",
         displayName = null,
-        baseAreaId = 1,
+        baseAreaId = baseAreaId,
         pixelWidth = 160,
         pixelHeight = 160,
         gridWidth = 10,
         gridHeight = 10,
-        imageAssetKey = "asset/1",
+        imageAssetKey = "asset/$baseAreaId",
+        nameDisposition = nameDisposition,
     )
 
     private fun putPointer(bytes: ByteArray, offset: Int, target: Int) {
@@ -150,5 +249,7 @@ class Gen3LocalMapPoiResolverTest {
         const val EVENTS = 0x200
         const val WARPS = 0x300
         const val BACKGROUNDS = 0x400
+        const val SCRIPT = 0x500
+        const val TEXT = 0x700
     }
 }

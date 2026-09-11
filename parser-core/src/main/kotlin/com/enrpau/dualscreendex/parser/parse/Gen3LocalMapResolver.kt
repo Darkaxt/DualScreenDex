@@ -5,6 +5,7 @@ import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.catalog.Gen3MapLocationResolver
 import com.enrpau.dualscreendex.parser.catalog.LocalMap
 import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
+import com.enrpau.dualscreendex.parser.catalog.LocalMapNameDisposition
 import com.enrpau.dualscreendex.parser.catalog.LocalMapRasterCodec
 import com.enrpau.dualscreendex.parser.catalog.PngMapAsset
 import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
@@ -253,10 +254,16 @@ internal object Gen3LocalMapResolver {
             "map cell grid is truncated"
         }
         val section = rom.u8(header + MAP_SECTION_OFFSET)
-        val displayName = names[section]
+        val nameDisposition = if (section == DYNAMIC_MAP_SECTION) {
+            LocalMapNameDisposition.CONTEXT_DEPENDENT
+        } else {
+            LocalMapNameDisposition.STATIC_NAME_REQUIRED
+        }
+        val displayName = names[section].takeIf { nameDisposition == LocalMapNameDisposition.STATIC_NAME_REQUIRED }
         return MapDescriptor(
             baseAreaId = baseAreaId,
             displayName = displayName,
+            nameDisposition = nameDisposition,
             width = width,
             height = height,
             mapCells = mapCells,
@@ -546,6 +553,7 @@ internal object Gen3LocalMapResolver {
     private data class MapDescriptor(
         val baseAreaId: Int,
         val displayName: String?,
+        val nameDisposition: LocalMapNameDisposition,
         val width: Int,
         val height: Int,
         val mapCells: Int,
@@ -567,6 +575,7 @@ internal object Gen3LocalMapResolver {
             gridWidth = width,
             gridHeight = height,
             imageAssetKey = imageAssetKey,
+            nameDisposition = nameDisposition,
         )
     }
 
@@ -612,6 +621,7 @@ internal object Gen3LocalMapResolver {
     }
 
     private const val MAP_SECTION_OFFSET = 0x14
+    private const val DYNAMIC_MAP_SECTION = 0x57
     private const val MAP_TYPE_OFFSET = 0x17
     private const val TILESET_BYTES = 24
     private const val COMPRESSED_FLAG = 1

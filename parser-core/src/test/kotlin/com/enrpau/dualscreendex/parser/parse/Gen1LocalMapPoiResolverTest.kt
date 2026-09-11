@@ -55,6 +55,29 @@ class Gen1LocalMapPoiResolverTest {
     }
 
     @Test
+    fun classifiesReservedElevatorWarpAsContextual() {
+        val bytes = ByteArray(0x8000)
+        writeHeader(bytes, HEADER_1, OBJECT_ROOT_1_ADDRESS)
+        byteArrayOf(
+            0,
+            1,
+            1, 2, 1, 0xed.toByte(),
+            0,
+            0,
+        ).copyInto(bytes, OBJECT_ROOT_1)
+
+        val poi = Gen1LocalMapPoiResolver.resolve(
+            RomImage(bytes),
+            listOf(Gen1LocalMapPoiResolver.Source(1, 1, HEADER_1)),
+            listOf(localMap(1)),
+            null,
+        ).pois.single()
+
+        assertEquals(LocalMapPoiTextObligation.CONTEXTUAL_TEXT, poi.textObligation)
+        assertEquals(null, poi.destinationBaseAreaId)
+    }
+
+    @Test
     fun resolvesHomeBankSignScriptPointers() {
         assertEquals(
             LocalMapPoiTextObligation.DIRECT_TEXT,

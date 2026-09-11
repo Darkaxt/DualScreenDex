@@ -15,15 +15,18 @@ internal object Gen3PoiSemanticOracle {
     // 9a83a2bbe8e097e62c00f1dbd56849766775d7b6 and pret/pokefirered
     // c75f352304d529f6ba92d4f74b9cf8b5c3810788 supply the structural event oracle.
     // Exact compiled controls independently prove every retained record, MAP_DYNAMIC value 0x7f7f,
-    // background kind 8, and the lockall/checkplayergender command prefix.
+    // background kind 8, the lockall/checkplayergender command prefix, and warp targets whose
+    // section 0x57 names are selected through the MAPSEC_DYNAMIC runtime consumer.
     fun expectation(family: EngineFamily): Expectation = when (family) {
         EngineFamily.RUBY_SAPPHIRE -> Expectation(
             contextualKeys = indexedKeys("warp", """
                 0d17:0-1 1900:0 1901:0 1902:0 1903:0 1904:0 1905:0 1906:0 1907:0
                 1908:0 1909:0 190a:0 190b:0 190c:0 190d:0 190e:0 190f:0 1910:0 1911:0
                 1912:0 1913:0 1914:0 1915:0 1916:0 1917:0 1918:0-1 1919:0-1 191a:0-3
-                191b:0-3 1928:0-2
-            """).also { require(it.size == 41) },
+                191b:0-3 1928:0-2 0203:1-4 0302:1-4 0406:1-4 0504:1-4 0604:1-4
+                0701:1-4 0805:1-4 090b:1-4 0a06:1-4 0b06:1-4 0c03:1-4 0d07:1-4
+                0e04:1-4 0f03:1-4 100d:1-4 1929:5,7 192a:0 192b:0-11
+            """).also { require(it.size == 116) },
             noTextKeys = hoennSecretBases,
             genderedDirectTextKeys = hoennGenderedSigns,
             unresolvedKeys = indexedKeys("bg", """
@@ -41,8 +44,11 @@ internal object Gen3PoiSemanticOracle {
                 0d16:0-1 1865:0 1868:0 1900:0 1901:0 1902:0 1903:0 1904:0 1905:0
                 1906:0 1907:0 1908:0 1909:0 190a:0 190b:0 190c:0 190d:0 190e:0 190f:0
                 1910:0 1911:0 1912:0 1913:0 1914:0 1915:0 1916:0 1917:0 1918:0-1
-                1919:0-1 191a:0-3 191b:0-3 1928:0-2 193c:0-1
-            """).also { require(it.size == 45) },
+                1919:0-1 191a:0-3 191b:0-3 1928:0-2 193c:0-1 0203:1-2 0302:1-2
+                0406:1-2 0505:1-2 0605:1-2 0701:1-2 0805:1-2 090c:1-2 0a06:1-2
+                0b06:1-2 0c03:1-2 0d07:1-2 0e04:1-2 0f03:1-2 100d:1-2 100e:1-2
+                1929:5,7 192a:0 192b:0-11 1a36:1-2
+            """).also { require(it.size == 94) },
             noTextKeys = hoennSecretBases,
             genderedDirectTextKeys = hoennGenderedSigns,
             unresolvedKeys = indexedKeys("bg", """

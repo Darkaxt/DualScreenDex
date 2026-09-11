@@ -71,8 +71,11 @@ internal object Gen1LocalMapPoiResolver {
                 index = index,
                 x = rom.u8(row + 1),
                 y = rom.u8(row),
-                destinationBaseAreaId = destination.takeIf { it != LAST_MAP_SENTINEL && it in acceptedAreaIds },
-                contextDependentDestination = destination == LAST_MAP_SENTINEL,
+                destinationBaseAreaId = destination.takeIf {
+                    it !in CONTEXT_DEPENDENT_DESTINATION_SENTINELS && it in acceptedAreaIds
+                },
+                contextDependentDestination = destination !in acceptedAreaIds &&
+                    destination in CONTEXT_DEPENDENT_DESTINATION_SENTINELS,
             )
         }
         cursor += warpCount * WARP_RECORD_BYTES
@@ -573,7 +576,7 @@ internal object Gen1LocalMapPoiResolver {
     private const val OBJECT_TYPE_TRAINER = 0x40
     private const val OBJECT_TYPE_ITEM = 0x80
     private const val OBJECT_COORDINATE_BIAS = 4
-    private const val LAST_MAP_SENTINEL = 0xFF
+    private val CONTEXT_DEPENDENT_DESTINATION_SENTINELS = setOf(0xED, 0xFF)
     private const val MAX_EVENTS_PER_KIND = 64
     private const val SIGN_ENTRANCE_MAX_DISTANCE = 3
     private const val TEXT_START = 0x00

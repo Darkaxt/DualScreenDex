@@ -85,8 +85,24 @@ internal object Gen2DeclaredSignAbi {
                     r.check(matched.getValue("layoutOrigin") in WRAM, "continuation origin")
                 }
                 accept(
+                    "FA @linkMode FE %linkModeValue 28 %communicationJump FE %mobileModeValue 28 %mobileJump " +
+                        "CD @loadCursor CD @waitBg D5 CD @prompt D1 CD @unloadCursor D5 CD @textScroll " +
+                        "CD @textScroll 21 @layoutOrigin D1 C3 @nextChar",
+                ) { matched ->
+                    r.check(matched.getValue("linkMode") in WRAM, "mobile continuation link state")
+                    r.check(matched.getValue("linkModeValue") != matched.getValue("mobileModeValue"),
+                        "mobile continuation modes")
+                    r.check(target + 7 + matched.getValue("communicationJump").toByte().toInt() == target + 14 &&
+                        target + 11 + matched.getValue("mobileJump").toByte().toInt() == target + 14,
+                        "mobile continuation branches")
+                    for (name in listOf("loadCursor", "waitBg", "prompt", "unloadCursor", "textScroll")) {
+                        r.home(matched.getValue(name))
+                    }
+                    r.check(matched.getValue("layoutOrigin") in WRAM, "mobile continuation origin")
+                }
+                accept(
                     "FA @linkMode B7 20 %communicationJump CD @loadCursor CD @waitBg D5 CD @prompt D1 " +
-                        "FA @linkMode B7 C4 @unloadCursor D5 CD @textScroll CD @textScroll " +
+                        "FA @linkMode B7 CC @unloadCursor D5 CD @textScroll CD @textScroll " +
                         "21 @layoutOrigin D1 C3 @nextChar",
                 ) { matched ->
                     r.check(matched.getValue("linkMode") in WRAM, "continuation link state")
@@ -99,17 +115,38 @@ internal object Gen2DeclaredSignAbi {
                 }
                 accept(
                     "D5 FA @linkMode FE %linkModeValue 28 %linkJump CD @loadCursor CD @waitBg " +
-                        "CD @prompt 21 @layoutOrigin 01 12 04 CD @clearBox CD @unloadCursor " +
+                        "CD @prompt 21 @layoutOrigin 01 %layoutWidth %layoutHeight CD @clearBox CD @unloadCursor " +
                         "0E 14 CD @delayFrames 21 @layoutOrigin2 D1 C3 @nextChar",
                 ) { matched ->
                     r.check(matched.getValue("linkMode") in WRAM, "paragraph link state")
                     r.check(target + 8 + matched.getValue("linkJump").toByte().toInt() == target + 11,
                         "paragraph link branch")
+                    r.check(matched.getValue("layoutWidth") == 0x12 && matched.getValue("layoutHeight") in 0x04..0x05,
+                        "paragraph dimensions")
                     for (name in listOf("loadCursor", "waitBg", "prompt", "clearBox", "unloadCursor", "delayFrames")) {
                         r.home(matched.getValue(name))
                     }
                     r.check(matched.getValue("layoutOrigin") in WRAM && matched.getValue("layoutOrigin2") in WRAM,
                         "paragraph origins")
+                }
+                accept(
+                    "D5 FA @linkMode FE %linkModeValue 28 %linkJump FE %mobileModeValue 28 %mobileJump " +
+                        "CD @loadCursor CD @waitBg CD @prompt 21 @layoutOrigin 01 %layoutWidth %layoutHeight " +
+                        "CD @clearBox CD @unloadCursor 0E 14 CD @delayFrames 21 @layoutOrigin2 D1 C3 @nextChar",
+                ) { matched ->
+                    r.check(matched.getValue("linkMode") in WRAM, "mobile paragraph link state")
+                    r.check(matched.getValue("linkModeValue") != matched.getValue("mobileModeValue"),
+                        "mobile paragraph modes")
+                    r.check(target + 8 + matched.getValue("linkJump").toByte().toInt() == target + 15 &&
+                        target + 12 + matched.getValue("mobileJump").toByte().toInt() == target + 15,
+                        "mobile paragraph branches")
+                    r.check(matched.getValue("layoutWidth") == 0x12 && matched.getValue("layoutHeight") in 0x04..0x05,
+                        "mobile paragraph dimensions")
+                    for (name in listOf("loadCursor", "waitBg", "prompt", "clearBox", "unloadCursor", "delayFrames")) {
+                        r.home(matched.getValue(name))
+                    }
+                    r.check(matched.getValue("layoutOrigin") in WRAM && matched.getValue("layoutOrigin2") in WRAM,
+                        "mobile paragraph origins")
                 }
                 accept("D5 11 @layoutMarker 44 4D CD @placeString 60 69 D1 C3 @nextChar") { matched ->
                     val marker = r.home(matched.getValue("layoutMarker"))
@@ -137,13 +174,36 @@ internal object Gen2DeclaredSignAbi {
             if (value !in controls) return false
             runtimeValues[value]?.let { return it }
             val result = try {
-                val e = env.toMutableMap()
                 val target = r.home(targets[value] ?: throw Invalid("undeclared runtime control"))
-                r.need(target, "D5 11 @runtimeText C3 @literalJoin", e)
-                r.needHome(e, "literalJoin", "CD @placeString 60 69 D1 C3 @nextChar")
-                r.check(e.getValue("runtimeText") in WRAM, "runtime text state")
+                val candidates = mutableListOf<Unit>()
+                fun accept(pattern: String, validate: (Map<String, Int>) -> Unit) {
+                    r.match(target, pattern, env.toMutableMap())?.let { matched ->
+                        validate(matched)
+                        candidates += Unit
+                    }
+                }
+                accept("D5 11 @runtimeText C3 @literalJoin") { matched ->
+                    r.needHome(matched.toMutableMap(), "literalJoin", "CD @placeString 60 69 D1 C3 @nextChar")
+                    r.check(matched.getValue("runtimeText") in WRAM, "runtime text state")
+                }
+                accept(
+                    "D5 11 @runtimeText CD @placeString 60 69 FA @genderState CB 47 11 @maleSuffix " +
+                        "28 %maleJump 11 @femaleSuffix 18 %femaleJump CD @placeString 60 69 D1 C3 @nextChar",
+                ) { matched ->
+                    r.check(matched.getValue("runtimeText") in WRAM && matched.getValue("genderState") in WRAM,
+                        "gendered runtime text state")
+                    r.check(target + 19 + matched.getValue("maleJump").toByte().toInt() == target + 24 &&
+                        target + 24 + matched.getValue("femaleJump").toByte().toInt() == target + 24,
+                        "gendered runtime branches")
+                    for (name in listOf("placeString", "maleSuffix", "femaleSuffix", "nextChar")) {
+                        r.home(matched.getValue(name))
+                    }
+                }
+                r.unique(candidates.size, "runtime text control")
                 true
             } catch (_: Invalid) {
+                false
+            } catch (_: Ambiguous) {
                 false
             } catch (_: Exhausted) {
                 false

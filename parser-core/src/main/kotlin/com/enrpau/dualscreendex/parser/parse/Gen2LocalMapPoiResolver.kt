@@ -340,10 +340,7 @@ internal object Gen2LocalMapPoiResolver {
                     displayName = headline.text,
                     service = service,
                 )
-                null -> SignSemantics(
-                    textObligation = LocalMapPoiTextObligation.DIRECT_TEXT,
-                    service = service,
-                )
+                null -> SignSemantics(service = service)
             }
         }
         if (declaration.status != Gen2DeclaredSignAbi.Status.ABSENT) {
@@ -375,7 +372,7 @@ internal object Gen2LocalMapPoiResolver {
                     textObligation = LocalMapPoiTextObligation.DIRECT_TEXT,
                     displayName = headline.text,
                 )
-                null -> SignSemantics(textObligation = LocalMapPoiTextObligation.DIRECT_TEXT)
+                null -> SignSemantics()
             }
         }
         if (script + 3 > scriptBankEnd) return SignSemantics()
@@ -470,6 +467,10 @@ internal object Gen2LocalMapPoiResolver {
                     }
                     return null
                 }
+                if (!firstLine) {
+                    cursor++
+                    continue
+                }
                 if (usedLiterals.add(value) && usedLiterals.size > MAX_SIGN_LITERAL_CONTROLS) {
                     return null
                 }
@@ -480,9 +481,13 @@ internal object Gen2LocalMapPoiResolver {
                     val text = when (token) {
                         is PokemonTextToken.Glyph -> token.text
                         is PokemonTextToken.Whitespace -> token.text
-                        is PokemonTextToken.Substitution -> if (codec.isRatifiedStaticLabelSubstitution(
-                            rom, at, token, StaticLabelUse.GEN2_DECLARED_SIGN_TEXT,
-                        )) token.text else return null
+                        is PokemonTextToken.Substitution -> when {
+                            !firstLine -> ""
+                            codec.isRatifiedStaticLabelSubstitution(
+                                rom, at, token, StaticLabelUse.GEN2_DECLARED_SIGN_TEXT,
+                            ) -> token.text
+                            else -> return null
+                        }
                         else -> return null
                     }
                     if (firstLine) headline.append(text)
@@ -496,9 +501,13 @@ internal object Gen2LocalMapPoiResolver {
             val text = when (token) {
                 is PokemonTextToken.Glyph -> token.text
                 is PokemonTextToken.Whitespace -> token.text
-                is PokemonTextToken.Substitution -> if (codec.isRatifiedStaticLabelSubstitution(
-                    rom, cursor, token, StaticLabelUse.GEN2_DECLARED_SIGN_TEXT,
-                )) token.text else return null
+                is PokemonTextToken.Substitution -> when {
+                    !firstLine -> ""
+                    codec.isRatifiedStaticLabelSubstitution(
+                        rom, cursor, token, StaticLabelUse.GEN2_DECLARED_SIGN_TEXT,
+                    ) -> token.text
+                    else -> return null
+                }
                 else -> return null
             }
             if (firstLine) headline.append(text)
@@ -671,7 +680,7 @@ internal object Gen2LocalMapPoiResolver {
     private const val TEXT_ELLIPSIS = 0x56
     private val SIGN_HEADLINE_ENDS = setOf(0x4C, 0x4E, 0x4F, 0x50, 0x51, 0x55, 0x57, 0x58)
     // Smallest bounds covering every retained official Japanese Gold record.
-    private const val MAX_SIGN_TEXT_BYTES = 129
+    private const val MAX_SIGN_TEXT_BYTES = 256
     private const val MAX_SIGN_LITERAL_CONTROLS = 8
     private const val MIN_SIGN_HEADLINE_CHARS = 2
     private val WHITESPACE = Regex("\\s+")

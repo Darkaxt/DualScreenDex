@@ -13,7 +13,8 @@ internal object Gen1PoiSemanticOracle {
 
     // pret/pokered 2ab2421410b764e4dfebeddf8d9249d2cba947c4 and pret/pokeyellow
     // e6ba56989b0f2694f393e6924820be11dcc1fbb8 supply the structural event oracle.
-    // The exact compiled controls independently prove retained rows and the LAST_MAP consumer.
+    // The exact compiled controls independently prove retained rows, LAST_MAP, and the reserved
+    // Silph elevator destination rewritten from the selected floor at runtime.
     private val sharedContextualDestinations = indexedKeys("warp", """
         0025:0-1 0027:0-1 0028:0-1 0029:0-1 002a:0-1 002b:0-1 002c:0-1 002d:0-1
         002e:0-1 002f:0-1 0030:0-1 0031:0-3 0032:2-3 0034:0-3 0036:0-1 0037:0-1
@@ -28,8 +29,8 @@ internal object Gen1PoiSemanticOracle {
         00a7:0-1 00ab:0-1 00ac:0-1 00ad:0-1 00ae:0-1 00af:0-1 00b1:0-1 00b2:0-1
         00b3:0-1 00b4:0-1 00b5:0-1 00b6:0-1 00b7:0-1 00b8:0-3 00ba:0-7 00bc:0-1
         00bd:0-1 00be:0-3 00c0:0-3 00c1:0-3 00c2:1-2 00c4:0-1 00e4:0-1 00e5:0-1
-        00e6:0-2 00eb:2
-    """).also { require(it.size == 248) }
+        00e6:0-2 00eb:2 00ec:0-1
+    """).also { require(it.size == 250) }
 
     private val dynamicStandardScripts = indexedKeys("bg", "007e:0-2 0089:0-2")
         .also { require(it.size == 6) }

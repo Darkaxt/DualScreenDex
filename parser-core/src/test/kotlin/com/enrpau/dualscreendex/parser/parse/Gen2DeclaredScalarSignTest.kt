@@ -88,6 +88,7 @@ class Gen2DeclaredScalarSignTest {
             mutate(f)
             val poi = resolve(f).pois.single()
             assertEquals(null, poi.displayName)
+            assertEquals(LocalMapPoiTextObligation.UNRESOLVED, poi.textObligation)
             assertEquals(com.enrpau.dualscreendex.parser.catalog.LocalMapPoiService.POKEMON_CENTER, poi.service)
         }
     }
@@ -449,7 +450,7 @@ class Gen2DeclaredScalarSignTest {
         f.raw(f.text, "00 51 5e")
         f.symbol("runtimeText", 0x3700 + f.shift)
         f.emit("runtimePlayer", "d5 11 @runtimeText c3 @literalJoin")
-        assertEquals(LocalMapPoiTextObligation.DIRECT_TEXT, result().textObligation)
+        assertEquals(LocalMapPoiTextObligation.UNRESOLVED, result().textObligation)
         assertEquals(null, result().displayName)
     }
 
@@ -498,21 +499,16 @@ class Gen2DeclaredScalarSignTest {
             "unbounded literal" to { f -> f.bytes.fill(0x7f, f.at("literalA"), f.at("literalA") + 32) },
             "second-line literal invalid" to { f -> f.bytes[f.at("literalBHandler")] = 0 },
         )
-        val contentFailures = setOf(
-            "literal handler", "literal join", "literal bank alias", "nested literal control",
-            "unbounded literal", "second-line literal invalid",
-        )
         for ((name, mutate) in mutations) {
             val f = scalarFixture()
             val positive = resolve(f).pois.single()
             assertEquals("positive $name", "ここは ワカバ", positive.displayName)
             mutate(f)
-            val obligation = if (name in contentFailures) {
-                LocalMapPoiTextObligation.DIRECT_TEXT
-            } else {
-                LocalMapPoiTextObligation.UNRESOLVED
-            }
-            assertEquals(name, positive.copy(textObligation = obligation, displayName = null), resolve(f).pois.single())
+            assertEquals(
+                name,
+                positive.copy(textObligation = LocalMapPoiTextObligation.UNRESOLVED, displayName = null),
+                resolve(f).pois.single(),
+            )
         }
     }
 
@@ -564,7 +560,23 @@ class Gen2DeclaredScalarSignTest {
         assertEquals(LocalMapPoiTextObligation.CONTEXTUAL_TEXT, poi.textObligation)
     }
 
-    @Test fun malformedRuntimeTextControlsRemainDirectAndUnresolved() {
+    @Test fun compiledGenderedRuntimeTextControlIsContextual() {
+        val f = scalarFixture()
+        bindGenderedRuntimeText(f)
+        f.raw(f.text, "00 ba 52 ba 57")
+        val poi = resolve(f).pois.single()
+        assertEquals(null, poi.displayName)
+        assertEquals(LocalMapPoiTextObligation.CONTEXTUAL_TEXT, poi.textObligation)
+    }
+
+    @Test fun genderedRuntimeTextAfterFirstHeadlineDoesNotEraseStaticHeadline() {
+        val f = scalarFixture()
+        bindGenderedRuntimeText(f)
+        f.raw(f.text, "00 ba ba 4f 52 57")
+        assertEquals("ここ", resolve(f).pois.single().displayName)
+    }
+
+    @Test fun malformedRuntimeTextControlsRemainUnresolved() {
         val mutations: List<(Gen2DeclaredSignFixture) -> Unit> = listOf(
             { f -> f.word(f.at("unknown") + 2, 0x2000, false) },
             { f -> f.word(f.at("unknown") + 5, f.at("literalJoin") + 1) },
@@ -577,13 +589,20 @@ class Gen2DeclaredScalarSignTest {
             mutate(f)
             val poi = resolve(f).pois.single()
             assertEquals(null, poi.displayName)
-            assertEquals(LocalMapPoiTextObligation.DIRECT_TEXT, poi.textObligation)
+            assertEquals(LocalMapPoiTextObligation.UNRESOLVED, poi.textObligation)
         }
     }
 
     @Test fun compiledParagraphControlCompletesDeclaredHeadline() {
         val f = scalarFixture()
         bindParagraphLayout(f)
+        f.raw(f.text, "00 ba ba 52 ba 57")
+        assertEquals("ここ", resolve(f).pois.single().displayName)
+    }
+
+    @Test fun compiledMobileParagraphControlCompletesDeclaredHeadline() {
+        val f = scalarFixture()
+        bindMobileParagraphLayout(f)
         f.raw(f.text, "00 ba ba 52 ba 57")
         assertEquals("ここ", resolve(f).pois.single().displayName)
     }
@@ -610,6 +629,13 @@ class Gen2DeclaredScalarSignTest {
             f.raw(f.text, "00 ba ba 52 ba 57")
             assertEquals("variant=$japaneseVariant", "ここ", resolve(f).pois.single().displayName)
         }
+    }
+
+    @Test fun compiledMobileContinuationWrapperCompletesDeclaredHeadline() {
+        val f = scalarFixture()
+        bindContinuationLayout(f, mobileVariant = true)
+        f.raw(f.text, "00 ba ba 52 ba 57")
+        assertEquals("ここ", resolve(f).pois.single().displayName)
     }
 
     @Test fun malformedContinuationMarkersRejectDeclaredHeadline() {
@@ -681,6 +707,28 @@ class Gen2DeclaredScalarSignTest {
         ).pois.single().displayName)
     }
 
+    @Test fun unratifiedRuntimeSubstitutionAfterFirstHeadlineDoesNotEraseStaticHeadline() {
+        val f = scalarFixture()
+        f.raw(f.text, "00 ba ba 4f 56 ba 57")
+        val japanese = JapanesePokemonTextCodecs.gen2
+        val unratified = PokemonTextCodec(
+            id = "test-unratified-gen2-ja",
+            version = 1,
+            language = LanguageTag.JAPANESE,
+            applicableGenerations = setOf(2),
+            applicablePlatforms = setOf(Platform.GB, Platform.GBC),
+            terminator = 0x50,
+            tokenDecoder = PokemonTextTokenDecoder { rom, offset, endExclusive ->
+                japanese.decodeToken(rom, offset, endExclusive)
+            },
+        )
+        val poi = Gen2LocalMapPoiResolver.resolve(
+            RomImage(f.bytes), listOf(f.source), listOf(f.map), EngineFamily.CRYSTAL, unratified,
+        ).pois.single()
+        assertEquals("ここ", poi.displayName)
+        assertEquals(LocalMapPoiTextObligation.DIRECT_TEXT, poi.textObligation)
+    }
+
     @Test fun unsupportedTokensAndMissingTerminationNeverYieldFirstLine() {
         for (value in listOf(0x52, 0x50, 0x17)) for (offset in listOf(2, 7)) {
             val f = scalarFixture()
@@ -714,6 +762,15 @@ class Gen2DeclaredScalarSignTest {
         }
     }
 
+    @Test fun boundedLongContinuationDoesNotEraseStaticFirstHeadline() {
+        val f = scalarFixture()
+        f.raw(f.text, (listOf(0x00, 0xba, 0xba, 0x4f) + List(133) { 0xba } + 0x57)
+            .joinToString(" ") { "%02x".format(it) })
+        val poi = resolve(f).pois.single()
+        assertEquals("ここ", poi.displayName)
+        assertEquals(LocalMapPoiTextObligation.DIRECT_TEXT, poi.textObligation)
+    }
+
     @Test fun longDeclaredRecordRemainsBoundedAndRequiresDone() {
         val f = scalarFixture()
         f.raw(f.text, (listOf(0x00, 0xba, 0xba, 0x4f) + List(124) { 0xba } + 0x57)
@@ -730,7 +787,7 @@ class Gen2DeclaredScalarSignTest {
             { f -> f.word(f.script + 1, f.script + 1) },
             { f -> f.word(f.script + 1, 0xc000, false) },
             { f -> val end = (f.dataBank + 1) * 0x4000; f.word(f.script + 1, end - 3); f.raw(end - 3, "00 85 19") },
-            { f -> f.bytes.fill(0x7f, f.text + 7, f.text + 129); f.bytes[f.text + 129] = 0x57 },
+            { f -> f.bytes.fill(0x7f, f.text + 7, f.text + 256); f.bytes[f.text + 256] = 0x57 },
             { f -> f.word(f.at("literalAHandler") + 2, 0x3ffe); f.raw(0x3ffe, "ba ba") },
             { f -> f.word(f.at("textCommands"), f.at("textStart") + 0x4000, false) },
         )
@@ -804,6 +861,20 @@ class Gen2DeclaredScalarSignTest {
         assertEquals(listOf(false, true), resolve(f).pois.map { it.displayName != null })
     }
 
+    @Test fun literalBudgetAppliesOnlyToTheDisplayedHeadline() {
+        val f = scalarFixture()
+        val fallback = f.bytes.copyOfRange(f.at("scalar"), f.at("scalar") + 62)
+        f.symbol("extraDictionary", f.at("scalar"))
+        f.emit("extraDictionary", (0x60..0x66).joinToString(" ") {
+            "fe %02x ca @literalAHandler".format(it)
+        })
+        fallback.copyInto(f.bytes, f.at("scalar") + 35)
+        f.raw(f.text, "00 ba ba 4f 37 1f 60 61 62 63 64 65 66 57")
+        val poi = resolve(f).pois.single()
+        assertEquals("ここ", poi.displayName)
+        assertEquals(LocalMapPoiTextObligation.DIRECT_TEXT, poi.textObligation)
+    }
+
     @Test fun scalarCancellationAndBudgetsDoNotRetryLegacyOpcode() {
         for (limits in listOf(ResolutionLimits(maxProbeWorkPerDataset = 20), ResolutionLimits(maxProbeRootsPerDataset = 1), ResolutionLimits(maxDatasetExtentBytes = 16))) {
             val f = scalarFixture()
@@ -824,6 +895,17 @@ class Gen2DeclaredScalarSignTest {
         }
     }
 
+    private fun bindGenderedRuntimeText(f: Gen2DeclaredSignFixture) {
+        f.symbol("runtimeName", 0xd099, false)
+        f.symbol("genderState", 0xd09a, false)
+        f.symbol("maleSuffix", 0x1a00)
+        f.symbol("femaleSuffix", 0x1a10)
+        f.emit("unknown", "d5 11 @runtimeName cd @placeString 60 69 fa @genderState cb 47 " +
+            "11 @maleSuffix 28 05 11 @femaleSuffix 18 00 cd @placeString 60 69 d1 c3 @nextChar")
+        f.raw(f.at("maleSuffix"), "ba 50")
+        f.raw(f.at("femaleSuffix"), "bb 50")
+    }
+
     private fun bindParagraphLayout(f: Gen2DeclaredSignFixture) {
         f.symbol("linkMode", 0xd050, false)
         f.symbol("loadCursor", 0x1200)
@@ -839,7 +921,27 @@ class Gen2DeclaredScalarSignTest {
             "21 @layoutOrigin2 d1 c3 @nextChar")
     }
 
-    private fun bindContinuationLayout(f: Gen2DeclaredSignFixture, japaneseVariant: Boolean = false) {
+    private fun bindMobileParagraphLayout(f: Gen2DeclaredSignFixture) {
+        f.symbol("linkMode", 0xd050, false)
+        f.symbol("loadCursor", 0x1200)
+        f.symbol("waitBg", 0x1300)
+        f.symbol("prompt", 0x1400)
+        f.symbol("layoutOrigin", 0xc5a5, false)
+        f.symbol("clearBox", 0x1500)
+        f.symbol("unloadCursor", 0x1600)
+        f.symbol("delayFrames", 0x1700)
+        f.symbol("layoutOrigin2", 0xc5b9, false)
+        f.emit("unknown", "d5 fa @linkMode fe 03 28 07 fe 04 28 03 cd @loadCursor cd @waitBg cd @prompt " +
+            "21 @layoutOrigin 01 12 05 cd @clearBox cd @unloadCursor 0e 14 cd @delayFrames " +
+            "21 @layoutOrigin2 d1 c3 @nextChar")
+    }
+
+    private fun bindContinuationLayout(
+        f: Gen2DeclaredSignFixture,
+        japaneseVariant: Boolean = false,
+        mobileVariant: Boolean = false,
+    ) {
+        require(!japaneseVariant || !mobileVariant)
         f.symbol("linkMode", 0xd050, false)
         f.symbol("loadCursor", 0x1200)
         f.symbol("waitBg", 0x1300)
@@ -851,13 +953,17 @@ class Gen2DeclaredScalarSignTest {
         f.symbol("contMarker", 0x1900)
         f.bytes[f.at("dictionary") + 1] = 0x4b
         f.word(f.at("dictionary") + 3, f.at("contInner"))
-        f.emit("contInner", if (japaneseVariant) {
-            "fa @linkMode fe 03 28 03 cd @loadCursor cd @waitBg d5 cd @prompt d1 " +
-                "cd @unloadCursor d5 cd @textScroll cd @textScroll 21 @layoutOrigin d1 c3 @nextChar"
-        } else {
-            "fa @linkMode b7 20 03 cd @loadCursor cd @waitBg d5 cd @prompt d1 " +
-                "fa @linkMode b7 c4 @unloadCursor d5 cd @textScroll cd @textScroll " +
-                "21 @layoutOrigin d1 c3 @nextChar"
+        f.emit("contInner", when {
+            mobileVariant ->
+                "fa @linkMode fe 03 28 07 fe 04 28 03 cd @loadCursor cd @waitBg d5 cd @prompt d1 " +
+                    "cd @unloadCursor d5 cd @textScroll cd @textScroll 21 @layoutOrigin d1 c3 @nextChar"
+            japaneseVariant ->
+                "fa @linkMode fe 03 28 03 cd @loadCursor cd @waitBg d5 cd @prompt d1 " +
+                    "cd @unloadCursor d5 cd @textScroll cd @textScroll 21 @layoutOrigin d1 c3 @nextChar"
+            else ->
+                "fa @linkMode b7 20 03 cd @loadCursor cd @waitBg d5 cd @prompt d1 " +
+                    "fa @linkMode b7 cc @unloadCursor d5 cd @textScroll cd @textScroll " +
+                    "21 @layoutOrigin d1 c3 @nextChar"
         })
         f.emit("unknown", "d5 11 @contMarker 44 4d cd @placeString 60 69 d1 c3 @nextChar")
         f.raw(f.at("contMarker"), "4b 50")

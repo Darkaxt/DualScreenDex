@@ -1,6 +1,7 @@
 package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.catalog.LocalMap
+import com.enrpau.dualscreendex.parser.catalog.LocalMapNameDisposition
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoi
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiItem
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiTextObligation
@@ -25,7 +26,7 @@ internal object Gen3LocalMapPoiResolver {
         val skipped = mutableListOf<String>()
         mapsByBaseArea.toSortedMap().forEach { (baseAreaId, map) ->
             val header = headers[baseAreaId] ?: return@forEach
-            runCatching { readMapEvents(rom, header, map, family, codec) }
+            runCatching { readMapEvents(rom, header, map, mapsByBaseArea, family, codec) }
                 .onSuccess(pois::addAll)
                 .onFailure { failure ->
                     skipped += "map 0x${baseAreaId.hex4()} POIs: ${failure.message}"
@@ -38,6 +39,7 @@ internal object Gen3LocalMapPoiResolver {
         rom: RomImage,
         header: Int,
         map: LocalMap,
+        mapsByBaseArea: Map<Int, LocalMap>,
         family: EngineFamily,
         codec: PokemonTextCodec?,
     ): List<LocalMapPoi> {
@@ -125,7 +127,11 @@ internal object Gen3LocalMapPoiResolver {
                         tileX = warp.x,
                         tileY = warp.y,
                         kind = LocalMapPoiKind.PLACE,
-                        textObligation = if (warp.destinationBaseAreaId == DYNAMIC_DESTINATION_BASE_AREA_ID) {
+                        textObligation = if (
+                            warp.destinationBaseAreaId == DYNAMIC_DESTINATION_BASE_AREA_ID ||
+                            mapsByBaseArea[warp.destinationBaseAreaId]?.nameDisposition ==
+                            LocalMapNameDisposition.CONTEXT_DEPENDENT
+                        ) {
                             LocalMapPoiTextObligation.CONTEXTUAL_TEXT
                         } else {
                             LocalMapPoiTextObligation.DESTINATION_NAME
@@ -214,7 +220,7 @@ internal object Gen3LocalMapPoiResolver {
         script: Int,
         codec: PokemonTextCodec,
     ): SignHeadline? {
-        if (script.toLong() + GENDER_SIGN_SCRIPT_BYTES > rom.size.toLong()) return null
+        if (script.toLong() + GENDER_SIGN_MIN_SCRIPT_BYTES > rom.size.toLong()) return null
         if (rom.u8(script) != SCR_OP_LOCK_ALL || rom.u8(script + 1) != SCR_OP_CHECK_PLAYER_GENDER) return null
         var cursor = script + 2
         val names = linkedMapOf<Int, String>()
@@ -223,16 +229,41 @@ internal object Gen3LocalMapPoiResolver {
             val gender = rom.u16le(cursor + 3)
             if (gender !in 0..1 || gender in names) return null
             cursor += COMPARE_VAR_TO_VALUE_BYTES
-            if (rom.u8(cursor) != SCR_OP_CALL_IF || rom.u8(cursor + 1) != COMPARISON_EQUAL) return null
+            if (rom.u8(cursor) !in CONDITIONAL_BRANCH_OPS || rom.u8(cursor + 1) != COMPARISON_EQUAL) return null
             val target = rom.gbaPointer(cursor + 2) ?: return null
-            names[gender] = readSimpleSignHeadline(rom, target, codec) ?: return null
-            cursor += CALL_IF_BYTES
+            names[gender] = readSignBranchHeadline(rom, target, codec) ?: return null
+            cursor += CONDITIONAL_BRANCH_BYTES
         }
-        if (rom.u8(cursor) != SCR_OP_RELEASE_ALL || rom.u8(cursor + 1) != SCR_OP_END) return null
+        val terminalBytes = when (rom.u8(cursor)) {
+            SCR_OP_END -> 1
+            SCR_OP_RELEASE_ALL -> 2
+            else -> return null
+        }
+        if (cursor.toLong() + terminalBytes > rom.size.toLong()) return null
+        if (terminalBytes == 2 && rom.u8(cursor + 1) != SCR_OP_END) return null
         return SignHeadline(
             displayName = names.values.firstOrNull(),
             byTrainerGender = names,
         )
+    }
+
+    private fun readSignBranchHeadline(
+        rom: RomImage,
+        script: Int,
+        codec: PokemonTextCodec,
+    ): String? = readSimpleSignHeadline(rom, script, codec)
+        ?: readSoundPrefacedSignHeadline(rom, script, codec)
+
+    private fun readSoundPrefacedSignHeadline(
+        rom: RomImage,
+        script: Int,
+        codec: PokemonTextCodec,
+    ): String? {
+        if (script.toLong() + SOUND_PREFACED_SIGN_PREFIX_BYTES > rom.size.toLong()) return null
+        if (rom.u8(script) != SCR_OP_SET_VAR || rom.u16le(script + 1) !in SPECIAL_VARIABLE_RANGE) return null
+        if (rom.u16le(script + 3) in SCRIPT_VARIABLE_RANGE) return null
+        if (rom.u8(script + 5) != SCR_OP_SPECIAL || rom.u8(script + 8) != SCR_OP_PLAY_SE) return null
+        return readSimpleSignHeadline(rom, script + SOUND_PREFACED_SIGN_PREFIX_BYTES, codec)
     }
 
     private fun isSimpleSignScript(rom: RomImage, script: Int): Boolean =
@@ -264,8 +295,9 @@ internal object Gen3LocalMapPoiResolver {
                 terminated = true
                 break
             }
-            if (byte == EXT_CTRL_CODE_BEGIN) {
-                if (cursor + 1 >= rom.size || rom.u8(cursor + 1) != EXT_CTRL_CODE_PLAYER) return null
+            if (byte == EXT_CTRL_CODE_BEGIN && cursor + 1 < rom.size &&
+                rom.u8(cursor + 1) == EXT_CTRL_CODE_PLAYER
+            ) {
                 output.append("{PLAYER}")
                 cursor += 2
                 continue
@@ -357,9 +389,13 @@ internal object Gen3LocalMapPoiResolver {
     private const val HIDDEN_ITEMS_FLAG_START = 1000
     private const val SCR_OP_CALL_STD = 0x09
     private const val SCR_OP_END = 0x02
+    private const val SCR_OP_GOTO_IF = 0x06
     private const val SCR_OP_CALL_IF = 0x07
     private const val SCR_OP_LOAD_WORD = 0x0F
     private const val SCR_OP_SETORCOPYVAR = 0x1A
+    private const val SCR_OP_SET_VAR = 0x16
+    private const val SCR_OP_SPECIAL = 0x25
+    private const val SCR_OP_PLAY_SE = 0x2F
     private const val SCR_OP_COMPARE_VAR_TO_VALUE = 0x21
     private const val SCR_OP_LOCK_ALL = 0x69
     private const val SCR_OP_RELEASE_ALL = 0x6B
@@ -369,12 +405,15 @@ internal object Gen3LocalMapPoiResolver {
     private const val VAR_0x8000 = 0x8000
     private const val VAR_0x8001 = 0x8001
     private const val VAR_RESULT = 0x800D
+    private val CONDITIONAL_BRANCH_OPS = setOf(SCR_OP_GOTO_IF, SCR_OP_CALL_IF)
+    private val SPECIAL_VARIABLE_RANGE = 0x8000..0x800F
     private val SCRIPT_VARIABLE_RANGE = 0x4000..0x40FF
     private const val FIND_ITEM_SCRIPT_BYTES = 12
     private const val SIMPLE_MSGBOX_BYTES = 8
+    private const val SOUND_PREFACED_SIGN_PREFIX_BYTES = 11
     private const val COMPARE_VAR_TO_VALUE_BYTES = 5
-    private const val CALL_IF_BYTES = 6
-    private const val GENDER_SIGN_SCRIPT_BYTES = 26
+    private const val CONDITIONAL_BRANCH_BYTES = 6
+    private const val GENDER_SIGN_MIN_SCRIPT_BYTES = 25
     private const val MAX_MSGBOX_TYPE = 10
     private const val MAX_SIGN_TEXT_BYTES = 160
     private const val MIN_SIGN_HEADLINE_CHARS = 2
