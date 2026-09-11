@@ -1187,6 +1187,7 @@ class WorldMapCatalogApiRealControlTest {
 
     private fun assertStructuralPoiExclusions(catalog: ParsedCatalog, control: NativeControl) {
         val obligations = catalog.localMaps.pois.groupingBy { it.textObligation }.eachCount()
+        println("NATIVE_POI_OBLIGATIONS ${control.folder} $obligations")
         val contextual = when (control.family) {
             EngineFamily.GOLD_SILVER,
             EngineFamily.CRYSTAL,
@@ -1199,9 +1200,12 @@ class WorldMapCatalogApiRealControlTest {
             -> 75
             else -> 0
         }
-        assertEquals(contextual, obligations[LocalMapPoiTextObligation.CONTEXTUAL_TEXT] ?: 0)
-        assertEquals(textless, obligations[LocalMapPoiTextObligation.NO_TEXT] ?: 0)
-        assertEquals(0, obligations[LocalMapPoiTextObligation.UNRESOLVED] ?: 0)
+        assertEquals("contextual obligations $obligations", contextual,
+            obligations[LocalMapPoiTextObligation.CONTEXTUAL_TEXT] ?: 0)
+        assertEquals("textless obligations $obligations", textless,
+            obligations[LocalMapPoiTextObligation.NO_TEXT] ?: 0)
+        assertEquals("unresolved obligations $obligations", 0,
+            obligations[LocalMapPoiTextObligation.UNRESOLVED] ?: 0)
     }
 
     private fun assertNativeRoundTrip(control: NativeControl, requireDeclaredSigns: Boolean = false, requireItemNames: Boolean = false,

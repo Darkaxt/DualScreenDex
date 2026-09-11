@@ -4,6 +4,7 @@ import com.enrpau.dualscreendex.parser.analysis.Gen2ItemReference
 import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.analysis.ResolutionLimits
 import com.enrpau.dualscreendex.parser.catalog.LocalMap
+import com.enrpau.dualscreendex.parser.catalog.LocalMapNameDisposition
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoi
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiItem
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiTextObligation
@@ -14,6 +15,7 @@ import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import com.enrpau.dualscreendex.parser.text.PokemonTextToken
+import com.enrpau.dualscreendex.parser.text.StaticLabelUse
 import kotlin.math.abs
 
 internal object Gen2LocalMapPoiResolver {
@@ -38,7 +40,7 @@ internal object Gen2LocalMapPoiResolver {
         mapsByBaseArea.toSortedMap().forEach { (baseAreaId, map) ->
             val source = sourcesByBaseArea[baseAreaId] ?: return@forEach
             cancellation.throwIfCancellationRequested()
-            runCatching { readMapPois(rom, source, map, mapsByBaseArea.keys, family, codec, declaration, cancellation) }
+            runCatching { readMapPois(rom, source, map, mapsByBaseArea, family, codec, declaration, cancellation) }
                 .onSuccess { result ->
                     pois.addAll(result.pois)
                     if (!referenceBudgetExceeded) {
@@ -64,7 +66,7 @@ internal object Gen2LocalMapPoiResolver {
         rom: RomImage,
         source: Source,
         map: LocalMap,
-        acceptedAreaIds: Set<Int>,
+        mapsByBaseArea: Map<Int, LocalMap>,
         family: EngineFamily,
         codec: PokemonTextCodec?,
         declaration: Gen2DeclaredSignAbi.Resolution,
@@ -91,7 +93,7 @@ internal object Gen2LocalMapPoiResolver {
                 index = index,
                 x = rom.u8(row + 1),
                 y = rom.u8(row),
-                destinationBaseAreaId = destination.takeIf { it in acceptedAreaIds },
+                destinationBaseAreaId = destination.takeIf { it in mapsByBaseArea },
             )
         }
         cursor += warpCount * WARP_RECORD_BYTES
@@ -194,7 +196,9 @@ internal object Gen2LocalMapPoiResolver {
                     ),
                 )
             }
-            validWarps.filter { it.index !in representedWarpIndexes }.forEach { warp -> add(warp.toPoi(map)) }
+            validWarps.filter { it.index !in representedWarpIndexes }.forEach { warp ->
+                add(warp.toPoi(map, warp.destinationBaseAreaId?.let(mapsByBaseArea::get)))
+            }
             validBackgrounds.forEach { background ->
                 cancellation.throwIfCancellationRequested()
                 if (background.kind == BGEVENT_ITEM) {
@@ -233,7 +237,7 @@ internal object Gen2LocalMapPoiResolver {
                             tileX = background.x,
                             tileY = background.y,
                             kind = if (semantics.service == null) LocalMapPoiKind.PLACE else LocalMapPoiKind.SERVICE,
-                            textObligation = LocalMapPoiTextObligation.DIRECT_TEXT,
+                            textObligation = semantics.textObligation,
                             organicVisibility = LocalMapPoiOrganicVisibility.ENTRANCE_PROXIMITY,
                             displayName = semantics.displayName,
                             service = semantics.service,
@@ -293,24 +297,88 @@ internal object Gen2LocalMapPoiResolver {
         declaredTextRoots: List<Int>,
         cancellation: ParserCancellationToken,
     ): SignSemantics {
-        if (script + 3 > bankEnd(rom, scriptsBank)) return SignSemantics()
+        val scriptBankEnd = bankEnd(rom, scriptsBank)
+        if (script >= scriptBankEnd) return SignSemantics()
         if (rom.u8(script) == JUMP_STD_COMMAND) {
-            return when (rom.u16le(script + 1)) {
-                POKECENTER_SIGN_STD_INDEX -> SignSemantics(service = LocalMapPoiService.POKEMON_CENTER)
-                MART_SIGN_STD_INDEX -> SignSemantics(service = LocalMapPoiService.MART)
-                else -> SignSemantics()
+            if (script + 3 > scriptBankEnd) return SignSemantics()
+            val index = rom.u16le(script + 1)
+            val service = when (index) {
+                POKECENTER_SIGN_STD_INDEX -> LocalMapPoiService.POKEMON_CENTER
+                MART_SIGN_STD_INDEX -> LocalMapPoiService.MART
+                else -> null
+            }
+            val abi = declaration.abi
+            if (codec == null || abi == null || !abi.supportsSignKind(kind)) {
+                return SignSemantics(service = service)
+            }
+            val declared = declaredSignText(
+                rom, scriptsBank, script, kind, declaration, forbidden,
+            )
+            if (declared == null && abi.isContextualStandardScript(index)) {
+                return SignSemantics(
+                    textObligation = LocalMapPoiTextObligation.CONTEXTUAL_TEXT,
+                    service = service,
+                )
+            }
+            if (declared == null && abi.isNoTextStandardScript(index)) {
+                return SignSemantics(
+                    textObligation = LocalMapPoiTextObligation.NO_TEXT,
+                    service = service,
+                )
+            }
+            if (declared == null) return SignSemantics(service = service)
+            val headline = decodeDeclaredSignText(
+                rom, declared, codec, forbidden, declaredTextRoots, cancellation,
+            )
+            return when (headline) {
+                DeclaredHeadline.Contextual -> SignSemantics(
+                    textObligation = LocalMapPoiTextObligation.CONTEXTUAL_TEXT,
+                    service = service,
+                )
+                is DeclaredHeadline.Static -> SignSemantics(
+                    textObligation = LocalMapPoiTextObligation.DIRECT_TEXT,
+                    displayName = headline.text,
+                    service = service,
+                )
+                null -> SignSemantics(
+                    textObligation = LocalMapPoiTextObligation.DIRECT_TEXT,
+                    service = service,
+                )
             }
         }
         if (declaration.status != Gen2DeclaredSignAbi.Status.ABSENT) {
-            // Only the compiled kind-0 direct declaration is in this bounded ABI. Terminal
+            // Only compiled kinds 0-4 that converge on the selected direct-script dispatcher
             // incomplete/conflicting/budget evidence never re-enters family opcode decoding.
-            if (codec == null) return SignSemantics()
-            val (text, grammar) = declaredSignText(rom, scriptsBank, script, kind, declaration, forbidden) ?: return SignSemantics()
-            val limit = minOf(bankEnd(rom, scriptsBank), text + MAX_SIGN_TEXT_BYTES,
-                forbidden.map { it.first }.filter { it > text }.minOrNull() ?: rom.size,
-                declaredTextRoots.firstOrNull { it > text } ?: rom.size)
-            return SignSemantics(displayName = decodeDeclaredHeadline(rom, text, limit, codec, grammar, cancellation))
+            if (codec == null || script / BANK_BYTES != scriptsBank) return SignSemantics()
+            val abi = declaration.abi ?: return SignSemantics()
+            if (!abi.supportsSignKind(kind)) return SignSemantics()
+            val declared = abi.linearDirectText(script, scriptsBank)
+            if (declared == null && abi.isContextualScript(script, scriptsBank)) {
+                return SignSemantics(textObligation = LocalMapPoiTextObligation.CONTEXTUAL_TEXT)
+            }
+            if (declared == null && abi.isNoTextScript(script, scriptsBank)) {
+                return SignSemantics(textObligation = LocalMapPoiTextObligation.NO_TEXT)
+            }
+            if (declared == null && abi.grammar(rom.u8(script)) == null) {
+                return SignSemantics()
+            }
+            val headline = declared?.let {
+                decodeDeclaredSignText(
+                    rom, it, codec, forbidden, declaredTextRoots, cancellation,
+                )
+            }
+            return when (headline) {
+                DeclaredHeadline.Contextual -> SignSemantics(
+                    textObligation = LocalMapPoiTextObligation.CONTEXTUAL_TEXT,
+                )
+                is DeclaredHeadline.Static -> SignSemantics(
+                    textObligation = LocalMapPoiTextObligation.DIRECT_TEXT,
+                    displayName = headline.text,
+                )
+                null -> SignSemantics(textObligation = LocalMapPoiTextObligation.DIRECT_TEXT)
+            }
         }
+        if (script + 3 > scriptBankEnd) return SignSemantics()
         val jumpTextCommand = when (family) {
             EngineFamily.GOLD_SILVER -> GOLD_SILVER_JUMP_TEXT_COMMAND
             EngineFamily.CRYSTAL -> CRYSTAL_JUMP_TEXT_COMMAND
@@ -318,24 +386,58 @@ internal object Gen2LocalMapPoiResolver {
         }
         if (rom.u8(script) != jumpTextCommand) return SignSemantics()
         val text = rom.gbBankAddress(scriptsBank, rom.u16le(script + 1)) ?: return SignSemantics()
-        return SignSemantics(displayName = codec?.let { decodeHeadline(rom, text, it) })
+        return SignSemantics(
+            textObligation = LocalMapPoiTextObligation.DIRECT_TEXT,
+            displayName = codec?.let { decodeHeadline(rom, text, it) },
+        )
     }
 
     private fun declaredSignText(
-        rom: RomImage, scriptsBank: Int, script: Int, kind: Int,
-        declaration: Gen2DeclaredSignAbi.Resolution, forbidden: List<IntRange>,
+        rom: RomImage,
+        scriptsBank: Int,
+        script: Int,
+        kind: Int,
+        declaration: Gen2DeclaredSignAbi.Resolution,
+        forbidden: List<IntRange>,
     ): Pair<Int, Gen2DeclaredSignAbi.Grammar>? {
-        if (kind != 0 || script / BANK_BYTES != scriptsBank || script + 3 > bankEnd(rom, scriptsBank)) return null
-        val grammar = declaration.abi?.grammar(rom.u8(script)) ?: return null
-        val text = rom.gbBankAddress(scriptsBank, rom.u16le(script + 1)) ?: return null
-        if (text / BANK_BYTES != scriptsBank || forbidden.any { text in it }) return null
-        return text to grammar // No START/content/DONE check: root authority is the declaration.
+        val abi = declaration.abi
+        if (script / BANK_BYTES != scriptsBank || script >= bankEnd(rom, scriptsBank) ||
+            abi == null || !abi.supportsSignKind(kind)) {
+            return null
+        }
+        val declared = if (rom.u8(script) == JUMP_STD_COMMAND) {
+            if (script + 3 > bankEnd(rom, scriptsBank)) return null
+            val index = rom.u16le(script + 1)
+            abi.standardDirectText(index)
+        } else {
+            abi.linearDirectText(script, scriptsBank)
+        }
+        return declared?.takeUnless { (text) -> forbidden.any { text in it } }
+    }
+
+    private fun decodeDeclaredSignText(
+        rom: RomImage,
+        declared: Pair<Int, Gen2DeclaredSignAbi.Grammar>,
+        codec: PokemonTextCodec,
+        forbidden: List<IntRange>,
+        declaredTextRoots: List<Int>,
+        cancellation: ParserCancellationToken,
+    ): DeclaredHeadline? {
+        val (text, grammar) = declared
+        if (forbidden.any { text in it }) return null
+        val limit = minOf(
+            bankEnd(rom, text / BANK_BYTES),
+            text + MAX_SIGN_TEXT_BYTES,
+            forbidden.map { it.first }.filter { it > text }.minOrNull() ?: rom.size,
+            declaredTextRoots.firstOrNull { it > text } ?: rom.size,
+        )
+        return decodeDeclaredHeadline(rom, text, limit, codec, grammar, cancellation)
     }
 
     private fun decodeDeclaredHeadline(
         rom: RomImage, offset: Int, limit: Int, codec: PokemonTextCodec,
         grammar: Gen2DeclaredSignAbi.Grammar, cancellation: ParserCancellationToken,
-    ): String? {
+    ): DeclaredHeadline? {
         if (offset >= limit || rom.u8(offset) != grammar.start) return null
         val headline = StringBuilder()
         val usedLiterals = mutableSetOf<Int>()
@@ -346,12 +448,27 @@ internal object Gen2LocalMapPoiResolver {
             val value = rom.u8(cursor)
             // Compiled END exits before the required DONE, regardless of the codec's token meaning.
             if (value == grammar.endCommand) return null
-            if (value == grammar.done) return headline.toString().replace(WHITESPACE, " ").trim().takeIf { it.length >= MIN_SIGN_HEADLINE_CHARS }
+            if (value == grammar.done) {
+                val text = headline.toString().replace(WHITESPACE, " ").trim()
+                return text.takeIf { it.length >= MIN_SIGN_HEADLINE_CHARS }
+                    ?.let(DeclaredHeadline::Static)
+            }
             if (value == grammar.line) { firstLine = false; cursor++; continue }
             val dictionary = grammar.dictionary
             if (dictionary != null && value in dictionary.controls) {
-                if (usedLiterals.add(value) && usedLiterals.size > 4) return null
-                val literal = dictionary.literal(value) ?: return null
+                val literal = dictionary.literal(value)
+                if (literal == null) {
+                    if (dictionary.isLayout(value)) {
+                        firstLine = false
+                        cursor++
+                        continue
+                    }
+                    if (dictionary.isRuntime(value)) return DeclaredHeadline.Contextual
+                    return null
+                }
+                if (usedLiterals.add(value) && usedLiterals.size > MAX_SIGN_LITERAL_CONTROLS) {
+                    return null
+                }
                 for (at in literal) {
                     cancellation.throwIfCancellationRequested()
                     val token = codec.decodeToken(rom, at, literal.last + 1)
@@ -359,6 +476,9 @@ internal object Gen2LocalMapPoiResolver {
                     val text = when (token) {
                         is PokemonTextToken.Glyph -> token.text
                         is PokemonTextToken.Whitespace -> token.text
+                        is PokemonTextToken.Substitution -> if (codec.isRatifiedStaticLabelSubstitution(
+                            rom, at, token, StaticLabelUse.GEN2_DECLARED_SIGN_TEXT,
+                        )) token.text else return null
                         else -> return null
                     }
                     if (firstLine) headline.append(text)
@@ -372,13 +492,15 @@ internal object Gen2LocalMapPoiResolver {
             val text = when (token) {
                 is PokemonTextToken.Glyph -> token.text
                 is PokemonTextToken.Whitespace -> token.text
-                is PokemonTextToken.Substitution -> if (dictionary == null) token.text else return null
-                else -> return null // No implicit scalar substitutions, controls or codec terminator.
+                is PokemonTextToken.Substitution -> if (codec.isRatifiedStaticLabelSubstitution(
+                    rom, cursor, token, StaticLabelUse.GEN2_DECLARED_SIGN_TEXT,
+                )) token.text else return null
+                else -> return null
             }
             if (firstLine) headline.append(text)
             cursor += token.byteCount
         }
-        return null // A LINE alone is not a complete declared text record.
+        return null
     }
 
     private fun decodeHeadline(rom: RomImage, offset: Int, codec: PokemonTextCodec): String? {
@@ -454,14 +576,18 @@ internal object Gen2LocalMapPoiResolver {
     ) {
         fun inside(map: LocalMap): Boolean = x in 0 until map.gridWidth && y in 0 until map.gridHeight
 
-        fun toPoi(map: LocalMap) = LocalMapPoi(
+        fun toPoi(map: LocalMap, destinationMap: LocalMap?) = LocalMapPoi(
             key = "${map.key}/warp/$index",
             localMapKey = map.key,
             baseAreaId = map.baseAreaId,
             tileX = x,
             tileY = y,
             kind = LocalMapPoiKind.PLACE,
-            textObligation = LocalMapPoiTextObligation.DESTINATION_NAME,
+            textObligation = if (destinationMap?.nameDisposition == LocalMapNameDisposition.CONTEXT_DEPENDENT) {
+                LocalMapPoiTextObligation.CONTEXTUAL_TEXT
+            } else {
+                LocalMapPoiTextObligation.DESTINATION_NAME
+            },
             organicVisibility = LocalMapPoiOrganicVisibility.ENTRANCE_PROXIMITY,
             destinationBaseAreaId = destinationBaseAreaId,
         )
@@ -490,7 +616,13 @@ internal object Gen2LocalMapPoiResolver {
         fun inside(map: LocalMap): Boolean = x in 0 until map.gridWidth && y in 0 until map.gridHeight
     }
 
+    private sealed interface DeclaredHeadline {
+        data class Static(val text: String) : DeclaredHeadline
+        data object Contextual : DeclaredHeadline
+    }
+
     private data class SignSemantics(
+        val textObligation: LocalMapPoiTextObligation = LocalMapPoiTextObligation.UNRESOLVED,
         val displayName: String? = null,
         val service: LocalMapPoiService? = null,
     )
@@ -534,7 +666,9 @@ internal object Gen2LocalMapPoiResolver {
     private const val TEXT_POKEMON = 0x54
     private const val TEXT_ELLIPSIS = 0x56
     private val SIGN_HEADLINE_ENDS = setOf(0x4C, 0x4E, 0x4F, 0x50, 0x51, 0x55, 0x57, 0x58)
-    private const val MAX_SIGN_TEXT_BYTES = 96
+    // Smallest bounds covering every retained official Japanese Gold record.
+    private const val MAX_SIGN_TEXT_BYTES = 129
+    private const val MAX_SIGN_LITERAL_CONTROLS = 8
     private const val MIN_SIGN_HEADLINE_CHARS = 2
     private val WHITESPACE = Regex("\\s+")
 }

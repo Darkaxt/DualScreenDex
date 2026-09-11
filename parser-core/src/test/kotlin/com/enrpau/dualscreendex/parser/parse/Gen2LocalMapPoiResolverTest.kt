@@ -4,6 +4,7 @@ import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.analysis.ParserCancellationException
 import com.enrpau.dualscreendex.parser.analysis.ResolutionLimits
 import com.enrpau.dualscreendex.parser.catalog.LocalMap
+import com.enrpau.dualscreendex.parser.catalog.LocalMapNameDisposition
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiTextObligation
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiKind
 import com.enrpau.dualscreendex.parser.io.RomImage
@@ -40,7 +41,7 @@ class Gen2LocalMapPoiResolverTest {
             val points = result.pois.associateBy { it.key.substringAfter("local/1/") }
             assertEquals(setOf("warp/1", "bg/0", "bg/1", "bg/2", "bg/3", "bg/4"), points.keys)
             assertEquals(LocalMapPoiTextObligation.DESTINATION_NAME, points.getValue("warp/1").textObligation)
-            assertEquals(LocalMapPoiTextObligation.DIRECT_TEXT, points.getValue("bg/0").textObligation)
+            assertEquals(LocalMapPoiTextObligation.UNRESOLVED, points.getValue("bg/0").textObligation)
             assertEquals(2, points.getValue("bg/0").destinationBaseAreaId)
             assertEquals(null, points.getValue("bg/0").displayName)
             assertEquals(LocalMapPoiTextObligation.CONTEXTUAL_TEXT, points.getValue("bg/1").textObligation)
@@ -50,6 +51,32 @@ class Gen2LocalMapPoiResolverTest {
             assertEquals(4, points.getValue("bg/4").item?.itemId)
             assertEquals(0x1234, points.getValue("bg/4").item?.collectionFlagId)
         }
+    }
+
+    @Test
+    fun warpsToContextDependentMapsRequireContextualText() {
+        val bytes = ByteArray(0x8000)
+        writeAttributes(bytes, ATTRIBUTES_1, EVENTS_1_ADDRESS)
+        byteArrayOf(
+            0, 0,
+            1,
+            1, 2, 1, 0, 2,
+            0,
+            0,
+            0,
+        ).copyInto(bytes, EVENTS_1)
+
+        val resolution = Gen2LocalMapPoiResolver.resolve(
+            rom = RomImage(bytes),
+            sources = listOf(Gen2LocalMapPoiResolver.Source(1, 1, ATTRIBUTES_1)),
+            maps = listOf(localMap(1), localMap(2, LocalMapNameDisposition.CONTEXT_DEPENDENT)),
+            family = EngineFamily.CRYSTAL,
+            codec = null,
+        )
+
+        val warp = resolution.pois.single()
+        assertEquals(2, warp.destinationBaseAreaId)
+        assertEquals(LocalMapPoiTextObligation.CONTEXTUAL_TEXT, warp.textObligation)
     }
 
     @Test
@@ -250,7 +277,7 @@ class Gen2LocalMapPoiResolverTest {
             "missing DONE" to { f -> f.bytes[f.text + 23] = 0xff.toByte() },
             "malformed second line" to { f -> f.bytes[f.text + 17] = 0xff.toByte() },
             "missing START" to { f -> f.bytes[f.text] = 0xff.toByte() },
-            "DONE beyond bounded extent" to { f -> f.bytes.fill(0x7f, f.text + 16, f.text + 97); f.bytes[f.text + 97] = 0x5e },
+            "DONE beyond bounded extent" to { f -> f.bytes.fill(0x7f, f.text + 16, f.text + 129); f.bytes[f.text + 129] = 0x5e },
             "bank crossing trail" to { f -> val end = (f.dataBank + 1) * 0x4000; f.word(f.script + 1, end - 4); f.raw(end - 4, "00 01 67 01") },
             "text inside attributes" to { f -> f.word(f.script + 1, f.attributes + 1) },
             "text inside event object" to { f -> f.word(f.script + 1, f.events) },
@@ -264,7 +291,12 @@ class Gen2LocalMapPoiResolverTest {
             assertEquals("이곳은 연두마을", positive.displayName)
             mutate(f)
             val negative = resolveDeclared(f).pois.single()
-            assertEquals(name, positive.copy(displayName = null), negative)
+            val obligation = if (name == "script pointer inside event object") {
+                LocalMapPoiTextObligation.UNRESOLVED
+            } else {
+                LocalMapPoiTextObligation.DIRECT_TEXT
+            }
+            assertEquals(name, positive.copy(displayName = null, textObligation = obligation), negative)
         }
         val f = Gen2DeclaredSignFixture()
         assertEquals("이곳은 연두마을", resolveDeclared(f).pois.single().displayName)
@@ -584,7 +616,10 @@ class Gen2LocalMapPoiResolverTest {
         putU16(bytes, attributes + 9, eventsAddress)
     }
 
-    private fun localMap(baseAreaId: Int) = LocalMap(
+    private fun localMap(
+        baseAreaId: Int,
+        nameDisposition: LocalMapNameDisposition = LocalMapNameDisposition.STATIC_NAME_REQUIRED,
+    ) = LocalMap(
         key = "local/$baseAreaId",
         displayName = null,
         baseAreaId = baseAreaId,
@@ -593,6 +628,7 @@ class Gen2LocalMapPoiResolverTest {
         gridWidth = 10,
         gridHeight = 10,
         imageAssetKey = "asset/$baseAreaId",
+        nameDisposition = nameDisposition,
     )
 
     private fun putU16(bytes: ByteArray, offset: Int, value: Int) {

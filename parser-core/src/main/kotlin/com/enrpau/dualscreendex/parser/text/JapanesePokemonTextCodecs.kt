@@ -109,6 +109,11 @@ object JapanesePokemonTextCodecs {
         applicableGenerations = setOf(generation),
         applicablePlatforms = setOf(Platform.GB, Platform.GBC),
         terminator = GB_TERMINATOR,
+        staticLabelRules = if (generation == 2) {
+            StaticLabelRule.entries.filter { it.use == StaticLabelUse.GEN2_DECLARED_SIGN_TEXT }
+        } else {
+            emptyList()
+        },
         tokenDecoder = PokemonTextTokenDecoder { rom, offset, _ ->
             val value = rom.u8(offset)
             when {

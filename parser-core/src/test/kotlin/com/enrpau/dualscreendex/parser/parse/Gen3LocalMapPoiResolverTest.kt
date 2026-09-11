@@ -48,6 +48,29 @@ class Gen3LocalMapPoiResolverTest {
     }
 
     @Test
+    fun dynamicWarpsRequireContextualText() {
+        val bytes = ByteArray(0x800)
+        putPointer(bytes, MAP_HEADER + 4, EVENTS)
+        bytes[EVENTS + 1] = 1
+        putPointer(bytes, EVENTS + 8, WARPS)
+        putU16(bytes, WARPS, 2)
+        putU16(bytes, WARPS + 2, 3)
+        bytes[WARPS + 6] = 0x7f
+        bytes[WARPS + 7] = 0x7f
+
+        val warp = Gen3LocalMapPoiResolver.resolve(
+            RomImage(bytes),
+            mapOf(1 to MAP_HEADER),
+            listOf(localMap()),
+            EngineFamily.EMERALD,
+            null,
+        ).pois.single()
+
+        assertEquals(0x7f7f, warp.destinationBaseAreaId)
+        assertEquals(LocalMapPoiTextObligation.CONTEXTUAL_TEXT, warp.textObligation)
+    }
+
+    @Test
     fun preservesStructuralSignsWarpsAndItemsWithoutTextAuthority() {
         val bytes = ByteArray(0x800)
         putPointer(bytes, MAP_HEADER + 4, EVENTS)

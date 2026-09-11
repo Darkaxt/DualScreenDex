@@ -22,7 +22,10 @@ data class DecodedText(
     val validRatio: Double get() = if (contentUnits == 0) 0.0 else validUnits.toDouble() / contentUnits
 }
 
-internal enum class StaticLabelUse { GEN2_ORDINARY_ITEM_NAME }
+internal enum class StaticLabelUse {
+    GEN2_ORDINARY_ITEM_NAME,
+    GEN2_DECLARED_SIGN_TEXT,
+}
 
 /** Explicit source ratifications, not an inference from a substitution's display text. */
 internal enum class StaticLabelRule(
@@ -32,6 +35,25 @@ internal enum class StaticLabelRule(
     val byteCount: Int,
 ) {
     WESTERN_GEN2_POKE(StaticLabelUse.GEN2_ORDINARY_ITEM_NAME, 0x54, "POKé", 1),
+    JAPANESE_GEN2_NA_DAKUTEN(StaticLabelUse.GEN2_DECLARED_SIGN_TEXT, 0x14, "ナﾞ", 1),
+    JAPANESE_GEN2_NO_DAKUTEN(StaticLabelUse.GEN2_DECLARED_SIGN_TEXT, 0x18, "ノ゛", 1),
+    JAPANESE_GEN2_NI(StaticLabelUse.GEN2_DECLARED_SIGN_TEXT, 0x1D, "に ", 1),
+    JAPANESE_GEN2_TTE(StaticLabelUse.GEN2_DECLARED_SIGN_TEXT, 0x1E, "って", 1),
+    JAPANESE_GEN2_WO(StaticLabelUse.GEN2_DECLARED_SIGN_TEXT, 0x1F, "を ", 1),
+    JAPANESE_GEN2_TA(StaticLabelUse.GEN2_DECLARED_SIGN_TEXT, 0x22, "た！", 1),
+    JAPANESE_GEN2_KOUGEKI(StaticLabelUse.GEN2_DECLARED_SIGN_TEXT, 0x23, "こうげき", 1),
+    JAPANESE_GEN2_WA(StaticLabelUse.GEN2_DECLARED_SIGN_TEXT, 0x24, "は ", 1),
+    JAPANESE_GEN2_NO(StaticLabelUse.GEN2_DECLARED_SIGN_TEXT, 0x25, "の ", 1),
+    JAPANESE_GEN2_ROUTE(StaticLabelUse.GEN2_DECLARED_SIGN_TEXT, 0x35, "ばん どうろ", 1),
+    JAPANESE_GEN2_WATASHI(StaticLabelUse.GEN2_DECLARED_SIGN_TEXT, 0x36, "わたし", 1),
+    JAPANESE_GEN2_KOKO_WA(StaticLabelUse.GEN2_DECLARED_SIGN_TEXT, 0x37, "ここは ", 1),
+    JAPANESE_GEN2_GA(StaticLabelUse.GEN2_DECLARED_SIGN_TEXT, 0x4A, "が ", 1),
+    JAPANESE_GEN2_POKEMON(StaticLabelUse.GEN2_DECLARED_SIGN_TEXT, 0x54, "ポケモン", 1),
+    JAPANESE_GEN2_ELLIPSIS(StaticLabelUse.GEN2_DECLARED_SIGN_TEXT, 0x56, "⋯⋯", 1),
+    JAPANESE_GEN2_PC(StaticLabelUse.GEN2_DECLARED_SIGN_TEXT, 0x5B, "パソコン", 1),
+    JAPANESE_GEN2_TM(StaticLabelUse.GEN2_DECLARED_SIGN_TEXT, 0x5C, "わざマシン", 1),
+    JAPANESE_GEN2_TRAINER(StaticLabelUse.GEN2_DECLARED_SIGN_TEXT, 0x5D, "トレーナー", 1),
+    JAPANESE_GEN2_ROCKET(StaticLabelUse.GEN2_DECLARED_SIGN_TEXT, 0x5E, "ロケットだん", 1),
 }
 
 internal data class StaticLabelDecode(
@@ -105,6 +127,16 @@ class PokemonTextCodec internal constructor(
         val remaining = endExclusive - offset
         val decoded = tokenDecoder.decode(rom, offset, endExclusive)
         return if (decoded.byteCount in 1..remaining) decoded else PokemonTextToken.Invalid()
+    }
+
+    internal fun isRatifiedStaticLabelSubstitution(
+        rom: RomImage,
+        offset: Int,
+        token: PokemonTextToken.Substitution,
+        use: StaticLabelUse,
+    ): Boolean = staticLabelRules.any { rule ->
+        rule.use == use && rule.byteCount == token.byteCount && rule.text == token.text &&
+            rom.u8(offset) == rule.rawByte
     }
 
     fun decode(bytes: ByteArray): String = decodeDetailed(bytes).text

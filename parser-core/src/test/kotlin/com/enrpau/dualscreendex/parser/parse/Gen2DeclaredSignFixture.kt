@@ -105,6 +105,18 @@ internal class Gen2DeclaredSignFixture(val shift: Int = 0, val bankShift: Int = 
         emit("facingRows", "21 @bgPointer 2a 66 6f e5 2a bb 20 06 2a ba 20 02 18 0d e1 3e 05 85 6f 30 01 24 0d 20 ea af c9 e1 11 @bgBuffer 01 05 00 cd @copyBytes 37 c9")
         emit("bgDispatch", "cd @facing 38 02 af c9 fa @bgKind 21 @bgTable ef c9")
         word(at("bgTable"), at("bgRead"))
+        symbol("bgDirectionCheck", at("bgRead") - 9)
+        symbol("playerDirection", 0xd205 + shift, false)
+        symbol("dontRead", at("bgRead") + 0x20)
+        listOf(0x0c, 0x04, 0x08, 0x00).forEachIndexed { index, direction ->
+            val handler = at("bgRead") - 0x40 + index * 4
+            word(at("bgTable") + (index + 1) * 2, handler)
+            raw(handler, "06 %02x 18 %02x".format(
+                direction,
+                (at("bgDirectionCheck") - (handler + 4)) and 0xff,
+            ))
+        }
+        emit("bgDirectionCheck", "fa @playerDirection e6 0c b8 c2 @dontRead")
         emit("bgRead", "cd @talk 21 @bgScript 2a 66 6f cd @getScripts cd @callScript 37 c9")
         emit("callScript", "ea @scriptBankState 7d ea @scriptPointerState 7c ea @scriptPointerHi 3e ff ea @scriptRunning 37 c9")
         emit("scriptDispatch", "cd @getByte 21 @scriptTable ef c9")

@@ -14,11 +14,14 @@ internal object Gen2DeclaredSignAbi {
         fun byteCount(value: Int): Int = if (this is LeadBytePair && value in 1 until leadLimit) 2 else 1
     }
     data class Grammar(val start: Int, val line: Int, val done: Int, val endCommand: Int, val width: TokenWidth, val dictionary: ScalarDictionary? = null)
+    private enum class TextOperand { LOCAL, FAR }
 
-    /** Only used ROM0 literal consumers are opened. Runtime/nested controls remain unsupported. */
+    /** Only positively compiled ROM0 literals, layouts, and WRAM substitutions are classified. */
     class ScalarDictionary internal constructor(private val r: Reader, private val env: Map<String, Int>, private val targets: Map<Int, Int>) {
         val controls: Set<Int> = targets.keys
         private val literals = mutableMapOf<Int, IntRange?>()
+        private val layouts = mutableMapOf<Int, Boolean>()
+        private val runtimeValues = mutableMapOf<Int, Boolean>()
         fun literal(value: Int): IntRange? {
             r.cancel()
             if (value !in controls) return null
@@ -40,9 +43,112 @@ internal object Gen2DeclaredSignAbi {
                     cursor++
                 }
                 start until cursor
-            } catch (_: Invalid) { null }
+            } catch (_: Invalid) {
+                null
+            }
               catch (_: Exhausted) { null }
             literals[value] = result
+            return result
+        }
+
+        fun isLayout(value: Int): Boolean {
+            r.cancel()
+            if (value !in controls) return false
+            layouts[value]?.let { return it }
+            layouts[value] = false // Fail closed on recursive dictionary controls.
+            val result = try {
+                val target = r.home(targets[value] ?: throw Invalid("undeclared layout control"))
+                val candidates = mutableListOf<Unit>()
+                fun accept(pattern: String, validate: (Map<String, Int>) -> Unit = {}) {
+                    r.match(target, pattern, env.toMutableMap())?.let { matched ->
+                        validate(matched)
+                        candidates += Unit
+                    }
+                }
+                accept("E1 01 28 00 09 E5 C3 @nextChar")
+                accept("E1 01 14 00 09 E5 C3 @nextChar")
+                accept("D5 CD @textScroll CD @textScroll 21 @layoutOrigin D1 C3 @nextChar") { matched ->
+                    r.home(matched.getValue("textScroll"))
+                    r.check(matched.getValue("layoutOrigin") in WRAM, "layout origin")
+                }
+                accept(
+                    "FA @linkMode FE %linkModeValue 28 %communicationJump CD @loadCursor CD @waitBg " +
+                        "D5 CD @prompt D1 CD @unloadCursor D5 CD @textScroll CD @textScroll " +
+                        "21 @layoutOrigin D1 C3 @nextChar",
+                ) { matched ->
+                    r.check(matched.getValue("linkMode") in WRAM, "continuation link state")
+                    r.check(target + 7 + matched.getValue("communicationJump").toByte().toInt() == target + 10,
+                        "continuation communication branch")
+                    for (name in listOf("loadCursor", "waitBg", "prompt", "unloadCursor", "textScroll")) {
+                        r.home(matched.getValue(name))
+                    }
+                    r.check(matched.getValue("layoutOrigin") in WRAM, "continuation origin")
+                }
+                accept(
+                    "FA @linkMode B7 20 %communicationJump CD @loadCursor CD @waitBg D5 CD @prompt D1 " +
+                        "FA @linkMode B7 C4 @unloadCursor D5 CD @textScroll CD @textScroll " +
+                        "21 @layoutOrigin D1 C3 @nextChar",
+                ) { matched ->
+                    r.check(matched.getValue("linkMode") in WRAM, "continuation link state")
+                    r.check(target + 6 + matched.getValue("communicationJump").toByte().toInt() == target + 9,
+                        "continuation communication branch")
+                    for (name in listOf("loadCursor", "waitBg", "prompt", "unloadCursor", "textScroll")) {
+                        r.home(matched.getValue(name))
+                    }
+                    r.check(matched.getValue("layoutOrigin") in WRAM, "continuation origin")
+                }
+                accept(
+                    "D5 FA @linkMode FE %linkModeValue 28 %linkJump CD @loadCursor CD @waitBg " +
+                        "CD @prompt 21 @layoutOrigin 01 12 04 CD @clearBox CD @unloadCursor " +
+                        "0E 14 CD @delayFrames 21 @layoutOrigin2 D1 C3 @nextChar",
+                ) { matched ->
+                    r.check(matched.getValue("linkMode") in WRAM, "paragraph link state")
+                    r.check(target + 8 + matched.getValue("linkJump").toByte().toInt() == target + 11,
+                        "paragraph link branch")
+                    for (name in listOf("loadCursor", "waitBg", "prompt", "clearBox", "unloadCursor", "delayFrames")) {
+                        r.home(matched.getValue(name))
+                    }
+                    r.check(matched.getValue("layoutOrigin") in WRAM && matched.getValue("layoutOrigin2") in WRAM,
+                        "paragraph origins")
+                }
+                accept("D5 11 @layoutMarker 44 4D CD @placeString 60 69 D1 C3 @nextChar") { matched ->
+                    val marker = r.home(matched.getValue("layoutMarker"))
+                    r.span(marker, 2)
+                    val nested = r.byte(marker)
+                    r.check(r.byte(marker + 1) == matched.getValue("endCommand") && nested != value,
+                        "layout marker")
+                    r.check(isLayout(nested), "nested layout control")
+                }
+                r.unique(candidates.size, "static layout control")
+                true
+            } catch (_: Invalid) {
+                false
+            } catch (_: Ambiguous) {
+                false
+            } catch (_: Exhausted) {
+                false
+            }
+            layouts[value] = result
+            return result
+        }
+
+        fun isRuntime(value: Int): Boolean {
+            r.cancel()
+            if (value !in controls) return false
+            runtimeValues[value]?.let { return it }
+            val result = try {
+                val e = env.toMutableMap()
+                val target = r.home(targets[value] ?: throw Invalid("undeclared runtime control"))
+                r.need(target, "D5 11 @runtimeText C3 @literalJoin", e)
+                r.needHome(e, "literalJoin", "CD @placeString 60 69 D1 C3 @nextChar")
+                r.check(e.getValue("runtimeText") in WRAM, "runtime text state")
+                true
+            } catch (_: Invalid) {
+                false
+            } catch (_: Exhausted) {
+                false
+            }
+            runtimeValues[value] = result
             return result
         }
     }
@@ -136,6 +242,21 @@ internal object Gen2DeclaredSignAbi {
                 val table = r.pointer(site / BANK, c.getValue("bgTable"))
                 val read = r.pointer(site / BANK, r.word(table))
                 r.need(read, "CD @talk 21 @bgScript 2A 66 6F CD @getScripts CD @callScript 37 C9", c)
+                val directionEntries = (1..4).map { index ->
+                    val handler = r.pointer(site / BANK, r.word(table + index * 2))
+                    val direction = r.byte(handler + 1)
+                    val jump = r.byte(handler + 3).toByte().toInt()
+                    r.need(handler, "06 %direction 18 %directionJump", c.toMutableMap())
+                    direction to handler + 4 + jump
+                }
+                r.check(directionEntries.map { it.first }.toSet() == setOf(0x00, 0x04, 0x08, 0x0c),
+                    "directional background event mask")
+                val directionChecks = directionEntries.map { it.second }.distinct()
+                r.unique(directionChecks.size, "directional background event check")
+                val directionCheck = directionChecks.single()
+                r.need(directionCheck, "FA @playerDirection E6 0C B8 C2 @dontRead", c)
+                r.check(directionCheck + 9 == read, "directional background event continuation")
+                c["staticSignKinds"] = 5
                 r.needHome(c, "getScripts", "FA @scriptsBankState C9")
                 r.needHome(c, "callScript", "EA @scriptBankState 7D EA @scriptPointerState 7C EA @scriptPointerHi 3E FF EA @scriptRunning 37 C9")
                 r.check(c.getValue("scriptPointerHi") == c.getValue("scriptPointerState") + 1, "script state width")
@@ -149,6 +270,18 @@ internal object Gen2DeclaredSignAbi {
     class Declaration internal constructor(private val r: Reader, private val root: Map<String, Int>) {
         private val declarations = mutableMapOf<Int, Resolution>()
         private val grammars = mutableMapOf<Int, Grammar>()
+        private val textOperands = mutableMapOf<Int, TextOperand>()
+        private val standardScripts = mutableMapOf<Int, Int?>()
+        private var standardTable: Pair<Int, Int>? = null
+        private var standardTableAttempted = false
+        private var textRuntime: Pair<Grammar, Map<String, Int>>? = null
+        private var textRuntimeAttempted = false
+        private val writeOperands = mutableMapOf<Int, TextOperand?>()
+        private val contextualOperands = mutableMapOf<Int, Int?>()
+        private val prefixOperands = mutableMapOf<Int, Int?>()
+        private val behaviorOperands = mutableMapOf<Int, Int?>()
+        fun supportsSignKind(kind: Int): Boolean = kind in 0 until root.getValue("staticSignKinds")
+
         fun grammar(command: Int): Grammar? {
             r.cancel()
             if (declarations.containsKey(command)) return grammars[command]
@@ -157,7 +290,19 @@ internal object Gen2DeclaredSignAbi {
                 val bank = e.getValue("commandBank")
                 val table = e.getValue("scriptTable")
                 val handler = r.slot(bank, table, command)
-                r.need(handler, "FA @scriptBankState EA @textBankState CD @getByte EA @textPointerState CD @getByte EA @textPointerHi 06 %templateBank 21 @template C3 @scriptJump", e)
+                val local = r.match(handler,
+                    "FA @scriptBankState EA @textBankState CD @getByte EA @textPointerState CD @getByte EA @textPointerHi 06 %templateBank 21 @template C3 @scriptJump",
+                    e.toMutableMap())
+                val far = r.match(handler,
+                    "CD @getByte EA @textBankState CD @getByte EA @textPointerState CD @getByte EA @textPointerHi 06 %templateBank 21 @template C3 @scriptJump",
+                    e.toMutableMap())
+                val operands = listOfNotNull(
+                    local?.let { TextOperand.LOCAL to it },
+                    far?.let { TextOperand.FAR to it },
+                )
+                r.unique(operands.size, "direct text operand")
+                val (operand, matched) = operands.single()
+                e.putAll(matched)
                 r.check(e.getValue("textPointerState") == e.getValue("textBankState") + 1 && e.getValue("textPointerHi") == e.getValue("textBankState") + 2, "captured text state width")
                 r.need(r.pointer(bank, e.getValue("scriptJump")), "78 EA @scriptBankState 7D EA @scriptPointerState 7C EA @scriptPointerHi C9", e)
                 r.check(e.getValue("templateBank") == bank, "direct template changes command bank")
@@ -235,7 +380,17 @@ internal object Gen2DeclaredSignAbi {
                 if (!paired) bindScalarFallback(r, cursor, e)
                 val grammar = Grammar(0, requireNotNull(line), requireNotNull(done), e.getValue("endCommand"), width,
                     if (paired) null else ScalarDictionary(r, e.toMap(), controls.toMap()))
+                val priorRuntime = textRuntime
+                if (priorRuntime != null) {
+                    for (field in listOf("getByte", "scriptBankState", "mapTextbox", "openCommand")) {
+                        r.check(priorRuntime.second.getValue(field) == e.getValue(field),
+                            "competing text runtime $field")
+                    }
+                } else {
+                    textRuntime = grammar to e.toMap()
+                }
                 grammars[command] = grammar
+                textOperands[command] = operand
                 declarations[command] = Resolution(Status.RESOLVED)
                 return grammar
             } catch (failure: Ambiguous) {
@@ -247,6 +402,355 @@ internal object Gen2DeclaredSignAbi {
             }
             return null
         }
+        fun directText(script: Int, scriptBank: Int): Pair<Int, Grammar>? = try {
+            r.span(script, 1)
+            r.check(script / BANK == scriptBank, "direct text script bank")
+            val command = r.byte(script)
+            val grammar = grammar(command) ?: return null
+            val text = when (textOperands[command]) {
+                TextOperand.LOCAL -> {
+                    r.span(script, 3)
+                    r.pointer(scriptBank, r.word(script + 1))
+                }
+                TextOperand.FAR -> {
+                    r.span(script, 4)
+                    r.pointer(r.byte(script + 1), r.word(script + 2))
+                }
+                null -> return null
+            }
+            text to grammar
+        } catch (_: Invalid) { null }
+          catch (_: Ambiguous) { null }
+          catch (_: Exhausted) { null }
+
+        fun isNoTextScript(script: Int, scriptBank: Int): Boolean {
+            val runtime = resolveTextRuntime() ?: return false
+            var cursor = script
+            repeat(MAX_LINEAR_SCRIPT_COMMANDS) {
+                r.cancel()
+                try {
+                    r.span(cursor, 1)
+                    r.check(cursor / BANK == scriptBank, "textless script bank")
+                } catch (_: Invalid) {
+                    return false
+                } catch (_: Exhausted) {
+                    return false
+                }
+                val command = r.byte(cursor)
+                if (command == runtime.second.getValue("endScriptCommand")) return true
+                if (command in textOperands || writtenText(cursor, scriptBank, runtime) != null ||
+                    contextualOperandBytes(command) != null) return false
+                val operands = prefixOperandBytes(command, runtime)
+                    ?: behaviorOperandBytes(command, runtime)
+                    ?: return false
+                cursor += 1 + operands
+            }
+            return false
+        }
+
+        private fun behaviorOperandBytes(
+            command: Int,
+            runtime: Pair<Grammar, Map<String, Int>>,
+        ): Int? {
+            if (behaviorOperands.containsKey(command)) return behaviorOperands[command]
+            val result = try {
+                val e = runtime.second.toMutableMap()
+                val handler = r.slot(e.getValue("commandBank"), e.getValue("scriptTable"), command)
+                val sound = r.match(handler,
+                    "CD @getByte 5F CD @getByte 57 CD @playSound C9",
+                    e.toMutableMap())?.also { r.home(it.getValue("playSound")) }
+                val pause = r.match(handler,
+                    "CD @getByte A7 28 %pauseLoop EA @scriptDelay 0E 02 CD @delayFrames " +
+                        "21 @scriptDelay 35 20 %delayLoop C9",
+                    e.toMutableMap())?.also {
+                    r.check(it.getValue("scriptDelay") in WRAM, "pause delay state")
+                    r.check(handler + 6 + it.getValue("pauseLoop").toByte().toInt() == handler + 9,
+                        "pause zero branch")
+                    r.check(handler + 20 + it.getValue("delayLoop").toByte().toInt() == handler + 9,
+                        "pause delay branch")
+                    r.home(it.getValue("delayFrames"))
+                }
+                val matches = listOfNotNull(sound?.let { 2 }, pause?.let { 1 })
+                r.unique(matches.size, "textless behavior command")
+                matches.single()
+            } catch (_: Invalid) { null }
+              catch (_: Ambiguous) { null }
+              catch (_: Exhausted) { null }
+            behaviorOperands[command] = result
+            return result
+        }
+
+        fun isContextualScript(script: Int, scriptBank: Int): Boolean {
+            val runtime = resolveTextRuntime() ?: return false
+            var cursor = script
+            repeat(MAX_LINEAR_SCRIPT_COMMANDS) {
+                r.cancel()
+                try {
+                    r.span(cursor, 1)
+                    r.check(cursor / BANK == scriptBank, "contextual script bank")
+                } catch (_: Invalid) {
+                    return false
+                } catch (_: Exhausted) {
+                    return false
+                }
+                val command = r.byte(cursor)
+                contextualOperandBytes(command)?.let { return true }
+                val operands = prefixOperandBytes(command, runtime) ?: return false
+                cursor += 1 + operands
+            }
+            return false
+        }
+
+        private fun prefixOperandBytes(
+            command: Int,
+            runtime: Pair<Grammar, Map<String, Int>>,
+        ): Int? {
+            if (command == runtime.second.getValue("openCommand")) return 0
+            if (prefixOperands.containsKey(command)) return prefixOperands[command]
+            val result = try {
+                val e = runtime.second.toMutableMap()
+                val handler = r.slot(e.getValue("commandBank"), e.getValue("scriptTable"), command)
+                val reanchor = r.match(handler, "CD @reanchorMap CD @getByte C9", e.toMutableMap())?.also {
+                    r.home(it.getValue("reanchorMap"))
+                }
+                val setValue = r.match(handler, "CD @getByte EA @scriptVar C9", e.toMutableMap())?.also {
+                    r.check(it.getValue("scriptVar") in WRAM, "script value state")
+                }
+                val facePlayer = r.match(handler,
+                    "F0 %lastTalked A7 C8 16 00 F0 %lastTalked 5F 3E %facingBank " +
+                        "21 @relativeFacing CF 7A 87 87 5F F0 %lastTalked 57 CD @applyFacing C9",
+                    e.toMutableMap())?.also {
+                    r.pointer(it.getValue("facingBank"), it.getValue("relativeFacing"))
+                    r.pointer(it.getValue("commandBank"), it.getValue("applyFacing"))
+                }
+                val matches = listOfNotNull(
+                    reanchor?.let { 1 },
+                    setValue?.let { 1 },
+                    facePlayer?.let { 0 },
+                )
+                r.unique(matches.size, "static text prefix command")
+                matches.single()
+            } catch (_: Invalid) { null }
+              catch (_: Ambiguous) { null }
+              catch (_: Exhausted) { null }
+            prefixOperands[command] = result
+            return result
+        }
+
+        private fun contextualOperandBytes(command: Int): Int? {
+            if (contextualOperands.containsKey(command)) return contextualOperands[command]
+            val result = try {
+                val e = root.toMutableMap()
+                val handler = r.slot(e.getValue("commandBank"), e.getValue("scriptTable"), command)
+                val flag = r.match(handler,
+                    "CD @getByte 5F CD @getByte 57 06 %flagAction CD @flagHandler 79 A7 " +
+                        "28 %falseJump 3E %trueValue EA @scriptVar C9",
+                    e.toMutableMap())?.also {
+                    r.check(it.getValue("flagAction") == CHECK_FLAG_ACTION, "context selector flag action")
+                    r.check(it.getValue("trueValue") == 1, "context selector true normalization")
+                    r.check(it.getValue("scriptVar") in WRAM, "context selector state")
+                    r.check(handler + 17 + it.getValue("falseJump").toByte().toInt() == handler + 19,
+                        "context selector false branch")
+                    r.pointer(it.getValue("commandBank"), it.getValue("flagHandler"))
+                }
+                val random = r.match(handler,
+                    "CD @getByte EA @scriptVar A7 C8 4F CD @randomDivide A7 28 %noRestriction " +
+                        "47 AF 90 47 C5 CD @random C1 F0 %randomAdd B8 30 %retryRandom " +
+                        "18 %finishRandom C5 CD @random C1 F0 %randomAdd F5 FA @scriptVar " +
+                        "4F F1 CD @simpleDivide EA @scriptVar C9",
+                    e.toMutableMap())?.also {
+                    r.check(it.getValue("scriptVar") in WRAM, "random selector state")
+                    r.check(handler + 15 + it.getValue("noRestriction").toByte().toInt() == handler + 31,
+                        "random unrestricted branch")
+                    r.check(handler + 29 + it.getValue("retryRandom").toByte().toInt() == handler + 19,
+                        "random retry branch")
+                    r.check(handler + 31 + it.getValue("finishRandom").toByte().toInt() == handler + 38,
+                        "random finish branch")
+                    r.need(r.pointer(it.getValue("commandBank"), it.getValue("randomDivide")),
+                        "AF 47 91 04 91 30 FC 05 81 C9", it)
+                    r.home(it.getValue("random"))
+                    r.home(it.getValue("simpleDivide"))
+                }
+                val special = r.match(handler,
+                    "CD @getByte 5F CD @getByte 57 3E %specialBank 21 @specialDispatch CF C9",
+                    e.toMutableMap())?.also {
+                    r.pointer(it.getValue("specialBank"), it.getValue("specialDispatch"))
+                }
+                val dynamicMenu = r.match(handler,
+                    "AF EA @scriptVar CD @getByte 5F CD @getByte 57 FA @scriptBankState 47 " +
+                        "3E %dynamicBank 21 @dynamicTarget CF D8 3E %trueValue EA @scriptVar C9",
+                    e.toMutableMap())?.also {
+                    r.check(it.getValue("scriptVar") in WRAM, "dynamic menu state")
+                    r.check(it.getValue("trueValue") == 1, "dynamic menu true result")
+                    r.pointer(it.getValue("dynamicBank"), it.getValue("dynamicTarget"))
+                }
+                val matches = listOfNotNull(
+                    flag?.let { 2 },
+                    random?.let { 1 },
+                    special?.let { 2 },
+                    dynamicMenu?.let { 2 },
+                )
+                r.unique(matches.size, "context selector command")
+                matches.single()
+            } catch (_: Invalid) { null }
+              catch (_: Ambiguous) { null }
+              catch (_: Exhausted) { null }
+            contextualOperands[command] = result
+            return result
+        }
+
+        fun linearDirectText(script: Int, scriptBank: Int): Pair<Int, Grammar>? {
+            val runtime = resolveTextRuntime() ?: return null
+            var cursor = script
+            repeat(MAX_LINEAR_SCRIPT_COMMANDS) {
+                r.cancel()
+                r.span(cursor, 1)
+                r.check(cursor / BANK == scriptBank, "linear text script bank")
+                val command = r.byte(cursor)
+                if (command in textOperands) return directText(cursor, scriptBank)
+                writtenText(cursor, scriptBank, runtime)?.let { return it }
+                val operands = prefixOperandBytes(command, runtime) ?: return null
+                cursor += 1 + operands
+            }
+            return null
+        }
+
+        private fun writtenText(
+            script: Int,
+            scriptBank: Int,
+            runtime: Pair<Grammar, Map<String, Int>>,
+        ): Pair<Int, Grammar>? = try {
+            val command = r.byte(script)
+            val operand = if (writeOperands.containsKey(command)) {
+                writeOperands[command]
+            } else {
+                val e = runtime.second.toMutableMap()
+                val handler = r.slot(e.getValue("commandBank"), e.getValue("scriptTable"), command)
+                val local = r.match(handler,
+                    "CD @getByte 6F CD @getByte 67 FA @scriptBankState 47 CD @mapTextbox C9",
+                    e.toMutableMap())
+                val far = r.match(handler,
+                    "CD @getByte 47 CD @getByte 6F CD @getByte 67 CD @mapTextbox C9",
+                    e.toMutableMap())
+                val matches = listOfNotNull(
+                    local?.let { TextOperand.LOCAL },
+                    far?.let { TextOperand.FAR },
+                )
+                val resolved = matches.singleOrNull()
+                writeOperands[command] = resolved
+                resolved
+            } ?: return null
+            val text = when (operand) {
+                TextOperand.LOCAL -> {
+                    r.span(script, 3)
+                    r.pointer(scriptBank, r.word(script + 1))
+                }
+                TextOperand.FAR -> {
+                    r.span(script, 4)
+                    r.pointer(r.byte(script + 1), r.word(script + 2))
+                }
+            }
+            text to runtime.first
+        } catch (_: Invalid) { null }
+          catch (_: Ambiguous) { null }
+          catch (_: Exhausted) { null }
+
+        private fun resolveTextRuntime(): Pair<Grammar, Map<String, Int>>? {
+            textRuntime?.let { return it }
+            if (textRuntimeAttempted) return null
+            textRuntimeAttempted = true
+            try {
+                val candidates = mutableListOf<Int>()
+                for (command in 0..255) {
+                    r.spend()
+                    val e = root.toMutableMap()
+                    val handler = try {
+                        r.slot(e.getValue("commandBank"), e.getValue("scriptTable"), command)
+                    } catch (_: Invalid) {
+                        continue
+                    }
+                    val local = r.match(handler,
+                        "FA @scriptBankState EA @textBankState CD @getByte EA @textPointerState " +
+                            "CD @getByte EA @textPointerHi 06 %templateBank 21 @template C3 @scriptJump",
+                        e.toMutableMap())
+                    val far = r.match(handler,
+                        "CD @getByte EA @textBankState CD @getByte EA @textPointerState " +
+                            "CD @getByte EA @textPointerHi 06 %templateBank 21 @template C3 @scriptJump",
+                        e.toMutableMap())
+                    if ((if (local != null) 1 else 0) + (if (far != null) 1 else 0) == 1) {
+                        candidates += command
+                        if (candidates.size > MAX_DIRECT_COMMAND_CANDIDATES) {
+                            throw Ambiguous("multiple direct text command candidates")
+                        }
+                    }
+                }
+                candidates.forEach(::grammar)
+            } catch (_: Invalid) {
+                return null
+            } catch (_: Ambiguous) {
+                return null
+            } catch (_: Exhausted) {
+                return null
+            }
+            return textRuntime
+        }
+
+        fun isNoTextStandardScript(index: Int): Boolean {
+            val script = standardScript(index) ?: return false
+            return isNoTextScript(script, script / BANK)
+        }
+
+        fun isContextualStandardScript(index: Int): Boolean {
+            val script = standardScript(index) ?: return false
+            return isContextualScript(script, script / BANK)
+        }
+
+        fun standardDirectText(index: Int): Pair<Int, Grammar>? {
+            val script = standardScript(index) ?: return null
+            return linearDirectText(script, script / BANK)
+        }
+
+        private fun standardScript(index: Int): Int? {
+            r.cancel()
+            if (index !in 0..255) return null
+            if (standardScripts.containsKey(index)) return standardScripts[index]
+            val table = resolveStandardTable()
+            val result = try {
+                if (table == null) null else {
+                    val row = table.second + index * 3
+                    r.span(row, 3)
+                    r.pointer(r.byte(row), r.word(row + 1))
+                }
+            } catch (_: Invalid) { null }
+              catch (_: Exhausted) { null }
+            standardScripts[index] = result
+            return result
+        }
+
+        private fun resolveStandardTable(): Pair<Int, Int>? {
+            if (standardTableAttempted) return standardTable
+            standardTableAttempted = true
+            standardTable = try {
+                val e = root.toMutableMap()
+                val bank = e.getValue("commandBank")
+                val handler = r.slot(bank, e.getValue("scriptTable"), JUMP_STD_COMMAND)
+                r.need(handler, "CD @stdScript 18 %jumpOffset", e)
+                val scriptJump = handler + 5 + e.getValue("jumpOffset").toByte().toInt()
+                r.need(scriptJump,
+                    "78 EA @scriptBankState 7D EA @scriptPointerState 7C EA @scriptPointerHi C9", e)
+                val stdScript = r.pointer(bank, e.getValue("stdScript"))
+                r.need(stdScript,
+                    "CD @getByte 5F CD @getByte 57 21 @stdTable 19 19 19 3E %stdBank " +
+                        "CD @farByte 47 23 3E %stdBank CD @farWord C9", e)
+                r.home(e.getValue("farByte"))
+                r.home(e.getValue("farWord"))
+                e.getValue("stdBank") to r.pointer(e.getValue("stdBank"), e.getValue("stdTable"))
+            } catch (_: Invalid) { null }
+              catch (_: Ambiguous) { null }
+              catch (_: Exhausted) { null }
+            return standardTable
+        }
+
         // Cached command outcomes only: reporting must not read ROM bytes or retry grammar.
         fun failureReasons(): List<String> = declarations.toSortedMap().mapNotNull { (command, result) ->
             if (result.status == Status.RESOLVED) null
@@ -295,10 +799,37 @@ internal object Gen2DeclaredSignAbi {
         if (!inline) {
             // Preserve every previously required setup/pair dispatcher declaration.
             r.needHome(e, "hdma", "F0 %oam F5 3E 01 E0 %oam CD @transfer F1 E0 %oam C9")
-            r.needHome(e, "clearWindow", "3B E5 F5 E5 F8 06 36 %clearBank 2B 36 %clearHi 2B 36 %clearLo E1 F1 CD @farCall 33 33 33 C9")
-            bindFarCallEnvelope(r, e)
+            val clearWindow = r.home(e.getValue("clearWindow"))
+            val stackFarCall = r.match(
+                clearWindow,
+                "3B E5 F5 E5 F8 06 36 %clearBank 2B 36 %clearHi 2B 36 %clearLo E1 F1 CD @farCall 33 33 33 C9",
+                e.toMutableMap(),
+            )
+            val clearRows = r.match(
+                clearWindow,
+                "21 @clearRow0 CD @clearRow 21 @clearRow1 CD @clearRow " +
+                    "21 @clearRow2 CD @clearRow 21 @clearRow3 CD @clearRow AF CD @clearSprites " +
+                    "AF 21 @windowEnd 32 32 7D EA @windowLo 7C EA @windowHi CD @updateWindow C9",
+                e.toMutableMap(),
+            )
+            r.unique(listOfNotNull(stackFarCall, clearRows).size, "ClearWindow envelope")
+            if (stackFarCall != null) {
+                e.putAll(stackFarCall)
+                bindFarCallEnvelope(r, e)
+                r.pointer(e.getValue("clearBank"), e.getValue("clearHi") * 256 + e.getValue("clearLo"))
+            } else {
+                e.putAll(requireNotNull(clearRows))
+                r.check(e.getValue("clearRow1") == e.getValue("clearRow0") + 16 &&
+                    e.getValue("clearRow2") == e.getValue("clearRow1") + 16 &&
+                    e.getValue("clearRow3") == e.getValue("clearRow2") + 16,
+                    "ClearWindow row stride")
+                r.check(e.getValue("windowHi") == e.getValue("windowLo") + 1,
+                    "ClearWindow pointer state width")
+                r.home(e.getValue("clearRow"))
+                r.home(e.getValue("clearSprites"))
+                r.home(e.getValue("updateWindow"))
+            }
             r.home(e.getValue("transfer"))
-            r.pointer(e.getValue("clearBank"), e.getValue("clearHi") * 256 + e.getValue("clearLo"))
         }
         for (name in listOf("sprites", "tilemap", "drawBox", "hdma", "clearWindow")) r.home(e.getValue(name))
         for (name in listOf("reanchor", "fonts")) {
@@ -411,6 +942,11 @@ internal object Gen2DeclaredSignAbi {
     private class Ambiguous(message: String) : RuntimeException(message)
     private class Invalid(message: String) : RuntimeException(message)
     private class Exhausted(message: String) : RuntimeException(message)
+    private val WRAM = 0xc000..0xdfff
     private const val BANK = 0x4000
+    private const val JUMP_STD_COMMAND = 0x0c
+    private const val MAX_LINEAR_SCRIPT_COMMANDS = 8
+    private const val MAX_DIRECT_COMMAND_CANDIDATES = 4
+    private const val CHECK_FLAG_ACTION = 2
     private const val BYTE_READER = "E5 C5 F0 %hram F5 FA @scriptBankState D7 21 @scriptPointerState 4E 23 46 0A 03 70 2B 71 47 F1 D7 78 C1 E1 C9"
 }

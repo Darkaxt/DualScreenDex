@@ -125,7 +125,11 @@ internal object Gen3LocalMapPoiResolver {
                         tileX = warp.x,
                         tileY = warp.y,
                         kind = LocalMapPoiKind.PLACE,
-                        textObligation = LocalMapPoiTextObligation.DESTINATION_NAME,
+                        textObligation = if (warp.destinationBaseAreaId == DYNAMIC_DESTINATION_BASE_AREA_ID) {
+                            LocalMapPoiTextObligation.CONTEXTUAL_TEXT
+                        } else {
+                            LocalMapPoiTextObligation.DESTINATION_NAME
+                        },
                         organicVisibility = LocalMapPoiOrganicVisibility.ENTRANCE_PROXIMITY,
                         destinationBaseAreaId = warp.destinationBaseAreaId,
                     ),
@@ -342,6 +346,7 @@ internal object Gen3LocalMapPoiResolver {
     private const val BG_RECORD_BYTES = 0x0C
     private const val BG_EVENT_HIDDEN_ITEM = 7
     private const val BG_EVENT_SECRET_BASE = 8
+    private const val DYNAMIC_DESTINATION_BASE_AREA_ID = 0x7f7f
     private val BG_EVENT_SIGN_KINDS = 0..4
     private const val HIDDEN_ITEMS_FLAG_START = 1000
     private const val SCR_OP_CALL_STD = 0x09
