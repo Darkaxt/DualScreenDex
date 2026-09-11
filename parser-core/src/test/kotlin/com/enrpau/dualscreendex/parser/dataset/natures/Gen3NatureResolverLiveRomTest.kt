@@ -35,6 +35,19 @@ class Gen3NatureResolverLiveRomTest {
     }
 
     @Test
+    fun unrelatedLabelsCannotNominateASeparateNatureNameTable() {
+        val menuLabels = List(25) { index -> "MENU $index" }
+        val natureLabels = List(25) { index -> "NATURE $index" }.toMutableList().apply {
+            this[0] = "HARDY"
+            this[1] = "LONELY"
+            this[24] = "QUIRKY"
+        }
+
+        assertFalse(Gen3NatureResolver.hasNatureNameAuthority(menuLabels, PokemonTextCodec.gbaEnglish))
+        assertTrue(Gen3NatureResolver.hasNatureNameAuthority(natureLabels, PokemonTextCodec.gbaEnglish))
+    }
+
+    @Test
     fun cancellationInterruptsNatureWholeRomScanning() {
         val rom = RomImage(ByteArray(0x10_000))
         val cancellation = CancelAfterChecks(successfulChecks = 3)

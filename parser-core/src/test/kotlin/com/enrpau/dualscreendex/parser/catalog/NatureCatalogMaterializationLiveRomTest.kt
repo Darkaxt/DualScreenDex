@@ -12,6 +12,47 @@ import org.junit.Test
 
 class NatureCatalogMaterializationLiveRomTest {
     @Test
+    fun `official Italian and Japanese Emerald reject unrelated menu labels as Nature names`() {
+        val western = System.getenv("DUALDEX_WESTERN_CONTROLS")
+        val native = System.getenv("DUALDEX_NATIVE_CONTROLS")
+        assumeTrue("set both official-control roots for the two-control Nature gate", !western.isNullOrBlank() && !native.isNullOrBlank())
+        val expected = listOf(
+            ControlNames(
+                Path.of(western).resolve("it/EMERALD"),
+                "63cbff3500b657cb6966568beb0780de3655d3a0b2e5ac6e0ec33d5d01a916ad",
+                listOf(
+                    "ARDITA", "SCHIVA", "AUDACE", "DECISA", "BIRBONA", "SICURA", "DOCILE", "PLACIDA", "SCALTRA", "FIACCA",
+                    "TIMIDA", "LESTA", "SERIA", "ALLEGRA", "INGENUA", "MODESTA", "MITE", "QUIETA", "RITROSA", "ARDENTE",
+                    "CALMA", "GENTILE", "VIVACE", "CAUTA", "FURBA",
+                ),
+            ),
+            ControlNames(
+                Path.of(native).resolve("ja/EMERALD"),
+                "33f5610b9186b4add09fef68895deb00f552b997b3d133b5a961e5123506343c",
+                listOf(
+                    "がんばりや", "さみしがり", "ゆうかん", "いじっぱり", "やんちゃ", "ずぶとい", "すなお", "のんき", "わんぱく", "のうてんき",
+                    "おくびょう", "せっかち", "まじめ", "ようき", "むじゃき", "ひかえめ", "おっとり", "れいせい", "てれや", "うっかりや",
+                    "おだやか", "おとなしい", "なまいき", "しんちょう", "きまぐれ",
+                ),
+            ),
+        )
+
+        expected.forEach { control ->
+            val path = Files.list(control.directory).use { files ->
+                files.filter(Files::isRegularFile).toList().single()
+            }
+            val rom = Files.newInputStream(path).use(RomImage::from)
+            assertEquals(control.sha256, rom.sha256)
+            val catalog = requireNotNull(CatalogParser.parse(rom).catalog)
+
+            assertEquals(
+                control.names,
+                requireNotNull(catalog.defaultLocalizedText()).natureNames.toSortedMap().values.map { it.value },
+            )
+        }
+    }
+
+    @Test
     fun `Modern Emerald materializes its ROM-native Nature catalog`() = assertMaterialized(controls[0])
 
     @Test
@@ -64,6 +105,7 @@ class NatureCatalogMaterializationLiveRomTest {
     }
 
     private data class Control(val path: String, val sha256: String)
+    private data class ControlNames(val directory: Path, val sha256: String, val names: List<String>)
 
     private val controls = listOf(
         Control(

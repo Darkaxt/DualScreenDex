@@ -21,6 +21,7 @@ import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7StackTransfer
 import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7Register
 import com.enrpau.dualscreendex.parser.analysis.thumb.ThumbDecoder
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.language.LanguageTag
 import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import java.util.ArrayDeque
@@ -252,7 +253,13 @@ object Gen3NatureResolver {
         val names = (0 until count).map { id ->
             decodeName(rom, root + id * 4, codec, cancellation) ?: return null
         }
-        return names.takeIf { it.distinct().size >= maxOf(MIN_NATURES, count * 4 / 5) }
+        return names.takeIf { hasNatureNameAuthority(it, codec) }
+    }
+
+    internal fun hasNatureNameAuthority(names: List<String>, codec: PokemonTextCodec): Boolean {
+        val markers = natureNameMarkers[codec.language] ?: return false
+        return names.size == INTEGRATED_NATURES && names.distinct().size == INTEGRATED_NATURES &&
+            markers.all { (index, expected) -> names[index].equals(expected, ignoreCase = true) }
     }
 
     private fun decodeName(
@@ -588,6 +595,16 @@ object Gen3NatureResolver {
         val negativePercent: Int,
     )
     private data class NameCandidate(val root: Int, val names: List<String>, val references: Int)
+
+    // Distinguish the standard Nature order from unrelated 25-entry UI pointer arrays.
+    private val natureNameMarkers = mapOf(
+        LanguageTag.ENGLISH to mapOf(0 to "HARDY", 1 to "LONELY", 24 to "QUIRKY"),
+        LanguageTag.FRENCH to mapOf(0 to "HARDI", 1 to "SOLO", 24 to "BIZARRE"),
+        LanguageTag.GERMAN to mapOf(0 to "ROBUST", 1 to "SOLO", 24 to "KAUZIG"),
+        LanguageTag.ITALIAN to mapOf(0 to "ARDITA", 1 to "SCHIVA", 24 to "FURBA"),
+        LanguageTag.SPANISH to mapOf(0 to "FUERTE", 1 to "HURAÑA", 24 to "RARA"),
+        LanguageTag.JAPANESE to mapOf(0 to "がんばりや", 1 to "さみしがり", 24 to "きまぐれ"),
+    )
 
     private const val MODIFIERS_PER_NATURE = 5
     private const val INTEGRATED_NATURES = 25
