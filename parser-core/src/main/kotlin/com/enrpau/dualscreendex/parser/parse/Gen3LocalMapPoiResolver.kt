@@ -167,18 +167,22 @@ internal object Gen3LocalMapPoiResolver {
                     val destination = backgroundWarps[background.index]
                     val isSign = background.kind in BG_EVENT_SIGN_KINDS
                     val script = if (isSign) rom.gbaPointer(background.offset + 8) else null
-                    // The branch contract comes from the script prefix, even if either text fails decoding.
                     val genderConditioned = script != null && script.toLong() + 2 <= rom.size &&
                         rom.u8(script) == SCR_OP_LOCK_ALL && rom.u8(script + 1) == SCR_OP_CHECK_PLAYER_GENDER
-                    val structurallyDirect = script != null && isSimpleSignScript(rom, script)
+                    val structurallyDirect = script != null && findLinearSignMessage(rom, script, family) != null
+                    val signHeadline = if (script != null && codec != null) {
+                        readSignHeadline(rom, script, family, codec)
+                    } else {
+                        null
+                    }
                     val obligation = when {
                         background.kind == BG_EVENT_SECRET_BASE -> LocalMapPoiTextObligation.NO_TEXT
                         !isSign -> LocalMapPoiTextObligation.UNRESOLVED
+                        signHeadline?.contextual == true -> LocalMapPoiTextObligation.CONTEXTUAL_TEXT
                         genderConditioned -> LocalMapPoiTextObligation.GENDERED_DIRECT_TEXT
                         structurallyDirect -> LocalMapPoiTextObligation.DIRECT_TEXT
                         else -> LocalMapPoiTextObligation.UNRESOLVED
                     }
-                    val signHeadline = if (script != null && codec != null) readSignHeadline(rom, script, codec) else null
                     add(
                         LocalMapPoi(
                             key = "${map.key}/bg/${background.index}",
@@ -210,10 +214,15 @@ internal object Gen3LocalMapPoiResolver {
     private fun readSignHeadline(
         rom: RomImage,
         script: Int,
+        family: EngineFamily,
         codec: PokemonTextCodec,
     ): SignHeadline? =
-        readSimpleSignHeadline(rom, script, codec)?.let { SignHeadline(displayName = it) }
-            ?: readGenderConditionedSignHeadline(rom, script, codec)
+        readLinearSignHeadline(rom, script, family, codec)?.let { headline ->
+            SignHeadline(
+                displayName = headline.displayName.takeUnless { headline.contextual },
+                contextual = headline.contextual,
+            )
+        } ?: readGenderConditionedSignHeadline(rom, script, codec)
 
     private fun readGenderConditionedSignHeadline(
         rom: RomImage,
@@ -224,6 +233,7 @@ internal object Gen3LocalMapPoiResolver {
         if (rom.u8(script) != SCR_OP_LOCK_ALL || rom.u8(script + 1) != SCR_OP_CHECK_PLAYER_GENDER) return null
         var cursor = script + 2
         val names = linkedMapOf<Int, String>()
+        var contextual = false
         repeat(2) {
             if (rom.u8(cursor) != SCR_OP_COMPARE_VAR_TO_VALUE || rom.u16le(cursor + 1) != VAR_RESULT) return null
             val gender = rom.u16le(cursor + 3)
@@ -231,7 +241,9 @@ internal object Gen3LocalMapPoiResolver {
             cursor += COMPARE_VAR_TO_VALUE_BYTES
             if (rom.u8(cursor) !in CONDITIONAL_BRANCH_OPS || rom.u8(cursor + 1) != COMPARISON_EQUAL) return null
             val target = rom.gbaPointer(cursor + 2) ?: return null
-            names[gender] = readSignBranchHeadline(rom, target, codec) ?: return null
+            val headline = readSignBranchHeadline(rom, target, codec) ?: return null
+            contextual = contextual || headline.contextual
+            names[gender] = headline.displayName
             cursor += CONDITIONAL_BRANCH_BYTES
         }
         val terminalBytes = when (rom.u8(cursor)) {
@@ -242,8 +254,9 @@ internal object Gen3LocalMapPoiResolver {
         if (cursor.toLong() + terminalBytes > rom.size.toLong()) return null
         if (terminalBytes == 2 && rom.u8(cursor + 1) != SCR_OP_END) return null
         return SignHeadline(
-            displayName = names.values.firstOrNull(),
-            byTrainerGender = names,
+            displayName = names.values.firstOrNull().takeUnless { contextual },
+            byTrainerGender = names.takeUnless { contextual }.orEmpty(),
+            contextual = contextual,
         )
     }
 
@@ -251,19 +264,151 @@ internal object Gen3LocalMapPoiResolver {
         rom: RomImage,
         script: Int,
         codec: PokemonTextCodec,
-    ): String? = readSimpleSignHeadline(rom, script, codec)
+    ): DecodedSignHeadline? = readSimpleSignHeadline(rom, script, codec)
         ?: readSoundPrefacedSignHeadline(rom, script, codec)
 
     private fun readSoundPrefacedSignHeadline(
         rom: RomImage,
         script: Int,
         codec: PokemonTextCodec,
-    ): String? {
+    ): DecodedSignHeadline? {
         if (script.toLong() + SOUND_PREFACED_SIGN_PREFIX_BYTES > rom.size.toLong()) return null
         if (rom.u8(script) != SCR_OP_SET_VAR || rom.u16le(script + 1) !in SPECIAL_VARIABLE_RANGE) return null
         if (rom.u16le(script + 3) in SCRIPT_VARIABLE_RANGE) return null
         if (rom.u8(script + 5) != SCR_OP_SPECIAL || rom.u8(script + 8) != SCR_OP_PLAY_SE) return null
         return readSimpleSignHeadline(rom, script + SOUND_PREFACED_SIGN_PREFIX_BYTES, codec)
+    }
+
+    private fun readLinearSignHeadline(
+        rom: RomImage,
+        script: Int,
+        family: EngineFamily,
+        codec: PokemonTextCodec,
+    ): DecodedSignHeadline? = findLinearSignMessage(rom, script, family)?.let { message ->
+        readTextHeadline(rom, message.text, codec)
+    }
+
+    private fun findLinearSignMessage(rom: RomImage, script: Int, family: EngineFamily): MessageReference? {
+        val endExclusive = minOf(rom.size.toLong(), script.toLong() + MAX_SIGN_SCRIPT_PREFIX_BYTES).toInt()
+        var cursor = script
+        while (cursor < endExclusive) {
+            readMessageReference(rom, cursor)?.let { return it }
+            val instructionBytes = when (rom.u8(cursor)) {
+                SCR_OP_LOCK_ALL,
+                SCR_OP_LOCK,
+                SCR_OP_FACE_PLAYER,
+                -> 1
+                SCR_OP_SET_VAR -> if (
+                    cursor.toLong() + SET_VAR_BYTES <= endExclusive &&
+                    rom.u16le(cursor + 1) in SPECIAL_VARIABLE_RANGE &&
+                    rom.u16le(cursor + 3) !in SCRIPT_VARIABLE_RANGE
+                ) {
+                    SET_VAR_BYTES
+                } else {
+                    return null
+                }
+                SCR_OP_SPECIAL -> if (
+                    cursor.toLong() + SPECIAL_BYTES <= endExclusive &&
+                    rom.u16le(cursor + 1) in allowedPreludeSpecials(family)
+                ) {
+                    SPECIAL_BYTES
+                } else {
+                    return null
+                }
+                SCR_OP_CALL -> if (
+                    cursor.toLong() + CALL_BYTES <= endExclusive &&
+                    rom.gbaPointer(cursor + 1)?.let { isMessageFreeReturningPrelude(rom, it, family) } == true
+                ) {
+                    CALL_BYTES
+                } else {
+                    return null
+                }
+                SCR_OP_APPLY_MOVEMENT -> if (
+                    cursor.toLong() + APPLY_MOVEMENT_BYTES <= endExclusive && rom.gbaPointer(cursor + 3) != null
+                ) {
+                    APPLY_MOVEMENT_BYTES
+                } else {
+                    return null
+                }
+                SCR_OP_WAIT_MOVEMENT -> if (cursor.toLong() + WAIT_MOVEMENT_BYTES <= endExclusive) {
+                    WAIT_MOVEMENT_BYTES
+                } else {
+                    return null
+                }
+                SCR_OP_SHOW_MON_PIC -> if (
+                    family == EngineFamily.FIRERED_LEAFGREEN && cursor.toLong() + SHOW_MON_PIC_BYTES <= endExclusive
+                ) {
+                    SHOW_MON_PIC_BYTES
+                } else {
+                    return null
+                }
+                SCR_OP_SHOW_MONEY_BOX -> if (cursor.toLong() + SHOW_MONEY_BOX_BYTES <= endExclusive) {
+                    SHOW_MONEY_BOX_BYTES
+                } else {
+                    return null
+                }
+                SCR_OP_TEXT_COLOR -> if (
+                    family == EngineFamily.FIRERED_LEAFGREEN && cursor.toLong() + TEXT_COLOR_BYTES <= endExclusive
+                ) {
+                    TEXT_COLOR_BYTES
+                } else {
+                    return null
+                }
+                else -> return null
+            }
+            cursor += instructionBytes
+        }
+        return null
+    }
+
+    private fun isMessageFreeReturningPrelude(rom: RomImage, script: Int, family: EngineFamily): Boolean {
+        val endExclusive = minOf(rom.size.toLong(), script.toLong() + MAX_CALLEE_BYTES).toInt()
+        var cursor = script
+        while (cursor < endExclusive) {
+            val instructionBytes = when (rom.u8(cursor)) {
+                SCR_OP_RETURN -> return true
+                SCR_OP_DO_TIME_BASED_EVENTS -> 1
+                SCR_OP_SET_VAR -> if (
+                    cursor.toLong() + SET_VAR_BYTES <= endExclusive &&
+                    rom.u16le(cursor + 1) in SPECIAL_VARIABLE_RANGE &&
+                    rom.u16le(cursor + 3) !in SCRIPT_VARIABLE_RANGE
+                ) {
+                    SET_VAR_BYTES
+                } else {
+                    return false
+                }
+                SCR_OP_SPECIAL -> if (
+                    family in HOENN_FAMILIES && cursor.toLong() + SPECIAL_BYTES <= endExclusive &&
+                    rom.u16le(cursor + 1) == SPECIAL_BUFFER_TRENDY_PHRASE
+                ) {
+                    SPECIAL_BYTES
+                } else {
+                    return false
+                }
+                else -> return false
+            }
+            cursor += instructionBytes
+        }
+        return false
+    }
+
+    private fun readMessageReference(rom: RomImage, script: Int): MessageReference? = when {
+        isSimpleSignScript(rom, script) -> MessageReference(requireNotNull(rom.gbaPointer(script + 2)))
+        script.toLong() + MESSAGE_BYTES <= rom.size.toLong() &&
+            rom.u8(script) == SCR_OP_MESSAGE && rom.u8(script + 5) == SCR_OP_WAIT_MESSAGE ->
+            rom.gbaPointer(script + 1)?.let(::MessageReference)
+        script.toLong() + BRAILLE_MESSAGE_BYTES <= rom.size.toLong() &&
+            rom.u8(script) == SCR_OP_BRAILLE_MESSAGE && rom.u8(script + 5) == SCR_OP_WAIT_BUTTON_PRESS ->
+            rom.gbaPointer(script + 1)?.let(::MessageReference)
+        else -> null
+    }
+
+    private fun allowedPreludeSpecials(family: EngineFamily): Set<Int> = when (family) {
+        EngineFamily.RUBY_SAPPHIRE,
+        EngineFamily.EMERALD,
+        -> HOENN_LINEAR_SIGN_SPECIALS
+        EngineFamily.FIRERED_LEAFGREEN -> FIRERED_LINEAR_SIGN_SPECIALS
+        else -> emptySet()
     }
 
     private fun isSimpleSignScript(rom: RomImage, script: Int): Boolean =
@@ -276,18 +421,26 @@ internal object Gen3LocalMapPoiResolver {
         rom: RomImage,
         script: Int,
         codec: PokemonTextCodec,
-    ): String? {
+    ): DecodedSignHeadline? {
         if (!isSimpleSignScript(rom, script)) return null
-        val text = requireNotNull(rom.gbaPointer(script + 2))
+        return readTextHeadline(rom, requireNotNull(rom.gbaPointer(script + 2)), codec)
+    }
+
+    private fun readTextHeadline(
+        rom: RomImage,
+        text: Int,
+        codec: PokemonTextCodec,
+    ): DecodedSignHeadline? {
         val available = minOf(MAX_SIGN_TEXT_BYTES, rom.size - text)
         if (available <= 0) return null
         return decodeSignHeadline(rom.slice(text, available), codec)
     }
 
-    private fun decodeSignHeadline(raw: ByteArray, codec: PokemonTextCodec): String? {
+    private fun decodeSignHeadline(raw: ByteArray, codec: PokemonTextCodec): DecodedSignHeadline? {
         val rom = RomImage(raw)
         val output = StringBuilder()
         var cursor = 0
+        var contextual = false
         var terminated = false
         while (cursor < rom.size) {
             val byte = rom.u8(cursor)
@@ -296,9 +449,10 @@ internal object Gen3LocalMapPoiResolver {
                 break
             }
             if (byte == EXT_CTRL_CODE_BEGIN && cursor + 1 < rom.size &&
-                rom.u8(cursor + 1) == EXT_CTRL_CODE_PLAYER
+                rom.u8(cursor + 1) in RUNTIME_SUBSTITUTION_IDS
             ) {
-                output.append("{PLAYER}")
+                contextual = true
+                output.append("{RUNTIME}")
                 cursor += 2
                 continue
             }
@@ -307,7 +461,10 @@ internal object Gen3LocalMapPoiResolver {
             when (token) {
                 is PokemonTextToken.Glyph -> output.append(token.text)
                 is PokemonTextToken.Whitespace -> output.append(token.text)
-                is PokemonTextToken.Substitution -> output.append(token.text)
+                is PokemonTextToken.Substitution -> {
+                    contextual = true
+                    output.append(token.text)
+                }
                 is PokemonTextToken.Control -> output.append(token.replacement)
                 is PokemonTextToken.Invalid -> return null
                 is PokemonTextToken.Terminator -> {
@@ -317,7 +474,9 @@ internal object Gen3LocalMapPoiResolver {
             }
         }
         if (!terminated) return null
-        return output.toString().replace(WHITESPACE, " ").trim().takeIf { it.length >= MIN_SIGN_HEADLINE_CHARS }
+        val displayName = output.toString().replace(WHITESPACE, " ").trim()
+            .takeIf { it.length >= MIN_SIGN_HEADLINE_CHARS } ?: return null
+        return DecodedSignHeadline(displayName, contextual)
     }
 
     private fun readVisibleItemId(rom: RomImage, script: Int): Int? {
@@ -363,9 +522,17 @@ internal object Gen3LocalMapPoiResolver {
         val kind: Int,
     )
 
+    private data class MessageReference(val text: Int)
+
     private data class SignHeadline(
         val displayName: String? = null,
         val byTrainerGender: Map<Int, String> = emptyMap(),
+        val contextual: Boolean = false,
+    )
+
+    private data class DecodedSignHeadline(
+        val displayName: String,
+        val contextual: Boolean,
     )
 
     private fun RomImage.s16le(offset: Int): Int = u16le(offset).let { if (it and 0x8000 != 0) it - 0x10000 else it }
@@ -389,17 +556,31 @@ internal object Gen3LocalMapPoiResolver {
     private const val HIDDEN_ITEMS_FLAG_START = 1000
     private const val SCR_OP_CALL_STD = 0x09
     private const val SCR_OP_END = 0x02
+    private const val SCR_OP_RETURN = 0x03
+    private const val SCR_OP_CALL = 0x04
     private const val SCR_OP_GOTO_IF = 0x06
     private const val SCR_OP_CALL_IF = 0x07
     private const val SCR_OP_LOAD_WORD = 0x0F
     private const val SCR_OP_SETORCOPYVAR = 0x1A
     private const val SCR_OP_SET_VAR = 0x16
     private const val SCR_OP_SPECIAL = 0x25
+    private const val SCR_OP_DO_TIME_BASED_EVENTS = 0x2D
     private const val SCR_OP_PLAY_SE = 0x2F
+    private const val SCR_OP_APPLY_MOVEMENT = 0x4F
+    private const val SCR_OP_WAIT_MOVEMENT = 0x51
     private const val SCR_OP_COMPARE_VAR_TO_VALUE = 0x21
+    private const val SCR_OP_FACE_PLAYER = 0x5A
+    private const val SCR_OP_WAIT_MESSAGE = 0x66
+    private const val SCR_OP_MESSAGE = 0x67
     private const val SCR_OP_LOCK_ALL = 0x69
+    private const val SCR_OP_LOCK = 0x6A
     private const val SCR_OP_RELEASE_ALL = 0x6B
+    private const val SCR_OP_WAIT_BUTTON_PRESS = 0x6D
+    private const val SCR_OP_SHOW_MON_PIC = 0x75
+    private const val SCR_OP_BRAILLE_MESSAGE = 0x78
+    private const val SCR_OP_SHOW_MONEY_BOX = 0x93
     private const val SCR_OP_CHECK_PLAYER_GENDER = 0xA0
+    private const val SCR_OP_TEXT_COLOR = 0xC7
     private const val COMPARISON_EQUAL = 1
     private const val STD_FIND_ITEM = 1
     private const val VAR_0x8000 = 0x8000
@@ -408,8 +589,24 @@ internal object Gen3LocalMapPoiResolver {
     private val CONDITIONAL_BRANCH_OPS = setOf(SCR_OP_GOTO_IF, SCR_OP_CALL_IF)
     private val SPECIAL_VARIABLE_RANGE = 0x8000..0x800F
     private val SCRIPT_VARIABLE_RANGE = 0x4000..0x40FF
+    private val HOENN_FAMILIES = setOf(EngineFamily.RUBY_SAPPHIRE, EngineFamily.EMERALD)
+    private val HOENN_LINEAR_SIGN_SPECIALS = setOf(0x77, 0x79)
+    private val FIRERED_LINEAR_SIGN_SPECIALS = setOf(0x163, 0x173, 0x18B)
+    private const val SPECIAL_BUFFER_TRENDY_PHRASE = 0x7E
     private const val FIND_ITEM_SCRIPT_BYTES = 12
     private const val SIMPLE_MSGBOX_BYTES = 8
+    private const val MESSAGE_BYTES = 6
+    private const val BRAILLE_MESSAGE_BYTES = 6
+    private const val SET_VAR_BYTES = 5
+    private const val SPECIAL_BYTES = 3
+    private const val CALL_BYTES = 5
+    private const val APPLY_MOVEMENT_BYTES = 7
+    private const val WAIT_MOVEMENT_BYTES = 3
+    private const val SHOW_MON_PIC_BYTES = 5
+    private const val SHOW_MONEY_BOX_BYTES = 4
+    private const val TEXT_COLOR_BYTES = 2
+    private const val MAX_SIGN_SCRIPT_PREFIX_BYTES = 48
+    private const val MAX_CALLEE_BYTES = 24
     private const val SOUND_PREFACED_SIGN_PREFIX_BYTES = 11
     private const val COMPARE_VAR_TO_VALUE_BYTES = 5
     private const val CONDITIONAL_BRANCH_BYTES = 6
@@ -420,6 +617,6 @@ internal object Gen3LocalMapPoiResolver {
     private const val SIGN_ENTRANCE_MAX_DISTANCE = 2
     private val SIGN_LINE_BREAKS = setOf(0xFA, 0xFB, 0xFE)
     private const val EXT_CTRL_CODE_BEGIN = 0xFD
-    private const val EXT_CTRL_CODE_PLAYER = 0x01
+    private val RUNTIME_SUBSTITUTION_IDS = 0x01..0x06
     private val WHITESPACE = Regex("\\s+")
 }

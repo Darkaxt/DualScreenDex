@@ -581,6 +581,10 @@ class CatalogStoreTest {
     fun revision77PoiSemanticOutcomesAreRejectedAndCurrentReopensWithNativeTextAndGeometry() =
         assertStaleSignRevisionRejected(77)
 
+    @Test
+    fun revision78WrappedSignOutcomesAreRejectedAndCurrentReopensWithNativeTextAndGeometry() =
+        assertStaleSignRevisionRejected(78)
+
     private fun assertStaleSignRevisionRejected(staleRevision: Int) {
         val base = task417MixedCatalog()
         val signNames = mapOf(LanguageTag.JAPANESE to "ここは　まち", LanguageTag.KOREAN to "여기는 마을")

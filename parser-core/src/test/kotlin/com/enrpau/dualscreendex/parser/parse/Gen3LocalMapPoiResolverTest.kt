@@ -116,6 +116,211 @@ class Gen3LocalMapPoiResolverTest {
     }
 
     @Test
+    fun decodesStaticHeadlineAfterBoundedLinearWrapper() {
+        val prefixes = listOf(
+            EngineFamily.RUBY_SAPPHIRE to byteArrayOf(0x69),
+            EngineFamily.RUBY_SAPPHIRE to byteArrayOf(0x25, 0x77, 0x00, 0x69),
+            EngineFamily.FIRERED_LEAFGREEN to byteArrayOf(
+                0x69,
+                0x16, 0x04, 0x80.toByte(), 0x05, 0x00,
+                0x16, 0x05, 0x80.toByte(), 0x00, 0x00,
+                0x25, 0x73, 0x01,
+            ),
+            EngineFamily.FIRERED_LEAFGREEN to byteArrayOf(
+                0x69,
+                0x16, 0x04, 0x80.toByte(), 0x71, 0x00,
+                0x25, 0x63, 0x01,
+                0x75, 0x71, 0x00, 0x0a, 0x03,
+            ),
+        )
+        for ((family, prefix) in prefixes) {
+            val bytes = singleSignFixture(SCRIPT)
+            prefix.copyInto(bytes, SCRIPT)
+            writeSimpleSign(bytes, SCRIPT + prefix.size, TEXT)
+            byteArrayOf(0x01, 0x02, 0xff.toByte()).copyInto(bytes, TEXT)
+
+            val poi = resolveSingleSign(bytes, family)
+
+            assertEquals(
+                "$family ${prefix.joinToString("") { it.toUByte().toString(16).padStart(2, '0') }}",
+                LocalMapPoiTextObligation.DIRECT_TEXT,
+                poi.textObligation,
+            )
+            assertEquals("あい", poi.displayName)
+        }
+    }
+
+    @Test
+    fun decodesDirectMessageAndBrailleMessageForms() {
+        for (scriptWriter in listOf<(ByteArray) -> Unit>(
+            { bytes ->
+                bytes[SCRIPT] = 0x69
+                bytes[SCRIPT + 1] = 0x67
+                putPointer(bytes, SCRIPT + 2, TEXT)
+                bytes[SCRIPT + 6] = 0x66
+            },
+            { bytes ->
+                bytes[SCRIPT] = 0x69
+                bytes[SCRIPT + 1] = 0x78
+                putPointer(bytes, SCRIPT + 2, TEXT)
+                bytes[SCRIPT + 6] = 0x6d
+                bytes[SCRIPT + 7] = 0xda.toByte()
+            },
+        )) {
+            val bytes = singleSignFixture(SCRIPT)
+            scriptWriter(bytes)
+            byteArrayOf(0x01, 0x02, 0xff.toByte()).copyInto(bytes, TEXT)
+
+            val poi = resolveSingleSign(bytes, EngineFamily.EMERALD)
+
+            assertEquals(LocalMapPoiTextObligation.DIRECT_TEXT, poi.textObligation)
+            assertEquals("あい", poi.displayName)
+        }
+    }
+
+    @Test
+    fun decodesBrailleAfterWaitButtonAcrossFamilies() {
+        for ((family, nextOpcode) in listOf(
+            EngineFamily.RUBY_SAPPHIRE to 0x73,
+            EngineFamily.FIRERED_LEAFGREEN to 0x6b,
+        )) {
+            val bytes = singleSignFixture(SCRIPT)
+            bytes[SCRIPT] = 0x69
+            bytes[SCRIPT + 1] = 0x78
+            putPointer(bytes, SCRIPT + 2, TEXT)
+            bytes[SCRIPT + 6] = 0x6d
+            bytes[SCRIPT + 7] = nextOpcode.toByte()
+            byteArrayOf(0x01, 0x02, 0xff.toByte()).copyInto(bytes, TEXT)
+
+            val poi = resolveSingleSign(bytes, family)
+
+            assertEquals(LocalMapPoiTextObligation.DIRECT_TEXT, poi.textObligation)
+            assertEquals("あい", poi.displayName)
+        }
+    }
+
+    @Test
+    fun decodesStaticMessageAfterBoundedMovementAndUiSetup() {
+        val fixtures = listOf<(ByteArray) -> Int>(
+            { bytes ->
+                byteArrayOf(0x69, 0x93.toByte(), 0x00, 0x00, 0x00).copyInto(bytes, SCRIPT)
+                SCRIPT + 5
+            },
+            { bytes ->
+                bytes[SCRIPT] = 0x69
+                bytes[SCRIPT + 1] = 0x4f
+                putU16(bytes, SCRIPT + 2, 10)
+                putPointer(bytes, SCRIPT + 4, 0x600)
+                bytes[SCRIPT + 8] = 0x51
+                putU16(bytes, SCRIPT + 9, 0)
+                SCRIPT + 11
+            },
+        )
+        for (fixture in fixtures) {
+            val bytes = singleSignFixture(SCRIPT)
+            writeSimpleSign(bytes, fixture(bytes), TEXT)
+            byteArrayOf(0x01, 0x02, 0xff.toByte()).copyInto(bytes, TEXT)
+
+            val poi = resolveSingleSign(bytes, EngineFamily.EMERALD)
+
+            assertEquals(LocalMapPoiTextObligation.DIRECT_TEXT, poi.textObligation)
+            assertEquals("あい", poi.displayName)
+        }
+    }
+
+    @Test
+    fun decodesStaticMessageAfterBoundedMessageFreeCallPrelude() {
+        val bytes = singleSignFixture(SCRIPT)
+        bytes[SCRIPT] = 0x69
+        bytes[SCRIPT + 1] = 0x04
+        putPointer(bytes, SCRIPT + 2, 0x600)
+        writeSimpleSign(bytes, SCRIPT + 6, TEXT)
+        byteArrayOf(
+            0x2d,
+            0x16, 0x04, 0x80.toByte(), 0x00, 0x00,
+            0x25, 0x7e, 0x00,
+            0x03,
+        ).copyInto(bytes, 0x600)
+        byteArrayOf(0x01, 0x02, 0xfe.toByte(), 0xfd.toByte(), 0x02, 0xff.toByte()).copyInto(bytes, TEXT)
+
+        val poi = resolveSingleSign(bytes)
+
+        assertEquals(LocalMapPoiTextObligation.DIRECT_TEXT, poi.textObligation)
+        assertEquals("あい", poi.displayName)
+    }
+
+    @Test
+    fun callPreludeRejectsCalleeMessageBranchUnknownAndMissingReturn() {
+        val callees = listOf(
+            byteArrayOf(0x0f, 0x00, 0x00, 0x07, 0x00, 0x08, 0x09, 0x04),
+            byteArrayOf(0x06, 0x01, 0x00, 0x07, 0x00, 0x08),
+            byteArrayOf(0x7f),
+            byteArrayOf(0x2d, 0x16, 0x04, 0x80.toByte(), 0x00, 0x00, 0x25, 0x7e, 0x00),
+        )
+        for (callee in callees) {
+            val bytes = singleSignFixture(SCRIPT)
+            bytes[SCRIPT] = 0x69
+            bytes[SCRIPT + 1] = 0x04
+            putPointer(bytes, SCRIPT + 2, 0x600)
+            writeSimpleSign(bytes, SCRIPT + 6, TEXT)
+            callee.copyInto(bytes, 0x600)
+            byteArrayOf(0x01, 0x02, 0xff.toByte()).copyInto(bytes, TEXT)
+
+            val poi = resolveSingleSign(bytes)
+
+            assertEquals(LocalMapPoiTextObligation.UNRESOLVED, poi.textObligation)
+            assertNull(poi.displayName)
+        }
+    }
+
+    @Test
+    fun firstHeadlineRuntimeSubstitutionIsContextualButLaterSubstitutionDoesNotEraseStaticHeadline() {
+        for ((text, obligation, displayName) in listOf(
+            Triple(
+                byteArrayOf(0xfd.toByte(), 0x02, 0x01, 0xff.toByte()),
+                LocalMapPoiTextObligation.CONTEXTUAL_TEXT,
+                null,
+            ),
+            Triple(
+                byteArrayOf(0x01, 0x02, 0xfe.toByte(), 0xfd.toByte(), 0x02, 0xff.toByte()),
+                LocalMapPoiTextObligation.DIRECT_TEXT,
+                "あい",
+            ),
+        )) {
+            val bytes = singleSignFixture(SCRIPT)
+            bytes[SCRIPT] = 0x69
+            writeSimpleSign(bytes, SCRIPT + 1, TEXT)
+            text.copyInto(bytes, TEXT)
+
+            val poi = resolveSingleSign(bytes)
+
+            assertEquals(obligation, poi.textObligation)
+            assertEquals(displayName, poi.displayName)
+        }
+    }
+
+    @Test
+    fun linearWrapperRejectsUnknownSpecialBranchCallAndTruncation() {
+        val rejectedPrefixes = listOf(
+            byteArrayOf(0x25, 0x01, 0x00, 0x69),
+            byteArrayOf(0x69, 0x06, 0x01, 0x00, 0x06, 0x00, 0x08),
+            byteArrayOf(0x69, 0x04, 0x00, 0x06, 0x00, 0x08),
+            ByteArray(48) { 0x69 },
+        )
+        for (prefix in rejectedPrefixes) {
+            val bytes = singleSignFixture(SCRIPT)
+            prefix.copyInto(bytes, SCRIPT)
+            writeSimpleSign(bytes, SCRIPT + prefix.size, TEXT)
+            byteArrayOf(0x01, 0x02, 0xff.toByte()).copyInto(bytes, TEXT)
+
+            val poi = resolveSingleSign(bytes)
+
+            assertEquals(LocalMapPoiTextObligation.UNRESOLVED, poi.textObligation)
+            assertNull(poi.displayName)
+        }
+    }
+
+    @Test
     fun decodesGenderedJapaneseSignBranchAfterBoundedSoundPrelude() {
         val bytes = singleSignFixture(SCRIPT)
         byteArrayOf(
@@ -202,12 +407,15 @@ class Gen3LocalMapPoiResolverTest {
         putPointer(bytes, BACKGROUNDS + 8, script)
     }
 
-    private fun resolveSingleSign(bytes: ByteArray) = Gen3LocalMapPoiResolver.resolve(
+    private fun resolveSingleSign(
+        bytes: ByteArray,
+        family: EngineFamily = EngineFamily.RUBY_SAPPHIRE,
+    ) = Gen3LocalMapPoiResolver.resolve(
         RomImage(bytes),
         mapOf(1 to MAP_HEADER),
         listOf(localMap()),
-        EngineFamily.RUBY_SAPPHIRE,
-        JapanesePokemonTextCodecs.gen3RubySapphire,
+        family,
+        JapanesePokemonTextCodecs.forGeneration(3, family),
     ).pois.single()
 
     private fun writeSimpleSign(bytes: ByteArray, script: Int, text: Int) {
