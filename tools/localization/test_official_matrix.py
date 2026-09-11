@@ -337,6 +337,12 @@ class MatrixTests(unittest.TestCase):
         self.fx.refresh()
         self.assertEqual(self.validate()["status"], "EVIDENCE_VALIDATED")
 
+    def test_omitted_nullable_layout_fields_match_persisted_nulls(self):
+        manifest = self.fx.rows[0]["result"]["probes"][0]["resolvedLayout"]["languageManifest"]
+        manifest["projections"][0]["localizedTables"]["speciesNames"]["bank"] = None
+        self.fx.refresh()
+        self.assertEqual(self.validate()["status"], "EVIDENCE_VALIDATED")
+
     def test_duplicate_expected_hash(self):
         self.fx.controls[1]["sha256"] = self.identity
         self.fx.save_plan()

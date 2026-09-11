@@ -123,6 +123,14 @@ def canonical(value):
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
 
 
+def omit_null_object_members(value):
+    if isinstance(value, dict):
+        return {key: omit_null_object_members(item) for key, item in value.items() if item is not None}
+    if isinstance(value, list):
+        return [omit_null_object_members(item) for item in value]
+    return value
+
+
 def unique_pairs(pairs):
     result = {}
     for key, value in pairs:
@@ -525,9 +533,11 @@ def validate_run(run, plan, controls, inputs, source):
         path = local_path(str(cache_dir / (identity + ".sqlite")))
         cached = read_cache(path, observed["cacheSha256"], c, plan)
         require(capture.get("cacheSha256") == observed["cacheSha256"], "EVIDENCE_BINDING")
-        # Runtime-selection layout is not persisted in StoredLanguageManifest.
+        # Runtime-selection layout is not persisted, and serializers may omit nullable layout members.
         for field in ("status", "defaultLanguage", "projections"):
-            require(canonical(cached["language_manifest"].get(field)) == canonical(manifest_value.get(field)), "LANGUAGE_AUTHORITY")
+            cached_value = omit_null_object_members(cached["language_manifest"].get(field))
+            report_value = omit_null_object_members(manifest_value.get(field))
+            require(canonical(cached_value) == canonical(report_value), "LANGUAGE_AUTHORITY")
         required_checks(observed["checks"], expected["checks"], capture)
         g3_capture(capture, row, observed, expected, c, plan, binding)
         caps = capability_audit(row["catalog"]["localizedCapabilities"], cached["language_overlay:" + c["language"]],
