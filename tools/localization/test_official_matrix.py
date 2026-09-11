@@ -655,6 +655,50 @@ class MatrixTests(unittest.TestCase):
         self.fx.refresh()
         self.assertEqual(self.validate()["status"], "EVIDENCE_VALIDATED")
 
+    def test_supported_poi_semantic_exclusion_kinds(self):
+        for kind in ("CONTEXTUAL_TEXT", "NO_TEXT", "UNRESOLVED"):
+            with self.subTest(kind=kind), tempfile.TemporaryDirectory(prefix="task387-poi-") as root:
+                fx = Fixture(root)
+                identity = fx.controls[0]["sha256"]
+                cap = "POI_TEXT"
+                state = fx.rows[0]["catalog"]["localizedCapabilities"][cap]
+                state.update(status="PARTIAL", coveredRecords=1, expectedRecords=2)
+                proof_key = identity + cap
+                fx.proofs["proofs"][proof_key]["expectedRecords"] = 2
+                exclusion_key = proof_key + "-excluded"
+                fx.proofs["proofs"][exclusion_key] = dict(
+                    fx.proofs["proofs"][proof_key], kind=kind, recordIds=["2"])
+                accepted = fx.oracle["controls"][identity]["capabilities"][cap]
+                accepted.update(expectedRecords=2, excluded=[
+                    {"id": "2", "proof": {"pointer": "/proofs/" + exclusion_key}},
+                ])
+                cache_path = fx.cache / (identity + ".sqlite")
+                section = "language_overlay:" + fx.controls[0]["language"]
+                with closing(sqlite3.connect(cache_path)) as db, db:
+                    raw = db.execute(
+                        "SELECT payload FROM catalog_section_chunks WHERE section_name=?", (section,),
+                    ).fetchone()[0]
+                    overlay = json.loads(gzip.decompress(raw))
+                    next(c for c in overlay["localizedCapabilities"] if c["capability"] == cap).update(state)
+                    raw = gzip.compress(encoded(overlay), mtime=0)
+                    db.execute("UPDATE catalog_section_chunks SET payload=? WHERE section_name=?", (raw, section))
+                    db.execute("UPDATE catalog_sections SET payload=? WHERE name=?", (bytes.fromhex(sha(raw)), section))
+                fx.evidence["controls"][identity]["cacheSha256"] = sha(cache_path.read_bytes())
+                fx.api["controls"][identity]["cacheSha256"] = sha(cache_path.read_bytes())
+                fx.refresh()
+                result = self.mod.validate(Path(fx.pin["path"]), fx.pin["sha256"], COMMIT)
+                self.assertEqual(result["status"], "EVIDENCE_VALIDATED", result)
+
+    def test_poi_semantic_exclusion_kind_is_not_valid_for_other_capabilities(self):
+        self.fx.coverage(2, 1)
+        key = self.identity + "ITEM_NAMES"
+        self.fx.proofs["proofs"][key + "-excluded"] = dict(
+            self.fx.proofs["proofs"][key], kind="UNRESOLVED", recordIds=["2"])
+        self.fx.oracle["controls"][self.identity]["capabilities"]["ITEM_NAMES"]["excluded"] = [
+            {"id": "2", "proof": {"pointer": "/proofs/" + key + "-excluded"}}]
+        self.fx.refresh()
+        self.blocked("EVIDENCE_REFERENCE")
+
     def test_actual_not_applicable_status_supported(self):
         self.fx.coverage(0, 0, "EXCLUDED")
         self.fx.rows[0]["catalog"]["localizedCapabilities"]["ITEM_NAMES"]["status"] = "NOT_APPLICABLE"

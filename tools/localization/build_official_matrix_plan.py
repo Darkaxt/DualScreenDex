@@ -19,6 +19,10 @@ G3 uses the shared validator contract: report16 CLI logical digests match the
 restored catalog digest, and nested capture provenance binds the actual cache-only
 BootstrapView envelope. It does not repair captures or derive oracle expectations.
 Proof sourceSlice bytes address the separately pinned source evidence bundle.
+Missing-record proofs use RESERVED_SLOT or NOT_APPLICABLE generally; POI_TEXT
+also permits CONTEXTUAL_TEXT, NO_TEXT and UNRESOLVED to preserve the exact
+semantic reason that a retained POI has no static output. These POI-only kinds
+are rejected for every other capability.
 Source is reviewed evidence, never a ROM/cache. Known ROM/cache/dump suffixes
 are refused; JSON documents must use .json. Original paths inside manifests
 are inert metadata and are never traversed. No paths are discovered.
@@ -175,8 +179,11 @@ def capability_metadata(report, api, oracle, inputs, binding, source, identity):
             matrix.require(sample["cache"]["value"] not in (None, "", "pass", "PASS") and
                            matrix.canonical(sample["cache"]["value"]) == matrix.canonical(sample["api"]["value"]), "FIELD_ACCEPTANCE")
             matrix.assertion(api, sample["api"], "FIELD_ACCEPTANCE")
+        exclusion_kinds = {"RESERVED_SLOT", "NOT_APPLICABLE"}
+        if cap == "POI_TEXT":
+            exclusion_kinds |= {"CONTEXTUAL_TEXT", "NO_TEXT", "UNRESOLVED"}
         for exclusion in excluded:
-            authority = proof(exclusion["proof"], cap, {"RESERVED_SLOT", "NOT_APPLICABLE"})
+            authority = proof(exclusion["proof"], cap, exclusion_kinds)
             matrix.require(exclusion["id"] in authority["recordIds"], "EVIDENCE_REFERENCE")
 
 

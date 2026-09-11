@@ -48,7 +48,10 @@ Input contract v1 (executable synthetic example: test_official_matrix.Fixture):
   absence={cache:{pointer,value},api:{pointer,value}}. Each value must be an
   empty object/list or null and must match actual reopened/captured fields.
 * proof={artifact:{path,sha256},pointer}; resolves to a structured object in a
-  bound JSON document, with kind FIELD_ACCEPTANCE/RESERVED_SLOT/NOT_APPLICABLE,
+  bound JSON document, with kind FIELD_ACCEPTANCE/RESERVED_SLOT/NOT_APPLICABLE.
+  POI_TEXT record exclusions additionally accept CONTEXTUAL_TEXT, NO_TEXT and
+  UNRESOLVED so missing POI output retains its exact semantic disposition rather
+  than masquerading as a reserved or inapplicable record. Every proof contains
   romSha256, capability, recordIds, coveredRecords, expectedRecords and
   sourceSlice={offset,length,sha256}. The slice must exist in the independently
   pinned source artifact. Excluded={id,proof}; reserved/excluded IDs cannot
@@ -464,9 +467,12 @@ def capability_audit(report, overlay, api, oracle, inputs, binding, source, iden
                     canonical(sample["cache"]["value"]) == canonical(sample["api"].get("value")), "FIELD_ACCEPTANCE")
             assertion(overlay, sample["cache"], "FIELD_ACCEPTANCE")
             assertion(api, sample["api"], "FIELD_ACCEPTANCE")
+        exclusion_kinds = {"RESERVED_SLOT", "NOT_APPLICABLE"}
+        if cap == "POI_TEXT":
+            exclusion_kinds |= {"CONTEXTUAL_TEXT", "NO_TEXT", "UNRESOLVED"}
         for exclusion in excluded:
             proof = referenced_proof(exclusion["proof"], inputs, binding, source, identity, cap,
-                                     {"RESERVED_SLOT", "NOT_APPLICABLE"})
+                                     exclusion_kinds)
             require(exclusion["id"] in proof["recordIds"], "EVIDENCE_REFERENCE")
         result[cap] = {"disposition": disposition, "coveredRecords": covered,
                        "expectedRecords": total, "excludedRecords": len(excluded), "validatedSamples": len(samples)}

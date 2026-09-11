@@ -549,6 +549,35 @@ class AssemblyTests(unittest.TestCase):
         self.fx.refresh()
         self.blocked("G4_INDEPENDENT_ORACLE")
 
+    def test_supported_poi_semantic_exclusion_kinds(self):
+        for kind in ("CONTEXTUAL_TEXT", "NO_TEXT", "UNRESOLVED"):
+            with self.subTest(kind=kind):
+                cap = self.fx.data[0]["oracle"]["controls"][self.identity]["capabilities"]["POI_TEXT"]
+                cap.update(expectedRecords=2, excluded=[])
+                self.fx.data[0]["report"]["results"][0]["catalog"]["localizedCapabilities"]["POI_TEXT"].update(
+                    status="PARTIAL", expectedRecords=2)
+                proofs = self.fx.data[0]["proofs"]["proofs"]
+                key = self.identity + "POI_TEXT"
+                proofs[key]["expectedRecords"] = 2
+                proofs[key + "-excluded"] = dict(proofs[key], kind=kind, recordIds=["2"])
+                cap["excluded"] = [{"id": "2", "proof": {"pointer": "/proofs/" + key + "-excluded"}}]
+                self.fx.refresh()
+                self.assertEqual(self.assemble()["status"], "PLAN_ASSEMBLED")
+                self.output.unlink()
+
+    def test_poi_semantic_exclusion_kind_is_not_valid_for_other_capabilities(self):
+        cap = self.fx.data[0]["oracle"]["controls"][self.identity]["capabilities"]["ITEM_NAMES"]
+        cap["expectedRecords"] = 2
+        self.fx.data[0]["report"]["results"][0]["catalog"]["localizedCapabilities"]["ITEM_NAMES"].update(
+            status="PARTIAL", expectedRecords=2)
+        proofs = self.fx.data[0]["proofs"]["proofs"]
+        key = self.identity + "ITEM_NAMES"
+        proofs[key]["expectedRecords"] = 2
+        proofs[key + "-excluded"] = dict(proofs[key], kind="UNRESOLVED", recordIds=["2"])
+        cap["excluded"] = [{"id": "2", "proof": {"pointer": "/proofs/" + key + "-excluded"}}]
+        self.fx.refresh()
+        self.blocked("G4_INDEPENDENT_ORACLE")
+
     def test_cli_success_failure_and_help(self):
         command = [sys.executable, "-B", str(MODULE), "--request", self.fx.pin["path"],
                    "--request-sha256", self.fx.pin["sha256"], "--source-commit", COMMIT, "--output", str(self.output)]
