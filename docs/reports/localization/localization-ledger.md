@@ -453,6 +453,12 @@ Every retained POI remains in the `POI_TEXT` denominator. Uncovered POIs must be
 
 **Remaining owner/target:** Task 373 owns one exact current 44-control capture, independent field samples and per-record proof documents, deterministic G6 assembly and unchanged-validator acceptance. Tasks 364/372/390/417/425/428/430 close when their final current evidence is incorporated. Tasks 374–375 retain the final source-bound corpus, Stage 4 verification/ledger reconciliation/publication. Zero final accepted controls remains explicit; the applicability audit does not promote historical or actual observations into a semantic oracle. Stage 4 remains open and Stages 5–6 remain blocked. No corpus, originals, device/emulator, ADB, APK, signing or release work occurred.
 
+## Corrected Gen III area-domain boundary
+
+[Gen III area-domain boundary checkpoint](stage-04-area-domain-boundary-checkpoint.md) records a fail-closed correction found by reconciling the first 44-control G0 capture against the independent 506/154 policy. All 44 controls selected with zero parser errors, but six FireRed/LeafGreen controls incorrectly published `AREA_NAMES` as `AVAILABLE` (`425/425`) instead of the required `NOT_APPLICABLE`. Those outputs are diagnostic only and are not matrix acceptance evidence.
+
+The root cause was semantic conflation: one compiled map-location result supplied both ROM-native encounter base labels and the distinct runtime area-name domain. The parser now retains compiled label resolution for encounter naming across supported non-expansion Gen III families while publishing runtime area identities and localized `AREA_NAMES` only for Ruby/Sapphire and Emerald. Parser revision **80** invalidates affected revision-79 caches while storage remains **2** and codec remains **1**. Focused RED/GREEN tests enforce both sides of that family boundary; the complete parser/cache checkpoint passed 2,167 tests with zero failures/errors (2,052 parser-core and 115 catalog-store). Since executable parser code changed, the parser CLI and all G0–G6 source-bound outputs must be regenerated from the committed correction. Zero final controls remain accepted; Stage 4 remains open and Stages 5–6 blocked.
+
 ## Audit rule
 
 An item without a durable ID, exact spec clause, evidence, owner, target, acceptance condition, and fail-closed temporary disposition is a `STOP-CORE` blocker. Required official language-family cells in Stages 3 and 4 cannot be deferred.

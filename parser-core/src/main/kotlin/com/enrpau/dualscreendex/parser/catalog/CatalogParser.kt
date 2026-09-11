@@ -5,6 +5,7 @@ import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.CapabilityEvidence
 import com.enrpau.dualscreendex.parser.model.CapabilityReviewStatus
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
+import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.ParseResult
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.RomCapability
@@ -431,14 +432,26 @@ object CatalogMaterializer {
         beginWork(CatalogWorkModule.ENCOUNTERS)
         val encounterMaterialization = EncounterMaterializer.materializeWithEvidence(rom, layout)
         val rawEncounters = encounterMaterialization.areas
+        val resolvedGen3AreaNames = if (
+            layout.generation == 3 &&
+            layout.pokeemeraldExpansion == null &&
+            resolveGen3AreaNames != null
+        ) {
+            resolveGen3AreaNames(layout, rawEncounters.mapTo(linkedSetOf()) { it.id / 10 })
+        } else {
+            emptyMap()
+        }
         val runtimeMetadata = if (layout.generation == 3) {
             val runtimeLayout = Gen3RuntimeMemoryLayoutResolver.resolve(rom, layout.family)
             CatalogRuntimeMetadata(
                 gen3SaveBlock1PointerAddress = runtimeLayout?.saveBlock1PointerAddress
                     ?: Gen3SaveBlock1PointerResolver.resolve(rom),
                 gen3RuntimeMemoryLayout = runtimeLayout,
-                areaNamesByBaseId = if (layout.pokeemeraldExpansion == null && resolveGen3AreaNames != null) {
-                    resolveGen3AreaNames(layout, rawEncounters.mapTo(linkedSetOf()) { it.id / 10 })
+                areaNamesByBaseId = if (
+                    layout.family == EngineFamily.RUBY_SAPPHIRE ||
+                    layout.family == EngineFamily.EMERALD
+                ) {
+                    resolvedGen3AreaNames
                 } else {
                     emptyMap()
                 },
@@ -446,7 +459,7 @@ object CatalogMaterializer {
         } else {
             CatalogRuntimeMetadata()
         }
-        val encounters = applyResolvedAreaNames(rawEncounters, runtimeMetadata.areaNamesByBaseId)
+        val encounters = applyResolvedAreaNames(rawEncounters, resolvedGen3AreaNames)
         val closedMediaSpecies = EncounterReferencedSpeciesClosure.close(
             rom = rom,
             layout = layout,

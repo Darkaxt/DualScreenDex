@@ -279,6 +279,82 @@ class CatalogParserTest {
     }
 
     @Test
+    fun fireRedAreaLabelsDoNotCreateARuntimeAreaNameDomain() {
+        val rom = RomImage(ByteArray(0x200))
+        val layout = ResolvedRomLayout(
+            family = EngineFamily.FIRERED_LEAFGREEN,
+            generation = 3,
+            platform = Platform.GBA,
+            speciesCount = 0,
+            moveCount = 0,
+            tables = ProfileTables(),
+            languageManifest = resolvedLanguageManifest(PokemonTextCodec.gbaEnglish),
+        )
+        val analysis = ParseResult(
+            RomHeader(Platform.GBA, "TEST", "TEST"), rom.sha256, rom.crc32, rom.size,
+            SelectionStatus.SELECTED, EngineFamily.FIRERED_LEAFGREEN, null, 20, emptyList(), emptyList(),
+        )
+
+        var areaLabelsResolved = false
+        val catalog = CatalogMaterializer.materialize(
+            rom = rom,
+            analysis = analysis,
+            layout = layout,
+            resolveGen3AreaNames = { _, _ ->
+                areaLabelsResolved = true
+                mapOf(1 to "PALLET TOWN")
+            },
+        )
+
+        assertTrue(areaLabelsResolved)
+        assertEquals(emptySet<Int>(), catalog.runtimeMetadata.areaBaseIds)
+        assertEquals(emptyMap<Int, String>(), catalog.runtimeMetadata.areaNamesByBaseId)
+        assertEquals(
+            CapabilityStatus.NOT_APPLICABLE,
+            catalog.defaultLocalizedText()!!.localizedCapabilities
+                .getValue(LocalizedTextCapability.AREA_NAMES).status,
+        )
+    }
+
+    @Test
+    fun rubySapphireAndEmeraldAreaLabelsCreateTheRuntimeAreaNameDomain() {
+        listOf(EngineFamily.RUBY_SAPPHIRE, EngineFamily.EMERALD).forEach { family ->
+            val rom = RomImage(ByteArray(0x200))
+            val layout = ResolvedRomLayout(
+                family = family,
+                generation = 3,
+                platform = Platform.GBA,
+                speciesCount = 0,
+                moveCount = 0,
+                tables = ProfileTables(),
+                languageManifest = resolvedLanguageManifest(PokemonTextCodec.gbaEnglish),
+            )
+            val analysis = ParseResult(
+                RomHeader(Platform.GBA, "TEST", "TEST"), rom.sha256, rom.crc32, rom.size,
+                SelectionStatus.SELECTED, family, null, 20, emptyList(), emptyList(),
+            )
+
+            val catalog = CatalogMaterializer.materialize(
+                rom = rom,
+                analysis = analysis,
+                layout = layout,
+                resolveGen3AreaNames = { _, _ -> mapOf(1 to "LITTLEROOT TOWN") },
+            )
+
+            assertEquals(setOf(1), catalog.runtimeMetadata.areaBaseIds)
+            assertEquals(
+                "LITTLEROOT TOWN",
+                catalog.defaultLocalizedText()!!.areaNames.getValue(1).value,
+            )
+            assertEquals(
+                CapabilityStatus.AVAILABLE,
+                catalog.defaultLocalizedText()!!.localizedCapabilities
+                    .getValue(LocalizedTextCapability.AREA_NAMES).status,
+            )
+        }
+    }
+
+    @Test
     fun speciesMediaPropagatesCancellationIntoDetachedSpriteScanning() {
         val rom = RomImage(ByteArray(0x8000))
         val layout = ResolvedRomLayout(
