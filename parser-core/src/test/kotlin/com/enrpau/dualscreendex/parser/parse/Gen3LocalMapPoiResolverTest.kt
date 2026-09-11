@@ -43,7 +43,7 @@ class Gen3LocalMapPoiResolverTest {
                 points.getValue("bg/0").textObligation)
             assertEquals(5, points.getValue("bg/0").destinationBaseAreaId)
             assertNull(points.getValue("bg/0").displayName)
-            assertEquals(LocalMapPoiTextObligation.UNRESOLVED, points.getValue("bg/1").textObligation)
+            assertEquals(LocalMapPoiTextObligation.NO_TEXT, points.getValue("bg/1").textObligation)
         }
     }
 

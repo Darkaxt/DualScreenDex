@@ -21,6 +21,7 @@ import com.enrpau.dualscreendex.parser.catalog.LocalizedTextCapability
 import com.enrpau.dualscreendex.parser.catalog.LocalMapAssetRenderer
 import com.enrpau.dualscreendex.parser.catalog.LocalMap
 import com.enrpau.dualscreendex.parser.catalog.LocalMapNameDisposition
+import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiTextObligation
 import com.enrpau.dualscreendex.companion.api.LocalMapView
 import com.enrpau.dualscreendex.parser.catalog.MapLighting
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
@@ -1184,6 +1185,25 @@ class WorldMapCatalogApiRealControlTest {
             overlay.localizedCapabilities.getValue(LocalizedTextCapability.POI_TEXT))
     }
 
+    private fun assertStructuralPoiExclusions(catalog: ParsedCatalog, control: NativeControl) {
+        val obligations = catalog.localMaps.pois.groupingBy { it.textObligation }.eachCount()
+        val contextual = when (control.family) {
+            EngineFamily.GOLD_SILVER,
+            EngineFamily.CRYSTAL,
+            -> 5
+            else -> 0
+        }
+        val textless = when (control.family) {
+            EngineFamily.RUBY_SAPPHIRE,
+            EngineFamily.EMERALD,
+            -> 75
+            else -> 0
+        }
+        assertEquals(contextual, obligations[LocalMapPoiTextObligation.CONTEXTUAL_TEXT] ?: 0)
+        assertEquals(textless, obligations[LocalMapPoiTextObligation.NO_TEXT] ?: 0)
+        assertEquals(0, obligations[LocalMapPoiTextObligation.UNRESOLVED] ?: 0)
+    }
+
     private fun assertNativeRoundTrip(control: NativeControl, requireDeclaredSigns: Boolean = false, requireItemNames: Boolean = false,
         selectedDirectSign: NativeSelectedDirectSignExpectation? = null) {
         val configured = System.getenv("DUALDEX_NATIVE_CONTROLS")
@@ -1212,6 +1232,9 @@ class WorldMapCatalogApiRealControlTest {
                 assertEquals(control.family, attempt.analysis.selectedFamily)
             }
             val catalog = checks.attempt("materialize") { requireNotNull(attempt.catalog).getOrThrow() } ?: return
+            checks.attempt("poi-text.structural-exclusions") {
+                assertStructuralPoiExclusions(catalog, control)
+            }
             val contextualProducer = control.contextualMaps?.let { expected ->
                 checks.attempt("contextual-maps.materialize") { assertNativeContextualMaps(catalog, expected) }
             }

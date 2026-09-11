@@ -105,9 +105,14 @@ class CatalogTextProjection private constructor(
                 trainerGender?.let(poi.displayNamesByTrainerGender::get)
                     ?: poi.displayNamesByTrainerGender.values.distinct().singleOrNull().takeIf { trainerGender == null }
             } else null
-            else -> trainerGender?.let(poi.displayNamesByTrainerGender::get)
+            LocalMapPoiTextObligation.DIRECT_TEXT -> trainerGender?.let(poi.displayNamesByTrainerGender::get)
                 ?: poi.displayName
                 ?: poi.displayNamesByTrainerGender.toSortedMap().values.firstOrNull()
+            LocalMapPoiTextObligation.ITEM_NAME,
+            LocalMapPoiTextObligation.CONTEXTUAL_TEXT,
+            LocalMapPoiTextObligation.NO_TEXT,
+            LocalMapPoiTextObligation.UNRESOLVED,
+            -> null
         }
     }
 
@@ -166,7 +171,10 @@ internal class CatalogPoiTextResolver(
             LocalMapPoiTextObligation.DESTINATION_NAME -> mapsByBaseArea[poi.destinationBaseAreaId]
                 ?.takeIf { it.nameDisposition == LocalMapNameDisposition.STATIC_NAME_REQUIRED }
                 ?.let { localMapNames[it.key]?.value }
-            LocalMapPoiTextObligation.UNRESOLVED -> null
+            LocalMapPoiTextObligation.CONTEXTUAL_TEXT,
+            LocalMapPoiTextObligation.NO_TEXT,
+            LocalMapPoiTextObligation.UNRESOLVED,
+            -> null
         }
     }
 

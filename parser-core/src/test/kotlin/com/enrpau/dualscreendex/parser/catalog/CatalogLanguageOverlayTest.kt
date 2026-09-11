@@ -221,6 +221,41 @@ class CatalogLanguageOverlayTest {
     }
 
     @Test
+    fun contextualAndTextlessPoisRemainExplicitUncoveredRecords() {
+        val maps = poiMaps().let { source ->
+            source.copy(
+                pois = source.pois + listOf(
+                    LocalMapPoi(
+                        "contextual", "local/1", 1, 0, 0, LocalMapPoiKind.UNKNOWN,
+                        textObligation = LocalMapPoiTextObligation.CONTEXTUAL_TEXT,
+                    ),
+                    LocalMapPoi(
+                        "textless", "local/1", 1, 0, 0, LocalMapPoiKind.UNKNOWN,
+                        textObligation = LocalMapPoiTextObligation.NO_TEXT,
+                    ),
+                ),
+            )
+        }
+        val catalog = poiCatalog(poiExtraction(maps))
+        val text = catalog.defaultTextProjection()
+        val state = text.localizedCapabilities.getValue(LocalizedTextCapability.POI_TEXT)
+
+        assertEquals(4, state.coveredRecords)
+        assertEquals(8, state.expectedRecords)
+        assertNull(text.poiDisplayName("contextual"))
+        assertNull(text.poiDisplayName("textless"))
+        assertEquals(
+            listOf(LocalMapPoiTextObligation.CONTEXTUAL_TEXT, LocalMapPoiTextObligation.NO_TEXT),
+            catalog.localMaps.pois.takeLast(2).map(LocalMapPoi::textObligation),
+        )
+        for (key in listOf("contextual", "textless")) {
+            assertThrows(IllegalArgumentException::class.java) {
+                maps.copy(pois = maps.pois.map { if (it.key == key) it.copy(displayName = "Fabricated") else it })
+            }
+        }
+    }
+
+    @Test
     fun task415CoverageResolvesOnlyExplicitSameOverlayObligations() {
         val extraction = poiExtraction()
         val catalog = poiCatalog(extraction)

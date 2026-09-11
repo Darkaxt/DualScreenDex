@@ -241,6 +241,13 @@ internal object Gen2LocalMapPoiResolver {
                         ),
                     )
                 } else {
+                    val textObligation = when (background.kind) {
+                        BGEVENT_IFSET,
+                        BGEVENT_IFNOTSET,
+                        -> LocalMapPoiTextObligation.CONTEXTUAL_TEXT
+                        BGEVENT_COPY -> LocalMapPoiTextObligation.NO_TEXT
+                        else -> LocalMapPoiTextObligation.UNRESOLVED
+                    }
                     add(
                         LocalMapPoi(
                             key = "${map.key}/bg/${background.index}",
@@ -249,7 +256,7 @@ internal object Gen2LocalMapPoiResolver {
                             tileX = background.x,
                             tileY = background.y,
                             kind = LocalMapPoiKind.UNKNOWN,
-                            textObligation = LocalMapPoiTextObligation.UNRESOLVED,
+                            textObligation = textObligation,
                         ),
                     )
                 }
@@ -508,7 +515,10 @@ internal object Gen2LocalMapPoiResolver {
     private const val ITEMBALL_DATA_BYTES = 2
     private const val HIDDEN_ITEM_DATA_BYTES = 3
     private const val NO_EVENT_FLAG = 0xFFFF
+    private const val BGEVENT_IFSET = 5
+    private const val BGEVENT_IFNOTSET = 6
     private const val BGEVENT_ITEM = 7
+    private const val BGEVENT_COPY = 8
     private val SIGN_KINDS = 0..4
     private const val MAX_EVENTS_PER_KIND = 64
     private const val SIGN_ENTRANCE_MAX_DISTANCE = 3

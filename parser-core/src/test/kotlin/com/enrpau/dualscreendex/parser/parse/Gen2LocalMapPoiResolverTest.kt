@@ -25,9 +25,11 @@ class Gen2LocalMapPoiResolverTest {
         writeAttributes(bytes, ATTRIBUTES_1, EVENTS_1_ADDRESS)
         byteArrayOf(
             0, 0, 2, 1, 2, 1, 0, 2, 8, 8, 1, 0, 2,
-            0, 3,
+            0, 5,
             1, 2, 0, 0, 0x46,
             4, 4, 5, 0, 0x46,
+            5, 5, 6, 0, 0x46,
+            7, 7, 8, 0, 0x46,
             6, 6, 7, 0, 0x47,
             0,
         ).copyInto(bytes, EVENTS_1)
@@ -36,15 +38,17 @@ class Gen2LocalMapPoiResolverTest {
             val result = Gen2LocalMapPoiResolver.resolve(RomImage(bytes),
                 listOf(Gen2LocalMapPoiResolver.Source(1, 1, ATTRIBUTES_1)), listOf(localMap(1), localMap(2)), family, null)
             val points = result.pois.associateBy { it.key.substringAfter("local/1/") }
-            assertEquals(setOf("warp/1", "bg/0", "bg/1", "bg/2"), points.keys)
+            assertEquals(setOf("warp/1", "bg/0", "bg/1", "bg/2", "bg/3", "bg/4"), points.keys)
             assertEquals(LocalMapPoiTextObligation.DESTINATION_NAME, points.getValue("warp/1").textObligation)
             assertEquals(LocalMapPoiTextObligation.DIRECT_TEXT, points.getValue("bg/0").textObligation)
             assertEquals(2, points.getValue("bg/0").destinationBaseAreaId)
             assertEquals(null, points.getValue("bg/0").displayName)
-            assertEquals(LocalMapPoiTextObligation.UNRESOLVED, points.getValue("bg/1").textObligation)
-            assertEquals(LocalMapPoiTextObligation.ITEM_NAME, points.getValue("bg/2").textObligation)
-            assertEquals(4, points.getValue("bg/2").item?.itemId)
-            assertEquals(0x1234, points.getValue("bg/2").item?.collectionFlagId)
+            assertEquals(LocalMapPoiTextObligation.CONTEXTUAL_TEXT, points.getValue("bg/1").textObligation)
+            assertEquals(LocalMapPoiTextObligation.CONTEXTUAL_TEXT, points.getValue("bg/2").textObligation)
+            assertEquals(LocalMapPoiTextObligation.NO_TEXT, points.getValue("bg/3").textObligation)
+            assertEquals(LocalMapPoiTextObligation.ITEM_NAME, points.getValue("bg/4").textObligation)
+            assertEquals(4, points.getValue("bg/4").item?.itemId)
+            assertEquals(0x1234, points.getValue("bg/4").item?.collectionFlagId)
         }
     }
 

@@ -802,6 +802,11 @@ data class LocalMapCatalog(
                 -> require(poi.kind == LocalMapPoiKind.PLACE || poi.kind == LocalMapPoiKind.SERVICE) {
                     "direct-text obligations require place or service POIs"
                 }
+                LocalMapPoiTextObligation.CONTEXTUAL_TEXT,
+                LocalMapPoiTextObligation.NO_TEXT,
+                -> require(poi.displayName == null && poi.displayNamesByTrainerGender.isEmpty()) {
+                    "non-static POI text obligations cannot carry static text"
+                }
                 LocalMapPoiTextObligation.UNRESOLVED -> Unit
             }
             when (poi.kind) {
@@ -934,6 +939,10 @@ enum class LocalMapPoiTextObligation {
     GENDERED_DIRECT_TEXT,
     ITEM_NAME,
     DESTINATION_NAME,
+    /** Runtime state selects the text or behavior, so no single static headline is authoritative. */
+    CONTEXTUAL_TEXT,
+    /** The compiled event has no ROM-native text operand. */
+    NO_TEXT,
     /** Unknown scripts/services are still incomplete, never an implicit applicability exclusion. */
     UNRESOLVED,
 }

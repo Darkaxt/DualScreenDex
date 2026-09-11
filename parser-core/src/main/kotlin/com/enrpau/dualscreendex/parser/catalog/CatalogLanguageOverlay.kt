@@ -305,6 +305,8 @@ class CatalogLanguageOverlay(
                 LocalMapPoiTextObligation.ITEM_NAME -> poi.item != null && poi.item.itemId == null &&
                     text.itemDisplayName != null && text.displayName == null && text.displayNamesByTrainerGender.isEmpty()
                 LocalMapPoiTextObligation.DESTINATION_NAME,
+                LocalMapPoiTextObligation.CONTEXTUAL_TEXT,
+                LocalMapPoiTextObligation.NO_TEXT,
                 LocalMapPoiTextObligation.UNRESOLVED,
                 -> false
             }

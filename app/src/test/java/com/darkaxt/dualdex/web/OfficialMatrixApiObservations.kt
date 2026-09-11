@@ -124,7 +124,10 @@ internal object OfficialMatrixApiObservations {
                 LocalMapPoiTextObligation.DESTINATION_NAME -> mapsByArea[poi.destinationBaseAreaId]?.singleOrNull()
                     ?.takeIf { it.nameDisposition == LocalMapNameDisposition.STATIC_NAME_REQUIRED }
                     ?.let { overlay.localMapNames[it.key]?.value }
-                LocalMapPoiTextObligation.UNRESOLVED -> null
+                LocalMapPoiTextObligation.CONTEXTUAL_TEXT,
+                LocalMapPoiTextObligation.NO_TEXT,
+                LocalMapPoiTextObligation.UNRESOLVED,
+                -> null
             }
             key(poi.key) to value
         }

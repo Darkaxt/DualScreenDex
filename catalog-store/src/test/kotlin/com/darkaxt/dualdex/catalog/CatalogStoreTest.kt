@@ -442,14 +442,14 @@ class CatalogStoreTest {
     }
 
     @Test
-    fun revision73CachesWithStaticDynamicWorldLocationsAreRejectedAndCurrentReopens() {
+    fun revision74CachesWithoutExplicitPoiExclusionsAreRejectedAndCurrentReopens() {
         val root = newRoot().toFile()
         val cache = CatalogCache(root, JdbcCatalogDatabaseFactory)
         val catalog = completeCatalog("7".repeat(64))
         val source = CatalogSourceMetadata.direct("Synthetic.gba", 65536, "SYNTHETIC")
         cache.write(catalog, source, CatalogWriteProgress.complete())
         JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
-            database.execute("UPDATE catalog_metadata SET parser_schema_version = 73 WHERE id = 1")
+            database.execute("UPDATE catalog_metadata SET parser_schema_version = 74 WHERE id = 1")
         }
 
         assertNull(CatalogCache(root, JdbcCatalogDatabaseFactory).readComplete(catalog.romSha256))

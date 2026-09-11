@@ -161,6 +161,7 @@ internal object Gen3LocalMapPoiResolver {
                     val genderConditioned = script != null && script.toLong() + 2 <= rom.size &&
                         rom.u8(script) == SCR_OP_LOCK_ALL && rom.u8(script + 1) == SCR_OP_CHECK_PLAYER_GENDER
                     val obligation = when {
+                        background.kind == BG_EVENT_SECRET_BASE -> LocalMapPoiTextObligation.NO_TEXT
                         !isSign -> LocalMapPoiTextObligation.UNRESOLVED
                         genderConditioned -> LocalMapPoiTextObligation.GENDERED_DIRECT_TEXT
                         else -> LocalMapPoiTextObligation.DIRECT_TEXT
@@ -340,6 +341,7 @@ internal object Gen3LocalMapPoiResolver {
     private const val WARP_RECORD_BYTES = 0x08
     private const val BG_RECORD_BYTES = 0x0C
     private const val BG_EVENT_HIDDEN_ITEM = 7
+    private const val BG_EVENT_SECRET_BASE = 8
     private val BG_EVENT_SIGN_KINDS = 0..4
     private const val HIDDEN_ITEMS_FLAG_START = 1000
     private const val SCR_OP_CALL_STD = 0x09

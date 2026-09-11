@@ -346,6 +346,8 @@ internal object CatalogLocalizedTextExtractor {
                     CatalogPoiText(itemDisplayName = CatalogField.available(it))
                 }
                 LocalMapPoiTextObligation.DESTINATION_NAME,
+                LocalMapPoiTextObligation.CONTEXTUAL_TEXT,
+                LocalMapPoiTextObligation.NO_TEXT,
                 LocalMapPoiTextObligation.UNRESOLVED,
                 -> null
             }
