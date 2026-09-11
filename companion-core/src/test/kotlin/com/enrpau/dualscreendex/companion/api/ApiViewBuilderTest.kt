@@ -50,6 +50,7 @@ import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiItem
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiKind
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiOrganicVisibility
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiService
+import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiTextObligation
 import com.enrpau.dualscreendex.parser.catalog.LocalMapRasterCodec
 import com.enrpau.dualscreendex.parser.catalog.LocalMapScene
 import com.enrpau.dualscreendex.parser.catalog.LocalMapScenePlacement
@@ -279,6 +280,7 @@ class ApiViewBuilderTest {
             organicVisibility = LocalMapPoiOrganicVisibility.ENTRANCE_PROXIMITY,
             displayName = "{PLAYER}'s House\nThe second line must remain hidden",
             service = LocalMapPoiService.BUILDING,
+            textObligation = LocalMapPoiTextObligation.DIRECT_TEXT,
         )
         val speciesWithSprite = com.enrpau.dualscreendex.parser.catalog.SpeciesRecord(
             id = 1,
@@ -358,6 +360,7 @@ class ApiViewBuilderTest {
                 1 to "PROF. BIRCH'S HOUSE",
             ),
             destinationBaseAreaId = house.baseAreaId,
+            textObligation = LocalMapPoiTextObligation.GENDERED_DIRECT_TEXT,
         )
         val catalog = ParsedCatalog(
             "a".repeat(64), EngineFamily.EMERALD, Platform.GBA,
@@ -401,6 +404,7 @@ class ApiViewBuilderTest {
                 1 to "{PLAYER}'s HOUSE",
             ),
             destinationBaseAreaId = 0x0102,
+            textObligation = LocalMapPoiTextObligation.GENDERED_DIRECT_TEXT,
         )
         val catalog = ParsedCatalog(
             "a".repeat(64), EngineFamily.EMERALD, Platform.GBA,
@@ -439,6 +443,7 @@ class ApiViewBuilderTest {
                 1 to "PROF. BIRCH'S HOUSE",
             ),
             destinationBaseAreaId = 0x0100,
+            textObligation = LocalMapPoiTextObligation.DIRECT_TEXT,
         )
         val catalog = ParsedCatalog(
             "a".repeat(64), EngineFamily.EMERALD, Platform.GBA,

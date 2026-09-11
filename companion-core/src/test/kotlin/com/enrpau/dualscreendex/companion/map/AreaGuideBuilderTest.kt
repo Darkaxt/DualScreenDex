@@ -410,6 +410,7 @@ class AreaGuideBuilderTest {
                         organicVisibility = LocalMapPoiOrganicVisibility.ENTRANCE_PROXIMITY,
                         displayName = "\n{PLAYER}'s House\nA second line that must not appear",
                         service = LocalMapPoiService.BUILDING,
+                        textObligation = LocalMapPoiTextObligation.DIRECT_TEXT,
                         destinationBaseAreaId = TOWN,
                     ),
                     LocalMapPoi(
@@ -421,6 +422,7 @@ class AreaGuideBuilderTest {
                         kind = LocalMapPoiKind.HIDDEN_ITEM,
                         organicVisibility = LocalMapPoiOrganicVisibility.PROXIMITY_SILHOUETTE,
                         item = LocalMapPoiItem(itemId = 10, displayName = "Potion", collectionFlagId = 100),
+                        textObligation = LocalMapPoiTextObligation.ITEM_NAME,
                     ),
                     LocalMapPoi(
                         key = GENERIC,
@@ -430,6 +432,7 @@ class AreaGuideBuilderTest {
                         tileY = 2,
                         kind = LocalMapPoiKind.PLACE,
                         displayName = "Place\nUnused details",
+                        textObligation = LocalMapPoiTextObligation.DIRECT_TEXT,
                     ),
                 ),
             ),
