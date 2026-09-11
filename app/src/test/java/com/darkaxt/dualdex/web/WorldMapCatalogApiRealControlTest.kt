@@ -1188,24 +1188,87 @@ class WorldMapCatalogApiRealControlTest {
     private fun assertStructuralPoiExclusions(catalog: ParsedCatalog, control: NativeControl) {
         val obligations = catalog.localMaps.pois.groupingBy { it.textObligation }.eachCount()
         println("NATIVE_POI_OBLIGATIONS ${control.folder} $obligations")
-        val contextual = when (control.family) {
-            EngineFamily.GOLD_SILVER,
-            EngineFamily.CRYSTAL,
-            -> 5
-            else -> 0
+        val gen1Expectation = when (control.family) {
+            EngineFamily.RED_BLUE, EngineFamily.YELLOW -> Gen1PoiSemanticOracle.expectation(control.family)
+            else -> null
         }
-        val textless = when (control.family) {
-            EngineFamily.RUBY_SAPPHIRE,
-            EngineFamily.EMERALD,
-            -> 75
-            else -> 0
+        val gen3Expectation = when (control.family) {
+            EngineFamily.RUBY_SAPPHIRE, EngineFamily.EMERALD, EngineFamily.FIRERED_LEAFGREEN ->
+                Gen3PoiSemanticOracle.expectation(control.family)
+            else -> null
         }
-        assertEquals("contextual obligations $obligations", contextual,
-            obligations[LocalMapPoiTextObligation.CONTEXTUAL_TEXT] ?: 0)
-        assertEquals("textless obligations $obligations", textless,
-            obligations[LocalMapPoiTextObligation.NO_TEXT] ?: 0)
-        assertEquals("unresolved obligations $obligations", 0,
-            obligations[LocalMapPoiTextObligation.UNRESOLVED] ?: 0)
+        val contextualKeys = when (control.family) {
+            EngineFamily.RED_BLUE, EngineFamily.YELLOW -> requireNotNull(gen1Expectation).contextualKeys
+            EngineFamily.GOLD_SILVER -> GoldSilverPoiSemanticOracle.contextualKeys
+            EngineFamily.CRYSTAL -> CrystalPoiSemanticOracle.contextualKeys
+            EngineFamily.RUBY_SAPPHIRE, EngineFamily.EMERALD, EngineFamily.FIRERED_LEAFGREEN ->
+                requireNotNull(gen3Expectation).contextualKeys
+        }
+        val noTextKeys = when (control.family) {
+            EngineFamily.RED_BLUE, EngineFamily.YELLOW -> emptySet()
+            EngineFamily.GOLD_SILVER -> GoldSilverPoiSemanticOracle.noTextKeys
+            EngineFamily.CRYSTAL -> CrystalPoiSemanticOracle.noTextKeys
+            EngineFamily.RUBY_SAPPHIRE, EngineFamily.EMERALD, EngineFamily.FIRERED_LEAFGREEN ->
+                requireNotNull(gen3Expectation).noTextKeys
+        }
+        val unresolvedKeys = when (control.family) {
+            EngineFamily.RED_BLUE, EngineFamily.YELLOW -> requireNotNull(gen1Expectation).unresolvedKeys
+            EngineFamily.GOLD_SILVER, EngineFamily.CRYSTAL -> emptySet()
+            EngineFamily.RUBY_SAPPHIRE, EngineFamily.EMERALD, EngineFamily.FIRERED_LEAFGREEN ->
+                requireNotNull(gen3Expectation).unresolvedKeys
+        }
+        val genderedKeys = when (control.family) {
+            EngineFamily.RED_BLUE, EngineFamily.YELLOW -> emptySet()
+            EngineFamily.GOLD_SILVER -> GoldSilverPoiSemanticOracle.genderedDirectTextKeys
+            EngineFamily.CRYSTAL -> CrystalPoiSemanticOracle.genderedDirectTextKeys
+            EngineFamily.RUBY_SAPPHIRE, EngineFamily.EMERALD, EngineFamily.FIRERED_LEAFGREEN ->
+                requireNotNull(gen3Expectation).genderedDirectTextKeys
+        }
+        val serviceKeys = when (control.family) {
+            EngineFamily.RED_BLUE, EngineFamily.YELLOW -> Gen1PoiSemanticOracle.serviceKeys
+            EngineFamily.GOLD_SILVER -> GoldSilverPoiSemanticOracle.serviceKeys
+            EngineFamily.CRYSTAL -> CrystalPoiSemanticOracle.serviceKeys
+            EngineFamily.RUBY_SAPPHIRE, EngineFamily.EMERALD, EngineFamily.FIRERED_LEAFGREEN -> emptyMap()
+        }
+        val contextualDestinations = when (control.family) {
+            EngineFamily.RED_BLUE, EngineFamily.YELLOW -> requireNotNull(gen1Expectation).contextualDestinationKeys
+            EngineFamily.GOLD_SILVER -> GoldSilverPoiSemanticOracle.contextualKeysByReason
+                .getValue(GoldSilverPoiSemanticOracle.ContextReason.CONTEXT_DEPENDENT_DESTINATION)
+            EngineFamily.CRYSTAL -> CrystalPoiSemanticOracle.contextualKeysByReason
+                .getValue(CrystalPoiSemanticOracle.ContextReason.CONTEXT_DEPENDENT_DESTINATION)
+            EngineFamily.RUBY_SAPPHIRE, EngineFamily.EMERALD, EngineFamily.FIRERED_LEAFGREEN ->
+                requireNotNull(gen3Expectation).contextualKeys
+        }
+        val byKey = catalog.localMaps.pois.associateBy { it.key }
+        assertEquals("source-ratified contextual POIs", contextualKeys,
+            catalog.localMaps.pois.filter { it.textObligation == LocalMapPoiTextObligation.CONTEXTUAL_TEXT }
+                .mapTo(linkedSetOf()) { it.key })
+        assertEquals("source-ratified textless POIs", noTextKeys,
+            catalog.localMaps.pois.filter { it.textObligation == LocalMapPoiTextObligation.NO_TEXT }
+                .mapTo(linkedSetOf()) { it.key })
+        assertEquals("source-ratified unresolved POIs", unresolvedKeys,
+            catalog.localMaps.pois.filter { it.textObligation == LocalMapPoiTextObligation.UNRESOLVED }
+                .mapTo(linkedSetOf()) { it.key })
+        assertEquals("source-ratified gender-conditioned POIs", genderedKeys,
+            catalog.localMaps.pois.filter { it.textObligation == LocalMapPoiTextObligation.GENDERED_DIRECT_TEXT }
+                .mapTo(linkedSetOf()) { it.key })
+        val actualServices = catalog.localMaps.pois.filter { it.service != null }
+            .groupBy { requireNotNull(it.service) }
+            .mapValues { (_, pois) -> pois.mapTo(linkedSetOf()) { it.key } }
+        if (gen1Expectation == null) {
+            assertEquals("source-ratified service POIs", serviceKeys, actualServices)
+        } else {
+            assertTrue("Gen I has no compiled service-dispatch type authority", actualServices.isEmpty())
+        }
+        val text = catalog.defaultTextProjection()
+        for (key in serviceKeys.values.flatten()) {
+            assertEquals("direct service obligation $key", LocalMapPoiTextObligation.DIRECT_TEXT,
+                requireNotNull(byKey[key]).textObligation)
+            assertTrue("missing ROM-native service label $key", !text.poiLabel(key).isNullOrBlank())
+        }
+        assertTrue("unclassified retained warp obligation", catalog.localMaps.pois
+            .filter { "/warp/" in it.key }
+            .all { it.textObligation == LocalMapPoiTextObligation.DESTINATION_NAME || it.key in contextualDestinations })
     }
 
     private fun assertNativeRoundTrip(control: NativeControl, requireDeclaredSigns: Boolean = false, requireItemNames: Boolean = false,

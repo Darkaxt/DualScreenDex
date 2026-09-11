@@ -33,7 +33,13 @@ class Gen3LocalMapPoiResolverTest {
         putU16(bytes, BACKGROUNDS + 14, 6)
         bytes[BACKGROUNDS + 17] = 8
         for (gendered in listOf(true, false)) {
-            if (!gendered) bytes[0x500] = 0x0f
+            if (!gendered) {
+                bytes[0x500] = 0x0f
+                bytes[0x501] = 0
+                putPointer(bytes, 0x502, 0x600)
+                bytes[0x506] = 0x09
+                bytes[0x507] = 2
+            }
             val result = Gen3LocalMapPoiResolver.resolve(RomImage(bytes), mapOf(1 to MAP_HEADER),
                 listOf(localMap()), EngineFamily.EMERALD, null)
             val points = result.pois.associateBy { it.key.substringAfter("local/1/") }
@@ -111,6 +117,7 @@ class Gen3LocalMapPoiResolverTest {
         assertEquals(5, sign.destinationBaseAreaId)
         assertNull(sign.displayName)
         assertEquals(emptyMap<Int, String>(), sign.displayNamesByTrainerGender)
+        assertEquals(LocalMapPoiTextObligation.UNRESOLVED, sign.textObligation)
         val item = resolution.pois.single { it.key.endsWith("/bg/1") }
         assertEquals(LocalMapPoiKind.HIDDEN_ITEM, item.kind)
         assertEquals(42, item.item?.itemId)

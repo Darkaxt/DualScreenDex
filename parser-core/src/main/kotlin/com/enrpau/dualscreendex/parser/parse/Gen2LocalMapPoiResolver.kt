@@ -463,7 +463,11 @@ internal object Gen2LocalMapPoiResolver {
                         cursor++
                         continue
                     }
-                    if (dictionary.isRuntime(value)) return DeclaredHeadline.Contextual
+                    if (dictionary.isRuntime(value)) {
+                        if (firstLine) return DeclaredHeadline.Contextual
+                        cursor++
+                        continue
+                    }
                     return null
                 }
                 if (usedLiterals.add(value) && usedLiterals.size > MAX_SIGN_LITERAL_CONTROLS) {

@@ -13,6 +13,7 @@ class Gen1LocalMapPoiResolverTest {
     fun task415ObligationsComeFromEventsWithoutDecodedNames() {
         val bytes = ByteArray(0x8000)
         writeHeader(bytes, HEADER_1, OBJECT_ROOT_1_ADDRESS)
+        writeTextScript(bytes, 0x00)
         byteArrayOf(
             0, 2, 1, 2, 1, 2, 8, 8, 1, 2,
             1, 1, 2, 1,
@@ -28,6 +29,53 @@ class Gen1LocalMapPoiResolverTest {
         assertEquals(null, points.getValue("bg/0").displayName)
         assertEquals(LocalMapPoiTextObligation.ITEM_NAME, points.getValue("object/0").textObligation)
         assertEquals(4, points.getValue("object/0").item?.itemId)
+    }
+
+    @Test
+    fun classifiesLastMapWarpAsContextual() {
+        val bytes = ByteArray(0x8000)
+        writeHeader(bytes, HEADER_1, OBJECT_ROOT_1_ADDRESS)
+        byteArrayOf(
+            0,
+            1,
+            1, 2, 1, 0xff.toByte(),
+            0,
+            0,
+        ).copyInto(bytes, OBJECT_ROOT_1)
+
+        val poi = Gen1LocalMapPoiResolver.resolve(
+            RomImage(bytes),
+            listOf(Gen1LocalMapPoiResolver.Source(1, 1, HEADER_1)),
+            listOf(localMap(1)),
+            null,
+        ).pois.single()
+
+        assertEquals(LocalMapPoiTextObligation.CONTEXTUAL_TEXT, poi.textObligation)
+        assertEquals(null, poi.destinationBaseAreaId)
+    }
+
+    @Test
+    fun resolvesHomeBankSignScriptPointers() {
+        assertEquals(
+            LocalMapPoiTextObligation.DIRECT_TEXT,
+            resolveSingleBackground(0x17, 0x0100).textObligation,
+        )
+    }
+
+    @Test
+    fun classifiesExecutableSignScriptAsUnresolved() {
+        assertEquals(
+            LocalMapPoiTextObligation.UNRESOLVED,
+            resolveSingleBackground(0x08).textObligation,
+        )
+    }
+
+    @Test
+    fun classifiesDynamicStandardBackgroundAsContextual() {
+        assertEquals(
+            LocalMapPoiTextObligation.CONTEXTUAL_TEXT,
+            resolveSingleBackground(0xf5).textObligation,
+        )
     }
 
     @Test
@@ -130,9 +178,42 @@ class Gen1LocalMapPoiResolverTest {
         println("GEN1_REFERENCE_EVIDENCE $family records=${refs.size} ids=${refs.map { it.itemId }.toSet().size} file=$output")
     }
 
+    private fun resolveSingleBackground(
+        command: Int,
+        scriptAddress: Int = TEXT_SCRIPT_ADDRESS,
+    ): com.enrpau.dualscreendex.parser.catalog.LocalMapPoi {
+        val bytes = ByteArray(0x8000)
+        writeHeader(bytes, HEADER_1, OBJECT_ROOT_1_ADDRESS)
+        writeTextScript(bytes, command, scriptAddress)
+        byteArrayOf(
+            0,
+            0,
+            1,
+            1, 2, 1,
+            0,
+        ).copyInto(bytes, OBJECT_ROOT_1)
+        return Gen1LocalMapPoiResolver.resolve(
+            RomImage(bytes),
+            listOf(Gen1LocalMapPoiResolver.Source(1, 1, HEADER_1)),
+            listOf(localMap(1)),
+            null,
+        ).pois.single()
+    }
+
     private fun writeHeader(bytes: ByteArray, header: Int, objectAddress: Int) {
+        putU16(bytes, header + 5, TEXT_POINTER_TABLE_ADDRESS)
         bytes[header + 9] = 0
         putU16(bytes, header + 10, objectAddress)
+    }
+
+    private fun writeTextScript(
+        bytes: ByteArray,
+        command: Int,
+        scriptAddress: Int = TEXT_SCRIPT_ADDRESS,
+    ) {
+        putU16(bytes, TEXT_POINTER_TABLE, scriptAddress)
+        val scriptOffset = if (scriptAddress < 0x4000) scriptAddress else TEXT_SCRIPT
+        bytes[scriptOffset] = command.toByte()
     }
 
     private fun localMap(baseAreaId: Int) = LocalMap(
@@ -156,5 +237,9 @@ class Gen1LocalMapPoiResolverTest {
         const val HEADER_2 = 0x4020
         const val OBJECT_ROOT_1 = 0x4100
         const val OBJECT_ROOT_1_ADDRESS = 0x4100
+        const val TEXT_POINTER_TABLE = 0x4200
+        const val TEXT_POINTER_TABLE_ADDRESS = 0x4200
+        const val TEXT_SCRIPT = 0x4300
+        const val TEXT_SCRIPT_ADDRESS = 0x4300
     }
 }

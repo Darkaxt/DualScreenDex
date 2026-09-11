@@ -379,7 +379,7 @@ internal object Gen2DeclaredSignAbi {
                 r.check(line != null && done != null && line != done && e.getValue("endCommand") !in controls, "LINE/DONE grammar incomplete")
                 if (!paired) bindScalarFallback(r, cursor, e)
                 val grammar = Grammar(0, requireNotNull(line), requireNotNull(done), e.getValue("endCommand"), width,
-                    if (paired) null else ScalarDictionary(r, e.toMap(), controls.toMap()))
+                    ScalarDictionary(r, e.toMap(), controls.toMap()))
                 val priorRuntime = textRuntime
                 if (priorRuntime != null) {
                     for (field in listOf("getByte", "scriptBankState", "mapTextbox", "openCommand")) {

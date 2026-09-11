@@ -66,11 +66,13 @@ internal object Gen1LocalMapPoiResolver {
         }
         val warps = List(warpCount) { index ->
             val row = cursor + index * WARP_RECORD_BYTES
+            val destination = rom.u8(row + 3)
             WarpRecord(
                 index = index,
                 x = rom.u8(row + 1),
                 y = rom.u8(row),
-                destinationBaseAreaId = rom.u8(row + 3).takeIf { it != LAST_MAP_SENTINEL && it in acceptedAreaIds },
+                destinationBaseAreaId = destination.takeIf { it != LAST_MAP_SENTINEL && it in acceptedAreaIds },
+                contextDependentDestination = destination == LAST_MAP_SENTINEL,
             )
         }
         cursor += warpCount * WARP_RECORD_BYTES
@@ -150,6 +152,9 @@ internal object Gen1LocalMapPoiResolver {
             }
             validBackgrounds.forEach { background ->
                 val destination = backgroundWarps[background.index]
+                val textScript = resolveTextScript(rom, source, background.textId)
+                val textObligation = textScript?.let { classifyTextScript(rom, it) }
+                    ?: LocalMapPoiTextObligation.UNRESOLVED
                 add(
                     LocalMapPoi(
                         key = "${map.key}/bg/${background.index}",
@@ -158,11 +163,9 @@ internal object Gen1LocalMapPoiResolver {
                         tileX = background.x,
                         tileY = background.y,
                         kind = LocalMapPoiKind.PLACE,
-                        textObligation = LocalMapPoiTextObligation.DIRECT_TEXT,
+                        textObligation = textObligation,
                         organicVisibility = LocalMapPoiOrganicVisibility.ENTRANCE_PROXIMITY,
-                        displayName = codec?.let {
-                            readSignHeadline(rom, source, background.textId, it)
-                        },
+                        displayName = codec?.let { textScript?.let { script -> readSignHeadline(rom, script, it) } },
                         destinationBaseAreaId = destination?.destinationBaseAreaId,
                     ),
                 )
@@ -186,21 +189,31 @@ internal object Gen1LocalMapPoiResolver {
             .associate { it.single() }
     }
 
-    private fun readSignHeadline(
-        rom: RomImage,
-        source: Source,
-        textId: Int,
-        codec: PokemonTextCodec,
-    ): String? = runCatching {
+    private fun resolveTextScript(rom: RomImage, source: Source, textId: Int): Int? = runCatching {
         if (textId == 0) return@runCatching null
         val table = requireNotNull(rom.gbBankAddress(source.headerBank, rom.u16le(source.header + TEXT_POINTER_OFFSET)))
         val pointerField = table + (textId - 1) * 2
         require(pointerField + 2 <= bankEnd(rom, source.headerBank))
-        val script = requireNotNull(rom.gbBankAddress(source.headerBank, rom.u16le(pointerField)))
+        val address = rom.u16le(pointerField)
+        require(address != 0)
+        requireNotNull(rom.gbBankAddress(if (address < 0x4000) 0 else source.headerBank, address))
+    }.getOrNull()
+
+    private fun classifyTextScript(rom: RomImage, script: Int): LocalMapPoiTextObligation = when (rom.u8(script)) {
+        TEXT_START, TEXT_FAR -> LocalMapPoiTextObligation.DIRECT_TEXT
+        TEXT_SCRIPT_PRIZE_VENDOR, TEXT_SCRIPT_VENDING_MACHINE -> LocalMapPoiTextObligation.CONTEXTUAL_TEXT
+        else -> LocalMapPoiTextObligation.UNRESOLVED
+    }
+
+    private fun readSignHeadline(
+        rom: RomImage,
+        script: Int,
+        codec: PokemonTextCodec,
+    ): String? = runCatching {
         val text = when (rom.u8(script)) {
             TEXT_START -> script
             TEXT_FAR -> {
-                require(script + TEXT_FAR_BYTES <= bankEnd(rom, source.headerBank))
+                require(script + TEXT_FAR_BYTES <= bankEnd(rom, script / BANK_BYTES))
                 requireNotNull(rom.gbBankAddress(rom.u8(script + 3), rom.u16le(script + 1)))
             }
             else -> return@runCatching null
@@ -490,6 +503,7 @@ internal object Gen1LocalMapPoiResolver {
         val x: Int,
         val y: Int,
         val destinationBaseAreaId: Int?,
+        val contextDependentDestination: Boolean,
     ) {
         fun inside(map: LocalMap): Boolean = x in 0 until map.gridWidth && y in 0 until map.gridHeight
 
@@ -500,7 +514,11 @@ internal object Gen1LocalMapPoiResolver {
             tileX = x,
             tileY = y,
             kind = LocalMapPoiKind.PLACE,
-            textObligation = LocalMapPoiTextObligation.DESTINATION_NAME,
+            textObligation = if (contextDependentDestination) {
+                LocalMapPoiTextObligation.CONTEXTUAL_TEXT
+            } else {
+                LocalMapPoiTextObligation.DESTINATION_NAME
+            },
             organicVisibility = LocalMapPoiOrganicVisibility.ENTRANCE_PROXIMITY,
             destinationBaseAreaId = destinationBaseAreaId,
         )
@@ -561,6 +579,8 @@ internal object Gen1LocalMapPoiResolver {
     private const val TEXT_START = 0x00
     private const val TEXT_FAR = 0x17
     private const val TEXT_FAR_BYTES = 4
+    private const val TEXT_SCRIPT_PRIZE_VENDOR = 0xF7
+    private const val TEXT_SCRIPT_VENDING_MACHINE = 0xF5
     private const val TEXT_PLAYER = 0x52
     private const val TEXT_RIVAL = 0x53
     private const val TEXT_POKEMON = 0x54

@@ -421,6 +421,38 @@ class Gen2DeclaredScalarSignTest {
         assertEquals(before, checks)
     }
 
+    @Test fun pairedRuntimeSubstitutionRequiresCompiledWramAuthority() {
+        val f = Gen2DeclaredSignFixture(0x20, 2)
+        f.symbol("runtimePlayer", 0x3600 + f.shift)
+        f.symbol("literalJoin", 0x3680 + f.shift)
+        f.symbol("runtimeText", 0xd300 + f.shift, false)
+        val dictionary = f.at("placeString") + 20
+        f.raw(dictionary, "fe 51 ca 00 00 fe 5a ca 00 00 fe 5e ca 00 00")
+        f.word(dictionary + 3, f.at("runtimePlayer"))
+        f.word(dictionary + 8, f.at("line"))
+        f.word(dictionary + 13, f.at("done"))
+        f.emit("runtimePlayer", "d5 11 @runtimeText c3 @literalJoin")
+        f.emit("literalJoin", "cd @placeString 60 69 d1 c3 @nextChar")
+        f.raw(f.text, "00 51 5e")
+
+        fun result() = Gen2LocalMapPoiResolver.resolve(
+            RomImage(f.bytes), listOf(f.source), listOf(f.map),
+            EngineFamily.GOLD_SILVER, KoreanGen2PokemonTextCodec.codec,
+        ).pois.single()
+        assertEquals(LocalMapPoiTextObligation.CONTEXTUAL_TEXT, result().textObligation)
+        assertEquals(null, result().displayName)
+
+        f.raw(f.text, "00 07 9c 01 67 07 8a 7f 07 0c 03 2e 04 46 07 8b 5a 51 5e")
+        assertEquals(LocalMapPoiTextObligation.DIRECT_TEXT, result().textObligation)
+        assertEquals("이곳은 연두마을", result().displayName)
+
+        f.raw(f.text, "00 51 5e")
+        f.symbol("runtimeText", 0x3700 + f.shift)
+        f.emit("runtimePlayer", "d5 11 @runtimeText c3 @literalJoin")
+        assertEquals(LocalMapPoiTextObligation.DIRECT_TEXT, result().textObligation)
+        assertEquals(null, result().displayName)
+    }
+
     @Test fun oldPairGrammarAndControlsRemainDistinct() {
         val f = Gen2DeclaredSignFixture(0x20, 2)
         assertEquals("이곳은 연두마을", Gen2LocalMapPoiResolver.resolve(RomImage(f.bytes), listOf(f.source), listOf(f.map),

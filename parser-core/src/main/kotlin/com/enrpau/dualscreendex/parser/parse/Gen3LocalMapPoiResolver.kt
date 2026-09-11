@@ -164,11 +164,13 @@ internal object Gen3LocalMapPoiResolver {
                     // The branch contract comes from the script prefix, even if either text fails decoding.
                     val genderConditioned = script != null && script.toLong() + 2 <= rom.size &&
                         rom.u8(script) == SCR_OP_LOCK_ALL && rom.u8(script + 1) == SCR_OP_CHECK_PLAYER_GENDER
+                    val structurallyDirect = script != null && isSimpleSignScript(rom, script)
                     val obligation = when {
                         background.kind == BG_EVENT_SECRET_BASE -> LocalMapPoiTextObligation.NO_TEXT
                         !isSign -> LocalMapPoiTextObligation.UNRESOLVED
                         genderConditioned -> LocalMapPoiTextObligation.GENDERED_DIRECT_TEXT
-                        else -> LocalMapPoiTextObligation.DIRECT_TEXT
+                        structurallyDirect -> LocalMapPoiTextObligation.DIRECT_TEXT
+                        else -> LocalMapPoiTextObligation.UNRESOLVED
                     }
                     val signHeadline = if (script != null && codec != null) readSignHeadline(rom, script, codec) else null
                     add(
@@ -233,15 +235,19 @@ internal object Gen3LocalMapPoiResolver {
         )
     }
 
+    private fun isSimpleSignScript(rom: RomImage, script: Int): Boolean =
+        script.toLong() + SIMPLE_MSGBOX_BYTES <= rom.size.toLong() &&
+            rom.u8(script) == SCR_OP_LOAD_WORD && rom.u8(script + 1) == 0 &&
+            rom.gbaPointer(script + 2) != null && rom.u8(script + 6) == SCR_OP_CALL_STD &&
+            rom.u8(script + 7) in 0..MAX_MSGBOX_TYPE
+
     private fun readSimpleSignHeadline(
         rom: RomImage,
         script: Int,
         codec: PokemonTextCodec,
     ): String? {
-        if (script.toLong() + SIMPLE_MSGBOX_BYTES > rom.size.toLong()) return null
-        if (rom.u8(script) != SCR_OP_LOAD_WORD || rom.u8(script + 1) != 0) return null
-        val text = rom.gbaPointer(script + 2) ?: return null
-        if (rom.u8(script + 6) != SCR_OP_CALL_STD || rom.u8(script + 7) !in 0..MAX_MSGBOX_TYPE) return null
+        if (!isSimpleSignScript(rom, script)) return null
+        val text = requireNotNull(rom.gbaPointer(script + 2))
         val available = minOf(MAX_SIGN_TEXT_BYTES, rom.size - text)
         if (available <= 0) return null
         return decodeSignHeadline(rom.slice(text, available), codec)
