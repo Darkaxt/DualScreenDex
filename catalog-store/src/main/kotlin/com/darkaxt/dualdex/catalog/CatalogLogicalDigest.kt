@@ -26,14 +26,15 @@ import java.security.MessageDigest
  *
  * Only the four persisted Set fields and two map-derived overlay DTO lists are reordered; all
  * other sequences remain significant. Review this inventory when changing storage models/schema.
- * Work is section-at-a-time: raw storage JSON and canonical sections are each capped at 32 MiB,
- * total output at 128 MiB, nesting at 64. These evidence limits are intentionally independent of
- * larger persistence limits. The JSON tree has bounded input, not a byte-exact heap budget.
+ * Work is section-at-a-time: raw storage JSON and canonical sections share the persisted 128 MiB
+ * section ceiling, total output allows the persisted 256 MiB catalog plus a bounded 1 MiB envelope,
+ * and nesting is capped at 64. The JSON tree has bounded input, not a byte-exact heap budget.
  */
 object CatalogLogicalDigest {
     const val version = 1
-    const val maximumBytes = 128 * 1024 * 1024
-    const val maximumSectionBytes = 32 * 1024 * 1024
+    const val maximumEnvelopeBytes = 1024 * 1024
+    const val maximumBytes = CatalogSchema.maximumCatalogInflatedBytes + maximumEnvelopeBytes
+    const val maximumSectionBytes = CatalogSchema.maximumSectionInflatedBytes
 
     @JvmStatic
     fun sha256(catalog: ParsedCatalog, maximumBytes: Int = CatalogLogicalDigest.maximumBytes): String {

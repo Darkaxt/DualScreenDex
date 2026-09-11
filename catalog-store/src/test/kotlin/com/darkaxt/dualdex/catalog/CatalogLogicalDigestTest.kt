@@ -114,10 +114,13 @@ class CatalogLogicalDigestTest {
         assertTrue(output.size() <= 100)
     }
 
-    @Test fun sectionLimitAndNonFiniteStoredValuesFailClosed() {
+    @Test fun persistenceSizedSectionsRemainDigestibleAndNonFiniteValuesFailClosed() {
+        assertEquals(CatalogSchema.maximumSectionInflatedBytes, CatalogLogicalDigest.maximumSectionBytes)
+        assertTrue(CatalogLogicalDigest.maximumBytes > CatalogSchema.maximumCatalogInflatedBytes)
+
         val base = fixture()
-        val huge = base.copy(diagnostics = listOf("x".repeat(32 * 1024 * 1024 + 1)))
-        assertThrows(IllegalArgumentException::class.java) { sha(huge) }
+        val aboveFormerEvidenceLimit = base.copy(diagnostics = listOf("x".repeat(32 * 1024 * 1024 + 1)))
+        assertEquals(64, sha(aboveFormerEvidenceLimit).length)
         val invalid = base.copy(capabilities = mapOf(RomCapability.BASE_STATS to CapabilityEvidence(
             RomCapability.BASE_STATS, true, Double.NaN)))
         assertThrows(IllegalArgumentException::class.java) { sha(invalid) }
