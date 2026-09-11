@@ -1,0 +1,4994 @@
+{
+  "schemaVersion": 1,
+  "status": "EVIDENCE_VALIDATED",
+  "sourceCommit": "5e2e10c256f8aaccccc7f7f0ff5c4508526b70d8",
+  "validatorCommit": "d4d8c4ec3ebc797bda439de3f8ec2e143bf33b90",
+  "planSha256": "1a7fbf4001c72b275a3744d6a32fc8c76d5138a8ed597e4493fec461fae73aa0",
+  "validationResultSha256": "a4e3b9ce9408e7e8cb9b5d7afa1cbe3f5b2e64ac9f89a9ee27e36f8f3b476491",
+  "sourceEvidenceSha256": "fe70614ab53a03a865505003fd02976cc43281c695ff4eddf1133791c11dea92",
+  "summary": {
+    "expectedCells": 43,
+    "validatedCells": 43,
+    "expectedControls": 44,
+    "validatedControls": 44,
+    "checkRecords": 308,
+    "capabilityDispositions": 660,
+    "acceptedCapabilities": 506,
+    "excludedCapabilities": 154,
+    "blockers": 0
+  },
+  "controls": [
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 335,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 335,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 76,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 76,
+          "validatedSamples": 76
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 382,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 382,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 232,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 19,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "POI_TEXT": {
+          "coveredRecords": 1343,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 739,
+          "expectedRecords": 2082,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 18,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 18,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 79,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 79,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        }
+      },
+      "family": "CRYSTAL",
+      "language": "de",
+      "romSha256": "22c0dfec9ce004dceebe280d71fa2579fa376064f70284bbf46322e163aa1160",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 335,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 335,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 76,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 76,
+          "validatedSamples": 76
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 382,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 382,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "POI_TEXT": {
+          "coveredRecords": 1343,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 739,
+          "expectedRecords": 2082,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 18,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 18,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 79,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 79,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        }
+      },
+      "family": "CRYSTAL",
+      "language": "en",
+      "romSha256": "fdcc3c8c43813cf8731fc037d2a6d191bac75439c34b24ba1c27526e6acdc8a2",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 335,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 335,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 76,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 76,
+          "validatedSamples": 76
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 382,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 382,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 250,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 1,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "POI_TEXT": {
+          "coveredRecords": 1343,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 739,
+          "expectedRecords": 2082,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 18,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 18,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 79,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 79,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        }
+      },
+      "family": "CRYSTAL",
+      "language": "es",
+      "romSha256": "4aacb5b3ac7a741d99f507e7c31393c015dea26a3ce8876021c50e7c761c1141",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 335,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 335,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 76,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 76,
+          "validatedSamples": 76
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 382,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 382,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 249,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 2,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "POI_TEXT": {
+          "coveredRecords": 1343,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 739,
+          "expectedRecords": 2082,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 18,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 18,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 79,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 79,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        }
+      },
+      "family": "CRYSTAL",
+      "language": "fr",
+      "romSha256": "178b0da870a3cc58414940412eb6473f515b8941cb83d81a1a42d05ca82749e7",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 335,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 335,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 76,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 76,
+          "validatedSamples": 76
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 382,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 382,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 244,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 7,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "POI_TEXT": {
+          "coveredRecords": 1343,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 739,
+          "expectedRecords": 2082,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 18,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 18,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 79,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 79,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        }
+      },
+      "family": "CRYSTAL",
+      "language": "it",
+      "romSha256": "2592aef20701fa1d5df5cf3343ffb4293092c911177868fa4a94698c27f7be89",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 335,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 335,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 76,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 76,
+          "validatedSamples": 76
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 382,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 382,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "POI_TEXT": {
+          "coveredRecords": 1874,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 226,
+          "expectedRecords": 2100,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 18,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 18,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 79,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 79,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        }
+      },
+      "family": "CRYSTAL",
+      "language": "ja",
+      "romSha256": "136ada06cb68656b7de475fa4b278d37dbeff8f5257e7dfdf7f4a4aec19a90f3",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 77,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 77,
+          "validatedSamples": 1
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 77,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 77,
+          "validatedSamples": 1
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 482,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 482,
+          "validatedSamples": 1
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 201,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 201,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 104,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 104,
+          "validatedSamples": 104
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 482,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 482,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 354,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 354,
+          "validatedSamples": 1
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 354,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 354,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 25,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 25,
+          "validatedSamples": 1
+        },
+        "POI_TEXT": {
+          "coveredRecords": 1762,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 374,
+          "expectedRecords": 2136,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 386,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 25,
+          "expectedRecords": 411,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 412,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 412,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 18,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 18,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 98,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 98,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 1,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 1,
+          "validatedSamples": 1
+        }
+      },
+      "family": "EMERALD",
+      "language": "de",
+      "romSha256": "7c599c56849efeebeb93bd71f714932ae4cdf980db51c9c1016b4431057f71d4",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 77,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 77,
+          "validatedSamples": 1
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 77,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 77,
+          "validatedSamples": 1
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 482,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 482,
+          "validatedSamples": 1
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 201,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 201,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 104,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 104,
+          "validatedSamples": 104
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 482,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 482,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 354,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 354,
+          "validatedSamples": 1
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 354,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 354,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 25,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 25,
+          "validatedSamples": 1
+        },
+        "POI_TEXT": {
+          "coveredRecords": 1768,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 368,
+          "expectedRecords": 2136,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 386,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 25,
+          "expectedRecords": 411,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 412,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 412,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 18,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 18,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 98,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 98,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 1,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 1,
+          "validatedSamples": 1
+        }
+      },
+      "family": "EMERALD",
+      "language": "en",
+      "romSha256": "a9dec84dfe7f62ab2220bafaef7479da0929d066ece16a6885f6226db19085af",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 77,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 77,
+          "validatedSamples": 1
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 77,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 77,
+          "validatedSamples": 1
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 482,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 482,
+          "validatedSamples": 1
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 201,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 201,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 104,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 104,
+          "validatedSamples": 104
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 482,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 482,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 354,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 354,
+          "validatedSamples": 1
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 354,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 354,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 25,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 25,
+          "validatedSamples": 1
+        },
+        "POI_TEXT": {
+          "coveredRecords": 1764,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 372,
+          "expectedRecords": 2136,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 386,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 25,
+          "expectedRecords": 411,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 412,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 412,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 18,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 18,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 98,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 98,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 1,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 1,
+          "validatedSamples": 1
+        }
+      },
+      "family": "EMERALD",
+      "language": "es",
+      "romSha256": "e32c82bd10f174cf4019123b36f3ef7729105fb6634d9aa6b61413ee5101a55e",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 77,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 77,
+          "validatedSamples": 1
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 77,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 77,
+          "validatedSamples": 1
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 482,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 482,
+          "validatedSamples": 1
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 201,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 201,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 104,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 104,
+          "validatedSamples": 104
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 482,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 482,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 354,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 354,
+          "validatedSamples": 1
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 354,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 354,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 25,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 25,
+          "validatedSamples": 1
+        },
+        "POI_TEXT": {
+          "coveredRecords": 1765,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 371,
+          "expectedRecords": 2136,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 386,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 25,
+          "expectedRecords": 411,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 412,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 412,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 18,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 18,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 98,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 98,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 1,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 1,
+          "validatedSamples": 1
+        }
+      },
+      "family": "EMERALD",
+      "language": "fr",
+      "romSha256": "e79b40e6189550b4870b06918a5c59e04d3a2e1d7c92718aeda92181201f51e4",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 77,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 77,
+          "validatedSamples": 1
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 77,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 77,
+          "validatedSamples": 1
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 482,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 482,
+          "validatedSamples": 1
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 201,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 201,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 104,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 104,
+          "validatedSamples": 104
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 482,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 482,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 354,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 354,
+          "validatedSamples": 1
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 354,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 354,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 25,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 25,
+          "validatedSamples": 1
+        },
+        "POI_TEXT": {
+          "coveredRecords": 1770,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 366,
+          "expectedRecords": 2136,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 386,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 25,
+          "expectedRecords": 411,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 412,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 412,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 18,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 18,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 98,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 98,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 1,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 1,
+          "validatedSamples": 1
+        }
+      },
+      "family": "EMERALD",
+      "language": "it",
+      "romSha256": "63cbff3500b657cb6966568beb0780de3655d3a0b2e5ac6e0ec33d5d01a916ad",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 77,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 77,
+          "validatedSamples": 1
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 77,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 77,
+          "validatedSamples": 1
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 482,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 482,
+          "validatedSamples": 1
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 201,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 201,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 104,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 104,
+          "validatedSamples": 104
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 482,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 482,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 354,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 354,
+          "validatedSamples": 1
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 354,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 354,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 25,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 25,
+          "validatedSamples": 1
+        },
+        "POI_TEXT": {
+          "coveredRecords": 1804,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 332,
+          "expectedRecords": 2136,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 386,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 386,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 412,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 412,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 18,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 18,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 98,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 98,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 1,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 1,
+          "validatedSamples": 1
+        }
+      },
+      "family": "EMERALD",
+      "language": "ja",
+      "romSha256": "33f5610b9186b4add09fef68895deb00f552b997b3d133b5a961e5123506343c",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 77,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 77,
+          "validatedSamples": 1
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 77,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 77,
+          "validatedSamples": 1
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 219,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 219,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 127,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 127,
+          "validatedSamples": 127
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 425,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 425,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 354,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 354,
+          "validatedSamples": 1
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 354,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 354,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 25,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 25,
+          "validatedSamples": 1
+        },
+        "POI_TEXT": {
+          "coveredRecords": 1894,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 235,
+          "expectedRecords": 2129,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 386,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 25,
+          "expectedRecords": 411,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 412,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 412,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 18,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 18,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 69,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 69,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        }
+      },
+      "family": "FIRERED_LEAFGREEN",
+      "language": "de",
+      "romSha256": "eed4fb0242bcbb6e0b0b80b197b47e3aec99ef4c5562cc45bae50ae86b970507",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 77,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 77,
+          "validatedSamples": 1
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 77,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 77,
+          "validatedSamples": 1
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 219,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 219,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 127,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 127,
+          "validatedSamples": 127
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 425,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 425,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 354,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 354,
+          "validatedSamples": 1
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 354,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 354,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 25,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 25,
+          "validatedSamples": 1
+        },
+        "POI_TEXT": {
+          "coveredRecords": 1894,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 235,
+          "expectedRecords": 2129,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 386,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 25,
+          "expectedRecords": 411,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 412,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 412,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 18,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 18,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 69,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 69,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        }
+      },
+      "family": "FIRERED_LEAFGREEN",
+      "language": "en",
+      "romSha256": "729041b940afe031302d630fdbe57c0c145f3f7b6d9b8eca5e98678d0ca4d059",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 77,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 77,
+          "validatedSamples": 1
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 77,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 77,
+          "validatedSamples": 1
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 219,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 219,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 127,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 127,
+          "validatedSamples": 127
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 425,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 425,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 354,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 354,
+          "validatedSamples": 1
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 354,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 354,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 25,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 25,
+          "validatedSamples": 1
+        },
+        "POI_TEXT": {
+          "coveredRecords": 1895,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 234,
+          "expectedRecords": 2129,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 386,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 25,
+          "expectedRecords": 411,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 412,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 412,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 18,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 18,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 69,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 69,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        }
+      },
+      "family": "FIRERED_LEAFGREEN",
+      "language": "es",
+      "romSha256": "ab696c065639e4d73c3c3ed9d4fbf9c7fed593761f3b6746256ff82465596554",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 77,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 77,
+          "validatedSamples": 1
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 77,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 77,
+          "validatedSamples": 1
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 219,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 219,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 127,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 127,
+          "validatedSamples": 127
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 425,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 425,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 354,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 354,
+          "validatedSamples": 1
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 354,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 354,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 25,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 25,
+          "validatedSamples": 1
+        },
+        "POI_TEXT": {
+          "coveredRecords": 1893,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 236,
+          "expectedRecords": 2129,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 386,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 25,
+          "expectedRecords": 411,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 412,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 412,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 18,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 18,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 69,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 69,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        }
+      },
+      "family": "FIRERED_LEAFGREEN",
+      "language": "fr",
+      "romSha256": "245866842349cedbe2a034c6d20438d26d18b627b3d0909d7cb795fc87d7675a",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 77,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 77,
+          "validatedSamples": 1
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 77,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 77,
+          "validatedSamples": 1
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 219,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 219,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 127,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 127,
+          "validatedSamples": 127
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 425,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 425,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 354,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 354,
+          "validatedSamples": 1
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 354,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 354,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 25,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 25,
+          "validatedSamples": 1
+        },
+        "POI_TEXT": {
+          "coveredRecords": 1895,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 234,
+          "expectedRecords": 2129,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 386,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 25,
+          "expectedRecords": 411,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 412,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 412,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 18,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 18,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 69,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 69,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        }
+      },
+      "family": "FIRERED_LEAFGREEN",
+      "language": "it",
+      "romSha256": "ad52b593ef0c7439e1409d3f0a1ec3ff865a494ca46c2184fe65573759838f3a",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 77,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 77,
+          "validatedSamples": 1
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 77,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 77,
+          "validatedSamples": 1
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 219,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 219,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 127,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 127,
+          "validatedSamples": 127
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 425,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 425,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 354,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 354,
+          "validatedSamples": 1
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 354,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 354,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 25,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 25,
+          "validatedSamples": 1
+        },
+        "POI_TEXT": {
+          "coveredRecords": 1907,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 222,
+          "expectedRecords": 2129,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 386,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 386,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 412,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 412,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 18,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 18,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 69,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 69,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        }
+      },
+      "family": "FIRERED_LEAFGREEN",
+      "language": "ja",
+      "romSha256": "cec5fc4dbe38cd8026bd6664a1a041d9dc91e8d4249bab04e7bde70c3cdf4e06",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 335,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 335,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 62,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 62,
+          "validatedSamples": 62
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 364,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 364,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 227,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 24,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "POI_TEXT": {
+          "coveredRecords": 1251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 700,
+          "expectedRecords": 1951,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 18,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 18,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 79,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 79,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        }
+      },
+      "family": "GOLD_SILVER",
+      "language": "de",
+      "romSha256": "542f275f8632ef5265e5cde80a8ba1f0ec11ce714ef9d773088a92680bd17d73",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 335,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 335,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 62,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 62,
+          "validatedSamples": 62
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 364,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 364,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "POI_TEXT": {
+          "coveredRecords": 1251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 700,
+          "expectedRecords": 1951,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 18,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 18,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 79,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 79,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        }
+      },
+      "family": "GOLD_SILVER",
+      "language": "en",
+      "romSha256": "fb0016d27b1e5374e1ec9fcad60e6628d8646103b5313ca683417f52b97e7e4e",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 335,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 335,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 62,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 62,
+          "validatedSamples": 62
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 364,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 364,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 250,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 1,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "POI_TEXT": {
+          "coveredRecords": 1251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 700,
+          "expectedRecords": 1951,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 18,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 18,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 79,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 79,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        }
+      },
+      "family": "GOLD_SILVER",
+      "language": "es",
+      "romSha256": "7b78e33a348a0729e38ee0fd778cf49b3e07c35d2175ebc74d8f9be41f41455b",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 335,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 335,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 62,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 62,
+          "validatedSamples": 62
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 364,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 364,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 249,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 2,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "POI_TEXT": {
+          "coveredRecords": 1251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 700,
+          "expectedRecords": 1951,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 18,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 18,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 79,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 79,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        }
+      },
+      "family": "GOLD_SILVER",
+      "language": "fr",
+      "romSha256": "6103cadf2ae505f4b489a8a414c8db27a2307d797ddf8a3a848659b591dd4023",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 335,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 335,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 62,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 62,
+          "validatedSamples": 62
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 364,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 364,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 245,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 6,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "POI_TEXT": {
+          "coveredRecords": 1251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 700,
+          "expectedRecords": 1951,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 18,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 18,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 79,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 79,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        }
+      },
+      "family": "GOLD_SILVER",
+      "language": "it",
+      "romSha256": "367e606f82b9e2e16d0cc8011c5ba2df1862da574e57ffd66e786a82af5b6e22",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 335,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 335,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 62,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 62,
+          "validatedSamples": 62
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 364,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 364,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "POI_TEXT": {
+          "coveredRecords": 1757,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 194,
+          "expectedRecords": 1951,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 18,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 18,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 79,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 79,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        }
+      },
+      "family": "GOLD_SILVER",
+      "language": "ja",
+      "romSha256": "27a07a1d3faf9c6a0b1b60d5e88ee3a4159a751a47b4c46ab09f1202d52bac3e",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 335,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 335,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 62,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 62,
+          "validatedSamples": 62
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 364,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 364,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "POI_TEXT": {
+          "coveredRecords": 1755,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 194,
+          "expectedRecords": 1949,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 18,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 18,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 79,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 79,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        }
+      },
+      "family": "GOLD_SILVER",
+      "language": "ko",
+      "romSha256": "9c273e86e6120c6a038160ccb0153b8b20425b84fc08a496281c1d1bcac492f6",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 335,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 335,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 62,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 62,
+          "validatedSamples": 62
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 364,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 364,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "POI_TEXT": {
+          "coveredRecords": 1755,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 194,
+          "expectedRecords": 1949,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 251,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 251,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 18,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 18,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 79,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 79,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        }
+      },
+      "family": "GOLD_SILVER",
+      "language": "ko",
+      "romSha256": "ebbac63c0c4309c82dbb6723e7163369784f962b4fd3e2f486075307c3008a22",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 58,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 58,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 62,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 62,
+          "validatedSamples": 62
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 226,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 226,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 165,
+          "expectedRecords": 165,
+          "validatedSamples": 0
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 165,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 165,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "POI_TEXT": {
+          "coveredRecords": 819,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 279,
+          "expectedRecords": 1098,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 151,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 151,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 190,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 190,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 15,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 15,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 57,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 57,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        }
+      },
+      "family": "RED_BLUE",
+      "language": "de",
+      "romSha256": "9cd186b288dbcd52413d561ae449f1f700c32b45af56dbf849095d4a0c8637a6",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 58,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 58,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 62,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 62,
+          "validatedSamples": 62
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 226,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 226,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 165,
+          "expectedRecords": 165,
+          "validatedSamples": 0
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 165,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 165,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "POI_TEXT": {
+          "coveredRecords": 819,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 279,
+          "expectedRecords": 1098,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 151,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 151,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 190,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 190,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 15,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 15,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 57,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 57,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        }
+      },
+      "family": "RED_BLUE",
+      "language": "en",
+      "romSha256": "5ca7ba01642a3b27b0cc0b5349b52792795b62d3ed977e98a09390659af96b7b",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 58,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 58,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 62,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 62,
+          "validatedSamples": 62
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 226,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 226,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 165,
+          "expectedRecords": 165,
+          "validatedSamples": 0
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 165,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 165,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "POI_TEXT": {
+          "coveredRecords": 819,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 279,
+          "expectedRecords": 1098,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 151,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 151,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 190,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 190,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 15,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 15,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 57,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 57,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        }
+      },
+      "family": "RED_BLUE",
+      "language": "es",
+      "romSha256": "a756cf7ad888aa46de4b9699a177a0edf1775e59eb6330014c6f5c139be9c45d",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 58,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 58,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 62,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 62,
+          "validatedSamples": 62
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 226,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 226,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 165,
+          "expectedRecords": 165,
+          "validatedSamples": 0
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 165,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 165,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "POI_TEXT": {
+          "coveredRecords": 819,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 279,
+          "expectedRecords": 1098,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 151,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 151,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 190,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 190,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 15,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 15,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 57,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 57,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        }
+      },
+      "family": "RED_BLUE",
+      "language": "fr",
+      "romSha256": "23766290f3b2347f815f1e8977c3b84047ed880cadda8c4f1a3595a633daa303",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 58,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 58,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 62,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 62,
+          "validatedSamples": 62
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 226,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 226,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 165,
+          "expectedRecords": 165,
+          "validatedSamples": 0
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 165,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 165,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "POI_TEXT": {
+          "coveredRecords": 819,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 279,
+          "expectedRecords": 1098,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 151,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 151,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 190,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 190,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 15,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 15,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 57,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 57,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        }
+      },
+      "family": "RED_BLUE",
+      "language": "it",
+      "romSha256": "e805d00b0002156d38b96efd57c823b0db3a3ef4cd32f98bd9bb4779bda3dd5b",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 58,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 58,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 62,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 62,
+          "validatedSamples": 62
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 226,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 226,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 165,
+          "expectedRecords": 165,
+          "validatedSamples": 0
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 165,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 165,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "POI_TEXT": {
+          "coveredRecords": 813,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 281,
+          "expectedRecords": 1094,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 151,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 151,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 190,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 190,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 15,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 15,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 57,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 57,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        }
+      },
+      "family": "RED_BLUE",
+      "language": "ja",
+      "romSha256": "3f0dc460ca8d06be1c9ac96307c939c0ea7baa366b40c2f1f4ad63242b6c4816",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 77,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 77,
+          "validatedSamples": 1
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 77,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 77,
+          "validatedSamples": 1
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 375,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 375,
+          "validatedSamples": 1
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 179,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 179,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 101,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 101,
+          "validatedSamples": 101
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 375,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 375,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 354,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 354,
+          "validatedSamples": 1
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 354,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 354,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 25,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 25,
+          "validatedSamples": 1
+        },
+        "POI_TEXT": {
+          "coveredRecords": 1540,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 364,
+          "expectedRecords": 1904,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 386,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 25,
+          "expectedRecords": 411,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 412,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 412,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 18,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 18,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 83,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 83,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 1,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 1,
+          "validatedSamples": 1
+        }
+      },
+      "family": "RUBY_SAPPHIRE",
+      "language": "de",
+      "romSha256": "e0b620d576bc503e083bb9d2af1f5ffc40127b84e6ca734e3c45534d0d008043",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 77,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 77,
+          "validatedSamples": 1
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 77,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 77,
+          "validatedSamples": 1
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 375,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 375,
+          "validatedSamples": 1
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 179,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 179,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 101,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 101,
+          "validatedSamples": 101
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 375,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 375,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 354,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 354,
+          "validatedSamples": 1
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 354,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 354,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 25,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 25,
+          "validatedSamples": 1
+        },
+        "POI_TEXT": {
+          "coveredRecords": 1544,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 360,
+          "expectedRecords": 1904,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 386,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 25,
+          "expectedRecords": 411,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 412,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 412,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 18,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 18,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 83,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 83,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 1,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 1,
+          "validatedSamples": 1
+        }
+      },
+      "family": "RUBY_SAPPHIRE",
+      "language": "en",
+      "romSha256": "0fdd36e92b75bed65d09df4635ab0b707b288c2bf1dc4c6e7a4a4f0eebe9d64c",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 77,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 77,
+          "validatedSamples": 1
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 77,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 77,
+          "validatedSamples": 1
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 375,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 375,
+          "validatedSamples": 1
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 179,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 179,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 101,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 101,
+          "validatedSamples": 101
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 375,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 375,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 354,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 354,
+          "validatedSamples": 1
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 354,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 354,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 25,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 25,
+          "validatedSamples": 1
+        },
+        "POI_TEXT": {
+          "coveredRecords": 1538,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 366,
+          "expectedRecords": 1904,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 386,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 25,
+          "expectedRecords": 411,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 412,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 412,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 18,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 18,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 83,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 83,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 1,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 1,
+          "validatedSamples": 1
+        }
+      },
+      "family": "RUBY_SAPPHIRE",
+      "language": "es",
+      "romSha256": "0db39958c19abcedc7670fb16fd3274a5b205df794eb7491bea0580aa752e095",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 77,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 77,
+          "validatedSamples": 1
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 77,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 77,
+          "validatedSamples": 1
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 375,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 375,
+          "validatedSamples": 1
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 179,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 179,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 101,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 101,
+          "validatedSamples": 101
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 375,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 375,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 354,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 354,
+          "validatedSamples": 1
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 354,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 354,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 25,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 25,
+          "validatedSamples": 1
+        },
+        "POI_TEXT": {
+          "coveredRecords": 1536,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 368,
+          "expectedRecords": 1904,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 386,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 25,
+          "expectedRecords": 411,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 412,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 412,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 18,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 18,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 83,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 83,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 1,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 1,
+          "validatedSamples": 1
+        }
+      },
+      "family": "RUBY_SAPPHIRE",
+      "language": "fr",
+      "romSha256": "9678645ca67932a42c92b1d6bac118925a6be9f67135ae8fe7747df85cdabdd0",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 77,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 77,
+          "validatedSamples": 1
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 77,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 77,
+          "validatedSamples": 1
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 375,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 375,
+          "validatedSamples": 1
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 179,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 179,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 101,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 101,
+          "validatedSamples": 101
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 375,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 375,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 354,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 354,
+          "validatedSamples": 1
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 354,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 354,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 25,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 25,
+          "validatedSamples": 1
+        },
+        "POI_TEXT": {
+          "coveredRecords": 1544,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 360,
+          "expectedRecords": 1904,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 386,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 25,
+          "expectedRecords": 411,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 412,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 412,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 18,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 18,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 83,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 83,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 1,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 1,
+          "validatedSamples": 1
+        }
+      },
+      "family": "RUBY_SAPPHIRE",
+      "language": "it",
+      "romSha256": "be116b6fa8d8c12d7ccff3faefd5defd886faa427ff2c85c06d245cbe4e531b2",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 77,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 77,
+          "validatedSamples": 1
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 77,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 77,
+          "validatedSamples": 1
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 375,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 375,
+          "validatedSamples": 1
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 179,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 179,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 101,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 101,
+          "validatedSamples": 101
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 375,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 375,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 354,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 354,
+          "validatedSamples": 1
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 354,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 354,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 25,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 25,
+          "validatedSamples": 1
+        },
+        "POI_TEXT": {
+          "coveredRecords": 1560,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 344,
+          "expectedRecords": 1904,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 386,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 386,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 412,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 412,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 18,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 18,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 83,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 83,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 1,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 1,
+          "validatedSamples": 1
+        }
+      },
+      "family": "RUBY_SAPPHIRE",
+      "language": "ja",
+      "romSha256": "a7ea012b67a27da2893bfdfcb5f64915607b26904b4fc635a1055e8e40e692ab",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 63,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 63,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 62,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 62,
+          "validatedSamples": 62
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 227,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 227,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 165,
+          "expectedRecords": 165,
+          "validatedSamples": 0
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 165,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 165,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "POI_TEXT": {
+          "coveredRecords": 802,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 307,
+          "expectedRecords": 1109,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 151,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 151,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 190,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 190,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 15,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 15,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 57,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 57,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        }
+      },
+      "family": "YELLOW",
+      "language": "de",
+      "romSha256": "aed41ea3e785ac9c06fd641270ff30b59de5fc64fed4349e81a9aaa4ba7d31f9",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 63,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 63,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 62,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 62,
+          "validatedSamples": 62
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 227,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 227,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 165,
+          "expectedRecords": 165,
+          "validatedSamples": 0
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 165,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 165,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "POI_TEXT": {
+          "coveredRecords": 802,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 307,
+          "expectedRecords": 1109,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 151,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 151,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 190,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 190,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 15,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 15,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 57,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 57,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        }
+      },
+      "family": "YELLOW",
+      "language": "en",
+      "romSha256": "8cbaa499397e4f1a679c992ea9382a2dd7942ab398b48c19829c2d9529de47bf",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 63,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 63,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 62,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 62,
+          "validatedSamples": 62
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 227,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 227,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 165,
+          "expectedRecords": 165,
+          "validatedSamples": 0
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 165,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 165,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "POI_TEXT": {
+          "coveredRecords": 802,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 307,
+          "expectedRecords": 1109,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 151,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 151,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 190,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 190,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 15,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 15,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 57,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 57,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        }
+      },
+      "family": "YELLOW",
+      "language": "es",
+      "romSha256": "55d56d6f73225886bfdc0db1ddb754d2f4dfc6ef5ae74ddfa079c23b6ec80039",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 63,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 63,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 62,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 62,
+          "validatedSamples": 62
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 227,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 227,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 165,
+          "expectedRecords": 165,
+          "validatedSamples": 0
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 165,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 165,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "POI_TEXT": {
+          "coveredRecords": 802,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 307,
+          "expectedRecords": 1109,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 151,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 151,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 190,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 190,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 15,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 15,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 57,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 57,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        }
+      },
+      "family": "YELLOW",
+      "language": "fr",
+      "romSha256": "77b31f874fd877fbf48757f315ffc3144e06fc7222aba6ac4eda2045ebf5d3fa",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 63,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 63,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 62,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 62,
+          "validatedSamples": 62
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 227,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 227,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 165,
+          "expectedRecords": 165,
+          "validatedSamples": 0
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 165,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 165,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "POI_TEXT": {
+          "coveredRecords": 802,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 307,
+          "expectedRecords": 1109,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 151,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 151,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 190,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 190,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 15,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 15,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 57,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 57,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        }
+      },
+      "family": "YELLOW",
+      "language": "it",
+      "romSha256": "e3f0663e16ac240bc1c6681cdb95ca7230d86fca23eb931ea58f4abce0002856",
+      "status": "EVIDENCE_VALIDATED"
+    },
+    {
+      "capabilities": {
+        "ABILITY_DESCRIPTIONS": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ABILITY_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "AREA_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "coveredRecords": 63,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 63,
+          "validatedSamples": 1
+        },
+        "ITEM_NAMES": {
+          "coveredRecords": 62,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 62,
+          "validatedSamples": 62
+        },
+        "LOCAL_MAP_NAMES": {
+          "coveredRecords": 227,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 227,
+          "validatedSamples": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 165,
+          "expectedRecords": 165,
+          "validatedSamples": 0
+        },
+        "MOVE_NAMES": {
+          "coveredRecords": 165,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 165,
+          "validatedSamples": 1
+        },
+        "NATURE_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        },
+        "POI_TEXT": {
+          "coveredRecords": 802,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 307,
+          "expectedRecords": 1109,
+          "validatedSamples": 1
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "coveredRecords": 151,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 151,
+          "validatedSamples": 1
+        },
+        "SPECIES_NAMES": {
+          "coveredRecords": 190,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 190,
+          "validatedSamples": 1
+        },
+        "TYPE_NAMES": {
+          "coveredRecords": 15,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 15,
+          "validatedSamples": 1
+        },
+        "WORLD_LOCATION_NAMES": {
+          "coveredRecords": 57,
+          "disposition": "ACCEPTED",
+          "excludedRecords": 0,
+          "expectedRecords": 57,
+          "validatedSamples": 1
+        },
+        "WORLD_REGION_NAMES": {
+          "coveredRecords": 0,
+          "disposition": "EXCLUDED",
+          "excludedRecords": 0,
+          "expectedRecords": 0,
+          "validatedSamples": 0
+        }
+      },
+      "family": "YELLOW",
+      "language": "ja",
+      "romSha256": "1349408f328f633b33e059e654edabd19810530df9c883eda03a85d5bb10161a",
+      "status": "EVIDENCE_VALIDATED"
+    }
+  ]
+}
