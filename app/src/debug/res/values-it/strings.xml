@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DualDex QA interfaccia senza RetroArch</string>
+    <string name="raw_memory_control_name">Controlli memoria QA di DualDex</string>
+    <string name="raw_memory_title">Simulatore memoria live grezza</string>
+    <string name="raw_memory_status">Scenario: %1$s\nFotogramma: %2$s (%3$d/%4$d)\nRiproduzione: %5$s</string>
+    <string name="raw_memory_unavailable">Simulatore non disponibile. Sono richiesti l’indicatore QA e una risorsa scenario integrata valida.</string>
+    <string name="raw_memory_scenario_label">Scenario</string>
+    <string name="raw_memory_paused">In pausa</string>
+    <string name="raw_memory_playing">In riproduzione</string>
+    <string name="raw_memory_pause">Pausa</string>
+    <string name="raw_memory_play">Riproduci</string>
+    <string name="raw_memory_step">Avanza</string>
+    <string name="raw_memory_open_companion">Apri il companion</string>
+</resources>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DualDex AQ sans RetroArch</string>
+    <string name="raw_memory_control_name">Commandes mémoire AQ de DualDex</string>
+    <string name="raw_memory_title">Simulateur de mémoire active brute</string>
+    <string name="raw_memory_status">Scénario : %1$s\nImage : %2$s (%3$d/%4$d)\nLecture : %5$s</string>
+    <string name="raw_memory_unavailable">Simulateur indisponible. Le marqueur AQ et une ressource de scénario intégrée valide sont requis.</string>
+    <string name="raw_memory_scenario_label">Scénario</string>
+    <string name="raw_memory_paused">En pause</string>
+    <string name="raw_memory_playing">Lecture</string>
+    <string name="raw_memory_pause">Mettre en pause</string>
+    <string name="raw_memory_play">Lire</string>
+    <string name="raw_memory_step">Avancer d’une étape</string>
+    <string name="raw_memory_open_companion">Ouvrir le compagnon</string>
+</resources>

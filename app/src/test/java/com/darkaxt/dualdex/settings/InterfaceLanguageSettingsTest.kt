@@ -29,6 +29,15 @@ class InterfaceLanguageSettingsTest {
     }
 
     @Test
+    fun everyNativeLocaleDefinesTheCompleteDebugResourceContract() {
+        val defaultStrings = strings("debug", "values")
+
+        listOf("values-fr", "values-de", "values-it", "values-es").forEach { directory ->
+            assertEquals(defaultStrings.keys, strings("debug", directory).keys)
+        }
+    }
+
+    @Test
     fun bundledLocalesTranslateRecoveryAndExportFallbacks() {
         val english = strings("values")
 
@@ -43,8 +52,10 @@ class InterfaceLanguageSettingsTest {
         assertTrue(english.getValue("recovery_title").isNotBlank())
     }
 
-    private fun strings(directory: String): Map<String, String> {
-        val file = File("src/main/res/$directory/strings.xml")
+    private fun strings(directory: String): Map<String, String> = strings("main", directory)
+
+    private fun strings(sourceSet: String, directory: String): Map<String, String> {
+        val file = File("src/$sourceSet/res/$directory/strings.xml")
         val nodes = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(file).getElementsByTagName("string")
         return buildMap {
             repeat(nodes.length) { index ->
