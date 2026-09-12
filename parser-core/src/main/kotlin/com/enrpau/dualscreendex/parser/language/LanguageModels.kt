@@ -139,6 +139,7 @@ class RomLanguageManifest(
     projections: List<RomLanguageProjection>,
     val status: LanguageResolutionStatus,
     diagnostics: List<String> = emptyList(),
+    val runtimeSelection: RuntimeLanguageSelectionLayout? = null,
 ) {
     val projections: List<RomLanguageProjection> = Collections.unmodifiableList(projections.toList())
     val diagnostics: List<String> = Collections.unmodifiableList(diagnostics.toList())
@@ -162,6 +163,18 @@ class RomLanguageManifest(
             LanguageResolutionStatus.UNKNOWN -> {
                 require(defaultLanguage == null) { "unknown language manifest cannot select a default" }
                 require(projections.isEmpty()) { "unknown language manifest cannot publish projections" }
+            }
+        }
+        if (runtimeSelection != null) {
+            require(status == LanguageResolutionStatus.RESOLVED && projections.size > 1) {
+                "runtime language selection requires a resolved multilingual manifest"
+            }
+            require(runtimeSelection.defaultLanguage == defaultLanguage) {
+                "runtime language selection default must match the manifest default"
+            }
+            require(runtimeSelection.mappings.mapTo(linkedSetOf()) { it.language } ==
+                projections.mapTo(linkedSetOf()) { it.language }) {
+                "runtime language selection must map every persisted projection"
             }
         }
     }
@@ -188,20 +201,32 @@ class RomLanguageManifest(
             },
             status = status,
             diagnostics = diagnostics,
+            runtimeSelection = runtimeSelection,
         )
     }
+
+    fun withRuntimeSelection(runtimeSelection: RuntimeLanguageSelectionLayout?): RomLanguageManifest =
+        RomLanguageManifest(
+            defaultLanguage = defaultLanguage,
+            projections = projections,
+            status = status,
+            diagnostics = diagnostics,
+            runtimeSelection = runtimeSelection,
+        )
 
     override fun equals(other: Any?): Boolean = other is RomLanguageManifest &&
         defaultLanguage == other.defaultLanguage &&
         projections == other.projections &&
         status == other.status &&
-        diagnostics == other.diagnostics
+        diagnostics == other.diagnostics &&
+        runtimeSelection == other.runtimeSelection
 
     override fun hashCode(): Int {
         var result = defaultLanguage?.hashCode() ?: 0
         result = 31 * result + projections.hashCode()
         result = 31 * result + status.hashCode()
         result = 31 * result + diagnostics.hashCode()
+        result = 31 * result + (runtimeSelection?.hashCode() ?: 0)
         return result
     }
 

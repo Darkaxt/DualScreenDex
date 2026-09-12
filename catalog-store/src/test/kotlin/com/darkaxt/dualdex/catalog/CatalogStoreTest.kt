@@ -89,6 +89,10 @@ import com.enrpau.dualscreendex.parser.language.LanguageTag
 import com.enrpau.dualscreendex.parser.language.LocalizedTableLayout
 import com.enrpau.dualscreendex.parser.language.RomLanguageManifest
 import com.enrpau.dualscreendex.parser.language.RomLanguageProjection
+import com.enrpau.dualscreendex.parser.language.RuntimeLanguageMemorySpace
+import com.enrpau.dualscreendex.parser.language.RuntimeLanguageSelectionCandidate
+import com.enrpau.dualscreendex.parser.language.RuntimeLanguageSelectionResolver
+import com.enrpau.dualscreendex.parser.language.RuntimeLanguageValueMapping
 import com.enrpau.dualscreendex.parser.model.CapabilityEvidence
 import com.enrpau.dualscreendex.parser.model.CapabilityReviewStatus
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
@@ -128,6 +132,47 @@ import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 class CatalogStoreTest {
+    @Test
+    fun runtimeLanguageSelectionSurvivesSqliteCloseAndReopen() {
+        val catalog = runtimeLanguageCatalog()
+        val runtimeSelection = requireNotNull(catalog.languageManifest.runtimeSelection)
+        val file = newRoot().resolve("runtime-language.sqlite").toFile()
+
+        JdbcCatalogDatabaseFactory.open(file).use { database ->
+            CatalogWriter(database).write(
+                catalog,
+                CatalogSourceMetadata.direct("Synthetic.gbc", 32768, "SYNTHETIC"),
+                CatalogWriteProgress.complete(),
+            )
+        }
+        val reopened = JdbcCatalogDatabaseFactory.open(file).use { database ->
+            requireNotNull(CatalogReader(database).readComplete()).catalog
+        }
+
+        assertEquals(catalog, reopened)
+        assertEquals(runtimeSelection, reopened.languageManifest.runtimeSelection)
+    }
+
+    @Test
+    fun malformedPersistedRuntimeLanguageSelectionFailsClosed() {
+        val catalog = runtimeLanguageCatalog()
+        val file = newRoot().resolve("malformed-runtime-language.sqlite").toFile()
+        JdbcCatalogDatabaseFactory.open(file).use { database ->
+            CatalogWriter(database).write(
+                catalog,
+                CatalogSourceMetadata.direct("Synthetic.gbc", 32768, "SYNTHETIC"),
+                CatalogWriteProgress.complete(),
+            )
+        }
+        mutateTask417Section(file, "language_manifest") { json ->
+            json.getAsJsonObject("runtimeSelection").addProperty("readWidthBytes", 3)
+        }
+
+        JdbcCatalogDatabaseFactory.open(file).use { database ->
+            assertThrows(IllegalArgumentException::class.java) { CatalogReader(database).readComplete() }
+        }
+    }
+
     @Test
     fun task417ContextDependentFixedOverlayLabelIsRejectedAfterSqliteReopen() {
         val file = task417StoredMapFixture("Unproven room title")
@@ -250,6 +295,31 @@ class CatalogStoreTest {
                 assertThrows(mutation, IllegalArgumentException::class.java) { CatalogReader(database).readComplete() }
             }
         }
+    }
+
+    private fun runtimeLanguageCatalog(): ParsedCatalog {
+        val base = task417MixedCatalog()
+        val runtimeSelection = requireNotNull(RuntimeLanguageSelectionResolver.resolve(
+            manifest = base.languageManifest,
+            candidates = listOf(RuntimeLanguageSelectionCandidate(
+                memorySpace = RuntimeLanguageMemorySpace.GB_WRAM,
+                offset = 0x123,
+                readWidthBytes = 1,
+                mask = 0x01,
+                shift = 0,
+                defaultValue = 0,
+                mappings = listOf(
+                    RuntimeLanguageValueMapping(0, LanguageTag.JAPANESE),
+                    RuntimeLanguageValueMapping(1, LanguageTag.KOREAN),
+                ),
+                evidence = listOf(
+                    LanguageEvidence(LanguageEvidenceKind.COMPILED_CONSUMER, "compiled selector load", 100),
+                    LanguageEvidence(LanguageEvidenceKind.TABLE_RELATIONSHIP, "localized table selection", 100),
+                ),
+            )),
+        ))
+        val manifest = base.languageManifest.withRuntimeSelection(runtimeSelection)
+        return base.copy(localization = CatalogLocalization(manifest, base.localizedTextByLanguage))
     }
 
     private fun task417MixedCatalog(): ParsedCatalog {

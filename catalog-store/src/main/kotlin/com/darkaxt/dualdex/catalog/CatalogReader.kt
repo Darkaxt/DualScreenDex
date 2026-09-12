@@ -29,6 +29,11 @@ import com.enrpau.dualscreendex.parser.language.LanguageTag
 import com.enrpau.dualscreendex.parser.language.LocalizedTableLayout
 import com.enrpau.dualscreendex.parser.language.RomLanguageManifest
 import com.enrpau.dualscreendex.parser.language.RomLanguageProjection
+import com.enrpau.dualscreendex.parser.language.RuntimeLanguageMemorySpace
+import com.enrpau.dualscreendex.parser.language.RuntimeLanguageSelectionCandidate
+import com.enrpau.dualscreendex.parser.language.RuntimeLanguageSelectionLayout
+import com.enrpau.dualscreendex.parser.language.RuntimeLanguageSelectionResolver
+import com.enrpau.dualscreendex.parser.language.RuntimeLanguageValueMapping
 import com.enrpau.dualscreendex.parser.model.CapabilityEvidence
 import com.enrpau.dualscreendex.parser.model.CapabilityReviewStatus
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
@@ -495,22 +500,89 @@ private data class StoredLanguageProjection(
     }
 }
 
+private data class StoredRuntimeLanguageValueMapping(
+    val value: Int? = null,
+    val language: String? = null,
+) {
+    fun toModel() = RuntimeLanguageValueMapping(
+        value = requireNotNull(value) { "persisted runtime language mapping requires a value" },
+        language = LanguageTag.of(requireNotNull(language) {
+            "persisted runtime language mapping requires a language"
+        }),
+    )
+
+    companion object {
+        fun from(value: RuntimeLanguageValueMapping) = StoredRuntimeLanguageValueMapping(
+            value = value.value,
+            language = value.language.value,
+        )
+    }
+}
+
+private data class StoredRuntimeLanguageSelection(
+    val memorySpace: RuntimeLanguageMemorySpace? = null,
+    val offset: Int? = null,
+    val readWidthBytes: Int? = null,
+    val mask: Int? = null,
+    val shift: Int? = null,
+    val defaultValue: Int? = null,
+    val mappings: List<StoredRuntimeLanguageValueMapping?>? = null,
+    val evidence: List<StoredLanguageEvidence?>? = null,
+) {
+    fun toCandidate() = RuntimeLanguageSelectionCandidate(
+        memorySpace = requireNotNull(memorySpace) { "persisted runtime language selection requires a memory space" },
+        offset = requireNotNull(offset) { "persisted runtime language selection requires an offset" },
+        readWidthBytes = requireNotNull(readWidthBytes) { "persisted runtime language selection requires a read width" },
+        mask = requireNotNull(mask) { "persisted runtime language selection requires a mask" },
+        shift = requireNotNull(shift) { "persisted runtime language selection requires a shift" },
+        defaultValue = requireNotNull(defaultValue) { "persisted runtime language selection requires a default value" },
+        mappings = requireNotNull(mappings) { "persisted runtime language selection requires mappings" }.map { item ->
+            requireNotNull(item) { "persisted runtime language selection contains a null mapping" }.toModel()
+        },
+        evidence = requireNotNull(evidence) { "persisted runtime language selection requires evidence" }.map { item ->
+            requireNotNull(item) { "persisted runtime language selection contains null evidence" }.toModel()
+        },
+    )
+
+    companion object {
+        fun from(value: RuntimeLanguageSelectionLayout) = StoredRuntimeLanguageSelection(
+            memorySpace = value.memorySpace,
+            offset = value.offset,
+            readWidthBytes = value.readWidthBytes,
+            mask = value.mask,
+            shift = value.shift,
+            defaultValue = value.defaultValue,
+            mappings = value.mappings.map(StoredRuntimeLanguageValueMapping::from),
+            evidence = value.evidence.map(StoredLanguageEvidence::from),
+        )
+    }
+}
+
 private data class StoredLanguageManifest(
     val defaultLanguage: String? = null,
     val projections: List<StoredLanguageProjection?>? = null,
     val status: LanguageResolutionStatus? = null,
     val diagnostics: List<String?>? = null,
+    val runtimeSelection: StoredRuntimeLanguageSelection? = null,
 ) {
-    fun toModel() = RomLanguageManifest(
-        defaultLanguage = defaultLanguage?.let(LanguageTag::of),
-        projections = requireNotNull(projections) { "persisted language manifest requires projections" }.map { item ->
-            requireNotNull(item) { "persisted language manifest contains a null projection" }.toModel()
-        },
-        status = requireNotNull(status) { "persisted language manifest requires a status" },
-        diagnostics = requireNotNull(diagnostics) { "persisted language manifest requires diagnostics" }.map { item ->
-            requireNotNull(item) { "persisted language manifest contains a null diagnostic" }
-        },
-    )
+    fun toModel(): RomLanguageManifest {
+        val manifest = RomLanguageManifest(
+            defaultLanguage = defaultLanguage?.let(LanguageTag::of),
+            projections = requireNotNull(projections) { "persisted language manifest requires projections" }.map { item ->
+                requireNotNull(item) { "persisted language manifest contains a null projection" }.toModel()
+            },
+            status = requireNotNull(status) { "persisted language manifest requires a status" },
+            diagnostics = requireNotNull(diagnostics) { "persisted language manifest requires diagnostics" }.map { item ->
+                requireNotNull(item) { "persisted language manifest contains a null diagnostic" }
+            },
+        )
+        val storedRuntimeSelection = runtimeSelection ?: return manifest
+        val resolved = requireNotNull(RuntimeLanguageSelectionResolver.resolve(
+            manifest = manifest,
+            candidates = listOf(storedRuntimeSelection.toCandidate()),
+        )) { "persisted runtime language selection is invalid" }
+        return manifest.withRuntimeSelection(resolved)
+    }
 
     companion object {
         fun from(value: RomLanguageManifest) = StoredLanguageManifest(
@@ -518,6 +590,7 @@ private data class StoredLanguageManifest(
             projections = value.projections.map(StoredLanguageProjection::from),
             status = value.status,
             diagnostics = value.diagnostics,
+            runtimeSelection = value.runtimeSelection?.let(StoredRuntimeLanguageSelection::from),
         )
     }
 }
