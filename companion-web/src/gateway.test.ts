@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { action, bootstrap, events } from './gateway';
-import type { State } from './models';
+import { action, applyLanguageOverlay, bootstrap, events, languageOverlay } from './gateway';
+import type { ActiveLanguageBinding, Catalog, CatalogLanguageOverlay, State } from './models';
 
 function response(
   payload: unknown,
@@ -143,6 +143,77 @@ describe('production state heartbeat', () => {
     expect(onRefreshRequired).toHaveBeenCalledOnce();
     expect(onState).not.toHaveBeenCalled();
     stop();
+  });
+});
+
+describe('active language overlays', () => {
+  const binding: ActiveLanguageBinding = {
+    romSha256: 'a'.repeat(64),
+    contextEpoch: 3,
+    stateVersion: 12,
+    language: 'fr',
+    authority: 'LIVE_RAM',
+    projectionVersion: 8,
+  };
+  const overlay: CatalogLanguageOverlay = {
+    binding,
+    species: { 1: { name: 'Bulbizarre', description: 'Une graine.' } },
+    moves: { 10: { name: 'Charge', description: 'Une attaque.' } },
+    abilities: { 20: { name: 'Engrais', description: 'Renforce Plante.' } },
+    types: { 12: { name: 'PLANTE' } },
+    natures: { 3: { name: 'Brave' } },
+    items: { 4: { name: 'Poké Ball' } },
+    areas: { 101: { name: 'Route 1' } },
+    localMaps: { route: { name: 'Route 1' } },
+    worldRegions: { kanto: { name: 'Kanto' } },
+    worldLocations: [{ regionKey: 'kanto', locationKey: 'route', name: 'Route 1' }],
+  };
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('accepts only an overlay with the exact current binding', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(response(overlay))
+      .mockResolvedValueOnce(response({
+        ...overlay,
+        binding: { ...binding, stateVersion: binding.stateVersion! - 1 },
+      }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(languageOverlay(binding)).resolves.toEqual(overlay);
+    await expect(languageOverlay(binding)).resolves.toBeNull();
+    expect(fetchMock).toHaveBeenCalledWith('/api/language-overlay');
+  });
+
+  it('replaces only localized catalog text', () => {
+    const catalog = {
+      hash: binding.romSha256,
+      species: [{
+        id: 1,
+        dex: 1,
+        name: 'Bulbasaur',
+        description: 'A seed.',
+        abilities: [{ id: 20, name: 'Overgrow', description: 'Boosts Grass.', mechanics: [] }],
+        evolutions: [{ targetSpeciesId: 1, targetName: 'Bulbasaur' }],
+      }],
+      moves: [{ id: 10, name: 'Tackle', description: 'An attack.' }],
+      types: [{ id: 12, name: 'GRASS' }],
+      natures: [{ id: 3, name: 'Hardy' }],
+      balls: [{ id: 4, name: 'Poke Ball' }],
+      areas: [{ id: 101, name: 'Route One' }],
+      localMaps: [{ key: 'route', displayName: 'Route One' }],
+      worldMaps: [{ key: 'kanto', displayName: 'KANTO', locations: [{ key: 'route', displayName: 'Route One' }] }],
+    } as unknown as Catalog;
+
+    const localized = applyLanguageOverlay(catalog, overlay);
+
+    expect(localized.species[0].name).toBe('Bulbizarre');
+    expect(localized.species[0].abilities[0].name).toBe('Engrais');
+    expect(localized.species[0].evolutions[0].targetName).toBe('Bulbizarre');
+    expect(localized.moves[0].name).toBe('Charge');
+    expect(localized.types[0].name).toBe('PLANTE');
+    expect(localized.localMaps?.[0].displayName).toBe('Route 1');
+    expect(localized.worldMaps?.[0].locations[0].displayName).toBe('Route 1');
   });
 });
 

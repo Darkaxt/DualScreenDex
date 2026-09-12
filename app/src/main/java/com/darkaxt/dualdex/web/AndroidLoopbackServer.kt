@@ -289,6 +289,7 @@ class AndroidLoopbackServer(
         request.method == "GET" && request.path in additionalGetRoutes ->
             jsonResponse(requireNotNull(additionalGetRoutes[request.path]).invoke())
         request.method == "GET" && request.path == "/api/bootstrap" -> jsonResponse(runtime.bootstrap())
+        request.method == "GET" && request.path == "/api/language-overlay" -> jsonResponse(runtime.activeLanguageOverlay())
         request.method == "GET" && request.path == "/api/state" -> stateResponse(request)
         request.method == "GET" && request.path == "/api/specimens" -> jsonResponse(
             runtime.specimens(requireNotNull(request.query["speciesId"]?.toIntOrNull()) { "speciesId is required" }),
@@ -865,6 +866,7 @@ class AndroidLoopbackServer(
         private val API_ENDPOINTS = setOf(
             "/api/health",
             "/api/bootstrap",
+            "/api/language-overlay",
             "/api/state",
             "/api/specimens",
             "/api/actions",

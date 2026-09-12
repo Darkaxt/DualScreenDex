@@ -137,6 +137,7 @@ private fun ProductionCompanionRuntime.beginTransientTestSession(): Pair<Unified
         gen3RuntimeMemoryLayout = battleContext.gen3RuntimeMemoryLayout,
         liveAreaMemoryLayout = battleContext.liveAreaMemoryLayout,
         saveParseContext = battleContext.saveParseContext,
+        runtimeLanguageSelection = battleContext.runtimeLanguageSelection,
     )
     return stateOwner().also { it.beginSession(context) } to context
 }

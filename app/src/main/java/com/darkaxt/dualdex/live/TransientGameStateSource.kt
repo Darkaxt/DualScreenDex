@@ -41,6 +41,7 @@ enum class ResolvedGameSection {
     PARTY,
     OVERWORLD,
     BATTLE,
+    LANGUAGE,
 }
 
 data class ResolvedGameStateUpdate(

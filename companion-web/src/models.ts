@@ -380,6 +380,7 @@ export interface State {
   catalogReady: boolean;
   catalogName: string | null;
   catalogHash?: string | null;
+  activeLanguage?: ActiveLanguageBinding | null;
   mapperAvailable?: boolean;
   error: string | null;
   activeRulesetId: string | null;
@@ -587,6 +588,34 @@ export interface LocalizedCapability {
   validatorReviewRecommended: boolean;
 }
 
+export interface ActiveLanguageBinding {
+  romSha256: string;
+  contextEpoch: number | null;
+  stateVersion: number | null;
+  language: string;
+  authority: 'ROM_DEFAULT' | 'LIVE_RAM';
+  projectionVersion: number;
+}
+
+export interface LocalizedEntityText {
+  name?: string | null;
+  description?: string | null;
+}
+
+export interface CatalogLanguageOverlay {
+  binding: ActiveLanguageBinding;
+  species: Record<number, LocalizedEntityText>;
+  moves: Record<number, LocalizedEntityText>;
+  abilities: Record<number, LocalizedEntityText>;
+  types: Record<number, LocalizedEntityText>;
+  natures: Record<number, LocalizedEntityText>;
+  items: Record<number, LocalizedEntityText>;
+  areas: Record<number, LocalizedEntityText>;
+  localMaps: Record<string, LocalizedEntityText>;
+  worldRegions: Record<string, LocalizedEntityText>;
+  worldLocations: { regionKey: string; locationKey: string; name?: string | null }[];
+}
+
 export interface LanguageProjection {
   language: string;
   status: string;
@@ -603,6 +632,7 @@ export interface LanguageBootstrap {
   authority: 'ROM_DEFAULT' | 'LIVE_RAM';
   activeOverlayVersion: number | null;
   projections: LanguageProjection[];
+  binding?: ActiveLanguageBinding | null;
 }
 
 export interface Bootstrap {

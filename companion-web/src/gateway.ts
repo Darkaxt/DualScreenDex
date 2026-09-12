@@ -1,4 +1,13 @@
-import type { Bootstrap, DiagnosticView, SpecimenCollectionView, State } from './models';
+import type {
+  ActiveLanguageBinding,
+  Bootstrap,
+  Catalog,
+  CatalogLanguageOverlay,
+  DiagnosticView,
+  LocalizedEntityText,
+  SpecimenCollectionView,
+  State,
+} from './models';
 
 export type ConnectionStatus = 'CONNECTED' | 'RECONNECTING' | 'FAILED';
 
@@ -36,6 +45,94 @@ export async function diagnostics(speciesId?: number | null, moveId?: number | n
 export async function specimens(speciesId: number): Promise<SpecimenCollectionView> {
   const response = await fetch(`/api/specimens?speciesId=${encodeURIComponent(speciesId)}`);
   return requestJson(response, 'Specimens');
+}
+
+export async function languageOverlay(
+  expected: ActiveLanguageBinding,
+): Promise<CatalogLanguageOverlay | null> {
+  const response = await fetch('/api/language-overlay');
+  const overlay = await requestJson<CatalogLanguageOverlay>(response, 'Language overlay');
+  return sameLanguageBinding(overlay?.binding, expected) ? overlay : null;
+}
+
+export function applyLanguageOverlay(
+  catalog: Catalog,
+  overlay: CatalogLanguageOverlay,
+): Catalog {
+  const speciesNames = new Map(catalog.species.map(species => [
+    species.id,
+    localizedName(overlay.species, species.id, `#${species.id}`),
+  ]));
+  return {
+    ...catalog,
+    species: catalog.species.map(species => ({
+      ...species,
+      name: speciesNames.get(species.id) ?? `#${species.id}`,
+      description: overlay.species[species.id]?.description ?? null,
+      abilities: species.abilities.flatMap(ability => {
+        const text = overlay.abilities[ability.id];
+        return text?.name ? [{ ...ability, name: text.name, description: text.description ?? null }] : [];
+      }),
+      evolutions: species.evolutions.map(evolution => ({
+        ...evolution,
+        targetName: speciesNames.get(evolution.targetSpeciesId) ?? `Species ${evolution.targetSpeciesId}`,
+      })),
+    })),
+    moves: catalog.moves.map(move => ({
+      ...move,
+      name: localizedName(overlay.moves, move.id, `#${move.id}`),
+      description: overlay.moves[move.id]?.description ?? null,
+    })),
+    types: catalog.types.map(type => ({
+      ...type,
+      name: localizedName(overlay.types, type.id, `TYPE ${type.id}`),
+    })),
+    natures: catalog.natures?.map(nature => ({
+      ...nature,
+      name: overlay.natures[nature.id]?.name ?? null,
+    })),
+    balls: catalog.balls.map(ball => ({
+      ...ball,
+      name: localizedName(overlay.items, ball.id, `Ball ${ball.id}`),
+    })),
+    areas: catalog.areas.map(area => ({
+      ...area,
+      name: localizedName(overlay.areas, area.id, `Area ${area.id}`),
+    })),
+    localMaps: catalog.localMaps?.map(map => ({
+      ...map,
+      displayName: overlay.localMaps[map.key]?.name ?? null,
+    })),
+    worldMaps: catalog.worldMaps?.map(region => ({
+      ...region,
+      displayName: overlay.worldRegions[region.key]?.name ?? null,
+      locations: region.locations.map(location => ({
+        ...location,
+        displayName: overlay.worldLocations.find(text =>
+          text.regionKey === region.key && text.locationKey === location.key
+        )?.name ?? null,
+      })),
+    })),
+  };
+}
+
+function localizedName(
+  values: Record<number, LocalizedEntityText>,
+  id: number,
+  fallback: string,
+): string {
+  return values[id]?.name ?? fallback;
+}
+
+function sameLanguageBinding(value: unknown, expected: ActiveLanguageBinding): boolean {
+  if (!isRecord(value)) return false;
+  return typeof value.romSha256 === 'string' &&
+    value.romSha256.toLowerCase() === expected.romSha256.toLowerCase() &&
+    value.contextEpoch === expected.contextEpoch &&
+    value.stateVersion === expected.stateVersion &&
+    value.language === expected.language &&
+    value.authority === expected.authority &&
+    value.projectionVersion === expected.projectionVersion;
 }
 
 export function events(

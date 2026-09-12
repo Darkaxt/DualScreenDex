@@ -1456,18 +1456,29 @@ class ApiViewBuilderTest {
             ),
         )
 
+        val binding = ActiveLanguageBindingView(
+            romSha256 = catalog.romSha256,
+            contextEpoch = 3,
+            stateVersion = 12,
+            language = LanguageTag.FRENCH.value,
+            authority = "LIVE_RAM",
+            projectionVersion = 8,
+        )
         val bootstrap = ApiViewBuilder.bootstrap(
             catalog,
-            ApiViewBuilder.state(AppSnapshot(), catalog),
+            ApiViewBuilder.state(AppSnapshot(), catalog, activeLanguage = binding),
+            activeLanguage = binding,
         )
 
-        assertEquals(listOf("Bulbasaur", "#2"), bootstrap.catalog!!.species.map { it.name })
+        assertEquals(listOf("#1", "Herbizarre"), bootstrap.catalog!!.species.map { it.name })
         val language = requireNotNull(bootstrap.language)
         assertEquals("RESOLVED", language.manifestStatus)
         assertEquals("en", language.defaultLanguage)
-        assertEquals("en", language.activeLanguage)
-        assertEquals("ROM_DEFAULT", language.authority)
-        assertEquals(7L, language.activeOverlayVersion)
+        assertEquals("fr", language.activeLanguage)
+        assertEquals("LIVE_RAM", language.authority)
+        assertEquals(8L, language.activeOverlayVersion)
+        assertEquals(binding, language.binding)
+        assertEquals(binding, bootstrap.state.activeLanguage)
         assertEquals(listOf("en", "fr"), language.projections.map { it.language })
         assertEquals(
             "PARTIAL",
@@ -1481,6 +1492,12 @@ class ApiViewBuilderTest {
         assertEquals(0, regionNames.coveredRecords)
         assertEquals(0, regionNames.expectedRecords)
         assertNull(bootstrap.catalog.worldMaps.single().displayName)
+
+        val activeOverlay = requireNotNull(ApiViewBuilder.languageOverlay(catalog, binding))
+        assertNull(activeOverlay.species.getValue(1).name)
+        assertEquals("Herbizarre", activeOverlay.species.getValue(2).name)
+        assertNull(ApiViewBuilder.languageOverlay(catalog, binding.copy(projectionVersion = 7)))
+        assertNull(ApiViewBuilder.languageOverlay(catalog, binding.copy(romSha256 = "b".repeat(64))))
     }
 
     private fun identityOnlyTrainerCard(name: String, gender: Int) = TrainerCardState(

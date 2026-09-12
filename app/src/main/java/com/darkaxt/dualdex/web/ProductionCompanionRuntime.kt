@@ -14,13 +14,16 @@ import com.darkaxt.dualdex.battle.liveAreaMemoryLayout
 import com.darkaxt.dualdex.battle.BattleCatalogView
 import com.darkaxt.dualdex.battle.BattleMove
 import com.darkaxt.dualdex.battle.BattleSpecies
+import com.darkaxt.dualdex.battle.ContentLanguageReadOutcome
 import com.darkaxt.dualdex.battle.RuntimeMapPosition
 import com.darkaxt.dualdex.battle.Gen3BattleUiMemoryLayout
 import com.darkaxt.dualdex.battle.Gen3RuntimeMemoryLayout
 import com.darkaxt.dualdex.battle.TargetMode
 import com.enrpau.dualscreendex.companion.CompanionGateway
+import com.enrpau.dualscreendex.companion.api.ActiveLanguageBindingView
 import com.enrpau.dualscreendex.companion.api.ApiViewBuilder
 import com.enrpau.dualscreendex.companion.api.BootstrapView
+import com.enrpau.dualscreendex.companion.api.CatalogLanguageOverlayView
 import com.enrpau.dualscreendex.companion.api.DiagnosticView
 import com.enrpau.dualscreendex.companion.api.RetroArchView
 import com.enrpau.dualscreendex.companion.api.SaveRamView
@@ -283,8 +286,11 @@ class ProductionCompanionRuntime(
     private fun applyResolvedGameState(update: ResolvedGameStateUpdate) {
         val snapshot = update.snapshot
         val changed = update.changedSections
+        val priorLanguage = activeLanguageBinding(catalog)
         resolvedPublications.incrementAndGet()
         resolvedGameState = snapshot
+        val nextLanguage = activeLanguageBinding(catalog)
+        if (!priorLanguage.sameProjectionAs(nextLanguage)) advanceDeliveryVersion()
         if (ResolvedGameSection.RECOVERY in changed) resolvedRecoverySections.incrementAndGet()
         if (ResolvedGameSection.PLAYER in changed) resolvedPlayerSections.incrementAndGet()
         if (ResolvedGameSection.PARTY in changed) resolvedPartySections.incrementAndGet()
@@ -787,22 +793,71 @@ class ProductionCompanionRuntime(
         }
     }
 
+    private fun activeLanguageBinding(currentCatalog: ParsedCatalog?): ActiveLanguageBindingView? {
+        currentCatalog ?: return null
+        val defaultLanguage = currentCatalog.languageManifest.defaultLanguage ?: return null
+        val matchingState = resolvedGameState?.takeIf { state ->
+            currentCatalog.romSha256.equals(state.romIdentity, ignoreCase = true)
+        }
+        val runtimeSelection = currentCatalog.languageManifest.runtimeSelection
+        val liveLanguage = (matchingState?.contentLanguage as? ContentLanguageReadOutcome.Live)?.language
+            ?.takeIf { language ->
+                runtimeSelection?.mappings?.any { it.language == language } == true &&
+                    currentCatalog.localizedText(language) != null
+            }
+        val activeLanguage = liveLanguage ?: defaultLanguage
+        val overlay = currentCatalog.localizedText(activeLanguage) ?: return null
+        return ActiveLanguageBindingView(
+            romSha256 = currentCatalog.romSha256,
+            contextEpoch = matchingState?.contextEpoch,
+            stateVersion = matchingState?.stateVersion,
+            language = activeLanguage.value,
+            authority = if (liveLanguage != null) "LIVE_RAM" else "ROM_DEFAULT",
+            projectionVersion = overlay.overlayVersion,
+        )
+    }
+
+    private fun ActiveLanguageBindingView?.sameProjectionAs(other: ActiveLanguageBindingView?): Boolean =
+        this?.romSha256.equals(other?.romSha256, ignoreCase = true) &&
+            this?.contextEpoch == other?.contextEpoch &&
+            this?.language == other?.language &&
+            this?.authority == other?.authority &&
+            this?.projectionVersion == other?.projectionVersion
+
     @Synchronized
     fun bootstrap(): BootstrapView {
         val snapshot = gateway.bootstrap()
-        return ApiViewBuilder.bootstrap(catalog, stateView(snapshot))
+        val activeLanguage = activeLanguageBinding(catalog)
+        return ApiViewBuilder.bootstrap(
+            catalog = catalog,
+            state = stateView(snapshot),
+            activeLanguage = activeLanguage,
+        )
+    }
+
+    @Synchronized
+    fun activeLanguageOverlay(): CatalogLanguageOverlayView {
+        val currentCatalog = requireNotNull(catalog) { "catalog is unavailable" }
+        val binding = requireNotNull(activeLanguageBinding(currentCatalog)) {
+            "active language projection is unavailable"
+        }
+        return requireNotNull(ApiViewBuilder.languageOverlay(currentCatalog, binding)) {
+            "active language projection changed"
+        }
     }
 
     @Synchronized
     fun stateView(snapshot: AppSnapshot = gateway.bootstrap()): StateView {
         observeGatewayVersion(snapshot.version)
         val currentCatalog = catalog
+        val activeLanguage = activeLanguageBinding(currentCatalog)
         cachedState?.let { cached ->
             if (
                 cached.snapshotVersion == snapshot.version &&
                 cached.catalog === currentCatalog &&
                 cached.retroArch == retroArch &&
-                cached.saveRam == saveRam
+                cached.saveRam == saveRam &&
+                cached.activeLanguage == activeLanguage
             ) return cached.view
         }
         val active = resolveRuleset(snapshot.settings.ruleset)
@@ -872,7 +927,10 @@ class ProductionCompanionRuntime(
             trainerProgress = trainerProgress,
             mapperAvailable = true,
             version = deliveryVersion,
-        ).also { view -> cachedState = CachedState(snapshot.version, currentCatalog, retroArch, saveRam, view) }
+            activeLanguage = activeLanguage,
+        ).also { view ->
+            cachedState = CachedState(snapshot.version, currentCatalog, retroArch, saveRam, activeLanguage, view)
+        }
     }
 
     @Synchronized
@@ -1990,6 +2048,7 @@ class ProductionCompanionRuntime(
         val catalog: ParsedCatalog?,
         val retroArch: RetroArchView,
         val saveRam: SaveRamView,
+        val activeLanguage: ActiveLanguageBindingView?,
         val view: StateView,
     )
 

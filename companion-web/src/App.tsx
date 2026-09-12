@@ -1,7 +1,15 @@
 import type { ComponentType, JSX } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { action, bootstrap, events, uploadRom, type ConnectionStatus } from './gateway';
-import type { Bootstrap, Catalog, State } from './models';
+import {
+  action,
+  applyLanguageOverlay,
+  bootstrap,
+  events,
+  languageOverlay,
+  uploadRom,
+  type ConnectionStatus,
+} from './gateway';
+import type { ActiveLanguageBinding, Bootstrap, Catalog, State } from './models';
 import { deriveSemanticTheme, semanticThemeCssVariables } from './themeContrast';
 import { decodeRouteHash, encodeRouteHash, popRoute, pushRoute, type UiRoute } from './navigation';
 import { RouteHeadingFocusContext } from './components';
@@ -44,6 +52,11 @@ const emptyState: State = {
   retroArch: { storageGrant: 'MISSING', configGrant: 'MISSING', romGrant: 'MISSING', configState: 'NOT_CONFIGURED', restartRequired: false, connection: 'DISCONNECTED', systemId: null, gameBasename: null, contentCrc32: null, resolution: 'NO_CONTENT', activeSource: null, savefileDirectory: null, indexedRoms: 0, message: null }
 };
 
+function languageProjectionKey(binding: ActiveLanguageBinding | null | undefined): string {
+  if (!binding) return '';
+  return [binding.romSha256.toLowerCase(), binding.contextEpoch, binding.language, binding.projectionVersion].join(':');
+}
+
 export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<DevelopmentToolsProps> } = {}) {
   const showDevelopmentTools = DevelopmentTools != null;
   const [catalog, setCatalog] = useState<Catalog | null>(null);
@@ -65,6 +78,8 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
   const [specimenScroll, setSpecimenScroll] = useState<{ key: string; top: number }>({ key: '', top: 0 });
   const lastCatalogRefresh = useRef('');
   const bootstrapRequestRef = useRef(0);
+  const languageOverlayRequestRef = useRef(0);
+  const appliedLanguageProjectionRef = useRef('');
   const battleWasForegroundRef = useRef(false);
   const activeRoute = routes.at(-1);
   const routesRef = useRef(routes);
@@ -217,6 +232,10 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
     const previousCatalogHash = catalogRef.current?.hash ?? null;
     const nextCatalogHash = value.catalog?.hash ?? null;
     const catalogChanged = previousCatalogHash !== nextCatalogHash;
+    languageOverlayRequestRef.current += 1;
+    appliedLanguageProjectionRef.current = languageProjectionKey(
+      value.language?.binding ?? value.state.activeLanguage,
+    );
     catalogRef.current = value.catalog;
     setCatalog(value.catalog);
     if (!routeCatalogInitializedRef.current || catalogChanged) {
@@ -265,6 +284,47 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
     };
   }
 
+  function applyIncomingState(incoming: State) {
+    if (incoming.version <= stateVersionRef.current) return;
+    const binding = incoming.activeLanguage;
+    const projectionKey = languageProjectionKey(binding);
+    const currentCatalog = catalogRef.current;
+    if (
+      binding && currentCatalog &&
+      currentCatalog.hash.toLowerCase() === binding.romSha256.toLowerCase() &&
+      projectionKey !== appliedLanguageProjectionRef.current
+    ) {
+      stateVersionRef.current = incoming.version;
+      const requestId = ++languageOverlayRequestRef.current;
+      void languageOverlay(binding).then(overlay => {
+        if (requestId !== languageOverlayRequestRef.current) return;
+        if (!overlay) {
+          retryBootstrap('Your game guide could not be refreshed. Please try again.', true);
+          return;
+        }
+        const activeCatalog = catalogRef.current;
+        if (!activeCatalog || activeCatalog.hash.toLowerCase() !== binding.romSha256.toLowerCase()) return;
+        const localized = applyLanguageOverlay(activeCatalog, overlay);
+        catalogRef.current = localized;
+        appliedLanguageProjectionRef.current = projectionKey;
+        stateRef.current = incoming;
+        setCatalog(localized);
+        setState(incoming);
+      }, failure => {
+        if (requestId !== languageOverlayRequestRef.current) return;
+        reportFailure(
+          failure,
+          'Your game guide could not be refreshed. Please try again.',
+          () => retryBootstrap('Your game guide could not be refreshed. Please try again.', true),
+        );
+      });
+      return;
+    }
+    stateVersionRef.current = incoming.version;
+    stateRef.current = incoming;
+    setState(incoming);
+  }
+
   function retryBootstrap(message: string, resetStateVersion = false, showBusy = false) {
     if (showBusy) setBusy(true);
     const retry = requestLatestBootstrap(bootstrap, resetStateVersion);
@@ -293,11 +353,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
       },
     );
     return events(() => stateVersionRef.current, incoming => {
-      setState(current => {
-        const next = incoming.version > current.version ? incoming : current;
-        stateRef.current = next;
-        return next;
-      });
+      applyIncomingState(incoming);
       const marker = catalogRefreshMarker(incoming);
       if (marker && marker !== lastCatalogRefresh.current) {
         lastCatalogRefresh.current = marker;

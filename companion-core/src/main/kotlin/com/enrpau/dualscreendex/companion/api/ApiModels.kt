@@ -29,6 +29,8 @@ import com.enrpau.dualscreendex.parser.catalog.LearnsetNormalizer
 import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.catalog.defaultTextProjection
+import com.enrpau.dualscreendex.parser.catalog.textProjection
+import com.enrpau.dualscreendex.parser.language.LanguageTag
 import com.enrpau.dualscreendex.parser.dataset.natures.NatureStat
 import java.net.URLEncoder
 import java.nio.ByteBuffer
@@ -48,6 +50,7 @@ data class LanguageBootstrapView(
     val authority: String,
     val activeOverlayVersion: Long?,
     val projections: List<LanguageProjectionView>,
+    val binding: ActiveLanguageBindingView? = null,
 )
 
 data class LanguageProjectionView(
@@ -485,6 +488,7 @@ data class StateView(
     val trainerProgress: TrainerProgressView? = null,
     val catalogHash: String? = null,
     val mapperAvailable: Boolean = false,
+    val activeLanguage: ActiveLanguageBindingView? = null,
 )
 data class GameClockView(
     val hours: Int?,
@@ -706,14 +710,21 @@ data class RarityView(
 data class ObservedMoveView(val moveId: Int, val frequency: Int)
 
 object ApiViewBuilder {
-    fun bootstrap(catalog: ParsedCatalog?, state: StateView): BootstrapView = BootstrapView(
-        catalog = catalog?.let(::catalog),
+    fun bootstrap(
+        catalog: ParsedCatalog?,
+        state: StateView,
+        activeLanguage: ActiveLanguageBindingView? = null,
+    ): BootstrapView = BootstrapView(
+        catalog = catalog?.let { catalog(it, activeLanguage) },
         state = state,
-        language = catalog?.let(::language),
+        language = catalog?.let { language(it, activeLanguage) },
     )
 
-    fun catalog(catalog: ParsedCatalog): CatalogView {
-        val text = catalog.defaultTextProjection()
+    fun catalog(
+        catalog: ParsedCatalog,
+        activeLanguage: ActiveLanguageBindingView? = null,
+    ): CatalogView {
+        val text = activeTextProjection(catalog, activeLanguage) ?: catalog.defaultTextProjection()
         return CatalogView(
         hash = catalog.romSha256,
         crc32 = catalog.romCrc32,
@@ -963,9 +974,10 @@ object ApiViewBuilder {
         trainerProgress: TrainerProgressView? = null,
         mapperAvailable: Boolean = false,
         version: Long = snapshot.version,
+        activeLanguage: ActiveLanguageBindingView? = null,
     ): StateView {
         val effectiveAreaBaseId = snapshot.liveAreaBaseId
-        val text = catalog?.defaultTextProjection()
+        val text = catalog?.let { activeTextProjection(it, activeLanguage) ?: it.defaultTextProjection() }
         val encounterAreasById = catalog?.encounterAreas.orEmpty().associateBy { it.id }
         val selectedAreaIds = if (snapshot.filter == com.enrpau.dualscreendex.companion.model.PokedexFilter.AREA) {
             val requested = snapshot.selectedAreaIds.ifEmpty { setOfNotNull(snapshot.selectedAreaId) }
@@ -1199,6 +1211,7 @@ object ApiViewBuilder {
             trainerProgress,
             catalog?.romSha256,
             mapperAvailable,
+            activeLanguage,
         )
     }
 
@@ -1253,13 +1266,17 @@ object ApiViewBuilder {
         )
     }
 
-    private fun language(catalog: ParsedCatalog): LanguageBootstrapView {
-        val active = catalog.defaultTextProjection()
+    private fun language(
+        catalog: ParsedCatalog,
+        activeLanguage: ActiveLanguageBindingView?,
+    ): LanguageBootstrapView {
+        val active = activeTextProjection(catalog, activeLanguage) ?: catalog.defaultTextProjection()
+        val binding = activeLanguage?.takeIf { active.overlayVersion == it.projectionVersion }
         return LanguageBootstrapView(
             manifestStatus = catalog.languageManifest.status.name,
             defaultLanguage = catalog.languageManifest.defaultLanguage?.value,
             activeLanguage = active.language?.value,
-            authority = "ROM_DEFAULT",
+            authority = binding?.authority ?: "ROM_DEFAULT",
             activeOverlayVersion = active.overlayVersion,
             projections = catalog.languageManifest.projections.map { projection ->
                 val overlay = catalog.localizedText(projection.language)
@@ -1284,7 +1301,59 @@ object ApiViewBuilder {
                     },
                 )
             },
+            binding = binding,
         )
+    }
+
+    fun languageOverlay(
+        catalog: ParsedCatalog,
+        binding: ActiveLanguageBindingView,
+    ): CatalogLanguageOverlayView? {
+        val text = activeTextProjection(catalog, binding) ?: return null
+        return CatalogLanguageOverlayView(
+            binding = binding,
+            species = catalog.speciesById.mapValues { (id, _) ->
+                LocalizedEntityTextView(text.speciesName(id), text.speciesDescription(id))
+            },
+            moves = catalog.movesById.mapValues { (id, _) ->
+                LocalizedEntityTextView(text.moveName(id), text.moveDescription(id))
+            },
+            abilities = catalog.abilitiesById.mapValues { (id, _) ->
+                LocalizedEntityTextView(text.abilityName(id), text.abilityDescription(id))
+            },
+            types = catalog.typesById.mapValues { (id, _) -> LocalizedEntityTextView(text.typeName(id)) },
+            natures = catalog.naturesById.mapValues { (id, _) -> LocalizedEntityTextView(text.natureName(id)) },
+            items = catalog.captureBallsById.mapValues { (id, _) -> LocalizedEntityTextView(text.itemName(id)) },
+            areas = catalog.encounterAreas.associate { area ->
+                area.id to LocalizedEntityTextView(text.encounterAreaName(area.id))
+            },
+            localMaps = catalog.localMaps.maps.associate { map ->
+                map.key to LocalizedEntityTextView(text.localMapName(map.key))
+            },
+            worldRegions = catalog.worldMaps.regions.associate { region ->
+                region.key to LocalizedEntityTextView(text.worldRegionName(region.key))
+            },
+            worldLocations = catalog.worldMaps.regions.flatMap { region ->
+                region.locations.map { location ->
+                    LocalizedWorldLocationTextView(
+                        regionKey = region.key,
+                        locationKey = location.key,
+                        name = text.worldLocationName(region.key, location.key),
+                    )
+                }
+            },
+        )
+    }
+
+    private fun activeTextProjection(
+        catalog: ParsedCatalog,
+        binding: ActiveLanguageBindingView?,
+    ): CatalogTextProjection? {
+        binding ?: return null
+        if (!catalog.romSha256.equals(binding.romSha256, ignoreCase = true)) return null
+        val language = runCatching { LanguageTag.of(binding.language) }.getOrNull() ?: return null
+        val projection = catalog.textProjection(language) ?: return null
+        return projection.takeIf { it.overlayVersion == binding.projectionVersion }
     }
 
     private fun Int.toCss(): String = "#%02X%02X%02X%02X".format(

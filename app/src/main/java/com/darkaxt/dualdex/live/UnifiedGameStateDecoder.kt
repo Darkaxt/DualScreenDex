@@ -827,6 +827,7 @@ class UnifiedGameStateDecoder(
             }
             if (location != other.location || clock != other.clock) add(ResolvedGameSection.OVERWORLD)
             if (battle != other.battle || battleKnowledge != other.battleKnowledge) add(ResolvedGameSection.BATTLE)
+            if (contentLanguage != other.contentLanguage) add(ResolvedGameSection.LANGUAGE)
         }
     }
 

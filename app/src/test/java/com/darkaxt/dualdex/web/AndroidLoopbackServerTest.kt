@@ -8,6 +8,10 @@ import com.enrpau.dualscreendex.parser.catalog.BaseStats
 import com.enrpau.dualscreendex.parser.catalog.CaptureBallRecord
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
+import com.enrpau.dualscreendex.parser.catalog.CatalogLanguageOverlay
+import com.enrpau.dualscreendex.parser.catalog.CatalogLocalization
+import com.enrpau.dualscreendex.parser.catalog.LocalizedCapabilityState
+import com.enrpau.dualscreendex.parser.catalog.LocalizedTextCapability
 import com.enrpau.dualscreendex.parser.catalog.EncounterArea
 import com.enrpau.dualscreendex.parser.catalog.EncounterSlot
 import com.enrpau.dualscreendex.parser.catalog.IndexedMapAsset
@@ -30,6 +34,11 @@ import com.enrpau.dualscreendex.parser.catalog.WorldMapLocation
 import com.enrpau.dualscreendex.parser.catalog.WorldMapRegion
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
+import com.enrpau.dualscreendex.parser.language.LanguageResolutionStatus
+import com.enrpau.dualscreendex.parser.language.LanguageTag
+import com.enrpau.dualscreendex.parser.language.LocalizedTableLayout
+import com.enrpau.dualscreendex.parser.language.RomLanguageManifest
+import com.enrpau.dualscreendex.parser.language.RomLanguageProjection
 import com.google.gson.JsonParser
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -351,6 +360,69 @@ class AndroidLoopbackServerTest {
             assertFalse(internalMessage.contains("private mapper"))
         } finally {
             server.close()
+        }
+    }
+
+    @Test
+    fun languageOverlayRoutePublishesOnlyTheRuntimeAuthoritativeProjection() {
+        val language = LanguageTag.ENGLISH
+        val manifest = RomLanguageManifest(
+            defaultLanguage = language,
+            projections = listOf(
+                RomLanguageProjection(
+                    language = language,
+                    codecId = "fixture-en",
+                    codecVersion = 1,
+                    localizedTables = LocalizedTableLayout(),
+                    evidence = emptyList(),
+                    status = LanguageResolutionStatus.RESOLVED,
+                ),
+            ),
+            status = LanguageResolutionStatus.RESOLVED,
+        )
+        val overlay = CatalogLanguageOverlay(
+            language = language,
+            overlayVersion = 4,
+            localizedCapabilities = LocalizedTextCapability.entries.associateWith {
+                LocalizedCapabilityState.notApplicable("fixture")
+            },
+        )
+        val runtime = ProductionCompanionRuntime()
+        runtime.loadCatalog(
+            "localized.gb",
+            ParsedCatalog(
+                romSha256 = "c".repeat(64),
+                family = EngineFamily.RED_BLUE,
+                platform = Platform.GB,
+                localization = CatalogLocalization(manifest, mapOf(language to overlay)),
+            ),
+        )
+        val server = AndroidLoopbackServer(runtime) { null }
+        try {
+            server.start()
+            val base = "http://127.0.0.1:${server.address.port}"
+            val connection = URI("$base/api/language-overlay?language=fr")
+                .toURL().openConnection() as HttpURLConnection
+
+            assertEquals(200, connection.responseCode)
+            assertEquals("no-store", connection.getHeaderField("Cache-Control"))
+            val payload = JsonParser.parseString(connection.inputStream.reader().readText()).asJsonObject
+            val binding = payload.getAsJsonObject("binding")
+            assertEquals("en", binding.get("language").asString)
+            assertEquals("ROM_DEFAULT", binding.get("authority").asString)
+            assertEquals(4L, binding.get("projectionVersion").asLong)
+
+            assertApiError(
+                (URI("$base/api/language-overlay").toURL().openConnection() as HttpURLConnection).apply {
+                    requestMethod = "POST"
+                },
+                status = 405,
+                code = "METHOD_NOT_ALLOWED",
+                retryable = false,
+            )
+        } finally {
+            server.close()
+            runtime.close()
         }
     }
 

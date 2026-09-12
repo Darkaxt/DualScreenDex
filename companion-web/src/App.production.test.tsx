@@ -1,6 +1,6 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/preact';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Bootstrap } from './models';
+import type { Bootstrap, CatalogLanguageOverlay, State } from './models';
 import { decodeRouteHash, encodeRouteHash } from './navigation';
 
 const fixture: Bootstrap = {
@@ -48,6 +48,8 @@ vi.mock('./gateway', () => ({
   bootstrap: vi.fn(async () => fixture),
   action: vi.fn(async (type: string, values: Record<string, unknown> = {}) => ({ ...fixture.state, screen: type === 'SCREEN' ? values.screen : fixture.state.screen })),
   events: vi.fn(() => () => undefined),
+  languageOverlay: vi.fn(async () => null),
+  applyLanguageOverlay: vi.fn((catalog: unknown) => catalog),
   uploadRom: vi.fn(async () => fixture),
   diagnostics: vi.fn(async () => ({
     romName: fixture.state.catalogName, sha256: fixture.catalog!.hash, crc32: fixture.catalog!.crc32,
@@ -56,7 +58,7 @@ vi.mock('./gateway', () => ({
   }))
 }));
 
-import { action, bootstrap, events, uploadRom } from './gateway';
+import { action, applyLanguageOverlay, bootstrap, events, languageOverlay, uploadRom } from './gateway';
 import type { ConnectionStatus } from './gateway';
 import { App, catalogRefreshMarker, loadingModuleLabel, loadingOriginClass } from './App';
 
@@ -94,6 +96,36 @@ describe('production application shell', () => {
 
     await Promise.resolve();
     expect(document.querySelector('.production-device')?.getAttribute('data-theme')).toBe('game');
+  });
+
+  it('lazily applies an exactly bound language overlay', async () => {
+    let publishState!: (state: State) => void;
+    vi.mocked(events).mockImplementationOnce((_currentVersion, onState) => {
+      publishState = onState;
+      return () => undefined;
+    });
+    const binding = {
+      romSha256: fixture.catalog!.hash,
+      contextEpoch: 2,
+      stateVersion: 9,
+      language: 'fr',
+      authority: 'LIVE_RAM' as const,
+      projectionVersion: 8,
+    };
+    const overlay: CatalogLanguageOverlay = {
+      binding,
+      species: {}, moves: {}, abilities: {}, types: {}, natures: {}, items: {}, areas: {},
+      localMaps: {}, worldRegions: {}, worldLocations: [],
+    };
+    vi.mocked(languageOverlay).mockResolvedValueOnce(overlay);
+    render(<App />);
+    await waitFor(() => expect(publishState).toBeTypeOf('function'));
+
+    act(() => publishState({ ...fixture.state, version: 2, activeLanguage: binding }));
+
+    await waitFor(() => expect(languageOverlay).toHaveBeenCalledWith(binding));
+    expect(applyLanguageOverlay).toHaveBeenCalledWith(fixture.catalog, overlay);
+    expect(bootstrap).toHaveBeenCalledTimes(1);
   });
 
   it('keeps ROM diagnostics out of the production shell', async () => {
