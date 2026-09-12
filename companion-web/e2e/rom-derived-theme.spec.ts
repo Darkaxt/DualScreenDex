@@ -37,8 +37,8 @@ const catalog = {
       name: 'OVERGROW',
       description: 'Powers up Grass-type moves.',
       mechanics: [
-        { kind: 'ACTIVATION_THRESHOLD', label: 'Activation', value: 'HP ≤ 1/3', numerator: 1, denominator: 3 },
-        { kind: 'MULTIPLIER', label: 'Power', value: 'Grass move power ×1.5', numerator: 3, denominator: 2 },
+        { kind: 'ACTIVATION_THRESHOLD', label: { code: 'ABILITY_MECHANIC_ACTIVATION_THRESHOLD', numerator: 1, denominator: 3 }, value: { code: 'ABILITY_VALUE_HP_THRESHOLD', numerator: 1, denominator: 3 }, numerator: 1, denominator: 3 },
+        { kind: 'MULTIPLIER', label: { code: 'ABILITY_MECHANIC_MOVE_POWER', numerator: 3, denominator: 2 }, value: { code: 'ABILITY_VALUE_GRASS_MOVE_POWER_MULTIPLIER', numerator: 3, denominator: 2 }, numerator: 3, denominator: 2 },
       ],
     }],
     evolutions: [{ targetSpeciesId: 2, targetName: 'IVYSAUR', methodId: 4, parameter: 16, condition: 'Level 16' }], hasSprite: false,

@@ -47,6 +47,19 @@ describe('presentation messages', () => {
       .toBe('Type 4 moves');
   });
 
+  it('renders ability mechanics from typed arguments', () => {
+    expect(renderPresentationMessage({ code: 'ABILITY_VALUE_HP_THRESHOLD', numerator: 1, denominator: 3 }))
+      .toBe('HP ≤ 1/3');
+    expect(renderPresentationMessage({ code: 'ABILITY_VALUE_FIRE_MOVE_POWER_MULTIPLIER', numerator: 3, denominator: 2 }))
+      .toBe('Fire move power ×1.5');
+    expect(renderPresentationMessage({ code: 'ABILITY_VALUE_STAT_STAGE', numerator: -1, denominator: 1 }))
+      .toBe('−1 stage');
+    expect(renderPresentationMessage({ code: 'ABILITY_MECHANIC_FLAG_CANNOT_BE_COPIED' }))
+      .toBe('Cannot be copied');
+    expect(renderPresentationMessage({ code: 'ABILITY_VALUE_AI_RATING', conditionValue: -2 }))
+      .toBe('-2');
+  });
+
   it('renders operational failures without backend prose', () => {
     expect(renderPresentationMessage({ code: 'GUIDE_LOAD_FAILED' }))
       .toBe('This game guide could not be opened. You can try again.');

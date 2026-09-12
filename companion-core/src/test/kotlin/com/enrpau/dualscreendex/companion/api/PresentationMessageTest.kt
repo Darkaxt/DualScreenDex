@@ -36,11 +36,57 @@ class PresentationMessageTest {
         )
         assertEquals(
             PresentationMessageView(
-                code = "ABILITY_MECHANIC_MULTIPLIER",
+                code = "ABILITY_MECHANIC_ATTACK",
                 numerator = 0,
                 denominator = 1,
             ),
-            PresentationMessages.abilityMechanic(AbilityMechanicKind.MULTIPLIER, 0, 1),
+            PresentationMessages.abilityMechanicLabel(AbilityMechanicKind.MULTIPLIER, "Attack", 0, 1),
+        )
+        assertEquals(
+            PresentationMessageView(
+                code = "ABILITY_VALUE_ATTACK_MULTIPLIER",
+                numerator = 3,
+                denominator = 2,
+            ),
+            PresentationMessages.abilityMechanicValue(
+                AbilityMechanicKind.MULTIPLIER,
+                "Attack",
+                "Attack ×1.5",
+                3,
+                2,
+            ),
+        )
+        assertEquals(
+            PresentationMessageView(
+                code = "ABILITY_VALUE_STAT_STAGE",
+                numerator = -1,
+                denominator = 1,
+            ),
+            PresentationMessages.abilityMechanicValue(
+                AbilityMechanicKind.STAT_STAGE,
+                "Opponents' Attack",
+                "−1 stage on switch-in",
+                -1,
+                1,
+            ),
+        )
+        assertEquals(
+            PresentationMessageView(
+                code = "ABILITY_MECHANIC_AI_RATING",
+                numerator = -2,
+                denominator = 1,
+            ),
+            PresentationMessages.abilityMechanicLabel(AbilityMechanicKind.AI_RATING, "AI rating", -2, 1),
+        )
+        assertNull(PresentationMessages.abilityMechanicLabel(AbilityMechanicKind.AI_RATING, "private", -2, 1))
+        assertNull(
+            PresentationMessages.abilityMechanicValue(
+                AbilityMechanicKind.MULTIPLIER,
+                "Power",
+                "Grass private diagnostic",
+                3,
+                2,
+            ),
         )
         assertEquals(
             PresentationMessageView(

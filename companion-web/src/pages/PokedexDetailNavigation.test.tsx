@@ -37,7 +37,7 @@ describe('Pokédex evolution navigation', () => {
           id: 66,
           name: 'Blaze',
           description: 'Powers up Fire-type moves in a pinch.',
-          mechanics: [{ kind: 'MULTIPLIER', label: { code: 'ABILITY_MECHANIC_MULTIPLIER', numerator: 3, denominator: 2 }, value: '×1.5', numerator: 3, denominator: 2 }],
+          mechanics: [{ kind: 'MULTIPLIER', label: { code: 'ABILITY_MECHANIC_ATTACK', numerator: 3, denominator: 2 }, value: { code: 'ABILITY_VALUE_ATTACK_MULTIPLIER', numerator: 3, denominator: 2 }, numerator: 3, denominator: 2 }],
         }],
       } : species) }}
       state={state}
@@ -49,7 +49,7 @@ describe('Pokédex evolution navigation', () => {
     />);
 
     expect(screen.getByText('Powers up Fire-type moves in a pinch.')).toBeTruthy();
-    expect(screen.getByText('×1.5')).toBeTruthy();
+    expect(screen.getByText('Attack ×1.5')).toBeTruthy();
     expect(screen.queryByRole('button', { name: /Blaze/i })).toBeNull();
     expect(openAbility).not.toHaveBeenCalled();
   });

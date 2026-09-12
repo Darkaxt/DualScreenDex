@@ -24,12 +24,10 @@ export function AbilityMechanics({ mechanics }: { mechanics: Catalog['species'][
   return <div class="ability-mechanics">{userFacingAbilityMechanics(mechanics).map(mechanic => {
     const conditions = mechanic.conditions ?? [];
     const label = renderPresentationMessage(mechanic.label);
-    return <div class="ability-mechanic" key={`${mechanic.kind}-${mechanic.label.code}-${conditions.map(condition => condition.kind).join('-')}`}><span>{conditions.length > 0 ? `${label} · ${conditions.map(condition => renderPresentationMessage(condition.label)).join(', ')}` : label}</span><strong>{mechanic.value}</strong></div>;
+    return <div class="ability-mechanic" key={`${mechanic.kind}-${mechanic.label.code}-${conditions.map(condition => condition.kind).join('-')}`}><span>{conditions.length > 0 ? `${label} · ${conditions.map(condition => renderPresentationMessage(condition.label)).join(', ')}` : label}</span><strong>{renderPresentationMessage(mechanic.value)}</strong></div>;
   })}</div>;
 }
 
 export function userFacingAbilityMechanics(mechanics: Catalog['species'][number]['abilities'][number]['mechanics']) {
-  return mechanics.filter(mechanic => !(
-    mechanic.kind === 'BEHAVIOR' && /source|script|engine|inactive/i.test(mechanic.value)
-  ));
+  return mechanics;
 }

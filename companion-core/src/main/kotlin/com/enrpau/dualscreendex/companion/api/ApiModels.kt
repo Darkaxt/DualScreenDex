@@ -295,7 +295,7 @@ data class MoveAcquisitionView(val moveId: Int, val method: String, val sourceId
 data class AbilityMechanicView(
     val kind: String,
     val label: PresentationMessageView,
-    val value: String,
+    val value: PresentationMessageView,
     val numerator: Int,
     val denominator: Int,
     val conditions: List<AbilityMechanicConditionView> = emptyList(),
@@ -807,15 +807,24 @@ object ApiViewBuilder {
                         abilityId,
                         name,
                         text.abilityDescription(abilityId),
-                        ability.mechanics.value.orEmpty().map { mechanic ->
+                        ability.mechanics.value.orEmpty().mapNotNull { mechanic ->
+                            val label = PresentationMessages.abilityMechanicLabel(
+                                mechanic.kind,
+                                mechanic.label,
+                                mechanic.numerator,
+                                mechanic.denominator,
+                            ) ?: return@mapNotNull null
+                            val value = PresentationMessages.abilityMechanicValue(
+                                mechanic.kind,
+                                mechanic.label,
+                                mechanic.value,
+                                mechanic.numerator,
+                                mechanic.denominator,
+                            ) ?: return@mapNotNull null
                             AbilityMechanicView(
                                 mechanic.kind.name,
-                                PresentationMessages.abilityMechanic(
-                                    mechanic.kind,
-                                    mechanic.numerator,
-                                    mechanic.denominator,
-                                ),
-                                mechanic.value,
+                                label,
+                                value,
                                 mechanic.numerator,
                                 mechanic.denominator,
                                 mechanic.conditions.map { condition ->

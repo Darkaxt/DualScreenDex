@@ -24,6 +24,30 @@ export function renderPresentationMessage(message: PresentationMessage): string 
     case 'ABILITY_MECHANIC_TYPE_CHANGE': return 'Type change';
     case 'ABILITY_MECHANIC_AI_RATING': return 'AI rating';
     case 'ABILITY_MECHANIC_FLAG': return 'Attribute';
+    case 'ABILITY_MECHANIC_ATTACK': return 'Attack';
+    case 'ABILITY_MECHANIC_MOVE_POWER': return 'Move power';
+    case 'ABILITY_MECHANIC_INCOMING_DAMAGE': return 'Incoming damage';
+    case 'ABILITY_MECHANIC_OPPONENT_ATTACK': return "Opponents' Attack";
+    case 'ABILITY_MECHANIC_NONVOLATILE_STATUS': return 'Nonvolatile status';
+    case 'ABILITY_MECHANIC_FLAG_CANNOT_BE_COPIED': return 'Cannot be copied';
+    case 'ABILITY_MECHANIC_FLAG_CANNOT_BE_SWAPPED': return 'Cannot be swapped';
+    case 'ABILITY_MECHANIC_FLAG_CANNOT_BE_TRACED': return 'Cannot be traced';
+    case 'ABILITY_MECHANIC_FLAG_CANNOT_BE_SUPPRESSED': return 'Cannot be suppressed';
+    case 'ABILITY_MECHANIC_FLAG_CANNOT_BE_OVERWRITTEN': return 'Cannot be overwritten';
+    case 'ABILITY_MECHANIC_FLAG_BREAKABLE': return 'Breakable';
+    case 'ABILITY_MECHANIC_FLAG_FAILS_ON_IMPOSTER': return 'Fails on Imposter';
+    case 'ABILITY_VALUE_HP_THRESHOLD': return `HP ≤ ${fraction(message.numerator, message.denominator)}`;
+    case 'ABILITY_VALUE_ATTACK_MULTIPLIER': return `Attack ×${multiplier(message.numerator, message.denominator)}`;
+    case 'ABILITY_VALUE_GRASS_MOVE_POWER_MULTIPLIER': return `Grass move power ×${multiplier(message.numerator, message.denominator)}`;
+    case 'ABILITY_VALUE_FIRE_MOVE_POWER_MULTIPLIER': return `Fire move power ×${multiplier(message.numerator, message.denominator)}`;
+    case 'ABILITY_VALUE_WATER_MOVE_POWER_MULTIPLIER': return `Water move power ×${multiplier(message.numerator, message.denominator)}`;
+    case 'ABILITY_VALUE_BUG_MOVE_POWER_MULTIPLIER': return `Bug move power ×${multiplier(message.numerator, message.denominator)}`;
+    case 'ABILITY_VALUE_INCOMING_DAMAGE_MULTIPLIER': return `Incoming damage ×${multiplier(message.numerator, message.denominator)}`;
+    case 'ABILITY_VALUE_STAT_STAGE': return `${signed(message.numerator)} ${message.numerator === 1 || message.numerator === -1 ? 'stage' : 'stages'}`;
+    case 'ABILITY_VALUE_STATUS_CURE_CHANCE': return `${fraction(message.numerator, message.denominator)} chance to cure`;
+    case 'ABILITY_VALUE_NORMAL_TO_FAIRY': return 'Normal → Fairy';
+    case 'ABILITY_VALUE_AI_RATING': return argument(message.conditionValue);
+    case 'ABILITY_VALUE_ENABLED': return 'Yes';
     case 'ABILITY_CONDITION_MOVE_SPLIT': return moveSplit(message.conditionValue);
     case 'ABILITY_CONDITION_ATTACKER_STATUS_NON_ZERO': return 'While affected by status';
     case 'ABILITY_CONDITION_SWITCH_IN': return 'On switch-in';
@@ -124,4 +148,20 @@ function timelineChange(label: string, count: number | null | undefined): string
 
 function subject(value: string | null | undefined): string {
   return value ?? '—';
+}
+
+function fraction(numerator: number | null | undefined, denominator: number | null | undefined): string {
+  if (numerator == null || denominator == null) return '—';
+  return denominator === 1 ? String(numerator) : `${numerator}/${denominator}`;
+}
+
+function multiplier(numerator: number | null | undefined, denominator: number | null | undefined): string {
+  if (numerator == null || denominator == null || denominator === 0) return '—';
+  return String(numerator / denominator);
+}
+
+function signed(value: number | null | undefined): string {
+  if (value == null) return '—';
+  if (value < 0) return `−${Math.abs(value)}`;
+  return `+${value}`;
 }

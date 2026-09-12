@@ -26,7 +26,9 @@ data class PresentationMessageView(
         require(listOfNotNull(level, itemId, methodId, parameter, slotNumber, boxNumber, index).all { it >= 0 }) {
             "presentation message integer arguments must be nonnegative"
         }
-        require(numerator == null || numerator >= 0) { "presentation message numerator must be nonnegative" }
+        require(numerator == null || numerator >= 0 || parsed in SIGNED_NUMERATOR_CODES) {
+            "presentation message numerator must be nonnegative unless its code accepts signed values"
+        }
         require(denominator == null || denominator > 0) { "presentation message denominator must be positive" }
         require(count == null || count > 0) { "presentation message count must be positive" }
         require(subject == null || subject.isNotBlank() && subject.length <= MAX_SUBJECT_LENGTH && subject.none(Char::isISOControl)) {
@@ -52,8 +54,11 @@ data class PresentationMessageView(
             message.boxNumber != null && message.slotNumber != null && message.argumentCount() == 2
         PresentationMessageCode.RULESET_EXPANDED ->
             message.index != null && message.argumentCount() == 1
-        in ABILITY_MECHANIC_CODES ->
-            message.numerator != null && message.denominator != null && message.argumentCount() == 2
+        in ABILITY_MECHANIC_ARGUMENT_CODES,
+        in ABILITY_VALUE_RATIO_CODES,
+        -> message.numerator != null && message.denominator != null && message.argumentCount() == 2
+        PresentationMessageCode.ABILITY_VALUE_AI_RATING ->
+            message.conditionValue != null && message.argumentCount() == 1
         in ABILITY_CONDITION_CODES ->
             message.conditionValue != null && message.argumentCount() == 1
         in TIMELINE_CODES -> message.count != null && message.argumentCount() == 1
@@ -104,6 +109,30 @@ enum class PresentationMessageCode {
     ABILITY_MECHANIC_TYPE_CHANGE,
     ABILITY_MECHANIC_AI_RATING,
     ABILITY_MECHANIC_FLAG,
+    ABILITY_MECHANIC_ATTACK,
+    ABILITY_MECHANIC_MOVE_POWER,
+    ABILITY_MECHANIC_INCOMING_DAMAGE,
+    ABILITY_MECHANIC_OPPONENT_ATTACK,
+    ABILITY_MECHANIC_NONVOLATILE_STATUS,
+    ABILITY_MECHANIC_FLAG_CANNOT_BE_COPIED,
+    ABILITY_MECHANIC_FLAG_CANNOT_BE_SWAPPED,
+    ABILITY_MECHANIC_FLAG_CANNOT_BE_TRACED,
+    ABILITY_MECHANIC_FLAG_CANNOT_BE_SUPPRESSED,
+    ABILITY_MECHANIC_FLAG_CANNOT_BE_OVERWRITTEN,
+    ABILITY_MECHANIC_FLAG_BREAKABLE,
+    ABILITY_MECHANIC_FLAG_FAILS_ON_IMPOSTER,
+    ABILITY_VALUE_HP_THRESHOLD,
+    ABILITY_VALUE_ATTACK_MULTIPLIER,
+    ABILITY_VALUE_GRASS_MOVE_POWER_MULTIPLIER,
+    ABILITY_VALUE_FIRE_MOVE_POWER_MULTIPLIER,
+    ABILITY_VALUE_WATER_MOVE_POWER_MULTIPLIER,
+    ABILITY_VALUE_BUG_MOVE_POWER_MULTIPLIER,
+    ABILITY_VALUE_INCOMING_DAMAGE_MULTIPLIER,
+    ABILITY_VALUE_STAT_STAGE,
+    ABILITY_VALUE_STATUS_CURE_CHANCE,
+    ABILITY_VALUE_NORMAL_TO_FAIRY,
+    ABILITY_VALUE_AI_RATING,
+    ABILITY_VALUE_ENABLED,
     ABILITY_CONDITION_MOVE_SPLIT,
     ABILITY_CONDITION_ATTACKER_STATUS_NON_ZERO,
     ABILITY_CONDITION_SWITCH_IN,
@@ -226,15 +255,90 @@ object PresentationMessages {
         )
     }
 
-    fun abilityMechanic(
+    fun abilityMechanicLabel(
         kind: AbilityMechanicKind,
+        label: String,
         numerator: Int,
         denominator: Int,
-    ) = PresentationMessageView(
-        code = "ABILITY_MECHANIC_${kind.name}",
-        numerator = numerator,
-        denominator = denominator,
-    )
+    ): PresentationMessageView? {
+        val code = when (kind) {
+            AbilityMechanicKind.BEHAVIOR -> return null
+            AbilityMechanicKind.ACTIVATION_THRESHOLD -> if (label == "Activation") {
+                PresentationMessageCode.ABILITY_MECHANIC_ACTIVATION_THRESHOLD
+            } else {
+                return null
+            }
+            AbilityMechanicKind.MULTIPLIER -> when (label) {
+                "Attack" -> PresentationMessageCode.ABILITY_MECHANIC_ATTACK
+                "Power" -> PresentationMessageCode.ABILITY_MECHANIC_MOVE_POWER
+                "Incoming damage" -> PresentationMessageCode.ABILITY_MECHANIC_INCOMING_DAMAGE
+                else -> return null
+            }
+            AbilityMechanicKind.STAT_STAGE -> when (label) {
+                "Opponents' Attack" -> PresentationMessageCode.ABILITY_MECHANIC_OPPONENT_ATTACK
+                else -> return null
+            }
+            AbilityMechanicKind.STATUS_CURE -> when (label) {
+                "Nonvolatile status" -> PresentationMessageCode.ABILITY_MECHANIC_NONVOLATILE_STATUS
+                else -> return null
+            }
+            AbilityMechanicKind.TYPE_CHANGE -> if (label == "Move type") {
+                PresentationMessageCode.ABILITY_MECHANIC_TYPE_CHANGE
+            } else {
+                return null
+            }
+            AbilityMechanicKind.AI_RATING -> if (label == "AI rating") {
+                PresentationMessageCode.ABILITY_MECHANIC_AI_RATING
+            } else {
+                return null
+            }
+            AbilityMechanicKind.FLAG -> FLAG_CODES[label] ?: return null
+        }
+        return if (kind == AbilityMechanicKind.FLAG) {
+            plain(code)
+        } else {
+            PresentationMessageView(code.name, numerator = numerator, denominator = denominator)
+        }
+    }
+
+    fun abilityMechanicValue(
+        kind: AbilityMechanicKind,
+        label: String,
+        value: String,
+        numerator: Int,
+        denominator: Int,
+    ): PresentationMessageView? = when (kind) {
+        AbilityMechanicKind.BEHAVIOR -> null
+        AbilityMechanicKind.ACTIVATION_THRESHOLD ->
+            ratioMessage(PresentationMessageCode.ABILITY_VALUE_HP_THRESHOLD, numerator, denominator)
+        AbilityMechanicKind.MULTIPLIER -> when (label) {
+            "Attack" -> ratioMessage(PresentationMessageCode.ABILITY_VALUE_ATTACK_MULTIPLIER, numerator, denominator)
+            "Power" -> POWER_VALUE_CODES[value]?.let {
+                ratioMessage(it, numerator, denominator)
+            }
+            "Incoming damage" ->
+                ratioMessage(PresentationMessageCode.ABILITY_VALUE_INCOMING_DAMAGE_MULTIPLIER, numerator, denominator)
+            else -> null
+        }
+        AbilityMechanicKind.STAT_STAGE ->
+            ratioMessage(PresentationMessageCode.ABILITY_VALUE_STAT_STAGE, numerator, denominator)
+        AbilityMechanicKind.STATUS_CURE ->
+            ratioMessage(PresentationMessageCode.ABILITY_VALUE_STATUS_CURE_CHANCE, numerator, denominator)
+        AbilityMechanicKind.TYPE_CHANGE -> if (value == "Normal → Fairy") {
+            plain(PresentationMessageCode.ABILITY_VALUE_NORMAL_TO_FAIRY)
+        } else {
+            null
+        }
+        AbilityMechanicKind.AI_RATING -> PresentationMessageView(
+            PresentationMessageCode.ABILITY_VALUE_AI_RATING.name,
+            conditionValue = numerator.toLong(),
+        )
+        AbilityMechanicKind.FLAG -> if (value == "Yes" && label in FLAG_CODES) {
+            plain(PresentationMessageCode.ABILITY_VALUE_ENABLED)
+        } else {
+            null
+        }
+    }
 
     fun abilityCondition(kind: AbilityMechanicConditionKind, value: Long) = PresentationMessageView(
         code = "ABILITY_CONDITION_${kind.name}",
@@ -302,6 +406,9 @@ object PresentationMessages {
         else -> null
     }
 
+    private fun ratioMessage(code: PresentationMessageCode, numerator: Int, denominator: Int) =
+        PresentationMessageView(code.name, numerator = numerator, denominator = denominator)
+
     private fun subjectMessage(code: PresentationMessageCode, subject: String?) =
         subject?.let { PresentationMessageView(code.name, subject = it) }
 
@@ -347,9 +454,53 @@ private val TIMELINE_CODES_BY_KEY = mapOf(
     "saves" to PresentationMessageCode.TIMELINE_SAVES_OBSERVED,
     "challenges" to PresentationMessageCode.TIMELINE_CHALLENGES_COMPLETED,
 )
-private val ABILITY_MECHANIC_CODES = PresentationMessageCode.entries
-    .filter { it.name.startsWith("ABILITY_MECHANIC_") }
-    .toSet()
+private val FLAG_CODES = mapOf(
+    "Cannot be copied" to PresentationMessageCode.ABILITY_MECHANIC_FLAG_CANNOT_BE_COPIED,
+    "Cannot be swapped" to PresentationMessageCode.ABILITY_MECHANIC_FLAG_CANNOT_BE_SWAPPED,
+    "Cannot be traced" to PresentationMessageCode.ABILITY_MECHANIC_FLAG_CANNOT_BE_TRACED,
+    "Cannot be suppressed" to PresentationMessageCode.ABILITY_MECHANIC_FLAG_CANNOT_BE_SUPPRESSED,
+    "Cannot be overwritten" to PresentationMessageCode.ABILITY_MECHANIC_FLAG_CANNOT_BE_OVERWRITTEN,
+    "Breakable" to PresentationMessageCode.ABILITY_MECHANIC_FLAG_BREAKABLE,
+    "Fails on Imposter" to PresentationMessageCode.ABILITY_MECHANIC_FLAG_FAILS_ON_IMPOSTER,
+)
+private val POWER_VALUE_CODES = mapOf(
+    "Grass move power ×1.5" to PresentationMessageCode.ABILITY_VALUE_GRASS_MOVE_POWER_MULTIPLIER,
+    "Fire move power ×1.5" to PresentationMessageCode.ABILITY_VALUE_FIRE_MOVE_POWER_MULTIPLIER,
+    "Water move power ×1.5" to PresentationMessageCode.ABILITY_VALUE_WATER_MOVE_POWER_MULTIPLIER,
+    "Bug move power ×1.5" to PresentationMessageCode.ABILITY_VALUE_BUG_MOVE_POWER_MULTIPLIER,
+)
+private val ABILITY_MECHANIC_ARGUMENT_CODES = setOf(
+    PresentationMessageCode.ABILITY_MECHANIC_BEHAVIOR,
+    PresentationMessageCode.ABILITY_MECHANIC_ACTIVATION_THRESHOLD,
+    PresentationMessageCode.ABILITY_MECHANIC_MULTIPLIER,
+    PresentationMessageCode.ABILITY_MECHANIC_STAT_STAGE,
+    PresentationMessageCode.ABILITY_MECHANIC_STATUS_CURE,
+    PresentationMessageCode.ABILITY_MECHANIC_TYPE_CHANGE,
+    PresentationMessageCode.ABILITY_MECHANIC_AI_RATING,
+    PresentationMessageCode.ABILITY_MECHANIC_FLAG,
+    PresentationMessageCode.ABILITY_MECHANIC_ATTACK,
+    PresentationMessageCode.ABILITY_MECHANIC_MOVE_POWER,
+    PresentationMessageCode.ABILITY_MECHANIC_INCOMING_DAMAGE,
+    PresentationMessageCode.ABILITY_MECHANIC_OPPONENT_ATTACK,
+    PresentationMessageCode.ABILITY_MECHANIC_NONVOLATILE_STATUS,
+)
+private val ABILITY_VALUE_RATIO_CODES = setOf(
+    PresentationMessageCode.ABILITY_VALUE_HP_THRESHOLD,
+    PresentationMessageCode.ABILITY_VALUE_ATTACK_MULTIPLIER,
+    PresentationMessageCode.ABILITY_VALUE_GRASS_MOVE_POWER_MULTIPLIER,
+    PresentationMessageCode.ABILITY_VALUE_FIRE_MOVE_POWER_MULTIPLIER,
+    PresentationMessageCode.ABILITY_VALUE_WATER_MOVE_POWER_MULTIPLIER,
+    PresentationMessageCode.ABILITY_VALUE_BUG_MOVE_POWER_MULTIPLIER,
+    PresentationMessageCode.ABILITY_VALUE_INCOMING_DAMAGE_MULTIPLIER,
+    PresentationMessageCode.ABILITY_VALUE_STAT_STAGE,
+    PresentationMessageCode.ABILITY_VALUE_STATUS_CURE_CHANCE,
+)
+private val SIGNED_NUMERATOR_CODES = setOf(
+    PresentationMessageCode.ABILITY_MECHANIC_STAT_STAGE,
+    PresentationMessageCode.ABILITY_MECHANIC_OPPONENT_ATTACK,
+    PresentationMessageCode.ABILITY_MECHANIC_AI_RATING,
+    PresentationMessageCode.ABILITY_VALUE_STAT_STAGE,
+)
 private val ABILITY_CONDITION_CODES = PresentationMessageCode.entries
     .filter { it.name.startsWith("ABILITY_CONDITION_") }
     .toSet()
