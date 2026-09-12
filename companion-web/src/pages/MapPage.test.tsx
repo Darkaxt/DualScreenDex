@@ -1,10 +1,12 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/preact';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Catalog, State } from '../models';
+import { setInterfaceLanguage } from '../i18n';
 import { MapPage } from './MapPage';
 
 afterEach(() => {
   cleanup();
+  setInterfaceLanguage('EN');
   vi.restoreAllMocks();
 });
 
@@ -53,6 +55,16 @@ describe('normalized world map presentation', () => {
     expect(current.querySelector('[data-semantic-icon="map"]')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Open Pokédex' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Settings' })).toBeTruthy();
+  });
+
+  it('keeps map actions stable under translated labels', () => {
+    const openPokedex = vi.fn();
+    setInterfaceLanguage('DE');
+    render(<MapPage catalog={catalog} state={state} onOpenPokedex={openPokedex} onOpenSettings={vi.fn()} />);
+
+    expect(screen.getByRole('region', { name: 'Interaktive Weltkarte' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Pokédex öffnen' }));
+    expect(openPokedex).toHaveBeenCalledOnce();
   });
 
   it('uses structural keys for unnamed map-marker accessibility labels', () => {

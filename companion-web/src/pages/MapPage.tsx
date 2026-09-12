@@ -6,6 +6,7 @@ import { clusterMapTargets } from '../mapClustering';
 import { AcceleratedMapFollower, anchoredZoom, centerMapPoint, containFit, focusMapRect, GestureTracker, maximumScaleForMarker, MAX_MAP_SCALE, shouldGlideCamera, type MapViewport } from '../mapEngine';
 import type { Catalog, LocalMapPoiPreferences, LocalMapPoiView, LocalMapScenePlacementView, LocalMapSceneView, State, WorldMapLocation, WorldMapRegion } from '../models';
 import { appendQueryParameters } from '../url';
+import { formatUiNumber, msg, pluralCategory } from '../i18n';
 import { AreaGuideDrawer } from './AreaGuideDrawer';
 
 interface MapPageProps {
@@ -530,10 +531,10 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
       ? displayName
       : atlasHeaderName;
   const headerAreaContext = manuallySelectedGuide
-    ? 'MAP POINT'
+    ? msg('mapPoint')
     : activeMode === 'LOCAL' || selectedIsCurrent
-      ? 'CURRENT'
-      : selectedLocation ? 'MAP POINT' : 'ATLAS';
+      ? msg('current')
+      : selectedLocation ? msg('mapPoint') : msg('atlas');
 
   const routeHeadingRef = useRef<HTMLHeadingElement>(null);
   useEffect(() => routeHeadingRef.current?.focus(), []);
@@ -547,15 +548,15 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
       {state.gameTime && <GameClockIndicator clock={state.gameTime} />}
       <div class="header-actions map-header-actions">
         <CurrentHeaderDestination destination="MAP" />
-        <button class="header-action map-dex-action" aria-label="Open Pokédex" onClick={onOpenPokedex}><DexIcon /></button>
-        <button class="header-action settings-action" aria-label="Settings" onClick={onOpenSettings}><SettingsIcon /></button>
+        <button class="header-action map-dex-action" aria-label={msg('openPokedex')} onClick={onOpenPokedex}><DexIcon /></button>
+        <button class="header-action settings-action" aria-label={msg('settings')} onClick={onOpenSettings}><SettingsIcon /></button>
       </div>
     </header>
     <div
       ref={stageRef}
       class="map-stage"
       role="region"
-      aria-label={activeMode === 'LOCAL' ? 'Interactive local map' : 'Interactive world map'}
+      aria-label={activeMode === 'LOCAL' ? msg('interactiveLocalMap') : msg('interactiveWorldMap')}
       data-map-mode={activeMode}
       data-scale={viewport.scale}
       data-pan-x={viewport.panX}
@@ -587,7 +588,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
               height: `${placement.pixelHeight / localScene.pixelHeight * 100}%`,
             }}
           />)
-          : <img src={activeImageUrl} alt={`${displayName} ${activeMode === 'LOCAL' ? 'local' : 'region'} map`} draggable={false} />}
+          : <img src={activeImageUrl} alt={activeMode === 'LOCAL' ? msg('localMapImage', displayName) : msg('regionMapImage', displayName)} draggable={false} />}
         {localScene && hiddenScenePlacements.map(placement => <span
             key={`fog/${placement.localMapKey}`}
             class="map-scene-placement-fog"
@@ -607,7 +608,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
           const content = guideAvailable ? <button
             key={`poi/${placement.localMapKey}`}
             class="map-local-poi-label"
-            aria-label={`Open ${name} area guide`}
+            aria-label={msg('openAreaGuide', name)}
             style={{
               left: `${(placement.pixelX + placement.pixelWidth / 2) / localScene.pixelWidth * 100}%`,
               top: `${placement.pixelY / localScene.pixelHeight * 100}%`,
@@ -621,7 +622,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
           >{name}</button> : <span
             key={`poi/${placement.localMapKey}`}
             class="map-local-poi-label"
-            aria-label={`Map location: ${name}`}
+            aria-label={msg('mapLocation', name)}
             style={{
               left: `${(placement.pixelX + placement.pixelWidth / 2) / localScene.pixelWidth * 100}%`,
               top: `${placement.pixelY / localScene.pixelHeight * 100}%`,
@@ -638,8 +639,8 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
             data-marker-key={location.key}
             style={{ left: `${position.x}%`, top: `${position.y}%` }}
             aria-label={location.key === currentLocation?.key
-              ? `Current location: ${location.displayName ?? location.key}`
-              : location.displayName ?? `Map location: ${location.key}`}
+              ? msg('currentLocation', location.displayName ?? location.key)
+              : location.displayName ?? msg('mapLocation', location.key)}
             aria-pressed={location.key === selectedLocation?.key}
             onClick={event => {
               if (event.detail !== 0 && !allowMarkerSelectionRef.current) {
@@ -660,9 +661,9 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
               height: `${playerMapSpriteHeight * playerMapSpriteScale}px`,
             } : {}),
           }}
-          aria-label={`Player position ${playerPosition.mapX}, ${playerPosition.mapY}`}
+          aria-label={msg('playerPosition', formatUiNumber(playerPosition.mapX), formatUiNumber(playerPosition.mapY))}
         >{playerMapSpriteUrl
-            ? <img src={playerMapSpriteUrl} alt={state.trainer?.name ?? 'Player'} draggable={false} />
+            ? <img src={playerMapSpriteUrl} alt={state.trainer?.name ?? msg('player')} draggable={false} />
             : <span class="map-player-dot" />}</span>}
         {poiIconsVisible && localPoiClusters.map(cluster => {
           const marker = cluster.members[0].marker;
@@ -674,7 +675,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
             data-poi-key={clustered ? undefined : marker.poi.key}
             data-poi-cluster-key={clustered ? cluster.key : undefined}
             style={{ left: `${marker.x}%`, top: `${marker.y}%` }}
-            aria-label={clustered ? `${cluster.members.length} map points` : poiAriaLabel(marker.poi)}
+            aria-label={clustered ? msg('mapPoints', formatUiNumber(cluster.members.length), pluralCategory(cluster.members.length)) : poiAriaLabel(marker.poi)}
             aria-pressed={clustered ? selectedPoiCluster?.key === cluster.key : selected}
             aria-expanded={clustered ? selectedPoiCluster?.key === cluster.key : undefined}
             onClick={() => {
@@ -693,10 +694,10 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
         })}
       </div>
 
-      <nav class="map-utility-rail" aria-label="Map utilities">
+      <nav class="map-utility-rail" aria-label={msg('mapUtilities')}>
         {activeGuideArea && <button
           class="map-control map-area-guide-control"
-          aria-label="Area Guide"
+          aria-label={msg('areaGuide')}
           aria-expanded={areaGuideOpen}
           onClick={() => {
             setLegendOpen(false);
@@ -705,33 +706,33 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
             setAreaGuideOpen(value => !value);
           }}
         ><AreaGuideIcon /></button>}
-        {activeMode === 'ATLAS' && maps.length > 1 && <button class="map-control" aria-label="Choose map region" aria-expanded={legendOpen} onClick={() => setLegendOpen(value => !value)}><MapIcon /></button>}
-        {activeMode === 'LOCAL' && <button class="map-control map-poi-filter-control" aria-label="Map POI filters" aria-expanded={poiFiltersOpen} onClick={() => setPoiFiltersOpen(value => !value)}><FilterIcon /></button>}
+        {activeMode === 'ATLAS' && maps.length > 1 && <button class="map-control" aria-label={msg('chooseMapRegion')} aria-expanded={legendOpen} onClick={() => setLegendOpen(value => !value)}><MapIcon /></button>}
+        {activeMode === 'LOCAL' && <button class="map-control map-poi-filter-control" aria-label={msg('mapPoiFilters')} aria-expanded={poiFiltersOpen} onClick={() => setPoiFiltersOpen(value => !value)}><FilterIcon /></button>}
         {legendOpen && activeMode === 'ATLAS' && maps.length > 1 && <div class="map-legend-panel">
-          <small>{activeMode}</small>
+          <small>{msg('atlas')}</small>
           <strong>{displayName}</strong>
           <div class="map-region-options">{maps.map(item => <button key={item.key} aria-pressed={item.key === region?.key} onClick={() => setRegionKey(item.key)}>{item.displayName ?? item.key}</button>)}</div>
         </div>}
         {poiFiltersOpen && activeMode === 'LOCAL' && <div class="map-legend-panel map-poi-filter-panel">
-          <strong>Map details</strong>
-          <PoiToggle label="Places" checked={poiPreferences.showPlaces} onChange={checked => onUpdatePoiPreferences?.({ showPlaces: checked })} />
-          <PoiToggle label="Services" checked={poiPreferences.showServices} onChange={checked => onUpdatePoiPreferences?.({ showServices: checked })} />
-          <PoiToggle label="Available items" checked={poiPreferences.showAvailableItems} onChange={checked => onUpdatePoiPreferences?.({ showAvailableItems: checked })} />
-          <PoiToggle label="Collected items" checked={poiPreferences.showCollectedItems} onChange={checked => onUpdatePoiPreferences?.({ showCollectedItems: checked })} />
-          <PoiToggle label="Unknown POIs" checked={poiPreferences.showUnknownPois} onChange={checked => onUpdatePoiPreferences?.({ showUnknownPois: checked })} />
+          <strong>{msg('mapDetails')}</strong>
+          <PoiToggle label={msg('places')} checked={poiPreferences.showPlaces} onChange={checked => onUpdatePoiPreferences?.({ showPlaces: checked })} />
+          <PoiToggle label={msg('services')} checked={poiPreferences.showServices} onChange={checked => onUpdatePoiPreferences?.({ showServices: checked })} />
+          <PoiToggle label={msg('availableItems')} checked={poiPreferences.showAvailableItems} onChange={checked => onUpdatePoiPreferences?.({ showAvailableItems: checked })} />
+          <PoiToggle label={msg('collectedItems')} checked={poiPreferences.showCollectedItems} onChange={checked => onUpdatePoiPreferences?.({ showCollectedItems: checked })} />
+          <PoiToggle label={msg('unknownPois')} checked={poiPreferences.showUnknownPois} onChange={checked => onUpdatePoiPreferences?.({ showUnknownPois: checked })} />
         </div>}
       </nav>
 
       {poiIconsVisible && selectedPoiCluster && <section
         class="map-poi-cluster-popover"
         role="region"
-        aria-label="Map point chooser"
+        aria-label={msg('mapPointChooser')}
       >
         <header>
-          <strong>{selectedPoiCluster.members.length} MAP POINTS</strong>
+          <strong>{msg('mapPoints', formatUiNumber(selectedPoiCluster.members.length), pluralCategory(selectedPoiCluster.members.length))}</strong>
           <button
             type="button"
-            aria-label="Close map point chooser"
+            aria-label={msg('closeMapPointChooser')}
             onClick={() => setSelectedPoiClusterKey(null)}
           >×</button>
         </header>
@@ -739,7 +740,7 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
           {selectedPoiCluster.members.map((member, index) => <button
             key={member.key}
             type="button"
-            aria-label={`Select ${poiDisplayLabel(member.marker.poi)}, point ${index + 1} of ${selectedPoiCluster.members.length}`}
+            aria-label={msg('selectMapPoint', poiDisplayLabel(member.marker.poi) ?? poiLabel(member.marker.poi), formatUiNumber(index + 1), formatUiNumber(selectedPoiCluster.members.length))}
             onClick={() => {
               setSelectedPoiKey(member.marker.poi.key);
               setSelectedPoiClusterKey(null);
@@ -763,17 +764,17 @@ export function MapPage({ catalog, state, onOpenPokedex, onOpenSettings, onUpdat
         selectablePointKeys={selectableGuidePointKeys}
       />}
 
-      {selectedPoi && <aside class="map-poi-card" aria-label="Map point details">
-        <button aria-label="Close map point details" onClick={() => setSelectedPoiKey(null)}>×</button>
+      {selectedPoi && <aside class="map-poi-card" aria-label={msg('mapPointDetails')}>
+        <button aria-label={msg('closeMapPointDetails')} onClick={() => setSelectedPoiKey(null)}>×</button>
         <small>{poiCategoryLabel(selectedPoi)}</small>
         <strong>{poiLabel(selectedPoi)}</strong>
-        {selectedPoi.state === 'COLLECTED' && <span>Collected</span>}
+        {selectedPoi.state === 'COLLECTED' && <span>{msg('collected')}</span>}
       </aside>}
 
-      <nav class="map-zoom-rail" aria-label="Map view controls">
-        <button class="map-control" aria-label="Zoom in" onClick={() => zoom(1.25)}>+</button>
-        <button class="map-control" aria-label="Zoom out" onClick={() => zoom(0.8)}>−</button>
-        <button class="map-control recenter-control" aria-label="Recenter map" onClick={recenter}><span /></button>
+      <nav class="map-zoom-rail" aria-label={msg('mapViewControls')}>
+        <button class="map-control" aria-label={msg('zoomIn')} onClick={() => zoom(1.25)}>+</button>
+        <button class="map-control" aria-label={msg('zoomOut')} onClick={() => zoom(0.8)}>−</button>
+        <button class="map-control recenter-control" aria-label={msg('recenterMap')} onClick={recenter}><span /></button>
       </nav>
     </div>
   </section>;
@@ -856,12 +857,12 @@ function poiCategoryEnabled(poi: LocalMapPoiView, preferences: LocalMapPoiPrefer
 
 function poiLabel(poi: LocalMapPoiView) {
   return poiDisplayLabel(poi) ?? (poi.category === 'AVAILABLE_ITEM' || poi.category === 'COLLECTED_ITEM'
-    ? 'Unidentified item'
+    ? msg('unidentifiedItem')
     : poi.category === 'SERVICE'
-      ? 'Unidentified service'
+      ? msg('unidentifiedService')
       : poi.category === 'PLACE'
-        ? 'Unidentified entrance'
-        : 'Unidentified point');
+        ? msg('unidentifiedEntrance')
+        : msg('unidentifiedPoint'));
 }
 
 function poiDisplayLabel(poi: LocalMapPoiView) {
@@ -869,7 +870,14 @@ function poiDisplayLabel(poi: LocalMapPoiView) {
 }
 
 function poiCategoryLabel(poi: LocalMapPoiView) {
-  return poi.category === 'COLLECTED_ITEM' ? 'Collected item' : poi.category.replaceAll('_', ' ').toLowerCase();
+  const labels: Record<LocalMapPoiView['category'], string> = {
+    PLACE: msg('place'),
+    SERVICE: msg('service'),
+    AVAILABLE_ITEM: msg('availableItem'),
+    COLLECTED_ITEM: msg('collectedItem'),
+    UNKNOWN: msg('unknownPoint'),
+  };
+  return labels[poi.category];
 }
 
 function poiAriaLabel(poi: LocalMapPoiView) {

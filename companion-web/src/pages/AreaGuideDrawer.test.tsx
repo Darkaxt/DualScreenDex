@@ -1,10 +1,12 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { AreaGuideAreaView } from '../models';
+import { setInterfaceLanguage } from '../i18n';
 import { AreaGuideDrawer, projectAreaGuideExits } from './AreaGuideDrawer';
 
 afterEach(() => {
   cleanup();
+  setInterfaceLanguage('EN');
   vi.restoreAllMocks();
 });
 
@@ -70,6 +72,17 @@ describe('AreaGuideDrawer', () => {
     expect(selectArea).toHaveBeenCalledWith(0x11);
     fireEvent.click(screen.getByRole('button', { name: 'Close area guide' }));
     expect(close).toHaveBeenCalledOnce();
+  });
+
+  it('keeps area destinations stable under translated labels', () => {
+    const selectArea = vi.fn();
+    setInterfaceLanguage('ES');
+    render(<AreaGuideDrawer area={area} onClose={vi.fn()} onSelectArea={selectArea} />);
+
+    expect(screen.getByRole('complementary', { name: 'Guía de la zona' })).toBeTruthy();
+    expect(screen.getByText('ENCUENTROS')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir la guía de Oldale Town' }));
+    expect(selectArea).toHaveBeenCalledWith(0x11);
   });
 
   it('windows long encounter lists from the one outer scroll owner', () => {

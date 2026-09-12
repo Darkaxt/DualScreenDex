@@ -1,6 +1,7 @@
 import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { catalogMediaUrl } from '../media';
+import { formatUiNumber, msg, pluralCategory } from '../i18n';
 import { renderPresentationMessage } from '../presentationMessages';
 import type {
   AreaGuideAreaView,
@@ -80,14 +81,14 @@ export function AreaGuideDrawer({
     ref={drawerRef}
     class="area-guide-drawer"
     role="complementary"
-    aria-label="Area guide"
+    aria-label={msg('areaGuideLabel')}
     data-area-base-id={area.baseAreaId}
     onPointerDown={event => event.stopPropagation()}
     onWheel={event => event.stopPropagation()}
   >
     <header>
-      <strong>AREA GUIDE</strong>
-      <button aria-label="Close area guide" onClick={onClose}>×</button>
+      <strong>{msg('areaGuide')}</strong>
+      <button aria-label={msg('closeAreaGuide')} onClick={onClose}>×</button>
     </header>
     <div
       ref={contentRef}
@@ -97,14 +98,14 @@ export function AreaGuideDrawer({
         setContentViewportHeight(event.currentTarget.clientHeight || VIRTUAL_ROW_HEIGHT * VIRTUAL_VIEWPORT_ROWS);
       }}
     >
-      <GuideSection title="OVERVIEW">
+      <GuideSection title={msg('overview')}>
         <div class="area-guide-summary">
-          <span><strong>{area.overview.knownPointCount}</strong> known points</span>
-          {area.overview.totalPointCount != null && <span><strong>{area.overview.totalPointCount}</strong> total points</span>}
-          <span><strong>{area.overview.collectedItemCount}</strong> collected items</span>
+          <span>{msg('knownPoints', formatUiNumber(area.overview.knownPointCount), pluralCategory(area.overview.knownPointCount))}</span>
+          {area.overview.totalPointCount != null && <span>{msg('totalPoints', formatUiNumber(area.overview.totalPointCount), pluralCategory(area.overview.totalPointCount))}</span>}
+          <span>{msg('collectedItemCount', formatUiNumber(area.overview.collectedItemCount), pluralCategory(area.overview.collectedItemCount))}</span>
         </div>
         {projectedExits.length > 0 && <div class="area-guide-exits">
-          <small>CONNECTED AREAS</small>
+          <small>{msg('connectedAreas')}</small>
           {projectedExits.map(exit => <button
             key={exit.key}
             aria-label={exit.ariaLabel}
@@ -113,9 +114,9 @@ export function AreaGuideDrawer({
         </div>}
       </GuideSection>
 
-      {encounterRows.length > 0 && <GuideSection title="ENCOUNTERS">
+      {encounterRows.length > 0 && <GuideSection title={msg('encounters')}>
         <WindowedList
-          ariaLabel="Wild Pokémon"
+          ariaLabel={msg('wildPokemon')}
           items={encounterRows}
           itemKey={row => row.key}
           renderItem={row => <EncounterSpeciesRow row={row} catalogHash={catalogHash} />}
@@ -125,7 +126,7 @@ export function AreaGuideDrawer({
         />
       </GuideSection>}
 
-      {area.placesAndServices.length > 0 && <GuideSection title="PLACES & SERVICES">
+      {area.placesAndServices.length > 0 && <GuideSection title={msg('placesAndServices')}>
         <PointList
           points={area.placesAndServices}
           selectablePointKeys={selectablePointKeys}
@@ -136,7 +137,7 @@ export function AreaGuideDrawer({
         />
       </GuideSection>}
 
-      {area.trainersAndPeople.length > 0 && <GuideSection title="TRAINERS & PEOPLE">
+      {area.trainersAndPeople.length > 0 && <GuideSection title={msg('trainersAndPeople')}>
         <PointList
           points={area.trainersAndPeople}
           selectablePointKeys={selectablePointKeys}
@@ -147,7 +148,7 @@ export function AreaGuideDrawer({
         />
       </GuideSection>}
 
-      {area.items.length > 0 && <GuideSection title="ITEMS">
+      {area.items.length > 0 && <GuideSection title={msg('items')}>
         <PointList
           points={area.items}
           selectablePointKeys={selectablePointKeys}
@@ -158,7 +159,7 @@ export function AreaGuideDrawer({
         />
       </GuideSection>}
 
-      {area.objectives.length > 0 && <GuideSection title="OBJECTIVES">
+      {area.objectives.length > 0 && <GuideSection title={msg('objectives')}>
         <div class="area-guide-static-list">
           {area.objectives.map(objective => <div key={objective.key} class="area-guide-text-row">{renderPresentationMessage(objective.title)}</div>)}
         </div>
@@ -177,10 +178,12 @@ function GuideSection({ title, children }: { title: string; children: ComponentC
 function EncounterSpeciesRow({ row, catalogHash }: { row: EncounterRow; catalogHash?: string }) {
   const { species } = row;
   const spriteUrl = `/api/sprites/species/${species.speciesId}.png`;
+  const minimumLevel = formatUiNumber(species.minimumLevel);
+  const maximumLevel = formatUiNumber(species.maximumLevel);
   const level = species.minimumLevel === species.maximumLevel
-    ? `Lv. ${species.minimumLevel}`
-    : `Lv. ${species.minimumLevel}–${species.maximumLevel}`;
-  const detail = species.ratePercent == null ? level : `${level} · ${species.ratePercent}%`;
+    ? msg('encounterLevel', minimumLevel)
+    : msg('encounterLevelRange', minimumLevel, maximumLevel);
+  const detail = species.ratePercent == null ? level : `${level} · ${formatUiNumber(species.ratePercent)}%`;
   const context = [row.groupName, windowLabel(row.windows)].filter(Boolean).join(' · ');
   return <div class="area-guide-encounter-row">
     {species.hasSprite
@@ -210,16 +213,16 @@ function PointList({
   viewportHeight: number;
 }) {
   return <WindowedList
-    ariaLabel="Area points"
+    ariaLabel={msg('areaPoints')}
     items={points}
     itemKey={point => point.key}
     renderItem={point => {
       const label = pointLabel(point);
-      const detail = point.state === 'COLLECTED' ? 'Collected' : point.state === 'SILHOUETTE' ? 'Not identified' : null;
+      const detail = point.state === 'COLLECTED' ? msg('collected') : point.state === 'SILHOUETTE' ? msg('notIdentified') : null;
       const contents = <><span class={`area-guide-point-symbol is-${point.category.toLowerCase()}`} aria-hidden="true" />
         <span><strong>{label}</strong>{detail && <small>{detail}</small>}</span></>;
       return selectablePointKeys.has(point.key) && onSelectPoint
-        ? <button class="area-guide-point-row" aria-label={`Show ${label} on map`} onClick={() => onSelectPoint(point.key)}>{contents}<i aria-hidden="true">⌖</i></button>
+        ? <button class="area-guide-point-row" aria-label={msg('showOnMap', label)} onClick={() => onSelectPoint(point.key)}>{contents}<i aria-hidden="true">⌖</i></button>
         : <div class="area-guide-point-row">{contents}</div>;
     }}
     scrollOwnerRef={scrollOwnerRef}
@@ -299,7 +302,7 @@ export function projectAreaGuideExits(
     const count = Number.isFinite(exit.count) && (exit.count ?? 0) > 0
       ? Math.floor(exit.count!)
       : 1;
-    const name = exit.name.trim() || 'Unidentified area';
+    const name = exit.name.trim() || msg('unidentifiedArea');
     const existing = grouped.get(exit.baseAreaId);
     if (existing) existing.count += count;
     else grouped.set(exit.baseAreaId, { baseAreaId: exit.baseAreaId, name, count });
@@ -317,35 +320,37 @@ export function projectAreaGuideExits(
     const sameNameTotal = nameTotals.get(nameKey) ?? 1;
     const ordinal = (nameOrdinals.get(nameKey) ?? 0) + 1;
     nameOrdinals.set(nameKey, ordinal);
+    const count = formatUiNumber(exit.count);
+    const ordinalLabel = msg('destinationOrdinal', formatUiNumber(ordinal), formatUiNumber(sameNameTotal));
     if (exit.count > 1 && sameNameTotal > 1) {
       return {
         key: `exit/${exit.baseAreaId}`,
         baseAreaId: exit.baseAreaId,
-        label: `${exit.name} · ${exit.count} EXITS · DESTINATION ${ordinal} OF ${sameNameTotal}`,
-        ariaLabel: `Open ${exit.name} guide, ${exit.count} exits, destination ${ordinal} of ${sameNameTotal}`,
+        label: `${exit.name} · ${msg('exits', count, pluralCategory(exit.count))} · ${ordinalLabel}`,
+        ariaLabel: msg('openAreaGuideWithExitsDestination', exit.name, count, pluralCategory(exit.count), formatUiNumber(ordinal), formatUiNumber(sameNameTotal)),
       };
     }
     if (exit.count > 1) {
       return {
         key: `exit/${exit.baseAreaId}`,
         baseAreaId: exit.baseAreaId,
-        label: `${exit.name} · ${exit.count} EXITS`,
-        ariaLabel: `Open ${exit.name} guide, ${exit.count} exits`,
+        label: `${exit.name} · ${msg('exits', count, pluralCategory(exit.count))}`,
+        ariaLabel: msg('openAreaGuideWithExits', exit.name, count, pluralCategory(exit.count)),
       };
     }
     if (sameNameTotal > 1) {
       return {
         key: `exit/${exit.baseAreaId}`,
         baseAreaId: exit.baseAreaId,
-        label: `${exit.name} · EXIT ${ordinal} OF ${sameNameTotal}`,
-        ariaLabel: `Open ${exit.name} guide, exit ${ordinal} of ${sameNameTotal}`,
+        label: `${exit.name} · ${msg('exitOrdinal', formatUiNumber(ordinal), formatUiNumber(sameNameTotal))}`,
+        ariaLabel: msg('openAreaGuideDestination', exit.name, formatUiNumber(ordinal), formatUiNumber(sameNameTotal)),
       };
     }
     return {
       key: `exit/${exit.baseAreaId}`,
       baseAreaId: exit.baseAreaId,
       label: exit.name,
-      ariaLabel: `Open ${exit.name} guide`,
+      ariaLabel: msg('openAreaGuideLabel', exit.name),
     };
   });
 }
@@ -353,18 +358,18 @@ export function projectAreaGuideExits(
 function pointLabel(point: AreaGuidePointView) {
   const label = point.label?.trim();
   if (label && label.toLocaleLowerCase() !== 'place') return label;
-  if (point.category === 'AVAILABLE_ITEM' || point.category === 'COLLECTED_ITEM') return 'Unidentified item';
-  if (point.category === 'SERVICE') return 'Unidentified service';
-  if (point.category === 'PLACE') return 'Unidentified entrance';
-  return 'Unidentified point';
+  if (point.category === 'AVAILABLE_ITEM' || point.category === 'COLLECTED_ITEM') return msg('unidentifiedItem');
+  if (point.category === 'SERVICE') return msg('unidentifiedService');
+  if (point.category === 'PLACE') return msg('unidentifiedEntrance');
+  return msg('unidentifiedPoint');
 }
 
 function windowLabel(windows: string[]) {
   const labels: string[] = windows.flatMap(window => {
-    if (window === 'DAY') return ['Day'];
-    if (window === 'NIGHT') return ['Night'];
-    if (window === 'MORNING') return ['Morning'];
-    if (window === 'EVENING') return ['Evening'];
+    if (window === 'DAY') return [msg('day')];
+    if (window === 'NIGHT') return [msg('night')];
+    if (window === 'MORNING') return [msg('morning')];
+    if (window === 'EVENING') return [msg('evening')];
     return [];
   });
   return [...new Set(labels)].join(' / ');
