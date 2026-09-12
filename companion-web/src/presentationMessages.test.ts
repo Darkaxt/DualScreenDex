@@ -1,5 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import { setInterfaceLanguage } from './i18n';
 import { renderPresentationMessage, renderPresentationMessages } from './presentationMessages';
+
+afterEach(() => setInterfaceLanguage('EN'));
 
 describe('presentation messages', () => {
   it('renders typed arguments without parsing backend prose', () => {
@@ -69,8 +72,20 @@ describe('presentation messages', () => {
       .toBe('The request was invalid.');
   });
 
+  it('localizes typed fallback copy and interface-locale numbers', () => {
+    setInterfaceLanguage('DE');
+
+    expect(renderPresentationMessage({ code: 'EVOLUTION_TRADE' })).toBe('Tausch');
+    expect(renderPresentationMessage({
+      code: 'ABILITY_VALUE_FIRE_MOVE_POWER_MULTIPLIER',
+      numerator: 3,
+      denominator: 2,
+    })).toBe('Stärke von Feuer-Attacken ×1,5');
+    expect(renderPresentationMessage({ code: 'API_INVALID_REQUEST' })).toBe('Die Anfrage war ungültig.');
+  });
+
   it('renders progress and challenge arguments without backend prose', () => {
-    expect(renderPresentationMessage({ code: 'PROGRESS_METRIC_DEX_SEEN' })).toBe('Pokédex seen');
+    expect(renderPresentationMessage({ code: 'PROGRESS_METRIC_DEX_SEEN' })).toBe('POKÉDEX SEEN');
     expect(renderPresentationMessage({ code: 'TIMELINE_CAPTURES', count: 2 })).toBe('Captures +2');
     expect(renderPresentationMessage({
       code: 'CHALLENGE_EXPLORATION_AREA_ITEMS_DESCRIPTION',
