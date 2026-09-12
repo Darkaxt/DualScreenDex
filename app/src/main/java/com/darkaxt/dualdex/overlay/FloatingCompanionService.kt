@@ -84,7 +84,11 @@ class FloatingCompanionService : Service() {
     private fun startAsForeground() {
         val manager = getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(
-            NotificationChannel(CHANNEL_ID, "DualDex floating companion", NotificationManager.IMPORTANCE_LOW),
+            NotificationChannel(
+                CHANNEL_ID,
+                getString(R.string.overlay_channel_name),
+                NotificationManager.IMPORTANCE_LOW,
+            ),
         )
         val openIntent = PendingIntent.getActivity(
             this,
@@ -100,12 +104,12 @@ class FloatingCompanionService : Service() {
         )
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_dualdex_ball)
-            .setContentTitle("DualDex overlay")
-            .setContentText("Tap the floating Poké Ball to show or hide the 4:3 companion.")
+            .setContentTitle(getString(R.string.overlay_notification_title))
+            .setContentText(getString(R.string.overlay_notification_text))
             .setContentIntent(openIntent)
             .setOngoing(true)
             .setSilent(true)
-            .addAction(0, "Dock", dockIntent)
+            .addAction(0, getString(R.string.overlay_dock), dockIntent)
             .build()
         val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
@@ -285,7 +289,7 @@ class FloatingCompanionService : Service() {
                 if (outcome == AllFilesSettingsDestination.FAILED) {
                     Toast.makeText(
                         this,
-                        "All files settings and folder selection could not open. Return to DualDex and retry folder selection.",
+                        R.string.storage_access_failed_overlay,
                         Toast.LENGTH_LONG,
                     ).show()
                 }

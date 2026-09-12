@@ -9,6 +9,7 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.Rect
 import android.view.View
+import com.darkaxt.dualdex.R
 
 class PokeBallBubbleView(context: Context) : View(context) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -16,7 +17,7 @@ class PokeBallBubbleView(context: Context) : View(context) {
     private var sprite: Bitmap? = null
 
     init {
-        contentDescription = "Toggle DualDex companion"
+        contentDescription = context.getString(R.string.overlay_toggle_description)
         elevation = 12f * resources.displayMetrics.density
         isClickable = true
         isFocusable = false

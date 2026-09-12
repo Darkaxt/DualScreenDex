@@ -3,4 +3,19 @@
     <string name="recovery_title">DualDex could not start its local interface</string>
     <string name="recovery_retry">Retry safely</string>
     <string name="recovery_details">Show diagnostics</string>
+    <string name="recovery_no_exception">No startup exception was retained.</string>
+    <string name="memory_session_exported">Memory session exported</string>
+    <string name="memory_session_export_failed">Memory session export failed</string>
+    <string name="performance_log_exported">Performance log exported</string>
+    <string name="performance_log_export_failed">Performance log export failed</string>
+    <string name="compatibility_report_exported">Compatibility report exported</string>
+    <string name="compatibility_report_export_failed">Compatibility report export failed</string>
+    <string name="storage_access_failed_activity">All files settings and folder selection could not open. Select a game folder and retry.</string>
+    <string name="storage_access_failed_overlay">All files settings and folder selection could not open. Return to DualDex and retry folder selection.</string>
+    <string name="overlay_channel_name">DualDex floating companion</string>
+    <string name="overlay_notification_title">DualDex overlay</string>
+    <string name="overlay_notification_text">Tap the floating Poké Ball to show or hide the 4:3 companion.</string>
+    <string name="overlay_dock">Dock</string>
+    <string name="overlay_resize_description">Resize companion</string>
+    <string name="overlay_toggle_description">Toggle DualDex companion</string>
 </resources>

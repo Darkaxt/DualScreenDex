@@ -5,6 +5,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.view.View
+import com.darkaxt.dualdex.R
 
 class OverlayResizeHandle(context: Context) : View(context) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -15,7 +16,7 @@ class OverlayResizeHandle(context: Context) : View(context) {
     }
 
     init {
-        contentDescription = "Resize companion"
+        contentDescription = context.getString(R.string.overlay_resize_description)
         isFocusable = true
     }
 

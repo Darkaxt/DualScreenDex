@@ -5,6 +5,8 @@ import com.darkaxt.dualdex.battle.ContentLanguageReadOutcome
 import com.darkaxt.dualdex.battle.LiveBattleState
 import com.darkaxt.dualdex.live.TransientGameStateContext
 import com.darkaxt.dualdex.live.UnifiedGameStateDecoder
+import com.enrpau.dualscreendex.companion.model.CompanionSettings
+import com.enrpau.dualscreendex.companion.model.InterfaceLanguage
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
 import com.enrpau.dualscreendex.parser.catalog.CatalogLanguageOverlay
 import com.enrpau.dualscreendex.parser.catalog.CatalogLocalization
@@ -34,6 +36,34 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ProductionCompanionRuntimeLanguageTest {
+    @Test
+    fun interfaceLanguageChangesRerenderWithoutParsingOrChangingRomLanguage() {
+        val identity = "c".repeat(64)
+        var parseCalls = 0
+        var persisted: CompanionSettings? = null
+        val runtime = ProductionCompanionRuntime(
+            initialSettings = CompanionSettings(interfaceLanguage = InterfaceLanguage.AUTO),
+            onSettingsChanged = { persisted = it },
+            parseCatalog = { _, _, _ ->
+                parseCalls += 1
+                error("interface settings must not invoke the parser")
+            },
+        )
+        runtime.loadCatalog("multilingual.gb", multilingualCatalog(identity, includeRuntimeSelection = false))
+        val before = runtime.bootstrap()
+
+        runtime.action("SETTINGS", mapOf("interfaceLanguage" to "ES"))
+
+        val after = runtime.bootstrap()
+        assertEquals(0, parseCalls)
+        assertEquals(InterfaceLanguage.ES, persisted?.interfaceLanguage)
+        assertTrue(after.state.version > before.state.version)
+        assertEquals(before.language?.activeLanguage, after.language?.activeLanguage)
+        assertEquals(before.language?.authority, after.language?.authority)
+        assertEquals(before.catalog?.species?.single()?.name, after.catalog?.species?.single()?.name)
+        runtime.close()
+    }
+
     @Test
     fun publishesOnlyTheExactlyBoundLiveProjection() {
         val identity = "a".repeat(64)

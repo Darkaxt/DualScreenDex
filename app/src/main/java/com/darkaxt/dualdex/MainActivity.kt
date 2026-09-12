@@ -186,9 +186,9 @@ class MainActivity : AppCompatActivity() {
                 requireNotNull(contentResolver.openOutputStream(uri, "wt")) { "selected export document is not writable" }
                     .use { it.write(bytes) }
             }.onSuccess {
-                Toast.makeText(this, "Memory session exported", Toast.LENGTH_SHORT).show()
-            }.onFailure { failure ->
-                Toast.makeText(this, failure.message ?: "Memory session export failed", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, R.string.memory_session_exported, Toast.LENGTH_SHORT).show()
+            }.onFailure {
+                Toast.makeText(this, R.string.memory_session_export_failed, Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -201,9 +201,9 @@ class MainActivity : AppCompatActivity() {
                 requireNotNull(contentResolver.openOutputStream(uri, "wt")) { "selected export document is not writable" }
                     .use { it.write(bytes) }
             }.onSuccess {
-                Toast.makeText(this, "Performance log exported", Toast.LENGTH_SHORT).show()
-            }.onFailure { failure ->
-                Toast.makeText(this, failure.message ?: "Performance log export failed", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, R.string.performance_log_exported, Toast.LENGTH_SHORT).show()
+            }.onFailure {
+                Toast.makeText(this, R.string.performance_log_export_failed, Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -214,9 +214,9 @@ class MainActivity : AppCompatActivity() {
                 requireNotNull(contentResolver.openOutputStream(uri, "wt")) { "selected export document is not writable" }
                     .use { it.write(bytes) }
             }.onSuccess {
-                Toast.makeText(this, "Compatibility report exported", Toast.LENGTH_SHORT).show()
-            }.onFailure { failure ->
-                Toast.makeText(this, failure.message ?: "Compatibility report export failed", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, R.string.compatibility_report_exported, Toast.LENGTH_SHORT).show()
+            }.onFailure {
+                Toast.makeText(this, R.string.compatibility_report_export_failed, Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -350,7 +350,7 @@ class MainActivity : AppCompatActivity() {
                         if (outcome == AllFilesSettingsDestination.FAILED) {
                             Toast.makeText(
                                 this,
-                                "All files settings and folder selection could not open. Select a game folder and retry.",
+                                R.string.storage_access_failed_activity,
                                 Toast.LENGTH_LONG,
                             ).show()
                         }
@@ -506,7 +506,7 @@ class MainActivity : AppCompatActivity() {
             text = getString(R.string.recovery_details)
             setOnClickListener {
                 content.addView(TextView(this@MainActivity).apply {
-                    text = failure?.stackTraceToString() ?: "No startup exception was retained."
+                    text = failure?.stackTraceToString() ?: getString(R.string.recovery_no_exception)
                     setTextColor(Color.WHITE)
                     textSize = 11f
                     setTextIsSelectable(true)

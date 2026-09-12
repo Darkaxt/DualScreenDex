@@ -1,0 +1,21 @@
+<resources>
+    <string name="app_name">DualDex</string>
+    <string name="recovery_title">DualDex n’a pas pu démarrer son interface locale</string>
+    <string name="recovery_retry">Réessayer en toute sécurité</string>
+    <string name="recovery_details">Afficher le diagnostic</string>
+    <string name="recovery_no_exception">Aucune exception de démarrage n’a été conservée.</string>
+    <string name="memory_session_exported">Session mémoire exportée</string>
+    <string name="memory_session_export_failed">Échec de l’exportation de la session mémoire</string>
+    <string name="performance_log_exported">Journal de performances exporté</string>
+    <string name="performance_log_export_failed">Échec de l’exportation du journal de performances</string>
+    <string name="compatibility_report_exported">Rapport de compatibilité exporté</string>
+    <string name="compatibility_report_export_failed">Échec de l’exportation du rapport de compatibilité</string>
+    <string name="storage_access_failed_activity">Impossible d’ouvrir les paramètres d’accès à tous les fichiers ni la sélection de dossier. Sélectionnez un dossier de jeux et réessayez.</string>
+    <string name="storage_access_failed_overlay">Impossible d’ouvrir les paramètres d’accès à tous les fichiers ni la sélection de dossier. Retournez dans DualDex et réessayez.</string>
+    <string name="overlay_channel_name">Compagnon flottant DualDex</string>
+    <string name="overlay_notification_title">Superposition DualDex</string>
+    <string name="overlay_notification_text">Touchez la Poké Ball flottante pour afficher ou masquer le compagnon au format 4:3.</string>
+    <string name="overlay_dock">Ancrer</string>
+    <string name="overlay_resize_description">Redimensionner le compagnon</string>
+    <string name="overlay_toggle_description">Afficher ou masquer le compagnon DualDex</string>
+</resources>

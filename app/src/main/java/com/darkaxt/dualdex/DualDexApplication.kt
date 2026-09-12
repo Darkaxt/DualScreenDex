@@ -39,6 +39,7 @@ import com.darkaxt.dualdex.setup.AndroidSetupPickerActivityResultRegistry
 import com.darkaxt.dualdex.setup.SetupPickerActivityResultRegistry
 import com.darkaxt.dualdex.retroarch.NetworkCommandTransport
 import com.darkaxt.dualdex.retroarch.UdpNetworkCommandTransport
+import com.darkaxt.dualdex.settings.InterfaceLanguageSettings
 import com.darkaxt.dualdex.settings.SettingsRepository
 import com.darkaxt.dualdex.storage.SharedStorageGateway
 import com.darkaxt.dualdex.mapper.MapperSessionStore
@@ -181,6 +182,7 @@ open class DualDexApplication : Application() {
         val settingsRepository = SettingsRepository(preferences)
         val lastCatalogSha256 = preferences.getString(LAST_CATALOG_HASH, null)
         settingsRepository.migrateLegacyRuleset(lastCatalogSha256)
+        InterfaceLanguageSettings.apply(settingsRepository.readGlobal().interfaceLanguage)
         activeCatalogSha256 = lastCatalogSha256
         settingsStore = settingsRepository
         overlaySizeStore = OverlaySizeStore(settingsRepository::readGlobal, settingsRepository::writeGlobal)
@@ -295,7 +297,10 @@ open class DualDexApplication : Application() {
             initialSettings = settingsRepository.readForRom(lastCatalogSha256),
             settingsForRom = settingsRepository::readForRom,
             globalSettings = settingsRepository::readGlobal,
-            onRomSettingsChanged = settingsRepository::writeForRom,
+            onRomSettingsChanged = { sha256, settings ->
+                settingsRepository.writeForRom(sha256, settings)
+                InterfaceLanguageSettings.apply(settingsRepository.readGlobal().interfaceLanguage)
+            },
             onRomDisplayModeChanged = ::requestRomDisplayMode,
             onCatalogCleared = {
                 activeCatalogSha256 = null

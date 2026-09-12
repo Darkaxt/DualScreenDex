@@ -1,0 +1,21 @@
+<resources>
+    <string name="app_name">DualDex</string>
+    <string name="recovery_title">DualDex konnte seine lokale Oberfläche nicht starten</string>
+    <string name="recovery_retry">Sicher erneut versuchen</string>
+    <string name="recovery_details">Diagnose anzeigen</string>
+    <string name="recovery_no_exception">Es wurde keine Startausnahme gespeichert.</string>
+    <string name="memory_session_exported">Speichersitzung exportiert</string>
+    <string name="memory_session_export_failed">Speichersitzung konnte nicht exportiert werden</string>
+    <string name="performance_log_exported">Leistungsprotokoll exportiert</string>
+    <string name="performance_log_export_failed">Leistungsprotokoll konnte nicht exportiert werden</string>
+    <string name="compatibility_report_exported">Kompatibilitätsbericht exportiert</string>
+    <string name="compatibility_report_export_failed">Kompatibilitätsbericht konnte nicht exportiert werden</string>
+    <string name="storage_access_failed_activity">Die Einstellungen für den Zugriff auf alle Dateien und die Ordnerauswahl konnten nicht geöffnet werden. Wähle einen Spieleordner aus und versuche es erneut.</string>
+    <string name="storage_access_failed_overlay">Die Einstellungen für den Zugriff auf alle Dateien und die Ordnerauswahl konnten nicht geöffnet werden. Kehre zu DualDex zurück und versuche die Ordnerauswahl erneut.</string>
+    <string name="overlay_channel_name">Schwebender DualDex-Begleiter</string>
+    <string name="overlay_notification_title">DualDex-Overlay</string>
+    <string name="overlay_notification_text">Tippe auf den schwebenden Pokéball, um den Begleiter im Format 4:3 ein- oder auszublenden.</string>
+    <string name="overlay_dock">Andocken</string>
+    <string name="overlay_resize_description">Größe des Begleiters ändern</string>
+    <string name="overlay_toggle_description">DualDex-Begleiter ein- oder ausblenden</string>
+</resources>

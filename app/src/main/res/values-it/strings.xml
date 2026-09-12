@@ -1,0 +1,21 @@
+<resources>
+    <string name="app_name">DualDex</string>
+    <string name="recovery_title">DualDex non è riuscito ad avviare l’interfaccia locale</string>
+    <string name="recovery_retry">Riprova in sicurezza</string>
+    <string name="recovery_details">Mostra diagnostica</string>
+    <string name="recovery_no_exception">Non è stata conservata alcuna eccezione di avvio.</string>
+    <string name="memory_session_exported">Sessione di memoria esportata</string>
+    <string name="memory_session_export_failed">Esportazione della sessione di memoria non riuscita</string>
+    <string name="performance_log_exported">Registro prestazioni esportato</string>
+    <string name="performance_log_export_failed">Esportazione del registro prestazioni non riuscita</string>
+    <string name="compatibility_report_exported">Rapporto di compatibilità esportato</string>
+    <string name="compatibility_report_export_failed">Esportazione del rapporto di compatibilità non riuscita</string>
+    <string name="storage_access_failed_activity">Impossibile aprire le impostazioni per tutti i file e la selezione della cartella. Seleziona una cartella di giochi e riprova.</string>
+    <string name="storage_access_failed_overlay">Impossibile aprire le impostazioni per tutti i file e la selezione della cartella. Torna a DualDex e riprova a selezionare la cartella.</string>
+    <string name="overlay_channel_name">Compagno mobile DualDex</string>
+    <string name="overlay_notification_title">Overlay DualDex</string>
+    <string name="overlay_notification_text">Tocca la Poké Ball mobile per mostrare o nascondere il compagno in formato 4:3.</string>
+    <string name="overlay_dock">Ancora</string>
+    <string name="overlay_resize_description">Ridimensiona il compagno</string>
+    <string name="overlay_toggle_description">Mostra o nascondi il compagno DualDex</string>
+</resources>

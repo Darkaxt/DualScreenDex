@@ -1,0 +1,21 @@
+<resources>
+    <string name="app_name">DualDex</string>
+    <string name="recovery_title">DualDex no pudo iniciar su interfaz local</string>
+    <string name="recovery_retry">Reintentar de forma segura</string>
+    <string name="recovery_details">Mostrar diagnóstico</string>
+    <string name="recovery_no_exception">No se conservó ninguna excepción de inicio.</string>
+    <string name="memory_session_exported">Sesión de memoria exportada</string>
+    <string name="memory_session_export_failed">No se pudo exportar la sesión de memoria</string>
+    <string name="performance_log_exported">Registro de rendimiento exportado</string>
+    <string name="performance_log_export_failed">No se pudo exportar el registro de rendimiento</string>
+    <string name="compatibility_report_exported">Informe de compatibilidad exportado</string>
+    <string name="compatibility_report_export_failed">No se pudo exportar el informe de compatibilidad</string>
+    <string name="storage_access_failed_activity">No se pudieron abrir los ajustes de acceso a todos los archivos ni la selección de carpeta. Selecciona una carpeta de juegos y vuelve a intentarlo.</string>
+    <string name="storage_access_failed_overlay">No se pudieron abrir los ajustes de acceso a todos los archivos ni la selección de carpeta. Vuelve a DualDex e intenta seleccionar la carpeta de nuevo.</string>
+    <string name="overlay_channel_name">Compañero flotante de DualDex</string>
+    <string name="overlay_notification_title">Superposición de DualDex</string>
+    <string name="overlay_notification_text">Toca la Poké Ball flotante para mostrar u ocultar el compañero en formato 4:3.</string>
+    <string name="overlay_dock">Acoplar</string>
+    <string name="overlay_resize_description">Cambiar el tamaño del compañero</string>
+    <string name="overlay_toggle_description">Mostrar u ocultar el compañero de DualDex</string>
+</resources>
