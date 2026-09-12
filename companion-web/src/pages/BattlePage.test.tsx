@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Catalog, State } from '../models';
+import { setInterfaceLanguage } from '../i18n';
 import { BattlePage, rarityAssessment } from './BattlePage';
 
 const rarityAssessments = [
@@ -16,7 +17,10 @@ const rarityAssessments = [
   [5, 'An exceptional catch. This one has the makings of a standout partner.'],
 ] as const;
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  setInterfaceLanguage('EN');
+});
 
 describe('battle layout', () => {
   it('uses a title-only header without parser family or knowledge-policy diagnostics', () => {
@@ -186,7 +190,7 @@ describe('battle layout', () => {
 
     expect(screen.getByText('Pound')).toBeTruthy();
     expect(screen.getByText('40')).toBeTruthy();
-    expect(screen.getByText('NEUTRAL')).toBeTruthy();
+    expect(screen.getByText('Neutral')).toBeTruthy();
     expect(container.querySelector('.damage-forecast')).toBeNull();
     expect(container.querySelector('.attack-card')?.textContent).not.toMatch(/unavailable|not found|error|failed/i);
   });
@@ -279,6 +283,27 @@ describe('battle layout', () => {
     expect(screen.getByText('NO RECRUITMENT READING')).toBeTruthy();
     expect(container.querySelector('.rarity-stars')).toBeNull();
     expect(container.querySelector('.rarity-card p')).toBeNull();
+  });
+
+  it('translates German battle controls without changing tab actions', () => {
+    const { catalog, state } = fixture(1);
+    const send = vi.fn();
+    state.battle!.damageForecast = {
+      confidence: 'EXACT', minimumHp: 35, maximumHp: 42,
+      minimumTargetPercent: 43.75, maximumTargetPercent: 52.5,
+      minimumHitsToKnockOut: 2, maximumHitsToKnockOut: 3,
+      accuracyPercent: 95, effectivenessPercent: 200,
+      conditions: [{ code: 'DAMAGE_CONDITION_STAB' }], uncertainty: null,
+    };
+    setInterfaceLanguage('DE');
+    render(<BattlePage catalog={catalog} state={state} send={send} openMove={vi.fn()} openSpecies={vi.fn()} />);
+
+    expect(screen.getByText('WILDE BEGEGNUNG')).toBeTruthy();
+    expect(screen.getByText('ZIEL · Lv. 34')).toBeTruthy();
+    expect(screen.getByLabelText('3 von 5 Sternen; GEWÖHNLICH VETERAN')).toBeTruthy();
+    expect(screen.getByText('Typengleicher Angriffsbonus')).toBeTruthy();
+    fireEvent.click(screen.getByRole('tab', { name: 'SELTENHEIT' }));
+    expect(send).toHaveBeenCalledWith('TAB', { tab: 'RARITY' });
   });
 });
 
