@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { Header } from '../components';
+import { formatUiNumber, msg } from '../i18n';
 import { mapperAction, mapperExport, mapperState, type MapperState } from '../mapperGateway';
 
 const labels = ['OVERWORLD', 'BATTLE_START', 'MOVE_SELECTED', 'MOVE_EXECUTED', 'TARGET_CHANGED', 'OPPONENT_SWITCHED', 'BATTLE_END'];
@@ -10,7 +11,7 @@ const POLL_TIMEOUT_MILLIS = 10_000;
 function safeErrorMessage(failure: unknown): string {
   return failure instanceof Error && failure.message.length > 0 && failure.message.length <= 256
     ? failure.message
-    : 'Memory mapper request failed.';
+    : msg('mapperRequestFailed');
 }
 
 export function MemoryMapperPage({ onBack }: { onBack: () => void }) {
@@ -117,23 +118,36 @@ export function MemoryMapperPage({ onBack }: { onBack: () => void }) {
   };
 
   const enable = () => {
-    if (window.confirm('Enable read-only memory capture for this app session? Exported sessions include raw emulator memory.')) {
+    if (window.confirm(msg('enableMemoryCaptureConfirm'))) {
       void act('ENABLE', { privacyAcknowledged: true });
     }
   };
 
   const progress = state?.totalBytes ? Math.round(state.completedBytes / state.totalBytes * 100) : 0;
   return <section class="screen mapper-screen">
-    <Header title="MEMORY MAPPER" kicker="READ-ONLY DEBUG LAB" onBack={onBack} />
+    <Header title={msg('memoryMapper')} kicker={msg('readOnlyDebugLab')} onBack={onBack} />
     <div class="mapper-content" data-scroll-region>
-      <section class="mapper-warning"><strong>ISSUE REPORT MEMORY CAPTURE</strong><p>This optional tool records read-only RetroArch memory for diagnosing unsupported battle layouts. Normal battle detection remains independent, and capture starts disabled after every app launch.</p></section>
-      {!state?.enabled ? <section class="paper-panel mapper-enable"><button class="primary-button" type="button" onClick={enable}>ENABLE FOR THIS SESSION</button></section> : <>
-        <section class="mapper-identity"><span><small>CORE</small><strong>{state.coreIdentity ?? '—'}</strong></span><span><small>CONTENT</small><strong>{state.contentIdentity ?? '—'}</strong></span><button type="button" onClick={() => void act('DISABLE')}>DISABLE</button></section>
-        <section class="paper-panel mapper-capture"><p class="eyebrow">LABEL A SNAPSHOT</p><div class="mapper-labels">{labels.map(label => <button type="button" disabled={state.captureLabel != null} onClick={() => void act('CAPTURE', { label })}>{label.replaceAll('_', ' ')}</button>)}</div><div class="mapper-custom"><input aria-label="Custom mapper label" value={customLabel} placeholder="CUSTOM LABEL" onInput={event => setCustomLabel(event.currentTarget.value)} /><button type="button" disabled={!customLabel.trim() || state.captureLabel != null} onClick={() => void act('CAPTURE', { label: 'CUSTOM', customLabel })}>CAPTURE</button></div>{state.captureLabel && <p class="mapper-progress" role="status">READING {state.captureLabel.replaceAll('_', ' ')} · {progress}%</p>}</section>
+      <section class="mapper-warning"><strong>{msg('issueReportMemoryCapture')}</strong><p>{msg('memoryCaptureDescription')}</p></section>
+      {!state?.enabled ? <section class="paper-panel mapper-enable"><button class="primary-button" type="button" onClick={enable}>{msg('enableForSession')}</button></section> : <>
+        <section class="mapper-identity"><span><small>{msg('core')}</small><strong>{state.coreIdentity ?? '—'}</strong></span><span><small>{msg('content')}</small><strong>{state.contentIdentity ?? '—'}</strong></span><button type="button" onClick={() => void act('DISABLE')}>{msg('disable')}</button></section>
+        <section class="paper-panel mapper-capture"><p class="eyebrow">{msg('labelSnapshot')}</p><div class="mapper-labels">{labels.map(label => <button type="button" disabled={state.captureLabel != null} onClick={() => void act('CAPTURE', { label })}>{mapperLabel(label)}</button>)}</div><div class="mapper-custom"><input aria-label={msg('customMapperLabel')} value={customLabel} placeholder={msg('customLabel')} onInput={event => setCustomLabel(event.currentTarget.value)} /><button type="button" disabled={!customLabel.trim() || state.captureLabel != null} onClick={() => void act('CAPTURE', { label: 'CUSTOM', customLabel })}>{msg('capture')}</button></div>{state.captureLabel && <p class="mapper-progress" role="status">{msg('readingSnapshot', mapperLabel(state.captureLabel), formatUiNumber(progress))}</p>}</section>
       </>}
-      <section class="paper-panel mapper-history"><div class="section-heading"><p class="eyebrow">SESSION SNAPSHOTS</p><strong>{state?.snapshots.length ?? 0}</strong></div>{state?.latestDiff && <p class="mapper-diff">Latest diff: <strong>{state.latestDiff.changedBytes}</strong> bytes in {state.latestDiff.ranges} ranges{state.latestDiff.omittedRanges ? ` · ${state.latestDiff.omittedRanges} omitted` : ''}</p>}{state?.snapshots.map(snapshot => <div class="mapper-snapshot"><strong>{snapshot.customLabel ?? snapshot.label.replaceAll('_', ' ')}</strong><span>{snapshot.bytes.toLocaleString()} bytes</span></div>)}</section>
-      <section class="paper-panel mapper-export"><button type="button" disabled={!state?.privacyAcknowledged || !state?.snapshots.length} onClick={() => void download()}>EXPORT RAW SESSION</button><button type="button" class="danger-button" onClick={() => void act('CLEAR_SESSIONS')}>CLEAR MAPPER SESSIONS</button></section>
+      <section class="paper-panel mapper-history"><div class="section-heading"><p class="eyebrow">{msg('sessionSnapshots')}</p><strong>{formatUiNumber(state?.snapshots.length ?? 0)}</strong></div>{state?.latestDiff && <p class="mapper-diff">{msg('latestDiff', formatUiNumber(state.latestDiff.changedBytes), formatUiNumber(state.latestDiff.ranges))}{state.latestDiff.omittedRanges ? ` · ${msg('omittedRanges', formatUiNumber(state.latestDiff.omittedRanges))}` : ''}</p>}{state?.snapshots.map(snapshot => <div class="mapper-snapshot"><strong>{snapshot.customLabel ?? mapperLabel(snapshot.label)}</strong><span>{msg('bytesValue', formatUiNumber(snapshot.bytes))}</span></div>)}</section>
+      <section class="paper-panel mapper-export"><button type="button" disabled={!state?.privacyAcknowledged || !state?.snapshots.length} onClick={() => void download()}>{msg('exportRawSession')}</button><button type="button" class="danger-button" onClick={() => void act('CLEAR_SESSIONS')}>{msg('clearMapperSessions')}</button></section>
       {error || state?.error ? <p class="mapper-error" role="alert">{error ?? state?.error}</p> : null}
     </div>
   </section>;
+}
+
+function mapperLabel(label: string): string {
+  const localized: Record<string, string> = {
+    OVERWORLD: msg('mapperOverworld'),
+    BATTLE_START: msg('mapperBattleStart'),
+    MOVE_SELECTED: msg('mapperMoveSelected'),
+    MOVE_EXECUTED: msg('mapperMoveExecuted'),
+    TARGET_CHANGED: msg('mapperTargetChanged'),
+    OPPONENT_SWITCHED: msg('mapperOpponentSwitched'),
+    BATTLE_END: msg('mapperBattleEnd'),
+  };
+  return localized[label] ?? label.replaceAll('_', ' ');
 }

@@ -1,8 +1,14 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { setInterfaceLanguage } from '../i18n';
+import type { DiagnosticView } from '../models';
 import { CapabilityReportPage } from './CapabilityReportPage';
 
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+  setInterfaceLanguage('EN');
+});
 
 describe('loaded ROM capability report', () => {
   it('shows exact complete, partial, ambiguous, missing, and not-applicable evidence', async () => {
@@ -24,6 +30,23 @@ describe('loaded ROM capability report', () => {
     expect(screen.getByRole('button', { name: /Evolutions AMBIGUOUS/i })).toBeTruthy();
     expect(screen.getByRole('button', { name: /Contest data NOT FOUND/i })).toBeTruthy();
     expect(screen.getByRole('button', { name: /Abilities N\/A/i })).toBeTruthy();
+  });
+
+  it('keeps diagnostic evidence stable under translated controls', async () => {
+    setInterfaceLanguage('ES');
+    render(<CapabilityReportPage
+      romHash={diagnosticFixture.sha256}
+      refreshMarker="COMPLETE:5:5"
+      onBack={vi.fn()}
+      load={() => Promise.resolve(diagnosticFixture as DiagnosticView)}
+    />);
+
+    expect(await screen.findByText('INFORME DE COMPATIBILIDAD')).toBeTruthy();
+    const species = screen.getByRole('button', { name: /Species names DISPONIBLE/i });
+    fireEvent.click(species);
+
+    expect(document.querySelector('.capability-available')).toBeTruthy();
+    expect(screen.getByText('0x73F780')).toBeTruthy();
   });
 
   it('expands layout evidence and distinguishes not-found from not-applicable values', async () => {
@@ -66,7 +89,7 @@ describe('loaded ROM capability report', () => {
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
 
     render(<CapabilityReportPage romHash={diagnosticFixture.sha256} refreshMarker="COMPLETE:5:5" onBack={vi.fn()} />);
-    expect((await screen.findByRole('alert')).textContent).toContain('Parser snapshot unavailable');
+    expect((await screen.findByRole('alert')).textContent).toContain('Diagnostics failed (503)');
     fireEvent.click(screen.getByRole('button', { name: 'RETRY' }));
     fireEvent.click(await screen.findByRole('button', { name: 'COPY REPORT' }));
 

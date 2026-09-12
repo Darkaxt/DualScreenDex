@@ -1,8 +1,14 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { setInterfaceLanguage } from '../i18n';
 import { MemoryMapperPage } from './MemoryMapperPage';
 
-afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+  setInterfaceLanguage('EN');
+});
 
 describe('memory mapper lab', () => {
   it('keeps one mapper poll active and aborts it when the page unmounts', async () => {
@@ -33,7 +39,7 @@ describe('memory mapper lab', () => {
 
     render(<MemoryMapperPage onBack={vi.fn()} />);
     await act(async () => { await Promise.resolve(); });
-    expect((await screen.findByRole('alert')).textContent).toBe('Mapper is temporarily unavailable.');
+    expect((await screen.findByRole('alert')).textContent).toBe('Mapper state failed (503)');
 
     await act(async () => { await vi.advanceTimersByTimeAsync(1_000); });
     await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
@@ -75,6 +81,23 @@ describe('memory mapper lab', () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(10_000); });
 
     expect(signal?.aborted).toBe(true);
+  });
+
+  it('keeps mapper protocol actions stable under translated labels', async () => {
+    const fetch = vi.fn()
+      .mockResolvedValueOnce(response(mapperState(false)))
+      .mockResolvedValueOnce(response(mapperState(true)));
+    vi.stubGlobal('fetch', fetch);
+    vi.stubGlobal('confirm', vi.fn(() => true));
+    setInterfaceLanguage('ES');
+
+    render(<MemoryMapperPage onBack={vi.fn()} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'ACTIVAR EN ESTA SESIÓN' }));
+
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/mapper/actions', expect.objectContaining({
+      body: JSON.stringify({ type: 'ENABLE', privacyAcknowledged: true }),
+    })));
+    expect(screen.getByText('MAPEADOR DE MEMORIA')).toBeTruthy();
   });
 
   it('starts disabled and uses one confirmation when enabled', async () => {
