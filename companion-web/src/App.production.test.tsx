@@ -206,7 +206,8 @@ describe('production application shell', () => {
         storageGrant: 'GRANTED', configGrant: 'GRANTED', romGrant: 'GRANTED', configState: 'VERIFIED',
         restartRequired: false, connection: 'PLAYING', systemId: 'Nintendo - Game Boy Advance',
         gameBasename: 'fixture.gba', contentCrc32: '12345678', resolution: 'FAILED', activeSource: null,
-        savefileDirectory: null, indexedRoms: 1, message: 'This game guide could not be opened. You can try again.',
+        savefileDirectory: null, indexedRoms: 1, message: 'private diagnostic',
+        presentationMessage: { code: 'RETROARCH_GAME_OPEN_FAILED' },
       },
       loading: { active: false, phase: 'FAILED', completedUnits: 0, totalUnits: 11 },
     });
@@ -488,7 +489,7 @@ describe('production application shell', () => {
           phase: 'ROM_IDENTITY',
           completedUnits: 0,
           totalUnits: 11,
-          message: 'Saved guide data needs to be refreshed for this version.',
+          message: { code: 'CATALOG_LOADING_VERSION_REFRESH' },
         },
       },
     });

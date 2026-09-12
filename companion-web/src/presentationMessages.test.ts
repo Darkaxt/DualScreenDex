@@ -47,6 +47,15 @@ describe('presentation messages', () => {
       .toBe('Type 4 moves');
   });
 
+  it('renders operational failures without backend prose', () => {
+    expect(renderPresentationMessage({ code: 'GUIDE_LOAD_FAILED' }))
+      .toBe('This game guide could not be opened. You can try again.');
+    expect(renderPresentationMessage({ code: 'CATALOG_LOADING_VERSION_REFRESH' }))
+      .toBe('Saved guide data needs to be refreshed for this version.');
+    expect(renderPresentationMessage({ code: 'API_INVALID_REQUEST' }))
+      .toBe('The request was invalid.');
+  });
+
   it('renders progress and challenge arguments without backend prose', () => {
     expect(renderPresentationMessage({ code: 'PROGRESS_METRIC_DEX_SEEN' })).toBe('Pokédex seen');
     expect(renderPresentationMessage({ code: 'TIMELINE_CAPTURES', count: 2 })).toBe('Captures +2');

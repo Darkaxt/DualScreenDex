@@ -39,6 +39,19 @@ export type PresentationMessageCode =
   | 'DAMAGE_CONDITION_MULTI_HIT'
   | 'DAMAGE_CONDITION_FIXED_DAMAGE'
   | 'DAMAGE_RANGE_BOUNDED'
+  | 'GUIDE_LOAD_FAILED'
+  | 'CATALOG_LOADING_FIRST_PREPARATION'
+  | 'CATALOG_LOADING_VERSION_REFRESH'
+  | 'CATALOG_LOADING_CACHE_RECOVERY'
+  | 'RETROARCH_GAME_OPEN_FAILED'
+  | 'API_SERVER_BUSY'
+  | 'API_METHOD_NOT_ALLOWED'
+  | 'API_REQUEST_TIMEOUT'
+  | 'API_GUIDE_LOAD_FAILED'
+  | 'API_INVALID_REQUEST'
+  | 'API_INTERNAL_ERROR'
+  | 'API_NOT_FOUND'
+  | 'API_MAP_UNAVAILABLE'
   | 'PROGRESS_METRIC_PLAY_TIME'
   | 'PROGRESS_METRIC_BADGES'
   | 'PROGRESS_METRIC_DEX_SEEN'
@@ -416,6 +429,7 @@ export interface RetroArchState {
   savefileDirectory: string | null;
   indexedRoms: number;
   message: string | null;
+  presentationMessage?: PresentationMessage | null;
 }
 
 export interface Rarity {
@@ -486,10 +500,10 @@ export interface State {
   catalogHash?: string | null;
   activeLanguage?: ActiveLanguageBinding | null;
   mapperAvailable?: boolean;
-  error: string | null;
+  error: PresentationMessage | null;
   activeRulesetId: string | null;
   rulesetAssumed: boolean;
-  loading: { active: boolean; phase: string; completedUnits: number; totalUnits: number; message?: string | null };
+  loading: { active: boolean; phase: string; completedUnits: number; totalUnits: number; message?: PresentationMessage | null };
   retroArch?: RetroArchState;
   saveRam?: SaveRamState;
   gameAccessReady?: boolean;

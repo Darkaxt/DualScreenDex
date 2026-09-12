@@ -79,6 +79,24 @@ class PresentationMessageTest {
     }
 
     @Test
+    fun operationalMessagesDoNotExposeBackendProse() {
+        assertEquals(
+            PresentationMessageView("GUIDE_LOAD_FAILED"),
+            PresentationMessages.guideLoadFailed("private failure detail"),
+        )
+        assertEquals(
+            PresentationMessageView("CATALOG_LOADING_FIRST_PREPARATION"),
+            PresentationMessages.catalogLoading("Preparing your game guide for the first time."),
+        )
+        assertEquals(
+            PresentationMessageView("API_SERVER_BUSY"),
+            PresentationMessages.apiError("SERVER_BUSY"),
+        )
+        assertNull(PresentationMessages.catalogLoading("private failure detail"))
+        assertNull(PresentationMessages.apiError("PRIVATE_FAILURE"))
+    }
+
+    @Test
     fun challengeMessagesKeepRomNativeNamesAsTypedArguments() {
         val fixedKeys = listOf(
             "collection-first-partner",

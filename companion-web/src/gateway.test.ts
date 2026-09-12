@@ -220,12 +220,17 @@ describe('active language overlays', () => {
 describe('JSON gateway responses', () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it('uses the structured API error message', async () => {
+  it('uses the structured API presentation message', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => response({
-      error: { code: 'INVALID_REQUEST', message: 'The action is invalid.', retryable: false },
+      error: {
+        code: 'INVALID_REQUEST',
+        message: 'private diagnostic',
+        retryable: false,
+        presentationMessage: { code: 'API_INVALID_REQUEST' },
+      },
     }, 400)));
 
-    await expect(action('BROKEN')).rejects.toThrow('The action is invalid.');
+    await expect(action('BROKEN')).rejects.toThrow('The request was invalid.');
   });
 
   it('does not parse non-JSON or malformed success responses', async () => {

@@ -5,9 +5,11 @@ import type {
   CatalogLanguageOverlay,
   DiagnosticView,
   LocalizedEntityText,
+  PresentationMessage,
   SpecimenCollectionView,
   State,
 } from './models';
+import { renderPresentationMessage } from './presentationMessages';
 
 export type ConnectionStatus = 'CONNECTED' | 'RECONNECTING' | 'FAILED';
 
@@ -218,8 +220,8 @@ export async function requestJson<T>(response: Response, operation: string): Pro
 }
 
 function apiErrorMessage(payload: unknown): string | null {
-  if (!isRecord(payload) || !isRecord(payload.error)) return null;
-  return validMessage(payload.error.message);
+  if (!isRecord(payload) || !isRecord(payload.error) || !isRecord(payload.error.presentationMessage)) return null;
+  return validMessage(renderPresentationMessage(payload.error.presentationMessage as unknown as PresentationMessage));
 }
 
 function validMessage(value: unknown): string | null {

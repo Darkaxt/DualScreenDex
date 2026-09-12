@@ -1,5 +1,6 @@
 import { Header } from '../components';
 import type { RetroArchState, State } from '../models';
+import { renderPresentationMessage } from '../presentationMessages';
 
 const disconnected: RetroArchState = {
   storageGrant: 'MISSING',
@@ -71,7 +72,9 @@ export function SetupPage({ state, send }: { state: State; send: (type: string, 
         </div>
         <a class="setup-action setup-action-primary" href="dualdex://open/retroarch">OPEN RETROARCH</a>
         {retroArch.resolution === 'FAILED' && <>
-          <p class="warning-note" role="alert">{retroArch.message ?? 'This game guide could not be opened. You can try again.'}</p>
+          <p class="warning-note" role="alert">{retroArch.presentationMessage
+            ? renderPresentationMessage(retroArch.presentationMessage)
+            : 'This game guide could not be opened. You can try again.'}</p>
           <a class="setup-action setup-action-primary" href="dualdex://guide/retry">RETRY OPENING GAME GUIDE</a>
         </>}
       </SetupStep>

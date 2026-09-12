@@ -9,6 +9,7 @@ import com.darkaxt.dualdex.catalog.StoredCatalog
 import com.darkaxt.dualdex.settings.SettingsRepository
 import com.darkaxt.dualdex.setup.SessionEpochGate
 import com.darkaxt.dualdex.setup.VerifiedSessionIdentity
+import com.enrpau.dualscreendex.companion.api.PresentationMessageView
 import com.enrpau.dualscreendex.companion.api.RetroArchView
 import com.enrpau.dualscreendex.companion.api.SaveRamView
 import com.enrpau.dualscreendex.companion.model.CompanionSettings
@@ -2729,7 +2730,7 @@ class ProductionCompanionRuntimeTest {
             val state = runtime.stateView()
             assertFalse(state.loading.active)
             assertEquals("FAILED", state.loading.phase)
-            assertEquals("This game guide could not be opened. You can try again.", state.error)
+            assertEquals(PresentationMessageView("GUIDE_LOAD_FAILED"), state.error)
             assertNull(runtime.catalogHash())
             runtime.close()
         }

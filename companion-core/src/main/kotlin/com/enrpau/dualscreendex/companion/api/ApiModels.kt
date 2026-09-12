@@ -78,6 +78,7 @@ data class ApiErrorDetailView(
     val code: String,
     val message: String,
     val retryable: Boolean,
+    val presentationMessage: PresentationMessageView = requireNotNull(PresentationMessages.apiError(code)),
 )
 
 data class CatalogView(
@@ -484,7 +485,7 @@ data class StateView(
     val battle: BattleView?,
     val catalogReady: Boolean,
     val catalogName: String?,
-    val error: String?,
+    val error: PresentationMessageView?,
     val activeRulesetId: String?,
     val rulesetAssumed: Boolean,
     val loading: CatalogLoadingView,
@@ -640,6 +641,7 @@ data class RetroArchView(
     val savefileDirectory: String? = null,
     val indexedRoms: Int = 0,
     val message: String? = null,
+    val presentationMessage: PresentationMessageView? = null,
 )
 data class SaveRamView(
     val status: String = "UNAVAILABLE",
@@ -661,7 +663,7 @@ data class CatalogLoadingView(
     val phase: String,
     val completedUnits: Int,
     val totalUnits: Int,
-    val message: String? = null,
+    val message: PresentationMessageView? = null,
 )
 
 data class SpeciesStateView(
@@ -1214,7 +1216,7 @@ object ApiViewBuilder {
             },
             snapshot.catalogReady,
             snapshot.catalogName,
-            snapshot.error,
+            snapshot.error?.let(PresentationMessages::guideLoadFailed),
             activeRulesetId,
             rulesetAssumed,
             CatalogLoadingView(
@@ -1222,9 +1224,15 @@ object ApiViewBuilder {
                 snapshot.catalogLoading.phase,
                 snapshot.catalogLoading.completedUnits,
                 snapshot.catalogLoading.totalUnits,
-                snapshot.catalogLoading.message,
+                PresentationMessages.catalogLoading(snapshot.catalogLoading.message),
             ),
-            retroArch,
+            retroArch.copy(
+                presentationMessage = if (retroArch.resolution == "FAILED") {
+                    PresentationMessages.retroArchGameOpenFailed()
+                } else {
+                    null
+                },
+            ),
             saveRam,
             snapshot.gameTime?.let { GameClockView(it.hours, it.minutes, it.phase?.name, it.phaseProgress) },
             snapshot.gameAccessReady,

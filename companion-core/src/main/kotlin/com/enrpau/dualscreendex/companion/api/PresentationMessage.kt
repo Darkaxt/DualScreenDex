@@ -119,6 +119,19 @@ enum class PresentationMessageCode {
     DAMAGE_CONDITION_MULTI_HIT,
     DAMAGE_CONDITION_FIXED_DAMAGE,
     DAMAGE_RANGE_BOUNDED,
+    GUIDE_LOAD_FAILED,
+    CATALOG_LOADING_FIRST_PREPARATION,
+    CATALOG_LOADING_VERSION_REFRESH,
+    CATALOG_LOADING_CACHE_RECOVERY,
+    RETROARCH_GAME_OPEN_FAILED,
+    API_SERVER_BUSY,
+    API_METHOD_NOT_ALLOWED,
+    API_REQUEST_TIMEOUT,
+    API_GUIDE_LOAD_FAILED,
+    API_INVALID_REQUEST,
+    API_INTERNAL_ERROR,
+    API_NOT_FOUND,
+    API_MAP_UNAVAILABLE,
     PROGRESS_METRIC_PLAY_TIME,
     PROGRESS_METRIC_BADGES,
     PROGRESS_METRIC_DEX_SEEN,
@@ -235,6 +248,23 @@ object PresentationMessages {
 
     fun otherRuleset() = plain(PresentationMessageCode.RULESET_OTHER)
 
+    fun guideLoadFailed(@Suppress("UNUSED_PARAMETER") diagnostic: String? = null) =
+        plain(PresentationMessageCode.GUIDE_LOAD_FAILED)
+
+    fun catalogLoading(diagnostic: String?): PresentationMessageView? = when (diagnostic) {
+        "Preparing your game guide for the first time." ->
+            plain(PresentationMessageCode.CATALOG_LOADING_FIRST_PREPARATION)
+        "Saved guide data needs to be refreshed for this version." ->
+            plain(PresentationMessageCode.CATALOG_LOADING_VERSION_REFRESH)
+        "Saved guide data could not be reopened, so it is being prepared again." ->
+            plain(PresentationMessageCode.CATALOG_LOADING_CACHE_RECOVERY)
+        else -> null
+    }
+
+    fun retroArchGameOpenFailed() = plain(PresentationMessageCode.RETROARCH_GAME_OPEN_FAILED)
+
+    fun apiError(code: String): PresentationMessageView? = API_ERROR_CODES[code]?.let(::plain)
+
     fun progressMetric(key: String): PresentationMessageView? = PROGRESS_METRIC_CODES[key]?.let(::plain)
 
     fun timelineChange(key: String, count: Long): PresentationMessageView? =
@@ -278,6 +308,16 @@ object PresentationMessages {
     private fun plain(code: PresentationMessageCode) = PresentationMessageView(code.name)
 }
 
+private val API_ERROR_CODES = mapOf(
+    "SERVER_BUSY" to PresentationMessageCode.API_SERVER_BUSY,
+    "METHOD_NOT_ALLOWED" to PresentationMessageCode.API_METHOD_NOT_ALLOWED,
+    "REQUEST_TIMEOUT" to PresentationMessageCode.API_REQUEST_TIMEOUT,
+    "GUIDE_LOAD_FAILED" to PresentationMessageCode.API_GUIDE_LOAD_FAILED,
+    "INVALID_REQUEST" to PresentationMessageCode.API_INVALID_REQUEST,
+    "INTERNAL_ERROR" to PresentationMessageCode.API_INTERNAL_ERROR,
+    "NOT_FOUND" to PresentationMessageCode.API_NOT_FOUND,
+    "MAP_UNAVAILABLE" to PresentationMessageCode.API_MAP_UNAVAILABLE,
+)
 private val PROGRESS_METRIC_CODES = mapOf(
     "play-time" to PresentationMessageCode.PROGRESS_METRIC_PLAY_TIME,
     "badges" to PresentationMessageCode.PROGRESS_METRIC_BADGES,

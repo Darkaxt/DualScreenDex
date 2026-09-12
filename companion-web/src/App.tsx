@@ -11,6 +11,7 @@ import {
 } from './gateway';
 import type { ActiveLanguageBinding, Bootstrap, Catalog, State } from './models';
 import { deriveSemanticTheme, semanticThemeCssVariables } from './themeContrast';
+import { renderPresentationMessage } from './presentationMessages';
 import { decodeRouteHash, encodeRouteHash, popRoute, pushRoute, type UiRoute } from './navigation';
 import { RouteHeadingFocusContext } from './components';
 import { PokedexBrowse } from './pages/PokedexBrowse';
@@ -447,9 +448,12 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
 
   const loadingLabel = loadingModuleLabel(state.loading.phase);
   const waitingForGame = shouldWaitForGameAccess(state);
-  const rawDisplayedError = error
-    ?? state.error
-    ?? (state.retroArch?.resolution === 'FAILED' ? state.retroArch.message : null);
+  const backendError = state.error
+    ? renderPresentationMessage(state.error)
+    : state.retroArch?.resolution === 'FAILED' && state.retroArch.presentationMessage
+      ? renderPresentationMessage(state.retroArch.presentationMessage)
+      : null;
+  const rawDisplayedError = error ?? backendError;
   const displayedError = rawDisplayedError === dismissedError ? null : rawDisplayedError;
   const displayedErrorRetry = errorRetry ?? (rawDisplayedError == null
     ? null
@@ -823,7 +827,7 @@ function WelcomeLoadingProgress({ label, loading }: { label: string; loading: St
       aria-valuemax={determinate ? loading.totalUnits : undefined}
       aria-valuenow={determinate ? loading.completedUnits : undefined}
     ><span style={determinate ? { width: `${ratio * 100}%` } : undefined} /></div>
-    {loading.message && <p class="welcome-loading-note">{loading.message}</p>}
+    {loading.message && <p class="welcome-loading-note">{renderPresentationMessage(loading.message)}</p>}
   </div>;
 }
 

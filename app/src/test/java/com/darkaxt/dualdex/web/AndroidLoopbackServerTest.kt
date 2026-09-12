@@ -1266,8 +1266,9 @@ class AndroidLoopbackServerTest {
         assertEquals(diagnostic, envelope.get("diagnostic").asString)
         assertTrue(envelope.get("diagnostic").asString.length <= 64)
         val error = envelope.getAsJsonObject("error")
-        assertEquals(setOf("code", "message", "retryable"), error.keySet())
+        assertEquals(setOf("code", "message", "retryable", "presentationMessage"), error.keySet())
         assertEquals("MAP_UNAVAILABLE", error.get("code").asString)
+        assertEquals("API_MAP_UNAVAILABLE", error.getAsJsonObject("presentationMessage").get("code").asString)
         assertTrue(error.get("retryable").asBoolean)
         assertEquals("The map is temporarily unavailable. Try again.", error.get("message").asString)
         return body
@@ -1290,8 +1291,9 @@ class AndroidLoopbackServerTest {
         val envelope = JsonParser.parseString(body).asJsonObject
         assertEquals(setOf("error"), envelope.keySet())
         val error = envelope.getAsJsonObject("error")
-        assertEquals(setOf("code", "message", "retryable"), error.keySet())
+        assertEquals(setOf("code", "message", "retryable", "presentationMessage"), error.keySet())
         assertEquals(code, error.get("code").asString)
+        assertEquals("API_$code", error.getAsJsonObject("presentationMessage").get("code").asString)
         assertEquals(retryable, error.get("retryable").asBoolean)
         return error.get("message").asString.also { assertTrue(it.isNotBlank()) }
     }

@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.server
 
+import com.enrpau.dualscreendex.companion.api.PresentationMessageView
 import com.enrpau.dualscreendex.parser.catalog.LearnsetRuleset
 import com.enrpau.dualscreendex.parser.catalog.BaseStats
 import com.enrpau.dualscreendex.parser.catalog.CatalogMaterializationPhase
@@ -158,10 +159,10 @@ class DualDexRuntimeTest {
                 releaseFailure.countDown()
                 assertTrue(terminalFailure.await(1, TimeUnit.SECONDS))
                 val failed = runtime.stateView()
-                assertEquals("This game guide could not be opened. You can try again.", failed.error)
+                assertEquals(PresentationMessageView("GUIDE_LOAD_FAILED"), failed.error)
                 assertEquals("FAILED", failed.loading.phase)
                 assertFalse(failed.loading.active)
-                assertFalse(failed.error.orEmpty().contains("detail"))
+                assertFalse(failed.error.toString().contains("detail"))
                 assertNull(runtime.bootstrap().catalog)
 
                 runtime.load("valid.gba", RomImage(byteArrayOf()))
@@ -197,13 +198,13 @@ class DualDexRuntimeTest {
         try {
             runtime.load(startupRom)
             assertEquals("FAILED", runtime.stateView().loading.phase)
-            assertEquals("This game guide could not be opened. You can try again.", runtime.stateView().error)
-            assertFalse(runtime.stateView().error.orEmpty().contains("startup allocator"))
+            assertEquals(PresentationMessageView("GUIDE_LOAD_FAILED"), runtime.stateView().error)
+            assertFalse(runtime.stateView().error.toString().contains("startup allocator"))
 
             runtime.load("manual.gba", ByteArrayInputStream(byteArrayOf(1)))
             assertEquals("FAILED", runtime.stateView().loading.phase)
-            assertEquals("This game guide could not be opened. You can try again.", runtime.stateView().error)
-            assertFalse(runtime.stateView().error.orEmpty().contains("manual source"))
+            assertEquals(PresentationMessageView("GUIDE_LOAD_FAILED"), runtime.stateView().error)
+            assertFalse(runtime.stateView().error.toString().contains("manual source"))
 
             runtime.load("retry.gba", ByteArrayInputStream(byteArrayOf(1)))
             assertTrue(completed.await(1, TimeUnit.SECONDS))
