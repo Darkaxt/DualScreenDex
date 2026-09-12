@@ -10,7 +10,7 @@ import {
   type ConnectionStatus,
 } from './gateway';
 import type { ActiveLanguageBinding, Bootstrap, Catalog, State } from './models';
-import { setInterfaceLanguage } from './i18n';
+import { msg, setInterfaceLanguage } from './i18n';
 import { deriveSemanticTheme, semanticThemeCssVariables } from './themeContrast';
 import { renderPresentationMessage } from './presentationMessages';
 import { decodeRouteHash, encodeRouteHash, popRoute, pushRoute, type UiRoute } from './navigation';
@@ -305,7 +305,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
       void languageOverlay(binding).then(overlay => {
         if (requestId !== languageOverlayRequestRef.current) return;
         if (!overlay) {
-          retryBootstrap('Your game guide could not be refreshed. Please try again.', true);
+          retryBootstrap(msg('guideRefreshFailed'), true);
           return;
         }
         const activeCatalog = catalogRef.current;
@@ -320,8 +320,8 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
         if (requestId !== languageOverlayRequestRef.current) return;
         reportFailure(
           failure,
-          'Your game guide could not be refreshed. Please try again.',
-          () => retryBootstrap('Your game guide could not be refreshed. Please try again.', true),
+          msg('guideRefreshFailed'),
+          () => retryBootstrap(msg('guideRefreshFailed'), true),
         );
       });
       return;
@@ -352,8 +352,8 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
         if (initial.id !== bootstrapRequestRef.current) return;
         reportFailure(
           failure,
-          'The companion could not start. Please try again.',
-          () => retryBootstrap('The companion could not start. Please try again.', false, true),
+          msg('companionStartFailed'),
+          () => retryBootstrap(msg('companionStartFailed'), false, true),
         );
         setBusy(false);
       },
@@ -368,8 +368,8 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
           if (refresh.id === bootstrapRequestRef.current) {
             reportFailure(
               failure,
-              'Your game guide could not be refreshed. Please try again.',
-              () => retryBootstrap('Your game guide could not be refreshed. Please try again.'),
+              msg('guideRefreshFailed'),
+              () => retryBootstrap(msg('guideRefreshFailed')),
             );
           }
         });
@@ -382,8 +382,8 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
           if (reconnect.id !== bootstrapRequestRef.current) return;
           reportFailure(
             failure,
-            'The companion could not reconnect. It will keep trying.',
-            () => retryBootstrap('The companion could not reconnect. It will keep trying.', true),
+            msg('companionReconnectFailed'),
+            () => retryBootstrap(msg('companionReconnectFailed'), true),
           );
           throw failure;
         },
@@ -427,7 +427,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
     } catch (failure) {
       reportFailure(
         failure,
-        'That action could not be completed. Please try again.',
+        msg('actionFailed'),
         () => { void send(type, values, sourceFocus); },
       );
     }
@@ -442,7 +442,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
       if (request.id === bootstrapRequestRef.current) {
         reportFailure(
           failure,
-          'This game could not be opened. Try another file or retry.',
+          msg('gameOpenFailed'),
           () => { void onUpload(file); },
         );
       }
@@ -462,14 +462,14 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
   const displayedError = rawDisplayedError === dismissedError ? null : rawDisplayedError;
   const displayedErrorRetry = errorRetry ?? (rawDisplayedError == null
     ? null
-    : () => retryBootstrap('The companion could not refresh. Please try again.'));
+    : () => retryBootstrap(msg('companionRefreshFailed')));
   useEffect(() => {
     if (rawDisplayedError == null) setDismissedError(null);
   }, [rawDisplayedError]);
   const connectionMessage = connectionStatus === 'RECONNECTING'
-    ? 'Reconnecting to the companion…'
+    ? msg('reconnecting')
     : connectionStatus === 'FAILED'
-      ? 'The companion is unavailable. Retrying automatically…'
+      ? msg('companionUnavailable')
       : null;
 
   useEffect(() => {
@@ -546,7 +546,7 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
     if (!catalog) return <Welcome
       busy={busy}
       loading={state.loading}
-      loadingLabel={state.loading.active ? loadingLabel : 'Preparing your companion'}
+      loadingLabel={state.loading.active ? loadingLabel : msg('preparingCompanion')}
       error={displayedError}
       showGuideRetry={state.retroArch?.resolution === 'FAILED'}
       onUpload={onUpload}
@@ -692,13 +692,13 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
             if (routeTriggerRef.current === control) routeTriggerRef.current = null;
           });
         }}><RouteHeadingFocusContext.Provider value={pendingFocusReturn == null}>{screen}</RouteHeadingFocusContext.Provider></div>
-        <div class="global-feedback" aria-label="Application status">
+        <div class="global-feedback" aria-label={msg('applicationStatus')}>
           {connectionMessage && <div
             class={`connection-toast is-${connectionStatus.toLowerCase()}`}
             role={connectionStatus === 'FAILED' ? 'alert' : 'status'}
           >{connectionMessage}</div>}
           {catalog && state.loading.active && <div class={`loading-indicator ${loadingOriginClass(state.loading)}`} role="status" aria-label={loadingLabel}><span>{loadingLabel}</span><i /></div>}
-          {displayedError && catalog && <div class="error-toast" role="alert"><span>{displayedError}</span><div class="error-toast-actions"><button type="button" onClick={() => displayedErrorRetry?.()}>RETRY</button><button type="button" onClick={() => setDismissedError(displayedError)}>DISMISS</button></div></div>}
+          {displayedError && catalog && <div class="error-toast" role="alert"><span>{displayedError}</span><div class="error-toast-actions"><button type="button" onClick={() => displayedErrorRetry?.()}>{msg('retry')}</button><button type="button" onClick={() => setDismissedError(displayedError)}>{msg('dismiss')}</button></div></div>}
         </div>
       </div>
     </div>
@@ -783,20 +783,20 @@ export function catalogRefreshMarker(state: Pick<State, 'catalogName' | 'catalog
 
 export function loadingModuleLabel(phase: string): string {
   const labels: Record<string, string> = {
-    ROM_IDENTITY: 'Checking the game',
-    FAMILY_AND_TABLES: 'Finding game data',
-    CORE_RECORDS: 'Reading Pokémon and moves',
-    SPECIES_MEDIA: 'Preparing artwork and entries',
-    EVOLUTIONS_AND_LEARNSETS: 'Reading evolutions and learnsets',
-    ENCOUNTERS: 'Finding wild encounters',
-    MOVE_DATA: 'Reading move details',
-    ABILITY_DATA: 'Reading ability details',
-    MAPS: 'Preparing maps',
-    TRAINER_AND_THEME: 'Preparing your Trainer Card',
-    CATALOG_STORAGE: 'Saving your game guide',
-    CACHE_REOPEN: 'Opening your game guide',
+    ROM_IDENTITY: msg('checkingGame'),
+    FAMILY_AND_TABLES: msg('findingGameData'),
+    CORE_RECORDS: msg('readingPokemonMoves'),
+    SPECIES_MEDIA: msg('preparingArtworkEntries'),
+    EVOLUTIONS_AND_LEARNSETS: msg('readingEvolutionsLearnsets'),
+    ENCOUNTERS: msg('findingWildEncounters'),
+    MOVE_DATA: msg('readingMoveDetails'),
+    ABILITY_DATA: msg('readingAbilityDetails'),
+    MAPS: msg('preparingMaps'),
+    TRAINER_AND_THEME: msg('preparingTrainerCard'),
+    CATALOG_STORAGE: msg('savingGameGuide'),
+    CACHE_REOPEN: msg('openingGameGuide'),
   };
-  return labels[phase] ?? 'Preparing your companion';
+  return labels[phase] ?? msg('preparingCompanion');
 }
 
 export function loadingOriginClass(loading: State['loading']): string {
@@ -816,7 +816,7 @@ function Welcome({ busy, loading, loadingLabel, error, showGuideRetry, onUpload,
   const active = busy || loading.active;
   return <section class="screen welcome-screen"><div class="welcome-mark"><span /><i /></div><h1>DUALDEX</h1>{active
     ? <WelcomeLoadingProgress label={loadingLabel} loading={loading} />
-    : <><p>Choose a Pokémon game to begin.</p><div class="welcome-actions"><label class="welcome-upload"><span>LOAD ROM OR ZIP</span><input type="file" accept=".gb,.gbc,.gba,.zip" onChange={event => { const file = event.currentTarget.files?.[0]; if (file) onUpload(file); }} /></label><button type="button" onClick={openSetup}>CONNECT RETROARCH</button></div></>}{error && <div class="welcome-error" role="alert">{error}</div>}{showGuideRetry && <a class="setup-action setup-action-primary" href="dualdex://guide/retry">RETRY OPENING GAME GUIDE</a>}</section>;
+    : <><p>{msg('chooseGame')}</p><div class="welcome-actions"><label class="welcome-upload"><span>{msg('loadRomOrZip')}</span><input aria-label={msg('loadRomOrZip')} type="file" accept=".gb,.gbc,.gba,.zip" onChange={event => { const file = event.currentTarget.files?.[0]; if (file) onUpload(file); }} /></label><button type="button" onClick={openSetup}>{msg('connectRetroArchAction')}</button></div></>}{error && <div class="welcome-error" role="alert">{error}</div>}{showGuideRetry && <a class="setup-action setup-action-primary" href="dualdex://guide/retry">{msg('retryOpeningGuide')}</a>}</section>;
 }
 
 function WelcomeLoadingProgress({ label, loading }: { label: string; loading: State['loading'] }) {
@@ -840,10 +840,10 @@ function GameAccessWaiting() {
   return <section class="screen welcome-screen game-access-waiting">
     <div class="welcome-mark"><span /><i /></div>
     <h1>DUALDEX</h1>
-    <div class="welcome-game-waiting" role="status" aria-label="Waiting for in-game access">
+    <div class="welcome-game-waiting" role="status" aria-label={msg('waitingForInGameAccess')}>
       <span class="welcome-waiting-spinner" aria-hidden="true" />
-      <strong>Waiting for in-game access</strong>
-      <p>Waiting for the game to finish initializing.</p>
+      <strong>{msg('waitingForInGameAccess')}</strong>
+      <p>{msg('waitingForGameInitialization')}</p>
     </div>
   </section>;
 }

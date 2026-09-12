@@ -1,6 +1,7 @@
 import { createContext, type ComponentChildren } from 'preact';
 import { useContext, useEffect, useRef } from 'preact/hooks';
 import { GameClockIndicator } from './GameClockIndicator';
+import { msg } from './i18n';
 import { catalogMediaUrl } from './media';
 import type { Catalog, GameTime, KnowledgeMode, SpeciesState, TypeInfo } from './models';
 
@@ -20,7 +21,7 @@ export function identitySpriteClass(knowledge: SpeciesIdentityKnowledge): string
 export function Sprite({ speciesId, name, available, catalogHash, large = false, knowledge = 'captured' }: { speciesId: number; name: string; available: boolean; catalogHash: string; large?: boolean; knowledge?: SpeciesIdentityKnowledge }) {
   return (
     <div class={`sprite-frame ${large ? 'sprite-large' : ''}`}>
-      {available ? <img loading="lazy" decoding="async" class={identitySpriteClass(knowledge)} src={catalogMediaUrl(`/api/sprites/species/${speciesId}.png`, catalogHash)} alt={knowledge === 'unknown' ? 'Unidentified Pokémon' : `${name} sprite`} /> : <span class="sprite-missing" aria-label="Sprite unavailable" />}
+      {available ? <img loading="lazy" decoding="async" class={identitySpriteClass(knowledge)} src={catalogMediaUrl(`/api/sprites/species/${speciesId}.png`, catalogHash)} alt={knowledge === 'unknown' ? msg('unidentifiedPokemon') : msg('pokemonSprite', name)} /> : <span class="sprite-missing" aria-label={msg('spriteUnavailable')} />}
     </div>
   );
 }
@@ -62,13 +63,13 @@ export function CaughtBadge({ state, catalog }: { state?: SpeciesState; catalog:
   if (!caught) return null;
   const ball = state?.ballId != null && catalog.balls.some(item => item.id === state.ballId && item.hasSprite);
   return <span class="caught-avatar-badge">{ball
-    ? <img loading="lazy" decoding="async" class="ball-art" src={catalogMediaUrl(`/api/sprites/balls/${state!.ballId}.png`, catalog.hash)} alt="Caught" />
-    : <span class="ball-mark ball-caught" aria-label="Caught"><i /></span>}
+    ? <img loading="lazy" decoding="async" class="ball-art" src={catalogMediaUrl(`/api/sprites/balls/${state!.ballId}.png`, catalog.hash)} alt={msg('caught')} />
+    : <span class="ball-mark ball-caught" aria-label={msg('caught')}><i /></span>}
   </span>;
 }
 
 export function EyeStatus({ seen }: { seen: boolean }) {
-  return <svg class="eye-icon" viewBox="0 0 24 24" role="img" aria-label={seen ? 'Seen' : 'Not seen'}>
+  return <svg class="eye-icon" viewBox="0 0 24 24" role="img" aria-label={seen ? msg('seen') : msg('notSeen')}>
     <path d="M2.5 12s3.6-6 9.5-6 9.5 6 9.5 6-3.6 6-9.5 6-9.5-6-9.5-6Z" />
     <circle cx="12" cy="12" r="2.7" />
     {!seen && <line x1="4" y1="3.5" x2="20" y2="20.5" />}
@@ -149,12 +150,12 @@ export type HeaderDestination = 'POKEDEX' | 'PARTY' | 'MAP' | 'SETTINGS';
 
 export function CurrentHeaderDestination({ destination }: { destination: HeaderDestination }) {
   const label = destination === 'POKEDEX'
-    ? 'Pokédex'
+    ? msg('pokedex')
     : destination === 'PARTY'
-      ? 'Party'
+      ? msg('party')
       : destination === 'MAP'
-        ? 'Map'
-        : 'Settings';
+        ? msg('map')
+        : msg('settings');
   const icon = destination === 'POKEDEX'
     ? <DexIcon />
     : destination === 'PARTY'
@@ -166,7 +167,7 @@ export function CurrentHeaderDestination({ destination }: { destination: HeaderD
   return <span
     class={`header-action header-destination-action ${destination.toLowerCase()}-action`}
     role="img"
-    aria-label={`${label}, current page`}
+    aria-label={msg('currentPage', label)}
     aria-current="page"
   >{icon}</span>;
 }
@@ -206,17 +207,17 @@ export function Header({ title, kicker, gameTime, onBack, onSettings, onMap, onT
 
   return (
     <header class={`app-header ${onBack ? '' : 'app-header-root'} ${gameTime ? 'has-game-clock' : ''}`}>
-      {onBack ? <button class="header-action back-action" onClick={onBack} aria-label="Back"><span /></button> : <span class="header-spacer" />}
+      {onBack ? <button class="header-action back-action" onClick={onBack} aria-label={msg('back')}><span /></button> : <span class="header-spacer" />}
       <div class="header-title"><h1 ref={headingRef} tabIndex={-1}>{title}</h1>{kicker && <small>{kicker}</small>}</div>
       {gameTime && <GameClockIndicator clock={gameTime} />}
       {hasActions ? <div class="header-actions">
         {currentDestination && <CurrentHeaderDestination destination={currentDestination} />}
         {actions}
-        {onAnalysis && <button class="header-action analysis-action" onClick={onAnalysis} aria-label="Party Analysis"><AnalysisIcon /></button>}
-        {onTrainer && <button class="header-action trainer-action" onClick={onTrainer} aria-label="Trainer Card"><TrainerCardIcon /></button>}
-        {onParty && <button class="header-action party-action" onClick={onParty} aria-label="Party"><PartyIcon /></button>}
-        {onMap && <button class="header-action map-action" onClick={onMap} aria-label="Open Map"><MapIcon /></button>}
-        {onSettings && <button class="header-action settings-action" onClick={onSettings} aria-label="Settings"><SettingsIcon /></button>}
+        {onAnalysis && <button class="header-action analysis-action" onClick={onAnalysis} aria-label={msg('partyAnalysis')}><AnalysisIcon /></button>}
+        {onTrainer && <button class="header-action trainer-action" onClick={onTrainer} aria-label={msg('trainerCard')}><TrainerCardIcon /></button>}
+        {onParty && <button class="header-action party-action" onClick={onParty} aria-label={msg('party')}><PartyIcon /></button>}
+        {onMap && <button class="header-action map-action" onClick={onMap} aria-label={msg('openMap')}><MapIcon /></button>}
+        {onSettings && <button class="header-action settings-action" onClick={onSettings} aria-label={msg('settings')}><SettingsIcon /></button>}
       </div> : <span class="header-spacer" />}
     </header>
   );
