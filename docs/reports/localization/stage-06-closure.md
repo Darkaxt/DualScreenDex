@@ -110,7 +110,20 @@ The report and receipt both bind the exact source commit and generator. Receipt 
 
 All 274 successful persistence observations have non-empty, equal before/after logical digests. The cache directory contains 274 SQLite files: 273 reported successful identities plus one unreported partial output from a failed persistence attempt. That partial file is not accepted as evidence.
 
-The two failed rows were otherwise selected and produced catalog summaries. The six-GiB, eight-worker process emitted two JVM `GCLocker` allocation warnings while retaining a 3.46-GB JSON report, then recorded both persistence failures as heap exhaustion. This is a bounded host-capacity failure, not a changed language/family decision or hidden parser exception. The rows failed closed and the reports were retained for diagnosis. In accordance with the agreed single-final-corpus policy, no second corpus run was started and these two missing persistence observations are not represented as passing.
+The two failed rows were otherwise selected and produced catalog summaries. The six-GiB, eight-worker process emitted two JVM `GCLocker` allocation warnings while retaining a 3.46-GB JSON report, then recorded both persistence failures as heap exhaustion. This is a bounded host-capacity failure, not a changed language/family decision or hidden parser exception. The rows failed closed and the reports were retained for diagnosis. In accordance with the agreed single-final-corpus policy, no second full corpus run was started and these two observations are supplemented only by the bounded recovery below.
+
+### Bounded persistence recovery
+
+The two warning-adjacent rows were run individually and serially with `--jobs 1`, the same six-GiB ceiling, the same parser CLI generator, and the same exact executable source commit. This was not a second corpus: no other input was reparsed. Each one-input report selected the same family as the final corpus, produced one successful SQLite cache, recorded no persistence, parser, catalog, diagnostic, or reference error, and had equal non-empty before/after logical catalog digests.
+
+| Artifact | First recovery | Second recovery |
+|---|---|---|
+| Raw JSON report | `ecf9c9b74765df0f7c6bc38e3d4846ce3d07a108674faaf841c4d306940a71aa` | `92717da1f0345ffd6d8a3319f7697406a116b9e173926fdc3dfe709fd62e0155` |
+| Markdown report | `997fb5d647750864eba2d68ccab5212efb1a92acf8fb1b4628486f56f37c8449` | `22c5d88c84e44953df879017142b428510b4e3ec3aa75c7d94f658ed440c4459` |
+| Execution receipt | `37bef316b17bfaa40a6cdac5e09ba870ff24af844bd2dcca7c31ad21c74a264a` | `b474b2f612711bbc31c8d78af1913d9b18cff2d87aa5ffe3fe59164479fefc8c` |
+| Run log | `ab12639111c39cbbc047dfa16f7f91cf5a25b362bf323627f98b638b30b6f7f1` | `8e8939cbf3361d28312d784fb1086600b531ef1c359b8e678c61bdb544b69bae` |
+
+Each receipt binds report schema 16, receipt schema 1, generator `8de5fada53efdd248b02f36cc9a6e86c40cfaf0da1d9e8e90795704b80bb3017`, input count one, the exact raw-report hash, and source `5397f6e3b131cf0e15e16fff4f13b4e09761e46d`. Combined with the 274 successes in the final corpus, all **276 selected rows** now have source-bound persistence/reopen evidence and matching logical digests. `LNG-B005` is closed without weakening evidence or repeating the 333-input corpus.
 
 ## Blocker and deferral audit
 
@@ -119,16 +132,16 @@ No Stage 6 implementation `STOP-SAFETY` or `STOP-CORE` defect remains from the h
 | ID | Classification | Observed | Owner / target | Acceptance | Status |
 |---|---|---|---|---|---|
 | `LNG-B004` | `STOP-CORE` acceptance gate | Packaged Android/WebView localization instrumentation has compiled but has not executed under the required emulator boundary. | Stage 6 packaged-AVD acceptance | The exact packaged test passes without parser/network dependency and restores `AUTO`. | Open |
-| `LNG-B005` | `STOP-CORE` evidence gap | Two selected corpus rows lack successful persistence/reopen evidence because the final process exhausted its six-GiB heap. | Final-system acceptance | A separately authorized evidence policy must either accept the retained fail-closed diagnosis or permit one bounded replacement persistence verification; no automatic rerun is authorized. | Open |
+| `LNG-B005` | `STOP-CORE` evidence gap | Two selected corpus rows initially lacked successful persistence/reopen evidence because the final process exhausted its six-GiB heap. | Final-system acceptance | Both exact warning-adjacent rows pass separately source-bound, jobs-one persistence/reopen verification with matching logical digests. | Closed |
 | `LNG-D001` | `POST-SYSTEM` | Expanded fan-translation/language-unresolved corpus support is not universally ratified. | First post-official localization corpus stage | Generic manifests/codecs pass sanitized source-backed corpus evidence without identity hacks. | Open |
 | `LNG-D002` | `POST-SYSTEM` | Japanese and Korean interface packs are outside the initial interface set. | Post-Stage 6 interface expansion | Complete typed dictionaries, native resources, font/line-break, accessibility, and compact-layout gates pass. | Open |
 | `LNG-D003` | `POST-SYSTEM` | No RTL interface locale is bundled. | First supported RTL locale | Direction-aware layout, navigation/icons, bidirectional text, and compact acceptance pass. | Open |
 | `LNG-D004` | `POST-SYSTEM` | Non-production documents and store material remain English. | Separately commissioned documentation/release milestone | Locale set, owner, review, and publication path are implemented. | Open |
 
-`LNG-B004` and `LNG-B005` are acceptance gates, not omitted product features or post-system deferrals. The implementation remains fail closed while they are open.
+`LNG-B004` remains an acceptance gate, not an omitted product feature or post-system deferral. `LNG-B005` is closed by the bounded recovery evidence below. The implementation remains fail closed while `LNG-B004` is open.
 
 ## Privacy boundary and decision
 
 The branch audit found no added ROM, SaveRAM, SQLite, APK, archive, keystore, signing, private-memory, or raw corpus artifacts. A separate path/key scan found and removed four temporary evidence paths from public documentation; the final scan found zero added private path or signing-key patterns. Raw reports, cache databases, source inputs, and retained private evidence remain outside Git.
 
-`HOST_COMPLETE — PACKAGED_AVD_PENDING` — Stage 6 code, translations, browser acceptance, lint, and host packaging are complete and pushed. Full Stage 6 acceptance is not claimed while `LNG-A001` and `LNG-A002` remain open. Work pauses before the packaged Android emulator command as required.
+`HOST_COMPLETE — PACKAGED_AVD_PENDING` — Stage 6 code, translations, browser acceptance, lint, host packaging, and final corpus persistence evidence are complete and pushed. Full Stage 6 acceptance is not claimed while `LNG-B004` remains open. Work pauses before the packaged Android emulator command as required.

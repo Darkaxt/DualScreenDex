@@ -63,20 +63,22 @@ The six-locale × three-scale browser matrix at **538×445 CSS pixels** is accou
 
 The one consolidated post-Stage-6 corpus binds executable source `5397f6e3b131cf0e15e16fff4f13b4e09761e46d`, generator `8de5fada53efdd248b02f36cc9a6e86c40cfaf0da1d9e8e90795704b80bb3017`, report schema 16, receipt schema 1, and 333 current eligible inputs.
 
-Outcomes are **276 selected**, **2 ambiguous**, and **55 no-family-match**, with **261 resolved** and **15 unknown** selected language manifests. Parser-result and catalog/reference errors are zero. Of 276 selected rows, 274 completed persistence with equal before/after logical digests. Two otherwise-selected rows failed persistence closed with `OutOfMemoryError: Java heap space` under the six-GiB/eight-worker process; neither is represented as successful evidence. The retained report/receipt hashes and detailed classification are in `stage-06-closure.md`. No second corpus was started.
+Outcomes are **276 selected**, **2 ambiguous**, and **55 no-family-match**, with **261 resolved** and **15 unknown** selected language manifests. Parser-result and catalog/reference errors are zero. Of 276 selected rows, 274 completed persistence in the final corpus with equal before/after logical digests. Two otherwise-selected rows failed persistence closed with `OutOfMemoryError: Java heap space` under the six-GiB/eight-worker process.
+
+Those two warning-adjacent rows were then verified individually and serially with `--jobs 1`, the same six-GiB ceiling, the same parser CLI generator, and the same exact source commit. Each bounded one-input report selected the same family, produced one successful SQLite cache, bound its receipt to its exact report, recorded zero parser/catalog/persistence/reference errors, and had equal non-empty before/after logical digests. This did not repeat the 333-input corpus. Combined evidence now accounts for successful persistence/reopen of all **276 selected rows**. Hashes and detailed classification are in `stage-06-closure.md`; `LNG-B005` is closed.
 
 ## Open blocker and deferral audit
 
 | ID | Type | Owner / target | Current fail-closed disposition | Acceptance |
 |---|---|---|---|---|
 | `LNG-B004` | `STOP-CORE` acceptance gate | Stage 6 packaged-AVD acceptance | No packaged WebView/native runtime acceptance is claimed. | The packaged localization instrumentation passes under the authorized exact emulator boundary and restores `AUTO`. |
-| `LNG-B005` | `STOP-CORE` evidence gap | Final-system acceptance | The two heap-exhausted rows have no successful persistence/reopen claim; no automatic rerun occurs. | A separately authorized evidence policy accepts the retained diagnosis or permits one bounded replacement persistence verification. |
+| `LNG-B005` | `STOP-CORE` evidence gap | Final-system acceptance | Both exact heap-exhausted rows failed closed in the full run; each subsequently passed a source-bound, jobs-one persistence/reopen verification. | Closed: combined evidence accounts for all 276 selected rows with matching logical digests without repeating the full corpus. |
 | `LNG-D001` | `POST-SYSTEM` | First post-official corpus stage | No universal fan-translation/hack-text claim. | Generic source-backed manifests/codecs pass sanitized corpus evidence without identity hacks. |
 | `LNG-D002` | `POST-SYSTEM` | Post-Stage-6 interface expansion | Japanese/Korean ROM content remains native; unsupported interface locales follow `AUTO`/English fallback. | Complete typed/native packs pass font, line-break, accessibility, and compact-layout review. |
 | `LNG-D003` | `POST-SYSTEM` | First supported RTL locale | The initial production locale set is explicitly LTR. | Direction-aware layout/navigation/icons and bidirectional compact tests pass. |
 | `LNG-D004` | `POST-SYSTEM` | Separately commissioned documentation/release milestone | Non-production material remains English. | Locale set, owner, review process, and publication path are defined and delivered. |
 
-No implementation work is silently deferred. `LNG-B004` and `LNG-B005` prevent a truthful full-system `COMPLETE` decision; they do not reopen the delivered Stage 1–5 architecture or Stage 6 host implementation.
+No implementation work is silently deferred. `LNG-B005` is closed by the bounded recovery evidence. `LNG-B004` alone prevents a truthful full-system `COMPLETE` decision; it does not reopen the delivered Stage 1–5 architecture or Stage 6 host implementation.
 
 ## Privacy, publication, and operational boundary
 
@@ -86,4 +88,4 @@ No emulator, physical device, ADB operation, installation, production signing, t
 
 ## Final decision
 
-`IMPLEMENTATION_COMPLETE — FINAL_ACCEPTANCE_PENDING` — The six-stage translation architecture and Stage 6 host implementation are delivered. Full-system completion is not claimed until the packaged-AVD gate and the two missing corpus persistence observations receive their separately authorized acceptance outcomes.
+`IMPLEMENTATION_COMPLETE — FINAL_ACCEPTANCE_PENDING` — The six-stage translation architecture, Stage 6 host implementation, and final corpus persistence evidence are delivered. Full-system completion is not claimed until the packaged-AVD gate receives its separately authorized acceptance outcome.
