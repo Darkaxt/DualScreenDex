@@ -28,7 +28,7 @@ Python measurement-binding RED ran two methods with nine expected assertion fail
 - Fresh Kotlin `green-05`: **20/20** exact methods, zero failures/errors/skips, 23.042 seconds. The unique per-attempt XML was produced and verified; all **813** Kotlin/build source pins remain unchanged.
 - Full Python `green-measurements-full-01`: **115/115**, zero failures/errors/skips, 104.148 seconds; all **four** Python source pins remain unchanged.
 - Main inspected the changed code, independently checked the XML method inventory and all 115 successful Python log entries, and rehashed both source inventories. An initial verification script assumed the Python pins used the Kotlin wrapper shape and raised `KeyError`; the corrected verifier consumed the actual flat Python inventory and passed without rerunning either gate.
-- Both gates bind pre-commit HEAD `10b7a275530f5cb5f2e0f5a375005508c8ca33d3` plus the tested source hashes. Retained roots: `D:/Temp/dualdex-task430-capture-3fas4y9v` and `D:/Temp/dualdex-task430-python-lbsxw0px`.
+- Both gates bind pre-commit HEAD `10b7a275530f5cb5f2e0f5a375005508c8ca33d3` plus the tested source hashes. Their private retained evidence roots remain outside public assets.
 
 | Artifact | SHA-256 |
 | --- | --- |

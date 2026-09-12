@@ -14,7 +14,7 @@ Malformed bindings fail before filesystem access. Existing bounded private-copy,
 - Additional tests cover all five embedded binding fields and malformed-binding rejection before copying/opening a database.
 - These are generated SQLite fixtures, not official-control or linguistic acceptance. No original-ROM read, corpus, device/emulator/ADB, APK, signing or release occurred.
 
-Evidence root: `D:/Temp/dualdex-task430-capture-3fas4y9v`. Frozen pre-commit HEAD: `d22289c789ffdf68e6554c41dba32f36b14cb30a`; source pins separately bind the tested implementation.
+The private retained evidence root remains outside public assets. Frozen pre-commit HEAD: `d22289c789ffdf68e6554c41dba32f36b14cb30a`; source pins separately bind the tested implementation.
 
 | Artifact | SHA-256 |
 | --- | --- |

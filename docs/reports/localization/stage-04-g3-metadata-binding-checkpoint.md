@@ -20,7 +20,7 @@ Only fabricated fixtures were updated to current report16/parser64 and the actua
 - Full GREEN: **113/113**, zero failures/errors/skips, 129.461 seconds. Includes both actual CLI success/failure invocations, split runs, deterministic/non-mutating assembly, SQLite read-only guards, eight direct metadata tests with negative subcases, and both SHA-order controls.
 - Main verified all 113 successful log entries and all four unchanged Python source pins. No original-ROM read, corpus, Android/device/emulator/ADB, APK, signing, release, or PR occurred.
 
-Evidence root: `D:/Temp/dualdex-task430-python-lbsxw0px`. Frozen pre-commit HEAD: `7213d877ca9e1f60b797cb4c9c3fdd555df3722e`; source pins bind the tested uncommitted implementation separately.
+The private retained evidence root remains outside public assets. Frozen pre-commit HEAD: `7213d877ca9e1f60b797cb4c9c3fdd555df3722e`; source pins bind the tested uncommitted implementation separately.
 
 | Artifact | SHA-256 |
 | --- | --- |

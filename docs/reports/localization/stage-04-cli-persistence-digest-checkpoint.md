@@ -23,7 +23,7 @@ The generated positive catalog contains 190 species, 151 stat records, 165 moves
 
 ## Retained evidence
 
-Local gate root: `D:/Temp/dualdex-task429-parent-b8w4k_pn`, attempt `green-1`.
+The local gate ran in a private retained evidence root; attempt `green-1`.
 
 | Artifact | SHA-256 |
 | --- | --- |
