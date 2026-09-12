@@ -329,8 +329,10 @@ class ServerContractTest {
 
             assertEquals(200, failed.responseCode)
             val failedBody = failed.inputStream.reader().readText()
-            assertTrue(failedBody.contains("\"phase\":\"FAILED\""))
-            assertTrue(failedBody.contains("This game guide could not be opened. You can try again."))
+            val failedState = JsonParser.parseString(failedBody).asJsonObject.getAsJsonObject("state")
+            assertEquals("FAILED", failedState.getAsJsonObject("loading").get("phase").asString)
+            assertEquals("GUIDE_LOAD_FAILED", failedState.getAsJsonObject("error").get("code").asString)
+            assertFalse(failedBody.contains("This game guide could not be opened. You can try again."))
             assertFalse(failedBody.contains("uploaded source detail"))
 
             val retry = post(server, "/api/load?name=valid.gba", "x")
@@ -592,8 +594,9 @@ class ServerContractTest {
         val root = JsonParser.parseString(body).asJsonObject
         assertEquals(setOf("error"), root.keySet())
         val error = root.getAsJsonObject("error")
-        assertEquals(setOf("code", "message", "retryable"), error.keySet())
+        assertEquals(setOf("code", "message", "retryable", "presentationMessage"), error.keySet())
         assertEquals(code, error.get("code").asString)
+        assertEquals("API_$code", error.getAsJsonObject("presentationMessage").get("code").asString)
         assertEquals(
             when (code) {
                 "INVALID_REQUEST" -> "The request was invalid."
@@ -617,6 +620,7 @@ class ServerContractTest {
         val root = JsonParser.parseString(body).asJsonObject
         val error = root.getAsJsonObject("error")
         assertEquals("MAP_UNAVAILABLE", error.get("code").asString)
+        assertEquals("API_MAP_UNAVAILABLE", error.getAsJsonObject("presentationMessage").get("code").asString)
         assertEquals("The map is temporarily unavailable. Try again.", error.get("message").asString)
         assertTrue(error.get("retryable").asBoolean)
         assertEquals(diagnostic, root.get("diagnostic").asString)
