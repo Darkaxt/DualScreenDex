@@ -4,10 +4,10 @@ This is the canonical reviewer entry point for DualDex release readiness.
 
 ## Active marker
 
-- **Next protected candidate:** `v1.2.0-rc.1`
-- **Release notes:** [`release/RELEASE_NOTES_1.2.0-rc.1.md`](../release/RELEASE_NOTES_1.2.0-rc.1.md)
+- **Next protected candidate:** `v1.2.0-rc.2`
+- **Release notes:** [`release/RELEASE_NOTES_1.2.0-rc.2.md`](../release/RELEASE_NOTES_1.2.0-rc.2.md)
 - **Machine-readable readiness marker:** [`release/v1-ready.json`](../release/v1-ready.json)
-- **Current state:** project-wide QA Stages 7–8 remain closed with zero blockers and zero referrals; the six-stage localization system is complete with zero system blockers, and 1.2.0 RC1 is the exact candidate source for protected signing and promotion.
+- **Current state:** project-wide QA Stages 7–8 remain closed with zero blockers and zero referrals; the six-stage localization system is complete with zero system blockers, and 1.2.0 RC2 supersedes the failed RC1 candidate with the Web release gate aligned to the localized interface and typed presentation-message contract.
 
 ## Final QA evidence
 
@@ -21,7 +21,7 @@ The canonical corpus remains 333 scanner-eligible inputs from the audited 334-fi
 - [QA Stage 7 closure](reports/qa-hardening/stage-07-closure.md)
 - [QA Stage 8 integrated closure](reports/qa-hardening/stage-08-closure.md)
 
-The release workflow validates source lineage, generator and raw-report digests, the canonical denominator/multiset digest, both exact bounded recoveries, the cache revision decision, QA and localization closure state, protected tag rules, and both protected GitHub environments before signing can begin. RC1 is a new non-replacing 1.2.0 candidate; it does not alter the already published stable `v1.1.0`.
+The release workflow validates source lineage, generator and raw-report digests, the canonical denominator/multiset digest, both exact bounded recoveries, the cache revision decision, QA and localization closure state, protected tag rules, and both protected GitHub environments before signing can begin. RC2 is a new non-replacing 1.2.0 candidate; it does not alter the already published stable `v1.1.0` or move the immutable failed `v1.2.0-rc.1` tag.
 
 ## Historical records
 
