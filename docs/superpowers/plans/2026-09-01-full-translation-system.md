@@ -370,6 +370,8 @@ cd companion-web && npm test -- --run && npm run build
 
 Then run the Section 3 corpus command. Stage 5 is blocked by a fixed RAM address, user/manual content-language override, polling on single-language ROMs, stale cross-session publication, last-observed offline authority, reparse on switch, or uncoded UI-consumed backend prose.
 
+**Verification timing update (2026-09-12):** Focused Stage 5 acceptance remains mandatory before Stage 6. To avoid redundant intermediate bottlenecks, the remaining full JVM/web gate and exactly one final source-bound corpus run are consolidated after Stage 6. Unrelated legacy-suite failures are not localization blockers or deferrals; the final combined gate must still report them accurately.
+
 ---
 
 ## Stage 6 — Interface translation last
