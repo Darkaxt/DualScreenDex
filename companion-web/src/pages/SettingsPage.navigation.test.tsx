@@ -1,9 +1,13 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Catalog, State } from '../models';
+import { setInterfaceLanguage } from '../i18n';
 import { SETTINGS_CATEGORIES, SettingsPage } from './SettingsPage';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  setInterfaceLanguage('EN');
+});
 
 describe('Settings navigation', () => {
   it('shows exactly seven categories and only the selected category content', () => {
@@ -56,12 +60,25 @@ describe('Settings navigation', () => {
     render(<SettingsPage catalog={catalog} state={state} send={vi.fn()} onUpload={vi.fn()} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Accessibility' }));
-    expect(screen.getByRole('button', { name: 'COMPACT' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('button', { name: 'Compact' }).getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByRole('checkbox', { name: 'High contrast' })).toHaveProperty('checked', true);
 
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));
     fireEvent.click(screen.getByRole('button', { name: 'Information' }));
-    expect(screen.getByRole('combobox', { name: 'Move list' })).toHaveProperty('value', 'modern');
+    expect(screen.getByRole('combobox', { name: /move list/i })).toHaveProperty('value', 'modern');
+  });
+
+  it('keeps stable setting values under translated labels', () => {
+    const send = vi.fn();
+    setInterfaceLanguage('ES');
+    render(<SettingsPage catalog={catalog} state={state} send={send} onUpload={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pantalla' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Oscuro' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Externa' }));
+
+    expect(send).toHaveBeenCalledWith('SETTINGS', { theme: 'DARK' });
+    expect(send).toHaveBeenCalledWith('SETTINGS', { displayTarget: 'EXTERNAL' });
   });
 
   it('opens and focuses the catalog-bound Move List recovery target', () => {
@@ -74,7 +91,7 @@ describe('Settings navigation', () => {
       initialControl="MOVE_LIST"
     />);
 
-    const moveList = screen.getByRole('combobox', { name: 'Move list' });
+    const moveList = screen.getByRole('combobox', { name: /move list/i });
     expect(document.activeElement).toBe(moveList);
     expect(screen.queryByRole('button', { name: 'General' })).toBeNull();
   });

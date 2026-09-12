@@ -1,9 +1,13 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Catalog, State } from '../models';
+import { setInterfaceLanguage } from '../i18n';
 import { SettingsPage } from './SettingsPage';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  setInterfaceLanguage('EN');
+});
 
 describe('production settings copy', () => {
   it('keeps the normal settings surface concise and confines ROM diagnostics to Advanced', () => {
@@ -13,7 +17,7 @@ describe('production settings copy', () => {
     expect(screen.queryByText('PRESENTATION & KNOWLEDGE')).toBeNull();
     expect(screen.queryByText('ACTIVE GAME')).toBeNull();
     expect(container.querySelector('.rom-setting .eyebrow')?.textContent).toBe('GAME');
-    expect(screen.getByLabelText('Change ROM or ZIP')).toBeTruthy();
+    expect(screen.getByLabelText(/change ROM or ZIP/i)).toBeTruthy();
     expect(container.textContent).not.toContain('fixture.gba');
     expect(container.textContent).not.toContain('CRC32');
     expect(container.textContent).not.toMatch(/ROM SETTINGS|SaveRAM|catalog|polling|AMBIGUOUS|UNVERIFIED/i);
@@ -51,7 +55,7 @@ describe('production settings copy', () => {
     render(<SettingsPage catalog={catalog} state={state} send={vi.fn()} onUpload={onUpload} initialCategory="GENERAL" />);
     const rom = new File([new Uint8Array([1, 2, 3])], 'next.gba');
 
-    fireEvent.change(screen.getByLabelText('Change ROM or ZIP'), { target: { files: [rom] } });
+    fireEvent.change(screen.getByLabelText(/change ROM or ZIP/i), { target: { files: [rom] } });
 
     expect(onUpload).toHaveBeenCalledWith(rom);
     expect(screen.queryByText('Encounter feed')).toBeNull();
@@ -81,8 +85,8 @@ describe('production settings copy', () => {
     const send = vi.fn();
     render(<SettingsPage catalog={catalog} state={state} send={send} onUpload={vi.fn()} initialCategory="DISPLAY" />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'DARK' }));
-    fireEvent.click(screen.getByRole('button', { name: 'EXTERNAL' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Dark' }));
+    fireEvent.click(screen.getByRole('button', { name: 'External' }));
 
     expect(send).toHaveBeenCalledWith('SETTINGS', { theme: 'DARK' });
     expect(send).toHaveBeenCalledWith('SETTINGS', { displayTarget: 'EXTERNAL' });
