@@ -413,6 +413,7 @@ export interface Settings {
   displayMode?: 'DOCKED' | 'OVERLAY';
   theme?: 'GAME' | 'DARK' | 'LIGHT';
   displayTarget?: 'AUTO' | 'HANDHELD' | 'EXTERNAL';
+  interfaceLanguage?: 'AUTO' | 'EN' | 'FR' | 'DE' | 'IT' | 'ES';
   overlayScale?: number;
   battlePollingIntervalMs?: number;
   mapFollowSmoothingPercent?: number;

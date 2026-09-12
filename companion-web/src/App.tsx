@@ -10,6 +10,7 @@ import {
   type ConnectionStatus,
 } from './gateway';
 import type { ActiveLanguageBinding, Bootstrap, Catalog, State } from './models';
+import { setInterfaceLanguage } from './i18n';
 import { deriveSemanticTheme, semanticThemeCssVariables } from './themeContrast';
 import { renderPresentationMessage } from './presentationMessages';
 import { decodeRouteHash, encodeRouteHash, popRoute, pushRoute, type UiRoute } from './navigation';
@@ -46,7 +47,7 @@ const emptyState: State = {
   filter: 'ALL',
   selectedAreaId: null,
   battleTab: 'ENTRY',
-  settings: { knowledgeMode: 'ORGANIC', attackEnabled: true, rarityEnabled: true, movesEnabled: true, fontScale: 1, density: 'AUTO', highContrast: false, autoOpenTarget: true, ruleset: 'AUTO', theme: 'GAME', displayTarget: 'AUTO', mapFollowSmoothingPercent: 25, highVisibilityMapPlayer: false },
+  settings: { knowledgeMode: 'ORGANIC', attackEnabled: true, rarityEnabled: true, movesEnabled: true, fontScale: 1, density: 'AUTO', highContrast: false, autoOpenTarget: true, ruleset: 'AUTO', theme: 'GAME', displayTarget: 'AUTO', interfaceLanguage: 'AUTO', mapFollowSmoothingPercent: 25, highVisibilityMapPlayer: false },
   speciesState: {}, observedMoves: {}, battle: null, catalogReady: false, catalogName: null, error: null,
   trainer: null, party: [],
   activeRulesetId: null, rulesetAssumed: true, loading: { active: false, phase: 'IDLE', completedUnits: 0, totalUnits: 0 },
@@ -118,6 +119,10 @@ export function App({ DevelopmentTools }: { DevelopmentTools?: ComponentType<Dev
     ownerKey: settingsOwnerKey,
     category: displayedSettingsCategory,
   };
+
+  useEffect(() => {
+    setInterfaceLanguage(state.settings.interfaceLanguage);
+  }, [state.settings.interfaceLanguage]);
 
   useEffect(() => {
     if (!pendingFocusReturn) return;

@@ -5,6 +5,7 @@ import com.enrpau.dualscreendex.companion.model.CompanionSettings
 import com.enrpau.dualscreendex.companion.model.Density
 import com.enrpau.dualscreendex.companion.model.DisplayMode
 import com.enrpau.dualscreendex.companion.model.DisplayTarget
+import com.enrpau.dualscreendex.companion.model.InterfaceLanguage
 import com.enrpau.dualscreendex.companion.model.KnowledgeMode
 import com.enrpau.dualscreendex.companion.model.Theme
 import com.google.gson.Gson
@@ -72,6 +73,7 @@ class SettingsRepository(
         val sanitized = sanitize(settings)
         val globals = state.globalDefaults.copy(
             displayTarget = sanitized.displayTarget,
+            interfaceLanguage = sanitized.interfaceLanguage,
             overlayScale = sanitized.overlayScale,
             battlePollingIntervalMs = sanitized.battlePollingIntervalMs,
             mapFollowSmoothingPercent = sanitized.mapFollowSmoothingPercent,
@@ -188,6 +190,7 @@ class SettingsRepository(
         displayMode = enumName<DisplayMode>(objectValue.stringValue("displayMode")),
         theme = enumName<Theme>(objectValue.stringValue("theme")),
         displayTarget = if (includeDeviceFields) enumName<DisplayTarget>(objectValue.stringValue("displayTarget")) else null,
+        interfaceLanguage = if (includeDeviceFields) enumName<InterfaceLanguage>(objectValue.stringValue("interfaceLanguage")) else null,
         overlayScale = if (includeDeviceFields) {
             objectValue.doubleValue("overlayScale")?.takeIf(Double::isFinite)?.coerceIn(0.45, 1.0)
         } else {
@@ -267,6 +270,7 @@ class SettingsRepository(
         val displayMode: String? = null,
         val theme: String? = null,
         val displayTarget: String? = null,
+        val interfaceLanguage: String? = null,
         val overlayScale: Double? = null,
         val battlePollingIntervalMs: Int? = null,
         val mapFollowSmoothingPercent: Int? = null,
@@ -285,6 +289,7 @@ class SettingsRepository(
             displayMode = displayMode?.let(DisplayMode::valueOf) ?: fallback.displayMode,
             theme = theme?.let(Theme::valueOf) ?: fallback.theme,
             displayTarget = displayTarget?.let(DisplayTarget::valueOf) ?: fallback.displayTarget,
+            interfaceLanguage = interfaceLanguage?.let(InterfaceLanguage::valueOf) ?: fallback.interfaceLanguage,
             overlayScale = overlayScale ?: fallback.overlayScale,
             battlePollingIntervalMs = battlePollingIntervalMs ?: fallback.battlePollingIntervalMs,
             mapFollowSmoothingPercent = mapFollowSmoothingPercent ?: fallback.mapFollowSmoothingPercent,
@@ -307,6 +312,7 @@ class SettingsRepository(
                 displayMode = settings.displayMode.name,
                 theme = settings.theme.name,
                 displayTarget = settings.displayTarget.name,
+                interfaceLanguage = settings.interfaceLanguage.name,
                 overlayScale = settings.overlayScale,
                 battlePollingIntervalMs = settings.battlePollingIntervalMs,
                 mapFollowSmoothingPercent = settings.mapFollowSmoothingPercent,

@@ -15,6 +15,7 @@ enum class Density { AUTO, COMFORTABLE, COMPACT }
 enum class DisplayMode { DOCKED, OVERLAY }
 enum class Theme { GAME, DARK, LIGHT }
 enum class DisplayTarget { AUTO, HANDHELD, EXTERNAL }
+enum class InterfaceLanguage { AUTO, EN, FR, DE, IT, ES }
 
 data class CompanionSettings(
     val knowledgeMode: KnowledgeMode = KnowledgeMode.ORGANIC,
@@ -29,6 +30,7 @@ data class CompanionSettings(
     val displayMode: DisplayMode = DisplayMode.DOCKED,
     val theme: Theme = Theme.GAME,
     val displayTarget: DisplayTarget = DisplayTarget.AUTO,
+    val interfaceLanguage: InterfaceLanguage = InterfaceLanguage.AUTO,
     val overlayScale: Double = 1.0,
     val battlePollingIntervalMs: Int = 5,
     val mapFollowSmoothingPercent: Int = 25,

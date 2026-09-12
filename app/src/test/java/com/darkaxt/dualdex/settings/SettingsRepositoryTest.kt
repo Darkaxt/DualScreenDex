@@ -4,6 +4,7 @@ import com.enrpau.dualscreendex.companion.model.CompanionSettings
 import com.enrpau.dualscreendex.companion.model.Density
 import com.enrpau.dualscreendex.companion.model.DisplayMode
 import com.enrpau.dualscreendex.companion.model.DisplayTarget
+import com.enrpau.dualscreendex.companion.model.InterfaceLanguage
 import com.enrpau.dualscreendex.companion.model.KnowledgeMode
 import com.enrpau.dualscreendex.companion.model.Theme
 import org.junit.Assert.assertEquals
@@ -129,6 +130,28 @@ class SettingsRepositoryTest {
             requireNotNull(document)
                 .substringAfter("\"romOverrides\"")
                 .contains("highVisibilityMapPlayer"),
+        )
+    }
+
+    @Test
+    fun keepsInterfaceLanguageDeviceGlobalAcrossRomProfiles() {
+        var document: String? = null
+        val repository = SettingsRepository({ document }, { document = it })
+        repository.writeForRom(
+            romA,
+            CompanionSettings(theme = Theme.DARK, interfaceLanguage = InterfaceLanguage.FR),
+        )
+        repository.writeForRom(
+            romB,
+            repository.readForRom(romB).copy(theme = Theme.LIGHT),
+        )
+
+        assertEquals(InterfaceLanguage.FR, repository.readForRom(romA).interfaceLanguage)
+        assertEquals(InterfaceLanguage.FR, repository.readForRom(romB).interfaceLanguage)
+        assertFalse(
+            requireNotNull(document)
+                .substringAfter("\"romOverrides\"")
+                .contains("interfaceLanguage"),
         )
     }
 

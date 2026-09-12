@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Catalog, State } from '../models';
 import { Header, SegmentedChoice } from '../components';
+import { msg } from '../i18n';
 import { renderPresentationMessage } from '../presentationMessages';
 
 export const SETTINGS_CATEGORIES = [
@@ -108,10 +109,10 @@ export function SettingsPage({
   };
 
   return <section class="screen settings-screen">
-    <Header title={activeCategory?.label.toUpperCase() ?? 'SETTINGS'} gameTime={state.gameTime} focusHeading={initialControl == null} onBack={handleBack} currentDestination="SETTINGS" />
+    <Header title={activeCategory?.label.toUpperCase() ?? msg('settingsTitle')} gameTime={state.gameTime} focusHeading={initialControl == null} onBack={handleBack} currentDestination="SETTINGS" />
     <div ref={contentRef} class="settings-content" data-scroll-region>
-      <h2 ref={viewHeadingRef} class="settings-view-heading" tabIndex={-1}>{activeCategory?.label ?? 'Settings categories'}</h2>
-      {category == null && <nav class="settings-category-list" aria-label="Settings categories">
+      <h2 ref={viewHeadingRef} class="settings-view-heading" tabIndex={-1}>{activeCategory?.label ?? msg('settingsCategories')}</h2>
+      {category == null && <nav class="settings-category-list" aria-label={msg('settingsCategories')}>
         {SETTINGS_CATEGORIES.map(item => <button
           type="button"
           class="settings-category-row"
@@ -131,6 +132,7 @@ export function SettingsPage({
 
       {category === 'GENERAL' && <>
         <section class="setting-group rom-setting"><p class="eyebrow">GAME</p><p class="setting-note rom-setting-name">Choose another game without changing your display preferences.</p><label class="settings-upload routine-action"><span>CHANGE ROM OR ZIP</span><input aria-label="Change ROM or ZIP" type="file" accept=".gb,.gbc,.gba,.zip" onChange={event => { const file = event.currentTarget.files?.[0]; if (file) onUpload(file); }} /></label></section>
+        <section class="setting-group"><p class="eyebrow">{msg('interfaceLanguage')}</p><label class="ruleset-setting" for="interface-language"><span>{msg('interfaceLanguage')}</span><select id="interface-language" aria-label={msg('interfaceLanguage')} value={settings.interfaceLanguage ?? 'AUTO'} onChange={event => update({ interfaceLanguage: event.currentTarget.value })}><option value="AUTO">{msg('languageAuto')}</option><option value="EN">{msg('languageEnglish')}</option><option value="FR">{msg('languageFrench')}</option><option value="DE">{msg('languageGerman')}</option><option value="IT">{msg('languageItalian')}</option><option value="ES">{msg('languageSpanish')}</option></select></label><p class="setting-note">{msg('interfaceLanguageNote')}</p></section>
         <section class="setting-group"><p class="eyebrow">PREFERENCES</p><p class="setting-note">{catalog ? 'These choices are saved for the current game.' : 'No game is open. These choices become your defaults.'}</p></section>
       </>}
 

@@ -53,6 +53,7 @@ import com.enrpau.dualscreendex.companion.model.DisplayMode
 import com.enrpau.dualscreendex.companion.model.DisplayTarget
 import com.enrpau.dualscreendex.companion.model.Effectiveness
 import com.enrpau.dualscreendex.companion.model.LiveMapPosition
+import com.enrpau.dualscreendex.companion.model.InterfaceLanguage
 import com.enrpau.dualscreendex.companion.model.KnowledgeMode
 import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
 import com.enrpau.dualscreendex.companion.knowledge.LocalMapPoiKnowledgeMapper
@@ -1603,6 +1604,8 @@ class ProductionCompanionRuntime(
                     displayMode = values["displayMode"]?.let { DisplayMode.valueOf(it.uppercase()) } ?: current.displayMode,
                     theme = values["theme"]?.let { Theme.valueOf(it.uppercase()) } ?: current.theme,
                     displayTarget = values["displayTarget"]?.let { DisplayTarget.valueOf(it.uppercase()) } ?: current.displayTarget,
+                    interfaceLanguage = values["interfaceLanguage"]?.let { InterfaceLanguage.valueOf(it.uppercase()) }
+                        ?: current.interfaceLanguage,
                     overlayScale = current.overlayScale,
                     battlePollingIntervalMs = values["battlePollingIntervalMs"]?.toIntOrNull()?.coerceIn(1, 20)
                         ?: current.battlePollingIntervalMs,
