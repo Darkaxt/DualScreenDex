@@ -41,8 +41,17 @@ export function setInterfaceLanguage(
   return locale;
 }
 
-export function msg<Key extends MessageKey>(key: Key): MessageDictionary[Key] {
-  return messages[interfaceLocale.value][key];
+type MessageArgs<Key extends MessageKey> = MessageDictionary[Key] extends (...args: infer Args) => string ? Args : [];
+type MessageResult<Key extends MessageKey> = MessageDictionary[Key] extends (...args: infer _Args) => infer Result
+  ? Result
+  : MessageDictionary[Key];
+
+export function msg<Key extends MessageKey>(key: Key, ...args: MessageArgs<Key>): MessageResult<Key> {
+  const message = messages[interfaceLocale.value][key];
+  if (typeof message === 'function') {
+    return (message as unknown as (...values: MessageArgs<Key>) => MessageResult<Key>)(...args);
+  }
+  return message as MessageResult<Key>;
 }
 
 export function dictionary(locale: SupportedInterfaceLocale): Readonly<MessageDictionary> {

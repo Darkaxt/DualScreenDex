@@ -28,8 +28,15 @@ describe('interface localization', () => {
     expect(msg('settingsTitle')).toBe('IMPOSTAZIONI');
   });
 
+  it('formats typed message parameters with interface-locale plurals', () => {
+    setInterfaceLanguage('DE');
+    expect(msg('gamesFound', '1', 'one')).toBe('1 Spiel gefunden.');
+    expect(msg('gamesFound', '1.000', 'other')).toBe('1.000 Spiele gefunden.');
+  });
+
   it('provides a visibly delimited expansion-only pseudo dictionary', () => {
     expect(expandPseudoText('Settings')).toBe('⟦Seettiings⟧');
     expect(pseudoMessages.settingsTitle).toMatch(/^⟦.+⟧$/);
+    expect(pseudoMessages.gamesFound('12', 'other')).toMatch(/^⟦.+⟧$/);
   });
 });

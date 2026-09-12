@@ -7,5 +7,11 @@ export function expandPseudoText(value: string): string {
 }
 
 export const pseudoMessages = Object.fromEntries(
-  Object.entries(messagesEn).map(([key, value]) => [key, expandPseudoText(value)]),
+  Object.entries(messagesEn).map(([key, value]) => {
+    if (typeof value === 'function') {
+      const format = value as unknown as (...args: unknown[]) => string;
+      return [key, (...args: unknown[]) => expandPseudoText(format(...args))];
+    }
+    return [key, expandPseudoText(value)];
+  }),
 ) as unknown as MessageDictionary;

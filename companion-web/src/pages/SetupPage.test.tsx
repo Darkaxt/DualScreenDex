@@ -1,9 +1,13 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { setInterfaceLanguage } from '../i18n';
 import type { State } from '../models';
 import { SetupPage } from './SetupPage';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  setInterfaceLanguage('EN');
+});
 
 describe('RetroArch setup', () => {
   it('separates permission, restart verification, session, and manual fallback states', () => {
@@ -94,6 +98,25 @@ describe('RetroArch setup', () => {
 
     rerender(<SetupPage state={state} send={vi.fn()} />);
     expect(screen.queryByRole('link', { name: 'RETRY OPENING GAME GUIDE' })).toBeNull();
+  });
+
+  it('renders setup actions and live status in German without changing control URLs', () => {
+    setInterfaceLanguage('DE');
+    render(<SetupPage state={{ ...state, retroArch: { ...state.retroArch, connection: 'CONNECTED' } }} send={vi.fn()} />);
+
+    expect(screen.getByText('RETROARCH-VERBINDUNG')).toBeTruthy();
+    expect(screen.getByText('12 Spiele gefunden.')).toBeTruthy();
+    expect(screen.getByText('Verbunden')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'SPIELE ERNEUT SUCHEN' }).getAttribute('href')).toBe('dualdex://games/rescan');
+    expect(screen.getByRole('link', { name: 'RETROARCH ÖFFNEN' }).getAttribute('href')).toBe('dualdex://open/retroarch');
+  });
+
+  it('renders Spanish recovery copy and preserves its stable retry action', () => {
+    setInterfaceLanguage('ES');
+    render(<SetupPage state={{ ...state, retroArch: { ...state.retroArch, resolution: 'FAILED' } }} send={vi.fn()} />);
+
+    expect(screen.getByRole('alert').textContent).toContain('No se ha podido abrir la guía');
+    expect(screen.getByRole('link', { name: 'VOLVER A ABRIR LA GUÍA' }).getAttribute('href')).toBe('dualdex://guide/retry');
   });
 
   it('returns to the previous screen', () => {

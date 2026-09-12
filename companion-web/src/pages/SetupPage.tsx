@@ -1,4 +1,5 @@
 import { Header } from '../components';
+import { formatUiNumber, msg, pluralCategory } from '../i18n';
 import type { RetroArchState, State } from '../models';
 import { renderPresentationMessage } from '../presentationMessages';
 
@@ -23,64 +24,62 @@ export function SetupPage({ state, send }: { state: State; send: (type: string, 
   const retroArch = state.retroArch ?? disconnected;
   const returnScreen = state.catalogReady ? state.priorScreen : 'POKEDEX';
   return <section class="screen setup-screen">
-    <Header title="RETROARCH" onBack={() => send('SCREEN', { screen: returnScreen })} />
+    <Header title={msg('retroArch')} onBack={() => send('SCREEN', { screen: returnScreen })} />
     <div class="setup-content" data-scroll-region>
       <div class="setup-intro">
-        <p class="eyebrow">RETROARCH CONNECTION</p>
-        <p>Connect DualDex to a running game in RetroArch.</p>
+        <p class="eyebrow">{msg('retroArchConnection')}</p>
+        <p>{msg('connectRetroArch')}</p>
       </div>
 
-      <SetupStep number="1" title="SHARED STORAGE" status={retroArch.storageGrant}>
-        <p>All Files Access automatically finds supported games and their save files, even when they use separate folders.</p>
-        <p class="warning-note">Android/data and Android/obb remain protected. Keep games and saves in public shared storage or use the folder fallback.</p>
-        {retroArch.storageGrant === 'MISSING' && <a class="setup-action setup-action-primary" href="dualdex://grant/files">GRANT ALL FILES ACCESS</a>}
-        <small>{retroArch.indexedRoms} games found.</small>
-        {retroArch.romGrant !== 'INDEXING' && <a class="setup-action" href="dualdex://games/rescan">RESCAN GAMES</a>}
-        {retroArch.romGrant === 'INDEXING' && <p class="setup-message" role="status">Finding your games…</p>}
-        {retroArch.romGrant === 'FAILED' && <p class="warning-note">{retroArch.indexedRoms > 0
-          ? 'Rescan failed. The previous game index remains active; try the rescan again or select a folder.'
-          : 'Games could not be indexed. Select the game folder below or try again.'}</p>}
-        {retroArch.storageGrant === 'MISSING' && <p class="warning-note">Save files in separate folders cannot be found until storage access is granted.</p>}
+      <SetupStep number="1" title={msg('sharedStorage')} status={retroArch.storageGrant}>
+        <p>{msg('sharedStorageDescription')}</p>
+        <p class="warning-note">{msg('protectedStorageWarning')}</p>
+        {retroArch.storageGrant === 'MISSING' && <a class="setup-action setup-action-primary" href="dualdex://grant/files">{msg('grantAllFiles')}</a>}
+        <small>{msg('gamesFound', formatUiNumber(retroArch.indexedRoms), pluralCategory(retroArch.indexedRoms))}</small>
+        {retroArch.romGrant !== 'INDEXING' && <a class="setup-action" href="dualdex://games/rescan">{msg('rescanGames')}</a>}
+        {retroArch.romGrant === 'INDEXING' && <p class="setup-message" role="status">{msg('findingGames')}</p>}
+        {retroArch.romGrant === 'FAILED' && <p class="warning-note">{msg(retroArch.indexedRoms > 0 ? 'rescanFailedWithIndex' : 'gamesIndexFailed')}</p>}
+        {retroArch.storageGrant === 'MISSING' && <p class="warning-note">{msg('saveAccessRequired')}</p>}
         <div class="setup-manual-path">
-          <strong>FOLDER FALLBACK</strong>
-          <p>Use these only when All Files Access is unavailable.</p>
-          <a class="setup-action" href="dualdex://grant/retroarch">SELECT RETROARCH FOLDER</a>
-          <a class="setup-action" href="dualdex://grant/roms">SELECT GAME FOLDER</a>
+          <strong>{msg('folderFallback')}</strong>
+          <p>{msg('folderFallbackDescription')}</p>
+          <a class="setup-action" href="dualdex://grant/retroarch">{msg('selectRetroArchFolder')}</a>
+          <a class="setup-action" href="dualdex://grant/roms">{msg('selectGameFolder')}</a>
         </div>
       </SetupStep>
 
-      <SetupStep number="2" title="RETROARCH CONFIG" status={retroArch.configState}>
-        <p>Fully close RetroArch before setup. DualDex enables Network Commands and a 10-second SaveRAM autosave interval in the public retroarch.cfg, then verifies the exact edit without changing unrelated settings.</p>
-        <small>The command interface is not considered active until DualDex verifies it after a full RetroArch restart.</small>
+      <SetupStep number="2" title={msg('retroArchConfig')} status={retroArch.configState}>
+        <p>{msg('configDescription')}</p>
+        <small>{msg('configRestartNote')}</small>
         {retroArch.configState === 'FAILED' && <div class="setup-recovery" role="alert">
-          <p>RetroArch configuration could not be verified. The selected folder may not contain the active retroarch.cfg.</p>
-          <a class="setup-action setup-action-primary" href="dualdex://grant/retroarch">RESELECT RETROARCH FOLDER</a>
+          <p>{msg('configVerificationFailed')}</p>
+          <a class="setup-action setup-action-primary" href="dualdex://grant/retroarch">{msg('reselectRetroArchFolder')}</a>
         </div>}
         {retroArch.configState !== 'VERIFIED' && <div class="setup-manual-path">
-          <strong>MANUAL RETROARCH PATH</strong>
-          <p>Settings → Network → Network Commands: enable Network Commands and keep port 55355.</p>
-          <p>Settings → Saving → SaveRAM Autosave Interval: set 10 seconds.</p>
-          <p>Settings → Directory → Save Files: select a public RetroArch/saves folder DualDex can read.</p>
-          <p>Main Menu → Configuration File → Save Current Configuration, then fully restart RetroArch.</p>
+          <strong>{msg('manualRetroArchPath')}</strong>
+          <p>{msg('manualNetworkInstruction')}</p>
+          <p>{msg('manualSaveInstruction')}</p>
+          <p>{msg('manualDirectoryInstruction')}</p>
+          <p>{msg('manualRestartInstruction')}</p>
         </div>}
       </SetupStep>
 
-      <SetupStep number="3" title="LIVE SESSION" status={retroArch.connection}>
+      <SetupStep number="3" title={msg('liveSession')} status={retroArch.connection}>
         <div class="setup-facts">
-          <span><small>GAME</small><strong>{retroArch.gameBasename ?? 'No game open'}</strong></span>
-          <span><small>COMPANION</small><strong>{retroArch.connection === 'CONNECTED' ? 'Ready' : 'Waiting for a game'}</strong></span>
+          <span><small>{msg('game')}</small><strong>{retroArch.gameBasename ?? msg('noGameOpen')}</strong></span>
+          <span><small>{msg('companion')}</small><strong>{retroArch.connection === 'CONNECTED' ? msg('ready') : msg('waitingForGame')}</strong></span>
         </div>
-        <a class="setup-action setup-action-primary" href="dualdex://open/retroarch">OPEN RETROARCH</a>
+        <a class="setup-action setup-action-primary" href="dualdex://open/retroarch">{msg('openRetroArch')}</a>
         {retroArch.resolution === 'FAILED' && <>
           <p class="warning-note" role="alert">{retroArch.presentationMessage
             ? renderPresentationMessage(retroArch.presentationMessage)
-            : 'This game guide could not be opened. You can try again.'}</p>
-          <a class="setup-action setup-action-primary" href="dualdex://guide/retry">RETRY OPENING GAME GUIDE</a>
+            : msg('guideOpenFailed')}</p>
+          <a class="setup-action setup-action-primary" href="dualdex://guide/retry">{msg('retryOpeningGuide')}</a>
         </>}
       </SetupStep>
 
-      {retroArch.restartRequired && <p class="setup-message" role="status">Fully restart RetroArch, then return here.</p>}
-      <p class="setup-fallback">Manual game loading remains available whenever RetroArch is not connected.</p>
+      {retroArch.restartRequired && <p class="setup-message" role="status">{msg('restartRetroArch')}</p>}
+      <p class="setup-fallback">{msg('manualLoadingAvailable')}</p>
     </div>
   </section>;
 }
@@ -94,9 +93,9 @@ function SetupStep({ number, title, status, children }: { number: string; title:
 
 function setupStatusLabel(status: string): string {
   const labels: Record<string, string> = {
-    GRANTED: 'Ready', VERIFIED: 'Ready', CONNECTED: 'Connected',
-    MISSING: 'Needs access', NOT_CONFIGURED: 'Needs setup', RESTART_REQUIRED: 'Restart needed',
-    DISCONNECTED: 'Not connected', CONNECTING: 'Connecting…',
+    GRANTED: msg('ready'), VERIFIED: msg('ready'), CONNECTED: msg('connected'),
+    MISSING: msg('needsAccess'), NOT_CONFIGURED: msg('needsSetup'), RESTART_REQUIRED: msg('restartNeeded'),
+    DISCONNECTED: msg('notConnected'), CONNECTING: msg('connecting'),
   };
-  return labels[status] ?? 'Needs attention';
+  return labels[status] ?? msg('needsAttention');
 }
