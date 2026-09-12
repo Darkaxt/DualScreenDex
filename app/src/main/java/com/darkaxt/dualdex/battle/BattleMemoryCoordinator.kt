@@ -6,6 +6,8 @@ import com.darkaxt.dualdex.retroarch.CoreMemoryRegion
 import com.darkaxt.dualdex.retroarch.NetworkCommandTransport
 import com.darkaxt.dualdex.retroarch.UdpNetworkCommandTransport
 import com.enrpau.dualscreendex.parser.catalog.MapLighting
+import com.enrpau.dualscreendex.parser.language.RuntimeLanguageMemorySpace
+import com.enrpau.dualscreendex.parser.language.RuntimeLanguageSelectionLayout
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.darkaxt.dualdex.save.SaveParseContext
 import com.darkaxt.dualdex.live.TransientGameStateContext
@@ -26,6 +28,7 @@ data class BattleCatalogContext(
     val gen3RuntimeMemoryLayout: Gen3RuntimeMemoryLayout? = null,
     val liveAreaMemoryLayout: LiveAreaMemoryLayout? = null,
     val saveParseContext: SaveParseContext? = null,
+    val runtimeLanguageSelection: RuntimeLanguageSelectionLayout? = null,
 ) {
     init {
         require(gen2TimeOfDayWramOffset == null || gen2TimeOfDayWramOffset in 0 until 0x2000)
@@ -151,6 +154,7 @@ class BattleMemoryCoordinator(
                     gen3RuntimeMemoryLayout = context.gen3RuntimeMemoryLayout,
                     liveAreaMemoryLayout = context.liveAreaMemoryLayout,
                     saveParseContext = context.saveParseContext,
+                    runtimeLanguageSelection = context.runtimeLanguageSelection,
                 ),
             )
         }
@@ -288,6 +292,7 @@ class BattleMemoryCoordinator(
                             )
                         }
                     }
+                    catalogProvider()?.let(::contentLanguageRegion)?.let(::add)
                 }
             }
             startSession(session, regions)
@@ -322,6 +327,7 @@ class BattleMemoryCoordinator(
                     catalogProvider()?.gen2TimeOfDayWramOffset?.let { offset ->
                         add(CoreMemoryRegion("live-game-clock", GEN1_WRAM_BASE + offset, 1))
                     }
+                    catalogProvider()?.let(::contentLanguageRegion)?.let(::add)
                 }
             }
             startSession(session, regions)
@@ -338,8 +344,11 @@ class BattleMemoryCoordinator(
             val pointers = pendingLivePointers
             val regions = if (pointers == null) {
                 readMode = ReadMode.LIVE_POINTERS
-                pointerWindows.map { window ->
-                    CoreMemoryRegion(window.id, window.address, window.byteCount)
+                buildList {
+                    addAll(pointerWindows.map { window ->
+                        CoreMemoryRegion(window.id, window.address, window.byteCount)
+                    })
+                    contentLanguageRegion(context)?.let(::add)
                 }
             } else {
                 readMode = ReadMode.LIVE_DEPENDENT
@@ -375,6 +384,7 @@ class BattleMemoryCoordinator(
                             ),
                         )
                     }
+                    contentLanguageRegion(context)?.let(::add)
                 }
             }
             startSession(session, regions)
@@ -480,6 +490,7 @@ class BattleMemoryCoordinator(
     }
 
     private fun process(regions: Map<String, ByteArray>, context: BattleCatalogContext) {
+        val contentLanguage = resolveContentLanguage(regions, context)
         val gen2Lighting = if (context.generation == 2) resolveCurrentGen2Lighting(regions, context) else null
         val validatedGen2NoBattle = context.generation == 2 && knownGen2NonBattle(regions)
         val resolvedSample = if (context.generation == 1) {
@@ -633,7 +644,7 @@ class BattleMemoryCoordinator(
             tracker.validatedNoBattle(context.romIdentity)
         }
         if (context.generation == 3) {
-            publishUnifiedLiveGame(regions, gen3Runtime, update)
+            publishUnifiedLiveGame(regions, gen3Runtime, update, contentLanguage)
         } else {
             transientGameState.acceptExistingGenerationSample(
                 sampleId = ++unifiedSampleId,
@@ -648,6 +659,7 @@ class BattleMemoryCoordinator(
                     LiveClockState(phase = LiveClockPhase.valueOf(lighting.name))
                 },
                 trackingUpdate = update.takeIf { it.active || it.ended },
+                contentLanguage = contentLanguage,
             )
         }
     }
@@ -923,13 +935,44 @@ class BattleMemoryCoordinator(
         )
     }
 
-    private fun liveIndependentRegions(context: BattleCatalogContext?): List<CoreMemoryRegion> {
-        val layout = context?.gen3RuntimeMemoryLayout ?: return emptyList()
-        return transientGameState.gen3IndependentValueReadPlan(
-            layout,
-            includeParty = context.saveParseContext != null,
-        )
-            .map { window -> CoreMemoryRegion(window.id, window.address, window.byteCount) }
+    private fun liveIndependentRegions(context: BattleCatalogContext?): List<CoreMemoryRegion> = buildList {
+        context?.gen3RuntimeMemoryLayout?.let { layout ->
+            addAll(transientGameState.gen3IndependentValueReadPlan(
+                layout,
+                includeParty = context.saveParseContext != null,
+            ).map { window -> CoreMemoryRegion(window.id, window.address, window.byteCount) })
+        }
+        context?.let(::contentLanguageRegion)?.let(::add)
+    }
+
+    private fun contentLanguageRegion(context: BattleCatalogContext): CoreMemoryRegion? {
+        val layout = context.runtimeLanguageSelection ?: return null
+        val base = when (layout.memorySpace) {
+            RuntimeLanguageMemorySpace.GB_WRAM -> GEN1_WRAM_BASE
+            RuntimeLanguageMemorySpace.GBA_EWRAM -> EWRAM_BASE
+            RuntimeLanguageMemorySpace.GBA_IWRAM -> IWRAM_BASE
+        }
+        return CoreMemoryRegion(CONTENT_LANGUAGE_REGION_ID, base + layout.offset, layout.readWidthBytes)
+    }
+
+    private fun resolveContentLanguage(
+        regions: Map<String, ByteArray>,
+        context: BattleCatalogContext,
+    ): ContentLanguageReadOutcome {
+        val layout = context.runtimeLanguageSelection
+            ?: return ContentLanguageReadOutcome.TerminalUnsupported
+        val completeSpace = when (layout.memorySpace) {
+            RuntimeLanguageMemorySpace.GB_WRAM -> regions["wram"]
+            RuntimeLanguageMemorySpace.GBA_EWRAM -> regions["ewram"]
+            RuntimeLanguageMemorySpace.GBA_IWRAM -> regions["iwram"]
+        }
+        val bytes = regions[CONTENT_LANGUAGE_REGION_ID] ?: completeSpace?.let { memory ->
+            val end = layout.offset + layout.readWidthBytes
+            if (layout.offset < 0 || end > memory.size) null else memory.copyOfRange(layout.offset, end)
+        }
+        val input = bytes?.let(ContentLanguageMemoryInput::Bytes)
+            ?: ContentLanguageMemoryInput.Unavailable
+        return ContentLanguageMemoryReader.read(layout, input)
     }
 
     private fun gen3BattleUiRegions(layout: Gen3RuntimeMemoryLayout): List<CoreMemoryRegion> {
@@ -948,6 +991,7 @@ class BattleMemoryCoordinator(
         regions: Map<String, ByteArray>,
         runtime: Gen3RuntimeSnapshot?,
         update: BattleTrackingUpdate,
+        contentLanguage: ContentLanguageReadOutcome,
     ) {
         val sample = update.sample
         transientGameState.acceptGen3LiveSample(
@@ -963,6 +1007,7 @@ class BattleMemoryCoordinator(
             areaBaseId = runtime?.areaBaseId,
             mapPosition = runtime?.mapPosition,
             trackingUpdate = update.takeIf { it.active || it.ended },
+            contentLanguage = contentLanguage,
         )
     }
 
@@ -1114,6 +1159,7 @@ class BattleMemoryCoordinator(
         private const val BATTLE_UI_ACTIVE_ID = "battle-ui-active"
         private const val BATTLE_UI_ACTION_ID = "battle-ui-action"
         private const val BATTLE_UI_MOVE_ID = "battle-ui-move"
+        private const val CONTENT_LANGUAGE_REGION_ID = "content-language"
         private const val CACHED_WINDOW_BYTES = 0x45C
         private const val PRODUCTION_CHUNK_BYTES = 1024
         private const val REQUIRED_STABLE_OVERWORLD_OBSERVATIONS = 2

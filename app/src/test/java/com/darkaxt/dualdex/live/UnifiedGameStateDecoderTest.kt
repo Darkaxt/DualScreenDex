@@ -2,6 +2,7 @@ package com.darkaxt.dualdex.live
 
 import com.darkaxt.dualdex.battle.BattleCatalogView
 import com.darkaxt.dualdex.battle.BattleTrackingUpdate
+import com.darkaxt.dualdex.battle.ContentLanguageReadOutcome
 import com.darkaxt.dualdex.battle.LiveClockState
 import com.darkaxt.dualdex.battle.LiveGameSnapshot
 import com.darkaxt.dualdex.battle.LiveLocationState
@@ -27,6 +28,18 @@ import com.darkaxt.dualdex.save.OwnedIndividual
 import com.enrpau.dualscreendex.companion.api.SaveRamView
 import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
 import com.darkaxt.dualdex.knowledge.SaveFileFingerprint
+import com.enrpau.dualscreendex.parser.language.LanguageEvidence
+import com.enrpau.dualscreendex.parser.language.LanguageEvidenceKind
+import com.enrpau.dualscreendex.parser.language.LanguageResolutionStatus
+import com.enrpau.dualscreendex.parser.language.LanguageTag
+import com.enrpau.dualscreendex.parser.language.LocalizedTableLayout
+import com.enrpau.dualscreendex.parser.language.RomLanguageManifest
+import com.enrpau.dualscreendex.parser.language.RomLanguageProjection
+import com.enrpau.dualscreendex.parser.language.RuntimeLanguageMemorySpace
+import com.enrpau.dualscreendex.parser.language.RuntimeLanguageSelectionCandidate
+import com.enrpau.dualscreendex.parser.language.RuntimeLanguageSelectionLayout
+import com.enrpau.dualscreendex.parser.language.RuntimeLanguageSelectionResolver
+import com.enrpau.dualscreendex.parser.language.RuntimeLanguageValueMapping
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -517,6 +530,73 @@ class UnifiedGameStateDecoderTest {
     }
 
     @Test
+    fun contentLanguageAuthorityIsFencedBySessionAndSample() {
+        val layout = runtimeLanguageLayout()
+        val decoder = UnifiedGameStateDecoder()
+        decoder.beginSession(context(ROM, runtimeLanguageSelection = layout))
+        decoder.acceptRecovery(recovery(ROM))
+        decoder.acceptDecodedLive(
+            liveSnapshot(
+                ROM,
+                sampleId = 2,
+                money = LiveValue.Available(900L),
+                contentLanguage = ContentLanguageReadOutcome.Live(LanguageTag.GERMAN),
+            ),
+        )
+        val live = requireNotNull(decoder.current)
+
+        decoder.acceptDecodedLive(
+            liveSnapshot(
+                ROM,
+                sampleId = 1,
+                money = LiveValue.Available(800L),
+                contentLanguage = ContentLanguageReadOutcome.Live(LanguageTag.ENGLISH),
+            ),
+        )
+
+        assertEquals(ContentLanguageReadOutcome.Live(LanguageTag.GERMAN), decoder.current?.contentLanguage)
+        assertEquals(live.contextEpoch, decoder.current?.contextEpoch)
+        assertEquals(live.stateVersion, decoder.current?.stateVersion)
+
+        decoder.beginSession(context("second-rom", runtimeLanguageSelection = layout))
+        decoder.acceptDecodedLive(
+            liveSnapshot(
+                ROM,
+                sampleId = 3,
+                money = LiveValue.Available(700L),
+                contentLanguage = ContentLanguageReadOutcome.Live(LanguageTag.GERMAN),
+            ),
+        )
+        assertNull(decoder.current)
+
+        decoder.acceptRecovery(recovery("second-rom"))
+        val replacement = requireNotNull(decoder.current)
+        assertEquals(ContentLanguageReadOutcome.Default, replacement.contentLanguage)
+        assertTrue(replacement.contextEpoch > live.contextEpoch)
+        assertTrue(replacement.stateVersion > live.stateVersion)
+    }
+
+    @Test
+    fun suspendingLiveLanguageAuthorityRevealsRomDefault() {
+        val decoder = UnifiedGameStateDecoder()
+        decoder.beginSession(context(ROM, runtimeLanguageSelection = runtimeLanguageLayout()))
+        decoder.acceptRecovery(recovery(ROM))
+        decoder.acceptDecodedLive(
+            liveSnapshot(
+                ROM,
+                sampleId = 1,
+                money = LiveValue.Available(900L),
+                contentLanguage = ContentLanguageReadOutcome.Live(LanguageTag.GERMAN),
+            ),
+        )
+
+        decoder.suspendLive()
+
+        assertEquals(ContentLanguageReadOutcome.Default, decoder.current?.contentLanguage)
+        assertEquals(ResolvedValueSource.RECOVERY, decoder.current?.trainer?.money?.source)
+    }
+
+    @Test
     fun wrapsExistingGen2BattleLocationPositionAndLightingAsOneLogicalSample() {
         val decoder = UnifiedGameStateDecoder()
         decoder.beginSession(context(ROM, generation = 2))
@@ -739,7 +819,11 @@ class UnifiedGameStateDecoderTest {
         assertEquals(3L, decoder.performanceCounters().getValue("live.decode.progression"))
     }
 
-    private fun context(rom: String, generation: Int = 3) = TransientGameStateContext(
+    private fun context(
+        rom: String,
+        generation: Int = 3,
+        runtimeLanguageSelection: RuntimeLanguageSelectionLayout? = null,
+    ) = TransientGameStateContext(
         romIdentity = rom,
         generation = generation,
         catalog = BattleCatalogView(emptyMap(), emptyMap(), emptySet()),
@@ -749,6 +833,7 @@ class UnifiedGameStateDecoderTest {
                 com.darkaxt.dualdex.save.SaveSpeciesContext(speciesId, speciesId, 0)
             },
         ),
+        runtimeLanguageSelection = runtimeLanguageSelection,
     )
 
     private fun gen3LiveContext(): TransientGameStateContext {
@@ -868,6 +953,7 @@ class UnifiedGameStateDecoderTest {
         caught: LiveValue<Set<Int>> = unavailable(),
         party: LiveValue<List<OwnedIndividual>> = LiveValue.Available(emptyList()),
         stored: LiveValue<List<OwnedIndividual>> = unavailable(),
+        contentLanguage: ContentLanguageReadOutcome = ContentLanguageReadOutcome.TerminalUnsupported,
     ) = LiveGameSnapshot(
         romIdentity = rom,
         generation = 3,
@@ -888,7 +974,64 @@ class UnifiedGameStateDecoderTest {
         clock = LiveValue.Available(LiveClockState(12, 30, 10)),
         bag = emptyMap(),
         eventFlags = unavailable(),
+        contentLanguage = contentLanguage,
     )
+
+    private fun runtimeLanguageLayout(): RuntimeLanguageSelectionLayout {
+        val manifest = RomLanguageManifest(
+            defaultLanguage = LanguageTag.ENGLISH,
+            projections = listOf(
+                RomLanguageProjection(
+                    LanguageTag.ENGLISH,
+                    "gba-english",
+                    1,
+                    LocalizedTableLayout(),
+                    emptyList(),
+                    LanguageResolutionStatus.RESOLVED,
+                ),
+                RomLanguageProjection(
+                    LanguageTag.GERMAN,
+                    "gba-german",
+                    1,
+                    LocalizedTableLayout(),
+                    emptyList(),
+                    LanguageResolutionStatus.RESOLVED,
+                ),
+            ),
+            status = LanguageResolutionStatus.RESOLVED,
+        )
+        return requireNotNull(
+            RuntimeLanguageSelectionResolver.resolve(
+                manifest = manifest,
+                candidates = listOf(
+                    RuntimeLanguageSelectionCandidate(
+                        memorySpace = RuntimeLanguageMemorySpace.GBA_EWRAM,
+                        offset = 0x100,
+                        readWidthBytes = 1,
+                        mask = 0x03,
+                        shift = 0,
+                        defaultValue = 0,
+                        mappings = listOf(
+                            RuntimeLanguageValueMapping(0, LanguageTag.ENGLISH),
+                            RuntimeLanguageValueMapping(1, LanguageTag.GERMAN),
+                        ),
+                        evidence = listOf(
+                            LanguageEvidence(
+                                LanguageEvidenceKind.COMPILED_CONSUMER,
+                                "compiled selector read",
+                                100,
+                            ),
+                            LanguageEvidence(
+                                LanguageEvidenceKind.TABLE_RELATIONSHIP,
+                                "localized table branch",
+                                100,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        )
+    }
 
     private fun <T> unavailable(): LiveValue<T> = LiveValue.Unavailable(
         LiveUnavailableReason(

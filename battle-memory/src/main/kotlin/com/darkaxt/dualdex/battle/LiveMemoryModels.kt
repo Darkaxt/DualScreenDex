@@ -128,6 +128,7 @@ data class LiveGameSnapshot(
     val clock: LiveValue<LiveClockState>,
     val bag: Map<BagPocket, LiveValue<BagPocketSnapshot>>,
     val eventFlags: LiveValue<Set<Int>>,
+    val contentLanguage: ContentLanguageReadOutcome = ContentLanguageReadOutcome.TerminalUnsupported,
 ) {
     init {
         require(romIdentity.isNotBlank()) { "ROM identity must not be blank" }

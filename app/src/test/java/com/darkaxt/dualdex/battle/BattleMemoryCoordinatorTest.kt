@@ -3,6 +3,18 @@ package com.darkaxt.dualdex.battle
 import com.darkaxt.dualdex.retroarch.NetworkCommandTransport
 import com.darkaxt.dualdex.save.SaveParseContext
 import com.darkaxt.dualdex.save.SaveSpeciesContext
+import com.enrpau.dualscreendex.parser.language.LanguageEvidence
+import com.enrpau.dualscreendex.parser.language.LanguageEvidenceKind
+import com.enrpau.dualscreendex.parser.language.LanguageResolutionStatus
+import com.enrpau.dualscreendex.parser.language.LanguageTag
+import com.enrpau.dualscreendex.parser.language.LocalizedTableLayout
+import com.enrpau.dualscreendex.parser.language.RomLanguageManifest
+import com.enrpau.dualscreendex.parser.language.RomLanguageProjection
+import com.enrpau.dualscreendex.parser.language.RuntimeLanguageMemorySpace
+import com.enrpau.dualscreendex.parser.language.RuntimeLanguageSelectionCandidate
+import com.enrpau.dualscreendex.parser.language.RuntimeLanguageSelectionLayout
+import com.enrpau.dualscreendex.parser.language.RuntimeLanguageSelectionResolver
+import com.enrpau.dualscreendex.parser.language.RuntimeLanguageValueMapping
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -12,6 +24,72 @@ import java.util.ArrayDeque
 import java.util.concurrent.ScheduledThreadPoolExecutor
 
 class BattleMemoryCoordinatorTest {
+    @Test
+    fun publishesLiveContentLanguageAndFallsBackOnInvalidValue() {
+        val wram = ByteArray(0x2000).apply {
+            this[0x100] = 1
+            this[0x135d] = 0x28
+            this[0x1360] = 7
+            this[0x1361] = 12
+        }
+        val state = com.darkaxt.dualdex.live.UnifiedGameStateDecoder()
+        val transport = MemoryTransport(wram, 0xc000)
+        var nowNanos = 0L
+        val coordinator = BattleMemoryCoordinator(
+            catalogProvider = { gen1Context().copy(runtimeLanguageSelection = runtimeLanguageLayout()) },
+            transientGameState = state,
+            transportFactory = { transport },
+            autoStart = false,
+            monotonicNanos = { nowNanos },
+        )
+        coordinator.updateSession(connected = true, systemId = "game_boy", romIdentity = "rom")
+
+        repeat(2) { coordinator.heartbeat() }
+        assertEquals(ContentLanguageReadOutcome.Live(LanguageTag.GERMAN), state.current?.contentLanguage)
+
+        wram[0x100] = 3
+        repeat(2) { coordinator.heartbeat() }
+        assertEquals(ContentLanguageReadOutcome.Default, state.current?.contentLanguage)
+
+        transport.failPolls = true
+        repeat(2) { coordinator.heartbeat() }
+        assertNull(state.current)
+
+        transport.failPolls = false
+        wram[0x100] = 1
+        nowNanos += 10_000_000_000L
+        repeat(4) { coordinator.heartbeat() }
+        assertEquals(ContentLanguageReadOutcome.Live(LanguageTag.GERMAN), state.current?.contentLanguage)
+
+        coordinator.updateSession(connected = false, systemId = null, romIdentity = null)
+        assertNull(state.current)
+        coordinator.close()
+    }
+
+    @Test
+    fun singleLanguageCatalogAddsNoContentLanguageRead() {
+        val wram = ByteArray(0x2000).apply {
+            this[0x135d] = 0x28
+            this[0x1360] = 7
+            this[0x1361] = 12
+        }
+        val state = com.darkaxt.dualdex.live.UnifiedGameStateDecoder()
+        val transport = MemoryTransport(wram, 0xc000)
+        val coordinator = BattleMemoryCoordinator(
+            catalogProvider = { gen1Context() },
+            transientGameState = state,
+            transportFactory = { transport },
+            autoStart = false,
+        )
+        coordinator.updateSession(connected = true, systemId = "game_boy", romIdentity = "rom")
+
+        repeat(6) { coordinator.heartbeat() }
+
+        assertTrue(transport.commands.none { it == "READ_CORE_MEMORY c100 1" })
+        assertEquals(ContentLanguageReadOutcome.TerminalUnsupported, state.current?.contentLanguage)
+        coordinator.close()
+    }
+
     @Test
     fun ineligibleCoordinatorSchedulesNoIdleHeartbeat() {
         val scheduler = ScheduledThreadPoolExecutor(1)
@@ -993,6 +1071,36 @@ class BattleMemoryCoordinatorTest {
                 }
             }
         }
+
+    private fun runtimeLanguageLayout(): RuntimeLanguageSelectionLayout {
+        val manifest = RomLanguageManifest(
+            defaultLanguage = LanguageTag.ENGLISH,
+            projections = listOf(
+                RomLanguageProjection(LanguageTag.ENGLISH, "gb-english", 1, LocalizedTableLayout(), emptyList(), LanguageResolutionStatus.RESOLVED),
+                RomLanguageProjection(LanguageTag.GERMAN, "gb-german", 1, LocalizedTableLayout(), emptyList(), LanguageResolutionStatus.RESOLVED),
+            ),
+            status = LanguageResolutionStatus.RESOLVED,
+        )
+        return requireNotNull(RuntimeLanguageSelectionResolver.resolve(
+            manifest = manifest,
+            candidates = listOf(RuntimeLanguageSelectionCandidate(
+                memorySpace = RuntimeLanguageMemorySpace.GB_WRAM,
+                offset = 0x100,
+                readWidthBytes = 1,
+                mask = 0x03,
+                shift = 0,
+                defaultValue = 0,
+                mappings = listOf(
+                    RuntimeLanguageValueMapping(0, LanguageTag.ENGLISH),
+                    RuntimeLanguageValueMapping(1, LanguageTag.GERMAN),
+                ),
+                evidence = listOf(
+                    LanguageEvidence(LanguageEvidenceKind.COMPILED_CONSUMER, "compiled selector read", 100),
+                    LanguageEvidence(LanguageEvidenceKind.TABLE_RELATIONSHIP, "localized table branch", 100),
+                ),
+            )),
+        ))
+    }
 
     private fun context(
         saveBlock1Pointer: Long? = null,

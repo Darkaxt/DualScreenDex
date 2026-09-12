@@ -3,6 +3,7 @@ package com.darkaxt.dualdex.live
 import com.darkaxt.dualdex.battle.BattleCatalogView
 import com.darkaxt.dualdex.battle.BattleMatchupObservation
 import com.darkaxt.dualdex.battle.BattleTrackingUpdate
+import com.darkaxt.dualdex.battle.ContentLanguageReadOutcome
 import com.darkaxt.dualdex.battle.Gen3RuntimeMemoryLayout
 import com.darkaxt.dualdex.battle.LiveAreaMemoryLayout
 import com.darkaxt.dualdex.battle.LiveBattleState
@@ -19,6 +20,8 @@ import com.enrpau.dualscreendex.companion.api.SaveRamView
 import com.enrpau.dualscreendex.companion.model.KnowledgeLedger
 import com.enrpau.dualscreendex.companion.model.Effectiveness
 import com.enrpau.dualscreendex.companion.model.MatchupKey
+import com.enrpau.dualscreendex.parser.language.RuntimeLanguageMemorySpace
+import com.enrpau.dualscreendex.parser.language.RuntimeLanguageSelectionLayout
 
 fun interface TransientGameStateListener {
     fun onStateChanged(update: ResolvedGameStateUpdate)
@@ -143,6 +146,9 @@ data class ResolvedGameSnapshot(
     val eventFlags: ResolvedValue<Set<Int>>,
     val levelUpRulesetId: ResolvedValue<String>,
     val recovery: RecoveryState,
+    val contentLanguage: ContentLanguageReadOutcome = ContentLanguageReadOutcome.TerminalUnsupported,
+    val contextEpoch: Int = 0,
+    val stateVersion: Long = 0,
 ) {
     val party: ResolvedValue<List<OwnedIndividual>> get() = ownedStorage.party
     val storedIndividuals: ResolvedValue<List<OwnedIndividual>> get() = ownedStorage.boxes.map { boxes ->
@@ -164,11 +170,18 @@ data class TransientGameStateContext(
     val gen3RuntimeMemoryLayout: Gen3RuntimeMemoryLayout? = null,
     val liveAreaMemoryLayout: LiveAreaMemoryLayout? = null,
     val saveParseContext: SaveParseContext? = null,
+    val runtimeLanguageSelection: RuntimeLanguageSelectionLayout? = null,
 ) {
     init {
         require(romIdentity.isNotBlank()) { "ROM identity must not be blank" }
         require(generation in 1..3) { "generation must be in 1..3" }
         require(gen2TimeOfDayWramOffset == null || gen2TimeOfDayWramOffset in 0 until 0x2000)
+        runtimeLanguageSelection?.let { selection ->
+            require(
+                generation in 1..2 && selection.memorySpace == RuntimeLanguageMemorySpace.GB_WRAM ||
+                    generation == 3 && selection.memorySpace != RuntimeLanguageMemorySpace.GB_WRAM,
+            ) { "runtime language memory space must match the active generation" }
+        }
     }
 }
 

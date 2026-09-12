@@ -1071,6 +1071,7 @@ class ProductionCompanionRuntime(
             },
             liveAreaMemoryLayout = liveAreaMemoryLayout(current.family),
             saveParseContext = saveParseContext(current),
+            runtimeLanguageSelection = current.languageManifest.runtimeSelection,
         )
         cachedBattleCatalogContext = CachedBattleCatalogContext(current, value)
         return value

@@ -2,6 +2,7 @@ package com.darkaxt.dualdex.live
 
 import com.darkaxt.dualdex.battle.LiveGameSnapshot
 import com.darkaxt.dualdex.battle.BattleTrackingUpdate
+import com.darkaxt.dualdex.battle.ContentLanguageReadOutcome
 import com.darkaxt.dualdex.battle.LiveBattleState
 import com.darkaxt.dualdex.battle.LiveClockState
 import com.darkaxt.dualdex.battle.LiveLocationState
@@ -186,6 +187,7 @@ class UnifiedGameStateDecoder(
         mapPosition: RuntimeMapPosition?,
         clock: LiveClockState?,
         trackingUpdate: BattleTrackingUpdate? = null,
+        contentLanguage: ContentLanguageReadOutcome = ContentLanguageReadOutcome.TerminalUnsupported,
     ): ResolvedGameSnapshot? {
         val active = context ?: return published
         if (active.generation !in 1..2) return published
@@ -215,6 +217,7 @@ class UnifiedGameStateDecoder(
                 clock = clock?.let { LiveValue.Available(it) } ?: unavailable,
                 bag = BagPocket.entries.associateWith { unavailable },
                 eventFlags = unavailable,
+                contentLanguage = contentLanguage,
             ),
         )
     }
@@ -227,6 +230,7 @@ class UnifiedGameStateDecoder(
         areaBaseId: Int?,
         mapPosition: RuntimeMapPosition?,
         trackingUpdate: BattleTrackingUpdate? = null,
+        contentLanguage: ContentLanguageReadOutcome = ContentLanguageReadOutcome.TerminalUnsupported,
     ): ResolvedGameSnapshot? {
         val active = context ?: return published
         if (active.generation != 3) return published
@@ -288,6 +292,7 @@ class UnifiedGameStateDecoder(
                 eventFlags = cached?.progression?.eventFlags
                     ?: memory?.eventFlags
                     ?: unavailable("live event-flag layout was unavailable"),
+                contentLanguage = contentLanguage,
             ),
         )
     }
@@ -624,6 +629,14 @@ class UnifiedGameStateDecoder(
                 checkpointLedger = recovery?.checkpointLedger,
                 resetKnowledge = recoveryResetKnowledge,
             ),
+            contentLanguage = live?.contentLanguage
+                ?: if (active.runtimeLanguageSelection == null) {
+                    ContentLanguageReadOutcome.TerminalUnsupported
+                } else {
+                    ContentLanguageReadOutcome.Default
+                },
+            contextEpoch = contextEpoch,
+            stateVersion = stateRevision,
         )
     }
 
