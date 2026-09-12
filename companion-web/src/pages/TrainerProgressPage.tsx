@@ -1,5 +1,12 @@
-import type { TrainerProgressView } from '../models';
+import type { ChallengeView, TrainerProgressView } from '../models';
+import {
+  formatUiDate,
+  formatUiNumber,
+  msg,
+} from '../i18n';
 import { renderPresentationMessage } from '../presentationMessages';
+
+const sections = ['METRICS', 'CHALLENGES', 'TIMELINE'] as const;
 
 export function TrainerProgressPage({
   progress,
@@ -9,15 +16,21 @@ export function TrainerProgressPage({
   onSelectSection: (section: TrainerProgressView['selectedSection']) => void;
 }) {
   const section = progress.selectedSection;
+  const sectionLabels: Record<TrainerProgressView['selectedSection'], string> = {
+    METRICS: msg('metrics'),
+    CHALLENGES: msg('challenges'),
+    TIMELINE: msg('timeline'),
+  };
+
   return <div class="trainer-progress-content" data-scroll-region>
-    <nav class="trainer-progress-tabs" aria-label="Progress sections">
-      {(['METRICS', 'CHALLENGES', 'TIMELINE'] as const).map(value => <button
+    <nav class="trainer-progress-tabs" aria-label={msg('progressSections')}>
+      {sections.map(value => <button
         type="button"
         key={value}
         class={section === value ? 'active' : ''}
         aria-pressed={section === value}
         onClick={() => onSelectSection(value)}
-      >{titleCase(value)}</button>)}
+      >{sectionLabels[value]}</button>)}
     </nav>
     {section === 'METRICS' && <Metrics progress={progress} />}
     {section === 'CHALLENGES' && <Challenges progress={progress} />}
@@ -27,8 +40,8 @@ export function TrainerProgressPage({
 
 function Metrics({ progress }: { progress: TrainerProgressView }) {
   return <div class="progress-metric-columns">
-    <MetricSection title="GAME TOTALS" metrics={progress.gameTotals} />
-    <MetricSection title="TRACKED JOURNEY" metrics={progress.trackedJourney} />
+    <MetricSection title={msg('gameTotals')} metrics={progress.gameTotals} />
+    <MetricSection title={msg('trackedJourney')} metrics={progress.trackedJourney} />
   </div>;
 }
 
@@ -42,43 +55,58 @@ function MetricSection({ title, metrics }: { title: string; metrics: TrainerProg
 }
 
 function Challenges({ progress }: { progress: TrainerProgressView }) {
-  if (progress.challenges.length === 0) return <ProgressEmpty title="NO CHALLENGES YET" detail="Objectives will appear as this game’s features become available." />;
+  if (progress.challenges.length === 0) {
+    return <ProgressEmpty title={msg('noChallengesYet')} detail={msg('objectivesAppear')} />;
+  }
+
   const categories = [...new Set(progress.challenges.map(challenge => challenge.category))];
+  const summary = progress.challengeSummary;
+  const summaryPercent = summary.completionPercent == null
+    ? null
+    : formatUiNumber(summary.completionPercent);
+
   return <div class="challenge-groups">
-    {progress.challengeSummary.completionPercent != null && <section class="challenge-summary" aria-label={`Overall challenge progress: ${progress.challengeSummary.completionPercent}%`}>
-      <strong>{progress.challengeSummary.completionPercent}%</strong>
-      <span>OVERALL PROGRESS</span>
-      <small>{progress.challengeSummary.completed} / {progress.challengeSummary.applicable} completed</small>
+    {summaryPercent != null && <section class="challenge-summary" aria-label={msg('overallChallengeProgress', summaryPercent)}>
+      <strong>{summaryPercent}%</strong>
+      <span>{msg('overallProgress')}</span>
+      <small>{msg('completedCount', formatUiNumber(summary.completed), formatUiNumber(summary.applicable))}</small>
     </section>}
     {categories.map(category => <section key={category} class="progress-panel challenge-group">
-    <h2>{titleCase(category)}</h2>
-    <div class="challenge-list">{progress.challenges.filter(challenge => challenge.category === category).map(challenge => {
-      const title = renderPresentationMessage(challenge.title);
-      return <article key={challenge.key} class={`challenge-card ${challenge.complete ? 'is-complete' : ''}`}>
-        <div><strong>{title}</strong>{challenge.complete && <span>COMPLETE</span>}</div>
-        <p>{renderPresentationMessage(challenge.description)}</p>
-        {challenge.target != null && challenge.completionPercent != null && <div
-          class="challenge-progress"
-          role="progressbar"
-          aria-label={`${title}: ${challenge.completionPercent}% complete`}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={challenge.completionPercent}
-        ><i style={{ width: `${challenge.completionPercent}%` }} /><b>{challenge.progress ?? 0} / {challenge.target} · {challenge.completionPercent}%</b></div>}
-      </article>;
-    })}</div>
-  </section>)}</div>;
+      <h2>{categoryLabel(category)}</h2>
+      <div class="challenge-list">{progress.challenges.filter(challenge => challenge.category === category).map(challenge => {
+        const title = renderPresentationMessage(challenge.title);
+        const percent = challenge.completionPercent == null
+          ? null
+          : formatUiNumber(challenge.completionPercent);
+        return <article key={challenge.key} class={`challenge-card ${challenge.complete ? 'is-complete' : ''}`}>
+          <div><strong>{title}</strong>{challenge.complete && <span>{msg('complete')}</span>}</div>
+          <p>{renderPresentationMessage(challenge.description)}</p>
+          {challenge.target != null && challenge.completionPercent != null && percent != null && <div
+            class="challenge-progress"
+            role="progressbar"
+            aria-label={msg('challengeProgress', title, percent)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={challenge.completionPercent}
+          ><i style={{ width: `${challenge.completionPercent}%` }} /><b>{formatUiNumber(challenge.progress ?? 0)} / {formatUiNumber(challenge.target)} · {percent}%</b></div>}
+        </article>;
+      })}</div>
+    </section>)}
+  </div>;
 }
 
 function Timeline({ progress }: { progress: TrainerProgressView }) {
-  if (progress.timeline.length === 0) return <ProgressEmpty title="NO SAVED MOMENTS YET" detail="Changes will appear here after the game creates a new save." />;
+  if (progress.timeline.length === 0) {
+    return <ProgressEmpty title={msg('noSavedMomentsYet')} detail={msg('changesAppearAfterSave')} />;
+  }
+
   return <section class="progress-panel timeline-panel">
-    <h2>SAVE TIMELINE</h2>
+    <h2>{msg('saveTimeline')}</h2>
     <ol>{progress.timeline.map((entry, index) => <li key={`${entry.recordedAtEpochMs}-${index}`} class={entry.milestone ? 'is-milestone' : ''}>
-      <time>{new Date(entry.recordedAtEpochMs).toLocaleString()}</time>
-      <div>{entry.changes.map(change => {
+      <time dateTime={new Date(entry.recordedAtEpochMs).toISOString()}>{formatUiDate(entry.recordedAtEpochMs, { dateStyle: 'short', timeStyle: 'short' })}</time>
+      <div>{entry.changes.map((change, changeIndex) => {
         const rendered = renderPresentationMessage(change);
-        return <span key={rendered}>{rendered}</span>;
+        return <span key={`${change.code}-${changeIndex}`}>{rendered}</span>;
       })}</div>
     </li>)}</ol>
   </section>;
@@ -88,13 +116,22 @@ function ProgressEmpty({ title, detail }: { title: string; detail: string }) {
   return <div class="progress-empty"><strong>{title}</strong><p>{detail}</p></div>;
 }
 
-function formatMetric(key: string, value: number | null) {
+function formatMetric(key: string, value: number | null): string {
   if (value == null) return '—';
-  if (key === 'play-time') return `${Math.floor(value / 60)}:${String(value % 60).padStart(2, '0')}`;
-  if (key === 'money') return value.toLocaleString('en-US');
-  return value.toLocaleString('en-US');
+  if (key === 'play-time') {
+    return `${formatUiNumber(Math.floor(value / 60), { useGrouping: false })}:${formatUiNumber(value % 60, { minimumIntegerDigits: 2, useGrouping: false })}`;
+  }
+  return formatUiNumber(value);
 }
 
-function titleCase(value: string) {
-  return value.charAt(0) + value.slice(1).toLocaleLowerCase();
+function categoryLabel(category: ChallengeView['category']): string {
+  const labels: Record<ChallengeView['category'], string> = {
+    PROGRESS: msg('categoryProgress'),
+    COLLECTION: msg('categoryCollection'),
+    EXPLORATION: msg('categoryExploration'),
+    BATTLE: msg('categoryBattle'),
+    PARTY: msg('categoryParty'),
+    SPECIAL: msg('categorySpecial'),
+  };
+  return labels[category];
 }

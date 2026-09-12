@@ -1,4 +1,5 @@
 import type { PresentationMessage } from './models';
+import { formatUiNumber, msg } from './i18n';
 
 export function renderPresentationMessage(message: PresentationMessage): string {
   switch (message.code) {
@@ -76,55 +77,55 @@ export function renderPresentationMessage(message: PresentationMessage): string 
     case 'API_INTERNAL_ERROR': return 'The server could not complete the request.';
     case 'API_NOT_FOUND': return 'The requested resource was not found.';
     case 'API_MAP_UNAVAILABLE': return 'The map is temporarily unavailable. Try again.';
-    case 'PROGRESS_METRIC_PLAY_TIME': return 'Play time';
-    case 'PROGRESS_METRIC_BADGES': return 'Badges';
-    case 'PROGRESS_METRIC_DEX_SEEN': return 'Pokédex seen';
-    case 'PROGRESS_METRIC_DEX_CAUGHT': return 'Pokédex caught';
-    case 'PROGRESS_METRIC_MONEY': return 'Money';
-    case 'PROGRESS_METRIC_BATTLES': return 'Battles';
-    case 'PROGRESS_METRIC_WILD_ENCOUNTERS': return 'Wild encounters';
-    case 'PROGRESS_METRIC_TRAINER_BATTLES': return 'Trainer battles';
-    case 'PROGRESS_METRIC_CAPTURES': return 'Captures';
-    case 'PROGRESS_METRIC_EVOLUTIONS': return 'Evolutions';
-    case 'PROGRESS_METRIC_AREAS_VISITED': return 'Areas visited';
-    case 'PROGRESS_METRIC_POINTS_DISCOVERED': return 'Points discovered';
-    case 'PROGRESS_METRIC_PARTY_CHANGES': return 'Party changes';
-    case 'PROGRESS_METRIC_SAVES_OBSERVED': return 'Saves observed';
-    case 'PROGRESS_METRIC_CHALLENGES_COMPLETED': return 'Challenges completed';
-    case 'TIMELINE_BATTLES': return timelineChange('Battles', message.count);
-    case 'TIMELINE_WILD_ENCOUNTERS': return timelineChange('Wild encounters', message.count);
-    case 'TIMELINE_TRAINER_BATTLES': return timelineChange('Trainer battles', message.count);
-    case 'TIMELINE_CAPTURES': return timelineChange('Captures', message.count);
-    case 'TIMELINE_EVOLUTIONS': return timelineChange('Evolutions', message.count);
-    case 'TIMELINE_AREAS_VISITED': return timelineChange('Areas visited', message.count);
-    case 'TIMELINE_POINTS_DISCOVERED': return timelineChange('Points discovered', message.count);
-    case 'TIMELINE_PARTY_CHANGES': return timelineChange('Party changes', message.count);
-    case 'TIMELINE_SAVES_OBSERVED': return timelineChange('Saves observed', message.count);
-    case 'TIMELINE_CHALLENGES_COMPLETED': return timelineChange('Challenges completed', message.count);
-    case 'CHALLENGE_COLLECTION_FIRST_PARTNER_TITLE': return 'A New Partner';
-    case 'CHALLENGE_COLLECTION_FIRST_PARTNER_DESCRIPTION': return 'Catch your first Pokémon on this journey.';
-    case 'CHALLENGE_COLLECTION_GROWING_ROSTER_TITLE': return 'Growing Roster';
-    case 'CHALLENGE_COLLECTION_GROWING_ROSTER_DESCRIPTION': return 'Catch ten different Pokémon during this journey.';
-    case 'CHALLENGE_PARTY_NEW_FORM_TITLE': return 'A New Form';
-    case 'CHALLENGE_PARTY_NEW_FORM_DESCRIPTION': return 'Witness one of your Pokémon evolve.';
-    case 'CHALLENGE_EXPLORATION_OPEN_ROAD_TITLE': return 'Open Road';
-    case 'CHALLENGE_EXPLORATION_OPEN_ROAD_DESCRIPTION': return 'Visit five distinct areas with DualDex alongside you.';
-    case 'CHALLENGE_EXPLORATION_CURIOUS_EYE_TITLE': return 'Curious Eye';
-    case 'CHALLENGE_EXPLORATION_CURIOUS_EYE_DESCRIPTION': return 'Discover five points of interest while exploring.';
-    case 'CHALLENGE_BATTLE_SEASONED_TITLE': return 'Seasoned Battler';
-    case 'CHALLENGE_BATTLE_SEASONED_DESCRIPTION': return 'Take part in twenty-five battles during this journey.';
-    case 'CHALLENGE_PROGRESS_FIRST_BADGE_TITLE': return 'First Badge';
-    case 'CHALLENGE_PROGRESS_FIRST_BADGE_DESCRIPTION': return 'Earn your first resolved badge.';
-    case 'CHALLENGE_PROGRESS_ALL_BADGES_TITLE': return 'Badge Collection';
-    case 'CHALLENGE_PROGRESS_ALL_BADGES_DESCRIPTION': return 'Earn every badge in the resolved badge sequence.';
-    case 'CHALLENGE_COLLECTION_REGIONAL_RECORD_TITLE': return 'Regional Record';
-    case 'CHALLENGE_COLLECTION_REGIONAL_RECORD_DESCRIPTION': return 'Register every species in the resolved regional Pokédex.';
-    case 'CHALLENGE_EXPLORATION_AREA_ITEMS_TITLE': return 'Local Collector';
-    case 'CHALLENGE_EXPLORATION_AREA_ITEMS_DESCRIPTION': return `Collect every resolved item in ${subject(message.subject)}.`;
-    case 'CHALLENGE_BATTLE_LEADER_NO_ITEMS_TITLE': return 'Prepared Victory';
-    case 'CHALLENGE_BATTLE_LEADER_NO_ITEMS_DESCRIPTION': return `Defeat ${subject(message.subject)} without using an item during the battle.`;
+    case 'PROGRESS_METRIC_PLAY_TIME': return msg('playTime');
+    case 'PROGRESS_METRIC_BADGES': return msg('badges');
+    case 'PROGRESS_METRIC_DEX_SEEN': return msg('pokedexSeen');
+    case 'PROGRESS_METRIC_DEX_CAUGHT': return msg('pokedexCaught');
+    case 'PROGRESS_METRIC_MONEY': return msg('money');
+    case 'PROGRESS_METRIC_BATTLES': return msg('battles');
+    case 'PROGRESS_METRIC_WILD_ENCOUNTERS': return msg('wildEncounters');
+    case 'PROGRESS_METRIC_TRAINER_BATTLES': return msg('trainerBattles');
+    case 'PROGRESS_METRIC_CAPTURES': return msg('captures');
+    case 'PROGRESS_METRIC_EVOLUTIONS': return msg('evolutions');
+    case 'PROGRESS_METRIC_AREAS_VISITED': return msg('areasVisited');
+    case 'PROGRESS_METRIC_POINTS_DISCOVERED': return msg('pointsDiscovered');
+    case 'PROGRESS_METRIC_PARTY_CHANGES': return msg('partyChanges');
+    case 'PROGRESS_METRIC_SAVES_OBSERVED': return msg('savesObserved');
+    case 'PROGRESS_METRIC_CHALLENGES_COMPLETED': return msg('challengesCompleted');
+    case 'TIMELINE_BATTLES': return timelineChange(msg('battles'), message.count);
+    case 'TIMELINE_WILD_ENCOUNTERS': return timelineChange(msg('wildEncounters'), message.count);
+    case 'TIMELINE_TRAINER_BATTLES': return timelineChange(msg('trainerBattles'), message.count);
+    case 'TIMELINE_CAPTURES': return timelineChange(msg('captures'), message.count);
+    case 'TIMELINE_EVOLUTIONS': return timelineChange(msg('evolutions'), message.count);
+    case 'TIMELINE_AREAS_VISITED': return timelineChange(msg('areasVisited'), message.count);
+    case 'TIMELINE_POINTS_DISCOVERED': return timelineChange(msg('pointsDiscovered'), message.count);
+    case 'TIMELINE_PARTY_CHANGES': return timelineChange(msg('partyChanges'), message.count);
+    case 'TIMELINE_SAVES_OBSERVED': return timelineChange(msg('savesObserved'), message.count);
+    case 'TIMELINE_CHALLENGES_COMPLETED': return timelineChange(msg('challengesCompleted'), message.count);
+    case 'CHALLENGE_COLLECTION_FIRST_PARTNER_TITLE': return msg('firstPartnerTitle');
+    case 'CHALLENGE_COLLECTION_FIRST_PARTNER_DESCRIPTION': return msg('firstPartnerDescription');
+    case 'CHALLENGE_COLLECTION_GROWING_ROSTER_TITLE': return msg('growingRosterTitle');
+    case 'CHALLENGE_COLLECTION_GROWING_ROSTER_DESCRIPTION': return msg('growingRosterDescription');
+    case 'CHALLENGE_PARTY_NEW_FORM_TITLE': return msg('newFormTitle');
+    case 'CHALLENGE_PARTY_NEW_FORM_DESCRIPTION': return msg('newFormDescription');
+    case 'CHALLENGE_EXPLORATION_OPEN_ROAD_TITLE': return msg('openRoadTitle');
+    case 'CHALLENGE_EXPLORATION_OPEN_ROAD_DESCRIPTION': return msg('openRoadDescription');
+    case 'CHALLENGE_EXPLORATION_CURIOUS_EYE_TITLE': return msg('curiousEyeTitle');
+    case 'CHALLENGE_EXPLORATION_CURIOUS_EYE_DESCRIPTION': return msg('curiousEyeDescription');
+    case 'CHALLENGE_BATTLE_SEASONED_TITLE': return msg('seasonedBattlerTitle');
+    case 'CHALLENGE_BATTLE_SEASONED_DESCRIPTION': return msg('seasonedBattlerDescription');
+    case 'CHALLENGE_PROGRESS_FIRST_BADGE_TITLE': return msg('firstBadgeTitle');
+    case 'CHALLENGE_PROGRESS_FIRST_BADGE_DESCRIPTION': return msg('firstBadgeDescription');
+    case 'CHALLENGE_PROGRESS_ALL_BADGES_TITLE': return msg('badgeCollectionTitle');
+    case 'CHALLENGE_PROGRESS_ALL_BADGES_DESCRIPTION': return msg('badgeCollectionDescription');
+    case 'CHALLENGE_COLLECTION_REGIONAL_RECORD_TITLE': return msg('regionalRecordTitle');
+    case 'CHALLENGE_COLLECTION_REGIONAL_RECORD_DESCRIPTION': return msg('regionalRecordDescription');
+    case 'CHALLENGE_EXPLORATION_AREA_ITEMS_TITLE': return msg('localCollectorTitle');
+    case 'CHALLENGE_EXPLORATION_AREA_ITEMS_DESCRIPTION': return msg('localCollectorDescription', subject(message.subject));
+    case 'CHALLENGE_BATTLE_LEADER_NO_ITEMS_TITLE': return msg('preparedVictoryTitle');
+    case 'CHALLENGE_BATTLE_LEADER_NO_ITEMS_DESCRIPTION': return msg('preparedVictoryDescription', subject(message.subject));
     case 'CHALLENGE_SPECIAL_MINIGAME_TITLE': return subject(message.subject);
-    case 'CHALLENGE_SPECIAL_MINIGAME_DESCRIPTION': return `Complete the resolved ${subject(message.subject)} objective.`;
+    case 'CHALLENGE_SPECIAL_MINIGAME_DESCRIPTION': return msg('minigameDescription', subject(message.subject));
   }
 }
 
@@ -143,7 +144,7 @@ function moveSplit(value: number | null | undefined): string {
 }
 
 function timelineChange(label: string, count: number | null | undefined): string {
-  return `${label} +${argument(count)}`;
+  return msg('timelineChange', label, count == null ? '—' : formatUiNumber(count));
 }
 
 function subject(value: string | null | undefined): string {

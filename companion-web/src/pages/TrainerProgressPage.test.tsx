@@ -1,9 +1,13 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { State } from '../models';
+import { setInterfaceLanguage } from '../i18n';
 import { TrainerPage } from './TrainerPage';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  setInterfaceLanguage('EN');
+});
 
 describe('Trainer progress', () => {
   it('shares the Trainer license and remembers normal destination and section choices', () => {
@@ -32,10 +36,26 @@ describe('Trainer progress', () => {
     expect(send).toHaveBeenCalledWith('TRAINER_DESTINATION', { value: 'CARD' });
   });
 
+  it('keeps stable Trainer destination and progress section values under translated labels', () => {
+    const send = vi.fn();
+    setInterfaceLanguage('DE');
+    render(<TrainerPage state={trainerState()} send={send} onBack={vi.fn()} />);
+
+    expect(screen.getByText('SPIELGESAMTWERTE')).toBeTruthy();
+    expect(screen.getByText('GELD')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Herausforderungen' }));
+    expect(send).toHaveBeenCalledWith('PROGRESS_SECTION', { value: 'CHALLENGES' });
+    fireEvent.click(screen.getByRole('button', { name: 'Pass' }));
+    expect(send).toHaveBeenCalledWith('TRAINER_DESTINATION', { value: 'CARD' });
+  });
+
   it('shows player-facing challenge percentages and timeline details without internals', () => {
-    const state = trainerState();
-    state.trainerProgress!.selectedSection = 'CHALLENGES';
-    const { rerender, container } = render(<TrainerPage state={state} send={vi.fn()} onBack={vi.fn()} />);
+    const challengeState = trainerState();
+    challengeState.trainerProgress = {
+      ...challengeState.trainerProgress!,
+      selectedSection: 'CHALLENGES',
+    };
+    const { rerender, container } = render(<TrainerPage state={challengeState} send={vi.fn()} onBack={vi.fn()} />);
 
     expect(screen.getByText('A New Partner')).toBeTruthy();
     expect(screen.getByText('Catch your first Pokémon on this journey.')).toBeTruthy();
@@ -43,8 +63,14 @@ describe('Trainer progress', () => {
     expect(screen.getByText('100%')).toBeTruthy();
     expect(screen.getByText('1 / 1 completed')).toBeTruthy();
 
-    state.trainerProgress!.selectedSection = 'TIMELINE';
-    rerender(<TrainerPage state={{ ...state }} send={vi.fn()} onBack={vi.fn()} />);
+    const timelineState = {
+      ...challengeState,
+      trainerProgress: {
+        ...challengeState.trainerProgress!,
+        selectedSection: 'TIMELINE' as const,
+      },
+    };
+    rerender(<TrainerPage state={timelineState} send={vi.fn()} onBack={vi.fn()} />);
     expect(screen.getByText('Captures +1')).toBeTruthy();
     expect(container.textContent).not.toMatch(/parser|address|offset|capability|fingerprint/i);
   });

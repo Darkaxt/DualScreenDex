@@ -1,15 +1,19 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { State } from '../models';
+import { setInterfaceLanguage } from '../i18n';
 import { TrainerCardPage } from './TrainerCardPage';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  setInterfaceLanguage('EN');
+});
 
 describe('Trainer Card', () => {
   it('uses a title-only header without redundant live or read-only diagnostics', () => {
     const { container } = render(<TrainerCardPage state={trainerState()} onBack={vi.fn()} />);
 
-    expect(screen.getAllByText('TRAINER CARD').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Trainer Card').length).toBeGreaterThan(0);
     expect(container.querySelector('.header-title small')).toBeNull();
     expect(screen.queryByText(/LIVE|READ ONLY/)).toBeNull();
   });
