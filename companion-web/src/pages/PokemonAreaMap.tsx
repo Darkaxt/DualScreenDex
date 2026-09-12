@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { DexIcon } from '../components';
+import { msg } from '../i18n';
 import type { Catalog, State, WorldMapLocation, WorldMapRegion } from '../models';
 import { paintFog } from './MapPage';
 
@@ -35,12 +36,14 @@ export function PokemonAreaMap({ catalog, state, speciesId, send, onOpenAtlas }:
     if (region && fogRef.current) paintFog(fogRef.current, region, visibleLocations);
   }, [region?.key, visibleLocations]);
 
-  if (!region) return <div class="pokemon-area-empty"><strong>{organic && habitatBaseIds.size > 0 ? 'NO KNOWN LOCATIONS' : 'NO HABITAT MAP'}</strong><p>{organic && habitatBaseIds.size > 0 ? 'Discover this Pokémon in the wild to reveal its habitat.' : 'No habitat map is available for this game.'}</p>{atlasAvailable && <button type="button" class="primary-button" onClick={() => onOpenAtlas?.()}>OPEN ATLAS</button>}</div>;
+  if (!region) return <div class="pokemon-area-empty"><strong>{organic && habitatBaseIds.size > 0 ? msg('noKnownLocations') : msg('noHabitatMap')}</strong><p>{organic && habitatBaseIds.size > 0 ? msg('discoverHabitat') : msg('habitatMapUnavailable')}</p>{atlasAvailable && <button type="button" class="primary-button" onClick={() => onOpenAtlas?.()}>{msg('openAtlas')}</button>}</div>;
 
-  return <section class="pokemon-area-panel" aria-label="Pokémon habitat atlas">
+  const regionName = region.displayName ?? msg('region');
+  const pokemonName = catalog.species.find(species => species.id === speciesId)?.name ?? 'Pokémon';
+  return <section class="pokemon-area-panel" aria-label={msg('pokemonHabitatAtlas')}>
     <header>
-      <div><small>HABITAT</small><strong>{region.displayName ?? 'REGION'}</strong></div>
-      {mapRegions.length > 1 && <div class="pokemon-area-regions" aria-label="Habitat regions">{mapRegions.map(candidate =>
+      <div><small>{msg('habitat')}</small><strong>{regionName}</strong></div>
+      {mapRegions.length > 1 && <div class="pokemon-area-regions" aria-label={msg('habitatRegions')}>{mapRegions.map(candidate =>
         <button key={candidate.key} aria-pressed={candidate.key === region.key} onClick={() => { setRegionKey(candidate.key); setSelectedKey(''); }}>{candidate.displayName ?? candidate.key}</button>
       )}</div>}
     </header>
@@ -48,7 +51,7 @@ export function PokemonAreaMap({ catalog, state, speciesId, send, onOpenAtlas }:
       class="pokemon-area-canvas"
       style={{ aspectRatio: `${region.pixelWidth} / ${region.pixelHeight}`, maxWidth: `${330 * region.pixelWidth / region.pixelHeight}px` }}
       role="img"
-      aria-label={`${region.displayName ?? 'Region'} ${catalog.species.find(species => species.id === speciesId)?.name ?? 'Pokémon'} habitat map`}
+      aria-label={msg('habitatMap', regionName, pokemonName)}
     >
       <img src={region.imageUrl} alt="" draggable={false} />
       <canvas ref={fogRef} width={region.pixelWidth} height={region.pixelHeight} aria-hidden="true" />
@@ -58,14 +61,14 @@ export function PokemonAreaMap({ catalog, state, speciesId, send, onOpenAtlas }:
           key={location.key}
           class={selected?.key === location.key ? 'is-selected' : ''}
           style={{ left: `${position.x}%`, top: `${position.y}%` }}
-          aria-label={`Observed at ${location.displayName ?? location.key}`}
+          aria-label={msg('observedAt', location.displayName ?? location.key)}
           aria-pressed={selected?.key === location.key}
           onClick={() => setSelectedKey(location.key)}
         ><span /></button>;
       })}
-      {selected && <button class="pokemon-area-dex" aria-label="Open selected Area Pokédex" onClick={() => send('MAP_AREA', { regionKey: region.key, locationKey: selected.key })}><DexIcon /></button>}
+      {selected && <button class="pokemon-area-dex" aria-label={msg('openSelectedAreaPokedex')} onClick={() => send('MAP_AREA', { regionKey: region.key, locationKey: selected.key })}><DexIcon /></button>}
     </div>
-    {visibleLocations.length === 0 && <div class="pokemon-area-undiscovered"><p>No organically observed habitat yet. Undiscovered locations stay masked.</p>{atlasAvailable && <button type="button" class="primary-button" onClick={() => onOpenAtlas?.()}>OPEN ATLAS</button>}</div>}
+    {visibleLocations.length === 0 && <div class="pokemon-area-undiscovered"><p>{msg('noObservedHabitat')}</p>{atlasAvailable && <button type="button" class="primary-button" onClick={() => onOpenAtlas?.()}>{msg('openAtlas')}</button>}</div>}
   </section>;
 }
 
