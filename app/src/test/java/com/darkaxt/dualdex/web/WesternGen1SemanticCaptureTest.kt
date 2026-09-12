@@ -206,7 +206,8 @@ class WesternGen1SemanticCaptureTest {
         val states = LocalizedTextCapability.entries.associateWith {
             when (it) {
                 LocalizedTextCapability.ITEM_NAMES -> LocalizedCapabilityState.available(2)
-                LocalizedTextCapability.LOCAL_MAP_NAMES, LocalizedTextCapability.POI_TEXT -> LocalizedCapabilityState.notFound("synthetic", 1)
+                LocalizedTextCapability.POI_TEXT -> LocalizedCapabilityState.available(1)
+                LocalizedTextCapability.LOCAL_MAP_NAMES -> LocalizedCapabilityState.notFound("synthetic", 1)
                 else -> LocalizedCapabilityState.notApplicable("synthetic", 0)
             }
         }
@@ -217,6 +218,7 @@ class WesternGen1SemanticCaptureTest {
                 assets = mapOf("synthetic/map" to PngMapAsset(byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10))),
                 pois = listOf(LocalMapPoi("synthetic/hidden/0", "synthetic", 1, 0, 0, LocalMapPoiKind.HIDDEN_ITEM,
                     organicVisibility = LocalMapPoiOrganicVisibility.PROXIMITY_SILHOUETTE,
+                    textObligation = LocalMapPoiTextObligation.ITEM_NAME,
                     item = LocalMapPoiItem(itemId = 2, collectionFlagId = 0)))),
             localization = CatalogLocalization(manifest, mapOf(language to CatalogLanguageOverlay(language, 1, states, itemNames = fields))))
         val configured = System.getenv("DUALDEX_TEST_TEMP_ROOT")?.let(Path::of)
