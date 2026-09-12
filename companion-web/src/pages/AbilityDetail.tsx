@@ -1,6 +1,7 @@
 import type { Catalog, State } from '../models';
 import { Header } from '../components';
 import { gameplayCopy } from '../gameplayCopy';
+import { renderPresentationMessage } from '../presentationMessages';
 
 export function AbilityDetail({ catalog, state, abilityId, onBack }: { catalog: Catalog; state: State; abilityId: number; onBack: () => void }) {
   const ability = catalog.species.flatMap(species => species.abilities).find(item => item.id === abilityId);
@@ -22,13 +23,13 @@ export function AbilityDetail({ catalog, state, abilityId, onBack }: { catalog: 
 export function AbilityMechanics({ mechanics }: { mechanics: Catalog['species'][number]['abilities'][number]['mechanics'] }) {
   return <div class="ability-mechanics">{userFacingAbilityMechanics(mechanics).map(mechanic => {
     const conditions = mechanic.conditions ?? [];
-    return <div class="ability-mechanic" key={`${mechanic.kind}-${mechanic.label}-${conditions.map(condition => condition.kind).join('-')}`}><span>{conditions.length > 0 ? `${mechanic.label} · ${conditions.map(condition => condition.label).join(', ')}` : mechanic.label}</span><strong>{mechanic.value}</strong></div>;
+    const label = renderPresentationMessage(mechanic.label);
+    return <div class="ability-mechanic" key={`${mechanic.kind}-${mechanic.label.code}-${conditions.map(condition => condition.kind).join('-')}`}><span>{conditions.length > 0 ? `${label} · ${conditions.map(condition => renderPresentationMessage(condition.label)).join(', ')}` : label}</span><strong>{mechanic.value}</strong></div>;
   })}</div>;
 }
 
 export function userFacingAbilityMechanics(mechanics: Catalog['species'][number]['abilities'][number]['mechanics']) {
   return mechanics.filter(mechanic => !(
-    mechanic.kind === 'BEHAVIOR' &&
-    (mechanic.label.trim().toUpperCase() === 'IMPLEMENTATION' || /source|script|engine|inactive/i.test(mechanic.value))
+    mechanic.kind === 'BEHAVIOR' && /source|script|engine|inactive/i.test(mechanic.value)
   ));
 }

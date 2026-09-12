@@ -92,8 +92,8 @@ const catalog = {
   balls: [],
   capabilities: {},
   rulesets: [
-    { id: 'default', label: 'Default', sourceOffset: 0, confidence: 1, primary: true },
-    { id: 'modern', label: 'Modern', sourceOffset: 1, confidence: 0.9, primary: false },
+    { id: 'default', label: { code: 'RULESET_DEFAULT' }, sourceOffset: 0, confidence: 1, primary: true },
+    { id: 'modern', label: { code: 'RULESET_OTHER' }, sourceOffset: 1, confidence: 0.9, primary: false },
   ],
 } satisfies Catalog;
 

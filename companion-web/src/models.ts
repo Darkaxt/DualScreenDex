@@ -1,6 +1,59 @@
 export type KnowledgeMode = 'DISCOVERED' | 'ORGANIC' | 'HIDDEN';
 export type Screen = 'POKEDEX' | 'DETAIL' | 'BATTLE' | 'TRAINER' | 'PARTY' | 'SETTINGS' | 'SETUP';
 
+export type PresentationMessageCode =
+  | 'MOVE_INITIAL'
+  | 'MOVE_LEVEL'
+  | 'RULESET_DEFAULT'
+  | 'RULESET_BASE'
+  | 'RULESET_EXPANDED'
+  | 'RULESET_OTHER'
+  | 'EVOLUTION_LEVEL'
+  | 'EVOLUTION_TRADE'
+  | 'EVOLUTION_TRADE_WITH_ITEM'
+  | 'EVOLUTION_USE_ITEM'
+  | 'EVOLUTION_HIGH_FRIENDSHIP'
+  | 'EVOLUTION_UNKNOWN'
+  | 'SPECIMEN_PARTY_SLOT'
+  | 'SPECIMEN_BOX_SLOT'
+  | 'ABILITY_MECHANIC_BEHAVIOR'
+  | 'ABILITY_MECHANIC_ACTIVATION_THRESHOLD'
+  | 'ABILITY_MECHANIC_MULTIPLIER'
+  | 'ABILITY_MECHANIC_STAT_STAGE'
+  | 'ABILITY_MECHANIC_STATUS_CURE'
+  | 'ABILITY_MECHANIC_TYPE_CHANGE'
+  | 'ABILITY_MECHANIC_AI_RATING'
+  | 'ABILITY_MECHANIC_FLAG'
+  | 'ABILITY_CONDITION_MOVE_SPLIT'
+  | 'ABILITY_CONDITION_ATTACKER_STATUS_NON_ZERO'
+  | 'ABILITY_CONDITION_SWITCH_IN'
+  | 'ABILITY_CONDITION_MOVE_POWER_NON_ZERO'
+  | 'ABILITY_CONDITION_ATTACKING_MOVE_TYPE'
+  | 'DAMAGE_CONDITION_STAB'
+  | 'DAMAGE_CONDITION_STATUS'
+  | 'DAMAGE_CONDITION_CRITICAL'
+  | 'DAMAGE_CONDITION_WEATHER'
+  | 'DAMAGE_CONDITION_ABILITY'
+  | 'DAMAGE_CONDITION_ITEM'
+  | 'DAMAGE_CONDITION_FIELD'
+  | 'DAMAGE_CONDITION_MULTI_HIT'
+  | 'DAMAGE_CONDITION_FIXED_DAMAGE'
+  | 'DAMAGE_RANGE_BOUNDED';
+
+export interface PresentationMessage {
+  code: PresentationMessageCode;
+  level?: number | null;
+  itemId?: number | null;
+  methodId?: number | null;
+  parameter?: number | null;
+  slotNumber?: number | null;
+  boxNumber?: number | null;
+  index?: number | null;
+  numerator?: number | null;
+  denominator?: number | null;
+  conditionValue?: number | null;
+}
+
 export interface Species {
   id: number;
   dex: number;
@@ -12,7 +65,7 @@ export interface Species {
   weight: number | null;
   learnset: { level: number; moveId: number }[];
   learnsets: Record<string, { level: number; moveId: number }[]>;
-  normalizedLearnsets: Record<string, { moveId: number; initial: boolean; levels: number[]; label: string }[]>;
+  normalizedLearnsets: Record<string, { moveId: number; initial: boolean; levels: number[]; labels: PresentationMessage[] }[]>;
   moveAcquisitions: { moveId: number; method: 'EGG' | 'MACHINE' | 'TUTOR'; sourceId: number | null }[];
   abilities: {
     id: number;
@@ -20,14 +73,14 @@ export interface Species {
     description: string | null;
     mechanics: {
       kind: string;
-      label: string;
+      label: PresentationMessage;
       value: string;
       numerator: number;
       denominator: number;
-      conditions?: { kind: string; value: number; label: string }[];
+      conditions?: { kind: string; value: number; label: PresentationMessage }[];
     }[];
   }[];
-  evolutions: { targetSpeciesId: number; targetName: string; methodId: number; parameter: number; condition: string }[];
+  evolutions: { targetSpeciesId: number; targetName: string; methodId: number; parameter: number; condition: PresentationMessage }[];
   hasSprite: boolean;
 }
 
@@ -77,7 +130,7 @@ export interface Catalog {
   crc32: string;
   family: string;
   platform: string;
-  rulesets: { id: string; label: string; sourceOffset: number; confidence: number; primary: boolean }[];
+  rulesets: { id: string; label: PresentationMessage; sourceOffset: number; confidence: number; primary: boolean }[];
   species: Species[];
   moves: Move[];
   types: TypeInfo[];
@@ -410,8 +463,8 @@ export interface DamageForecast {
   maximumHitsToKnockOut: number;
   accuracyPercent: number;
   effectivenessPercent: number;
-  conditions: string[];
-  uncertainty: string | null;
+  conditions: PresentationMessage[];
+  uncertainty: PresentationMessage | null;
 }
 
 export interface TrainerView {
@@ -496,7 +549,7 @@ export interface PartyMemberView {
 
 export interface OwnedIndividualLocationView {
   kind: 'PARTY' | 'BOX';
-  label: string;
+  label: PresentationMessage;
   boxNumber: number | null;
   slotNumber: number;
 }

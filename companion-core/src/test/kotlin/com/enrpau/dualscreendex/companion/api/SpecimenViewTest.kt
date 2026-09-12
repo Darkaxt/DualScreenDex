@@ -56,7 +56,13 @@ class SpecimenViewTest {
         val view = ApiViewBuilder.specimens(snapshot, catalog(), 25)
 
         assertEquals(listOf("SPARK", "VOLT"), view.specimens.map { it.nickname })
-        assertEquals(listOf("Party · Slot 1", "Box 2 · Slot 2"), view.specimens.map { it.location.label })
+        assertEquals(
+            listOf(
+                PresentationMessageView(code = "SPECIMEN_PARTY_SLOT", slotNumber = 1),
+                PresentationMessageView(code = "SPECIMEN_BOX_SLOT", boxNumber = 2, slotNumber = 2),
+            ),
+            view.specimens.map { it.location.label },
+        )
         assertEquals(listOf("PARTY", "BOX"), view.specimens.map { it.location.kind })
         assertEquals(9, view.specimens.first().abilityId)
         assertEquals("Static", view.specimens.first().abilityName)
@@ -157,9 +163,18 @@ class SpecimenViewTest {
         assertEquals(1, backInParty.specimens.size)
         assertEquals(inParty.specimens.single().key, inPc.specimens.single().key)
         assertEquals(inPc.specimens.single().key, backInParty.specimens.single().key)
-        assertEquals("Party · Slot 1", inParty.specimens.single().location.label)
-        assertEquals("Box 3 · Slot 3", inPc.specimens.single().location.label)
-        assertEquals("Party · Slot 2", backInParty.specimens.single().location.label)
+        assertEquals(
+            PresentationMessageView(code = "SPECIMEN_PARTY_SLOT", slotNumber = 1),
+            inParty.specimens.single().location.label,
+        )
+        assertEquals(
+            PresentationMessageView(code = "SPECIMEN_BOX_SLOT", boxNumber = 3, slotNumber = 3),
+            inPc.specimens.single().location.label,
+        )
+        assertEquals(
+            PresentationMessageView(code = "SPECIMEN_PARTY_SLOT", slotNumber = 2),
+            backInParty.specimens.single().location.label,
+        )
     }
 
     @Test

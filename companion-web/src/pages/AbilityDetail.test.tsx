@@ -7,14 +7,14 @@ afterEach(cleanup);
 
 describe('ability detail', () => {
   it('shows the validated ROM description and species that can have it', () => {
-    const ability = {
+    const ability: Catalog['species'][number]['abilities'][number] = {
       id: 66,
       name: 'Blaze',
       description: 'Ups Fire moves in a pinch.',
       mechanics: [
-        { kind: 'BEHAVIOR', label: 'Implementation', value: 'Compiled source behavior', numerator: 1, denominator: 1 },
-        { kind: 'ACTIVATION_THRESHOLD', label: 'Activation', value: 'HP ≤ 1/3', numerator: 1, denominator: 3 },
-        { kind: 'MULTIPLIER', label: 'Power', value: 'Fire move power ×1.5', numerator: 150, denominator: 100, conditions: [{ kind: 'MOVE_SPLIT', value: 1, label: 'Special moves' }] },
+        { kind: 'BEHAVIOR', label: { code: 'ABILITY_MECHANIC_BEHAVIOR' }, value: 'Compiled source behavior', numerator: 1, denominator: 1 },
+        { kind: 'ACTIVATION_THRESHOLD', label: { code: 'ABILITY_MECHANIC_ACTIVATION_THRESHOLD', numerator: 1, denominator: 3 }, value: 'HP ≤ 1/3', numerator: 1, denominator: 3 },
+        { kind: 'MULTIPLIER', label: { code: 'ABILITY_MECHANIC_MULTIPLIER', numerator: 150, denominator: 100 }, value: 'Fire move power ×1.5', numerator: 150, denominator: 100, conditions: [{ kind: 'MOVE_SPLIT', value: 1, label: { code: 'ABILITY_CONDITION_MOVE_SPLIT', conditionValue: 1 } }] },
       ],
     };
     const catalog = {
@@ -40,6 +40,6 @@ describe('ability detail', () => {
     expect(screen.queryByText('Compiled source behavior')).toBeNull();
     expect(screen.getByText('HP ≤ 1/3')).toBeTruthy();
     expect(screen.getByText('Fire move power ×1.5')).toBeTruthy();
-    expect(screen.getByText('Power · Special moves')).toBeTruthy();
+    expect(screen.getByText('Multiplier · Special moves')).toBeTruthy();
   });
 });

@@ -1,6 +1,7 @@
 import type { Catalog, Move, Rarity as RarityModel, State } from '../models';
 import { DexIcon, Header, Sprite, StatusMarks, tabPanelAttributes, Tabs, TypeChip, uniqueTypeIds } from '../components';
 import { gameplayCopy } from '../gameplayCopy';
+import { renderPresentationMessage } from '../presentationMessages';
 
 export function BattlePage({ catalog, state, send, openMove, openSpecies }: { catalog: Catalog; state: State; send: (type: string, values?: Record<string, string | number | boolean | null>) => void; openMove: (moveId: number) => void; openSpecies: (speciesId: number) => void }) {
   const battle = state.battle;
@@ -65,8 +66,8 @@ function DamageForecastPanel({ forecast }: { forecast: NonNullable<NonNullable<S
       <span><small>TO KNOCK OUT</small><strong>{formatIntegerRange(forecast.minimumHitsToKnockOut, forecast.maximumHitsToKnockOut)} {forecast.maximumHitsToKnockOut === 1 ? 'hit' : 'hits'}</strong></span>
       <span><small>HIT CHANCE</small><strong>{forecast.accuracyPercent}%</strong></span>
     </div>
-    {forecast.conditions.length > 0 && <div class="damage-conditions">{forecast.conditions.map(condition => <span key={condition}>{condition}</span>)}</div>}
-    {forecast.confidence === 'BOUNDED' && forecast.uncertainty && <p class="damage-uncertainty">{forecast.uncertainty}</p>}
+    {forecast.conditions.length > 0 && <div class="damage-conditions">{forecast.conditions.map(condition => <span key={condition.code}>{renderPresentationMessage(condition)}</span>)}</div>}
+    {forecast.confidence === 'BOUNDED' && forecast.uncertainty && <p class="damage-uncertainty">{renderPresentationMessage(forecast.uncertainty)}</p>}
   </section>;
 }
 

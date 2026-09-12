@@ -12,7 +12,7 @@ const collection: SpecimenCollectionView = {
   speciesName: 'PIKACHU',
   specimens: [{
     key: 'individual:1',
-    location: { kind: 'PARTY', label: 'Party · Slot 1', boxNumber: null, slotNumber: 1 },
+    location: { kind: 'PARTY', label: { code: 'SPECIMEN_PARTY_SLOT', slotNumber: 1 }, boxNumber: null, slotNumber: 1 },
     speciesId: 25, formId: null, speciesName: 'PIKACHU', spriteUrl: '/api/sprites/species/25.png', typeIds: [13],
     nickname: 'SPARK', level: 18, isEgg: false, gender: 'FEMALE', natureId: 3, nature: 'Adamant', abilityId: 9,
     abilityName: 'Static', heldItemId: 12, hasHeldItem: true, currentHp: 31, maximumHp: 45, status: 'PAR',
@@ -21,7 +21,7 @@ const collection: SpecimenCollectionView = {
     ivs: [31, 30, 29, 28, 27, 26], dvs: [],
   }, {
     key: 'individual:2',
-    location: { kind: 'BOX', label: 'Box 2 · Slot 2', boxNumber: 2, slotNumber: 2 },
+    location: { kind: 'BOX', label: { code: 'SPECIMEN_BOX_SLOT', boxNumber: 2, slotNumber: 2 }, boxNumber: 2, slotNumber: 2 },
     speciesId: 25, formId: null, speciesName: 'PIKACHU', spriteUrl: '/api/sprites/species/25.png', typeIds: [13],
     nickname: 'VOLT', level: 12, isEgg: false, gender: 'MALE', natureId: null, nature: null, abilityId: null,
     abilityName: null, heldItemId: null, hasHeldItem: false, currentHp: null, maximumHp: null, status: null,

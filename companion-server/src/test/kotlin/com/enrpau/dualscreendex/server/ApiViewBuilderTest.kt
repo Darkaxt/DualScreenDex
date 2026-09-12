@@ -170,10 +170,15 @@ class ApiViewBuilderTest {
 
         assertEquals("1234ABCD", view.crc32)
         assertEquals(listOf("base", "modern"), view.rulesets.map { it.id })
-        assertEquals("Initial · Lv 7", pokemon.normalizedLearnsets.getValue("base").single().label)
+        assertEquals(
+            listOf("MOVE_INITIAL", "MOVE_LEVEL"),
+            pokemon.normalizedLearnsets.getValue("base").single().labels.map { it.code },
+        )
+        assertEquals(listOf(null, 7), pokemon.normalizedLearnsets.getValue("base").single().labels.map { it.level })
         assertEquals("OVERGROW", pokemon.abilities.single().name)
         assertEquals("Ups Grass moves in a pinch.", pokemon.abilities.single().description)
-        assertEquals("Level 16", pokemon.evolutions.single().condition)
+        assertEquals("EVOLUTION_LEVEL", pokemon.evolutions.single().condition.code)
+        assertEquals(16, pokemon.evolutions.single().condition.level)
         assertEquals("EGG", pokemon.moveAcquisitions.single().method)
         assertEquals(3, view.areas.single().slots.single().minimumLevel)
         assertEquals(20, view.areas.single().slots.single().weight)

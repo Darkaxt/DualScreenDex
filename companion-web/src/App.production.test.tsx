@@ -5,7 +5,7 @@ import { decodeRouteHash, encodeRouteHash } from './navigation';
 
 const fixture: Bootstrap = {
   catalog: {
-    hash: 'sha', crc32: 'C3A9F204', family: 'EMERALD', platform: 'GBA', rulesets: [{ id: 'default', label: 'Default', sourceOffset: 0, confidence: 1, primary: true }],
+    hash: 'sha', crc32: 'C3A9F204', family: 'EMERALD', platform: 'GBA', rulesets: [{ id: 'default', label: { code: 'RULESET_DEFAULT' }, sourceOffset: 0, confidence: 1, primary: true }],
     species: [], moves: [], types: [],
     areas: [{ id: 0x11 * 10 + 1, baseAreaId: 0x11, name: 'Oldale grass', methodId: 1, speciesIds: [], windows: ['ANY'], slots: [] }],
     balls: [], capabilities: {},

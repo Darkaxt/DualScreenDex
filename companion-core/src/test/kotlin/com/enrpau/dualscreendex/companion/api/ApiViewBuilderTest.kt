@@ -14,6 +14,7 @@ import com.enrpau.dualscreendex.companion.model.LiveMapPosition
 import com.enrpau.dualscreendex.companion.model.OpponentState
 import com.enrpau.dualscreendex.companion.model.ResolvedPokedexProjection
 import com.enrpau.dualscreendex.companion.model.TrainerCardState
+import com.enrpau.dualscreendex.companion.battle.AppliedDamageCondition
 import com.enrpau.dualscreendex.companion.battle.DamageForecast
 import com.enrpau.dualscreendex.companion.map.AreaGuide
 import com.enrpau.dualscreendex.companion.map.AreaGuideArea
@@ -97,6 +98,7 @@ class ApiViewBuilderTest {
                     hitsToKnockOut = InclusiveRange(2, 3),
                     accuracyPercent = 95,
                     effectivenessPercent = 200,
+                    appliedConditions = listOf(AppliedDamageCondition.STAB, AppliedDamageCondition.WEATHER),
                     conditionLabels = listOf("Same-type bonus", "Rain may change the result"),
                     uncertainty = "Weather could change before the move lands.",
                 ),
@@ -114,8 +116,8 @@ class ApiViewBuilderTest {
         assertEquals(3, forecast.maximumHitsToKnockOut)
         assertEquals(95, forecast.accuracyPercent)
         assertEquals(200, forecast.effectivenessPercent)
-        assertEquals(listOf("Same-type bonus", "Rain may change the result"), forecast.conditions)
-        assertEquals("Weather could change before the move lands.", forecast.uncertainty)
+        assertEquals(listOf("DAMAGE_CONDITION_STAB", "DAMAGE_CONDITION_WEATHER"), forecast.conditions.map { it.code })
+        assertEquals("DAMAGE_RANGE_BOUNDED", forecast.uncertainty?.code)
     }
 
     @Test
@@ -948,11 +950,14 @@ class ApiViewBuilderTest {
         val mechanic = ApiViewBuilder.catalog(catalog).species.single().abilities.single().mechanics.single()
 
         assertEquals("MULTIPLIER", mechanic.kind)
-        assertEquals("Attack", mechanic.label)
+        assertEquals("ABILITY_MECHANIC_MULTIPLIER", mechanic.label.code)
+        assertEquals(2, mechanic.label.numerator)
+        assertEquals(1, mechanic.label.denominator)
         assertEquals("Attack ×2", mechanic.value)
         assertEquals(2, mechanic.numerator)
         assertEquals(1, mechanic.denominator)
-        assertEquals("Physical moves", mechanic.conditions.single().label)
+        assertEquals("ABILITY_CONDITION_MOVE_SPLIT", mechanic.conditions.single().label.code)
+        assertEquals(0L, mechanic.conditions.single().label.conditionValue)
     }
 
     @Test

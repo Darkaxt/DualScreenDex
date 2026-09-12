@@ -37,7 +37,7 @@ describe('Pokédex evolution navigation', () => {
           id: 66,
           name: 'Blaze',
           description: 'Powers up Fire-type moves in a pinch.',
-          mechanics: [{ kind: 'MULTIPLIER', label: 'Power', value: '×1.5', numerator: 3, denominator: 2 }],
+          mechanics: [{ kind: 'MULTIPLIER', label: { code: 'ABILITY_MECHANIC_MULTIPLIER', numerator: 3, denominator: 2 }, value: '×1.5', numerator: 3, denominator: 2 }],
         }],
       } : species) }}
       state={state}
@@ -227,8 +227,8 @@ describe('Pokédex evolution navigation', () => {
       catalog={{
         ...catalog,
         rulesets: [
-          { id: 'default', label: 'Default', sourceOffset: 0, confidence: 1, primary: true },
-          { id: 'modern', label: 'Modern', sourceOffset: 1, confidence: 0.9, primary: false },
+          { id: 'default', label: { code: 'RULESET_DEFAULT' }, sourceOffset: 0, confidence: 1, primary: true },
+          { id: 'modern', label: { code: 'RULESET_OTHER' }, sourceOffset: 1, confidence: 0.9, primary: false },
         ],
       }}
       state={state}
@@ -359,7 +359,7 @@ const catalog = {
   }],
   types: [{ id: 10, name: 'Fire', foreground: '#111', background: '#f80', border: '#b40' }],
   species: [
-    { ...baseSpecies, id: 5, name: 'Charmeleon', evolutions: [{ targetSpeciesId: 6, targetName: 'Charizard', methodId: 1, parameter: 36, condition: 'Level 36' }] },
+    { ...baseSpecies, id: 5, name: 'Charmeleon', evolutions: [{ targetSpeciesId: 6, targetName: 'Charizard', methodId: 1, parameter: 36, condition: { code: 'EVOLUTION_LEVEL', level: 36 } }] },
     { ...baseSpecies, id: 6, dex: 6, name: 'Charizard', evolutions: [], hasSprite: true },
   ],
 } satisfies Catalog;

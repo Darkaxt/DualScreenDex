@@ -148,7 +148,7 @@ const diagnosticFixture = {
   sha256: '81ac9b9d4e7bdd3bf06ed53954d784118a743372906c6c6fc62b3cbc19587148',
   crc32: '8204e1a5', family: 'FIRERED_LEAFGREEN', platform: 'GBA',
   activeRulesetId: 'default', rulesetAssumed: true,
-  rulesets: [{ id: 'default', label: 'Default', sourceOffset: 0, confidence: 1, primary: true }],
+  rulesets: [{ id: 'default', label: { code: 'RULESET_DEFAULT' }, sourceOffset: 0, confidence: 1, primary: true }],
   reportSchemaVersion: 1,
   environment: { appVersion: '1.1.0-rc.66', catalogSchemaVersion: 6, parserSchemaVersion: 42 },
   runtime: {

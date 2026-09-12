@@ -3,6 +3,7 @@ import { boundedRequest } from '../boundedRequest';
 import type { Catalog, SpecimenCollectionView, State } from '../models';
 import { Dialog, Header } from '../components';
 import { specimens as loadSpecimens } from '../gateway';
+import { renderPresentationMessage } from '../presentationMessages';
 import { RarityStars } from './BattlePage';
 import { OwnedIndividualDetail, OwnedIndividualSprite } from './OwnedIndividualDetail';
 
@@ -104,7 +105,7 @@ export function SpecimensPage({ catalog, speciesId, stateVersion, gameTime, deta
           <span class="specimen-card-copy">
             <strong>{specimen.nickname || specimen.speciesName}</strong>
             {specimen.nickname && specimen.nickname !== specimen.speciesName && <small>{specimen.speciesName}</small>}
-            <span>{specimen.location.label}</span>
+            <span>{renderPresentationMessage(specimen.location.label)}</span>
           </span>
           <span class="specimen-card-meta">
             {specimen.level != null && <b>Lv {specimen.level}</b>}
@@ -120,7 +121,7 @@ export function SpecimensPage({ catalog, speciesId, stateVersion, gameTime, deta
       onClose={onCloseDetail}
       restoreFocus={lastTriggerRef.current}
     >
-      <OwnedIndividualDetail individual={active} catalog={catalog} locationLabel={active.location.label} openMove={openMove} openAbility={openAbility} openNature={openNature} openSpecies={openSpecies} />
+      <OwnedIndividualDetail individual={active} catalog={catalog} locationLabel={renderPresentationMessage(active.location.label)} openMove={openMove} openAbility={openAbility} openNature={openNature} openSpecies={openSpecies} />
     </Dialog>}
   </section>;
 }

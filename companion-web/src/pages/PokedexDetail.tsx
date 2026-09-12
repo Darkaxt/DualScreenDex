@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Catalog, State } from '../models';
 import { Header, identitySpriteClass, maskIdentityName, PokedexAvatar, speciesIdentityKnowledge, StatusMarks, tabPanelAttributes, Tabs, TypeChip, uniqueTypeIds } from '../components';
 import { gameplayCopy } from '../gameplayCopy';
+import { renderPresentationMessage, renderPresentationMessages } from '../presentationMessages';
 import { catalogMediaUrl } from '../media';
 import { AbilityMechanics } from './AbilityDetail';
 import { PokemonAreaMap } from './PokemonAreaMap';
@@ -85,12 +86,12 @@ export function PokedexDetail({
         {locations.length > 0 && <p class="range-note">Wild encounter levels: <strong>{wildLevelRange(locations.flatMap(item => item.slots))}</strong></p>}
       </div>}
       {unlocked && displayTab === 'MOVES' && <div class="paper-panel move-sections">
-        <div class="section-heading"><div><p class="eyebrow">LEVEL-UP MOVES</p><p>{activeRuleset == null ? 'Move list not selected' : `${activeRuleset.label} list`}</p></div></div>
+        <div class="section-heading"><div><p class="eyebrow">LEVEL-UP MOVES</p><p>{activeRuleset == null ? 'Move list not selected' : `${renderPresentationMessage(activeRuleset.label)} list`}</p></div></div>
         {activeRuleset == null && catalog.rulesets.length > 1
           ? <div class="empty-state"><strong>{gameplayCopy.moveDataUnavailable}</strong><p>{gameplayCopy.chooseMoveList}</p>{openMoveListSettings && <button type="button" class="primary-button" onClick={openMoveListSettings}>CHOOSE MOVE LIST</button>}</div>
           : <div class="move-table">{moves.map(item => {
           const move = catalog.moves.find(candidate => candidate.id === item.moveId);
-          return move && <button key={item.moveId} onClick={() => openMove(item.moveId)}><span>{item.label}</span><strong>{move.name}</strong><TypeChip type={catalog.types.find(type => type.id === move.typeId)} /></button>;
+          return move && <button key={item.moveId} onClick={() => openMove(item.moveId)}><span>{renderPresentationMessages(item.labels)}</span><strong>{move.name}</strong><TypeChip type={catalog.types.find(type => type.id === move.typeId)} /></button>;
         })}</div>}
         {species.moveAcquisitions.length > 0 && <><p class="eyebrow acquisition-heading">OTHER METHODS</p><div class="move-table">{species.moveAcquisitions.map((item, index) => {
           const move = catalog.moves.find(candidate => candidate.id === item.moveId);
@@ -129,7 +130,7 @@ export function PokedexDetail({
                 class={identitySpriteClass(knowledge)}
               />
             : <span class="evolution-sprite-missing" aria-label="Evolution sprite unavailable" />}</span>;
-          const content = <>{sprite}<strong>{targetName}</strong><span>{evolution.condition}</span></>;
+          const content = <>{sprite}<strong>{targetName}</strong><span>{renderPresentationMessage(evolution.condition)}</span></>;
           return target && knowledge !== 'unknown'
             ? <button class="evolution-row evolution-link" key={`${evolution.targetSpeciesId}-${index}`} onClick={() => {
               setTab('ENTRY');

@@ -148,7 +148,7 @@ describe('battle layout', () => {
       minimumTargetPercent: 43.75, maximumTargetPercent: 52.5,
       minimumHitsToKnockOut: 2, maximumHitsToKnockOut: 3,
       accuracyPercent: 95, effectivenessPercent: 200,
-      conditions: ['Same-type bonus'], uncertainty: null,
+      conditions: [{ code: 'DAMAGE_CONDITION_STAB' }], uncertainty: null,
     };
 
     const { container } = render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
@@ -157,7 +157,7 @@ describe('battle layout', () => {
     expect(screen.getByText('43.8–52.5%')).toBeTruthy();
     expect(screen.getByText('2–3 hits')).toBeTruthy();
     expect(screen.getByText('95%')).toBeTruthy();
-    expect(screen.getByText('Same-type bonus')).toBeTruthy();
+    expect(screen.getByText('Same-type attack bonus')).toBeTruthy();
     expect(container.querySelector('.attack-card')?.textContent).not.toMatch(/THUMB|pointer|offset|capability|parser|compiled source/i);
   });
 
@@ -168,14 +168,14 @@ describe('battle layout', () => {
       minimumTargetPercent: 35, maximumTargetPercent: 68.75,
       minimumHitsToKnockOut: 2, maximumHitsToKnockOut: 4,
       accuracyPercent: 100, effectivenessPercent: 100,
-      conditions: ['Weather may change the result'],
-      uncertainty: 'Weather could change before the move lands.',
+      conditions: [{ code: 'DAMAGE_CONDITION_WEATHER' }],
+      uncertainty: { code: 'DAMAGE_RANGE_BOUNDED' },
     };
 
     render(<BattlePage catalog={catalog} state={state} send={vi.fn()} openMove={vi.fn()} openSpecies={vi.fn()} />);
 
     expect(screen.getByText('28–55 HP')).toBeTruthy();
-    expect(screen.getByText('Weather could change before the move lands.')).toBeTruthy();
+    expect(screen.getByText('The exact result depends on unresolved battle conditions.')).toBeTruthy();
   });
 
   it('keeps the ordinary move card useful when no forecast is available', () => {

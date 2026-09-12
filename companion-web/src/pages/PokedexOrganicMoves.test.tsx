@@ -63,7 +63,7 @@ describe('Organic Pokédex move knowledge', () => {
       ...catalog,
       rulesets: [
         ...catalog.rulesets,
-        { id: 'modern', label: 'Modern', sourceOffset: 2, confidence: 1, primary: false },
+        { id: 'modern', label: { code: 'RULESET_OTHER' }, sourceOffset: 2, confidence: 1, primary: false },
       ],
     });
 
@@ -92,7 +92,7 @@ function renderDetail(
 
 const catalog = {
   hash: 'sha', crc32: '1234ABCD', family: 'EMERALD', platform: 'GBA', areas: [], balls: [], capabilities: {},
-  rulesets: [{ id: 'base', label: 'Base', sourceOffset: 1, confidence: 1, primary: true }],
+  rulesets: [{ id: 'base', label: { code: 'RULESET_BASE' }, sourceOffset: 1, confidence: 1, primary: true }],
   types: [{ id: 0, name: 'Normal', foreground: '#111', background: '#ddd', border: '#999' }, { id: 10, name: 'Fire', foreground: '#fff', background: '#f80', border: '#b40' }],
   moves: [
     { id: 10, name: 'Scratch', typeId: 0, category: 'PHYSICAL', power: 40, accuracy: 100, pp: 35, priority: 0, effectId: 0, description: 'Scratches the target.' },
@@ -102,7 +102,7 @@ const catalog = {
     id: 4, dex: 4, name: 'Charmander', typeIds: [10], stats: null, description: 'Entry', height: null, weight: null,
     learnset: [{ level: 1, moveId: 10 }, { level: 7, moveId: 52 }],
     learnsets: { base: [{ level: 1, moveId: 10 }, { level: 7, moveId: 52 }] },
-    normalizedLearnsets: { base: [{ moveId: 10, initial: true, levels: [], label: 'Initial' }, { moveId: 52, initial: false, levels: [7], label: 'Lv 7' }] },
+    normalizedLearnsets: { base: [{ moveId: 10, initial: true, levels: [], labels: [{ code: 'MOVE_INITIAL' }] }, { moveId: 52, initial: false, levels: [7], labels: [{ code: 'MOVE_LEVEL', level: 7 }] }] },
     moveAcquisitions: [], abilities: [], evolutions: [], hasSprite: false,
   }],
 } satisfies Catalog;

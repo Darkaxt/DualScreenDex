@@ -277,10 +277,15 @@ data class SpeciesView(
 )
 
 data class LearnsetView(val level: Int, val moveId: Int)
-data class NormalizedMoveView(val moveId: Int, val initial: Boolean, val levels: List<Int>, val label: String)
+data class NormalizedMoveView(
+    val moveId: Int,
+    val initial: Boolean,
+    val levels: List<Int>,
+    val labels: List<PresentationMessageView>,
+)
 data class RulesetView(
     val id: String,
-    val label: String,
+    val label: PresentationMessageView,
     val sourceOffset: Int,
     val confidence: Double,
     val primary: Boolean,
@@ -288,13 +293,17 @@ data class RulesetView(
 data class MoveAcquisitionView(val moveId: Int, val method: String, val sourceId: Int?)
 data class AbilityMechanicView(
     val kind: String,
-    val label: String,
+    val label: PresentationMessageView,
     val value: String,
     val numerator: Int,
     val denominator: Int,
     val conditions: List<AbilityMechanicConditionView> = emptyList(),
 )
-data class AbilityMechanicConditionView(val kind: String, val value: Long, val label: String)
+data class AbilityMechanicConditionView(
+    val kind: String,
+    val value: Long,
+    val label: PresentationMessageView,
+)
 data class AbilityView(
     val id: Int,
     val name: String,
@@ -306,7 +315,7 @@ data class EvolutionView(
     val targetName: String,
     val methodId: Int,
     val parameter: Int,
-    val condition: String,
+    val condition: PresentationMessageView,
 )
 data class MoveView(
     val id: Int,
@@ -581,7 +590,7 @@ data class SpecimenCollectionView(
 )
 data class OwnedIndividualLocationView(
     val kind: String,
-    val label: String,
+    val label: PresentationMessageView,
     val boxNumber: Int? = null,
     val slotNumber: Int,
 )
@@ -685,8 +694,8 @@ data class DamageForecastView(
     val maximumHitsToKnockOut: Int,
     val accuracyPercent: Int,
     val effectivenessPercent: Int,
-    val conditions: List<String>,
-    val uncertainty: String?,
+    val conditions: List<PresentationMessageView>,
+    val uncertainty: PresentationMessageView?,
 )
 data class OpponentView(
     val speciesId: Int,
@@ -731,7 +740,13 @@ object ApiViewBuilder {
         family = catalog.family.name,
         platform = catalog.platform.name,
         rulesets = catalog.learnsetRulesets.map {
-            RulesetView(it.id, it.label, it.sourceOffset, it.confidence, it.primary)
+            RulesetView(
+                it.id,
+                PresentationMessages.ruleset(it.label) ?: PresentationMessages.otherRuleset(),
+                it.sourceOffset,
+                it.confidence,
+                it.primary,
+            )
         },
         species = catalog.navigableSpecies().sortedWith(compareBy({ it.dexNumber.value }, { it.id })).map { species ->
             val stats = species.baseStats.value
@@ -764,15 +779,18 @@ object ApiViewBuilder {
                 },
                 normalizedLearnsets = rulesetLearnsets.mapValues { (_, entries) ->
                     LearnsetNormalizer.normalize(entries).map { normalized ->
-                        val parts = buildList {
-                            if (normalized.initial) add("Initial")
-                            normalized.levels.forEach { add("Lv $it") }
-                        }
                         NormalizedMoveView(
                             normalized.moveId,
                             normalized.initial,
                             normalized.levels,
-                            parts.joinToString(" · "),
+                            buildList {
+                                if (normalized.initial) {
+                                    add(PresentationMessages.normalizedMove(initial = true, level = null))
+                                }
+                                normalized.levels.forEach { level ->
+                                    add(PresentationMessages.normalizedMove(initial = false, level = level))
+                                }
+                            },
                         )
                     }
                 },
@@ -790,7 +808,11 @@ object ApiViewBuilder {
                         ability.mechanics.value.orEmpty().map { mechanic ->
                             AbilityMechanicView(
                                 mechanic.kind.name,
-                                mechanic.label,
+                                PresentationMessages.abilityMechanic(
+                                    mechanic.kind,
+                                    mechanic.numerator,
+                                    mechanic.denominator,
+                                ),
                                 mechanic.value,
                                 mechanic.numerator,
                                 mechanic.denominator,
@@ -798,7 +820,7 @@ object ApiViewBuilder {
                                     AbilityMechanicConditionView(
                                         condition.kind.name,
                                         condition.value,
-                                        condition.label,
+                                        PresentationMessages.abilityCondition(condition.kind, condition.value),
                                     )
                                 },
                             )
@@ -1184,8 +1206,8 @@ object ApiViewBuilder {
                             maximumHitsToKnockOut = forecast.hitsToKnockOut.maximum,
                             accuracyPercent = forecast.accuracyPercent,
                             effectivenessPercent = forecast.effectivenessPercent,
-                            conditions = forecast.conditionLabels,
-                            uncertainty = forecast.uncertainty,
+                            conditions = forecast.appliedConditions.map(PresentationMessages::damageCondition),
+                            uncertainty = forecast.uncertainty?.let { PresentationMessages.damageRangeBounded() },
                         )
                     },
                 )
@@ -1462,12 +1484,18 @@ object ApiViewBuilder {
         val location = when (resolved.location.kind) {
             OwnedIndividualLocationKind.PARTY -> OwnedIndividualLocationView(
                 kind = "PARTY",
-                label = "Party · Slot ${resolved.location.slotIndex + 1}",
+                label = PresentationMessages.specimenLocation(
+                    boxNumber = null,
+                    slotNumber = resolved.location.slotIndex + 1,
+                ),
                 slotNumber = resolved.location.slotIndex + 1,
             )
             OwnedIndividualLocationKind.BOX -> OwnedIndividualLocationView(
                 kind = "BOX",
-                label = "Box ${requireNotNull(resolved.location.boxIndex) + 1} · Slot ${resolved.location.slotIndex + 1}",
+                label = PresentationMessages.specimenLocation(
+                    boxNumber = requireNotNull(resolved.location.boxIndex) + 1,
+                    slotNumber = resolved.location.slotIndex + 1,
+                ),
                 boxNumber = resolved.location.boxIndex + 1,
                 slotNumber = resolved.location.slotIndex + 1,
             )
@@ -1774,22 +1802,13 @@ object ApiViewBuilder {
     private const val PARTY_SLOT_COUNT = 6
     private const val MOVE_SLOT_COUNT = 4
 
-    private fun evolutionCondition(catalog: ParsedCatalog, edge: EvolutionEdge): String {
+    private fun evolutionCondition(catalog: ParsedCatalog, edge: EvolutionEdge): PresentationMessageView {
         val generation = when (catalog.platform) {
             com.enrpau.dualscreendex.parser.model.Platform.GBA -> 3
             com.enrpau.dualscreendex.parser.model.Platform.GBC -> 2
             else -> 1
         }
-        return when {
-            generation == 3 && edge.methodId == 4 -> "Level ${edge.parameter}"
-            generation <= 2 && edge.methodId == 1 -> "Level ${edge.parameter}"
-            generation == 3 && edge.methodId == 5 -> "Trade"
-            generation <= 2 && edge.methodId == 3 -> "Trade"
-            generation == 3 && edge.methodId == 6 -> "Trade with item ${edge.parameter}"
-            (generation == 3 && edge.methodId == 7) || (generation <= 2 && edge.methodId == 2) -> "Use item ${edge.parameter}"
-            generation == 3 && edge.methodId in 1..3 -> "High friendship"
-            else -> "Method ${edge.methodId} · parameter ${edge.parameter}"
-        }
+        return PresentationMessages.evolution(generation, edge.methodId, edge.parameter)
     }
 }
 

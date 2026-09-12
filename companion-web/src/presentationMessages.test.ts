@@ -1,0 +1,49 @@
+import { describe, expect, it } from 'vitest';
+import { renderPresentationMessage, renderPresentationMessages } from './presentationMessages';
+
+describe('presentation messages', () => {
+  it('renders typed arguments without parsing backend prose', () => {
+    expect(renderPresentationMessages([
+      { code: 'MOVE_INITIAL' },
+      { code: 'MOVE_LEVEL', level: 7 },
+    ])).toBe('Initial · Lv 7');
+    expect(renderPresentationMessage({ code: 'EVOLUTION_UNKNOWN', methodId: 99, parameter: 4 }))
+      .toBe('Method 99 · parameter 4');
+    expect(renderPresentationMessage({ code: 'SPECIMEN_BOX_SLOT', boxNumber: 2, slotNumber: 5 }))
+      .toBe('Box 2 · Slot 5');
+  });
+
+  it('renders every closed damage condition', () => {
+    expect([
+      'DAMAGE_CONDITION_STAB',
+      'DAMAGE_CONDITION_STATUS',
+      'DAMAGE_CONDITION_CRITICAL',
+      'DAMAGE_CONDITION_WEATHER',
+      'DAMAGE_CONDITION_ABILITY',
+      'DAMAGE_CONDITION_ITEM',
+      'DAMAGE_CONDITION_FIELD',
+      'DAMAGE_CONDITION_MULTI_HIT',
+      'DAMAGE_CONDITION_FIXED_DAMAGE',
+    ].map(code => renderPresentationMessage({ code } as Parameters<typeof renderPresentationMessage>[0])))
+      .toEqual([
+        'Same-type attack bonus',
+        'Status',
+        'Critical hit',
+        'Weather',
+        'Ability',
+        'Held item',
+        'Field condition',
+        'Multiple hits',
+        'Fixed damage',
+      ]);
+  });
+
+  it('renders ability condition values semantically', () => {
+    expect(renderPresentationMessage({ code: 'ABILITY_CONDITION_MOVE_SPLIT', conditionValue: 0 }))
+      .toBe('Physical moves');
+    expect(renderPresentationMessage({ code: 'ABILITY_CONDITION_MOVE_SPLIT', conditionValue: 1 }))
+      .toBe('Special moves');
+    expect(renderPresentationMessage({ code: 'ABILITY_CONDITION_ATTACKING_MOVE_TYPE', conditionValue: 4 }))
+      .toBe('Type 4 moves');
+  });
+});

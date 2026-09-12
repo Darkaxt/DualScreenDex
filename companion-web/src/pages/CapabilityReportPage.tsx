@@ -3,6 +3,7 @@ import { boundedRequest } from '../boundedRequest';
 import { Header } from '../components';
 import { diagnostics } from '../gateway';
 import type { DiagnosticCapability, DiagnosticView } from '../models';
+import { renderPresentationMessage } from '../presentationMessages';
 
 const CAPABILITY_REQUEST_TIMEOUT_MILLIS = 8_000;
 
@@ -181,7 +182,9 @@ function coverageText(capability: DiagnosticCapability): string | null {
 
 function rulesetLabel(view: DiagnosticView): string {
   if (!view.activeRulesetId) return 'RULESET N/F';
-  return view.rulesets.find(item => item.id === view.activeRulesetId)?.label ?? view.activeRulesetId;
+  return view.rulesets.find(item => item.id === view.activeRulesetId)?.label
+    ? renderPresentationMessage(view.rulesets.find(item => item.id === view.activeRulesetId)!.label)
+    : view.activeRulesetId;
 }
 
 function pretty(value: string): string {
