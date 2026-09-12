@@ -1,10 +1,11 @@
 {
   "schemaVersion": 2,
-  "sourceCommit": "66bd216d9c370735666d5eb7438e83796a87eec7",
+  "sourceCommit": "5397f6e3b131cf0e15e16fff4f13b4e09761e46d",
+  "qaBaselineSourceCommit": "66bd216d9c370735666d5eb7438e83796a87eec7",
   "generator": {
     "name": "parser-cli",
-    "schemaVersion": 13,
-    "sha256": "5a19f4866925c4310e7c1938acea127c937118c4d0186a354a4da90b94585879"
+    "schemaVersion": 16,
+    "sha256": "8de5fada53efdd248b02f36cc9a6e86c40cfaf0da1d9e8e90795704b80bb3017"
   },
   "corpus": {
     "inputDigestSha256": "974500a1b568bab72954e253c0a1efae25ea4208657804ed5f81ff3409e79d57",
@@ -12,25 +13,25 @@
   },
   "scopeDecision": {
     "type": "NONPARSER_REUSE",
-    "attestation": "Fresh raw parser evidence was generated at the named source commit; downstream release packaging, acceptance tests, API-30-compatible Android bounded reads, repository-policy alignment, public nonsecret GitHub policy access, schema-bound comparison selection, binary-safe public-asset privacy validation, the Area Guide projection correction, CRC-less RetroArch session activation with evidence-bound epochs, Thor lower-display companion UI remediation, Android loopback disconnect containment, the debug-only RetroArch-free QA harness and clean-start heap provisioning, active root-destination header consistency, packaged Thor screenshot refresh, asynchronous acceptance deadline hardening, accessibility-gated Local Map player emphasis, habitat-bound Atlas shortcuts, Party experience-bar contrast, compact Pokedex row geometry, and draft-candidate promotion lookup hardening changed afterward without changing parser, catalog, build, wrapper, or corpus-execution source."
+    "attestation": "Fresh source-bound localization corpus evidence was generated at the named executable commit. Subsequent changes contain only reviewed localization documentation and packaged-acceptance test corrections; parser, catalog, build, wrapper, and corpus-execution source remain unchanged."
   },
   "cacheDecision": {
     "type": "BUMP_REQUIRED",
-    "previousRevision": 44,
-    "revision": 46,
-    "rationale": "Parser output and bounded detached-species behavior changed after RC77, so prior revision-44 catalogs must rebuild before activation.",
+    "previousRevision": 46,
+    "revision": 82,
+    "rationale": "The localization stages changed persisted parser projections and advanced the production parser schema from the v1.1.0 release revision 46 to revision 82, so every older catalog must rebuild before activation.",
     "seededRegressionTest": "catalog-store/src/test/kotlin/com/darkaxt/dualdex/catalog/CatalogStoreTest.kt"
   },
   "artifacts": [
     {
       "role": "CORPUS_SUMMARY",
-      "path": "docs/reports/qa-hardening/stage-07-corpus-evidence.json",
-      "sha256": "679c9ee26f8065b0e5aa1e90313f0dbebbd66184649f8b5ba704f3acb403a5d3"
+      "path": "docs/reports/localization/stage-06-corpus-evidence.json",
+      "sha256": "4a3d4c9c2394719f9a95a4a7a4d241f0ad1396307df73f8f5ff3e3bca03d014c"
     },
     {
       "role": "CORPUS_EXECUTION_RECEIPT",
-      "path": "docs/reports/qa-hardening/stage-07-corpus-execution.json",
-      "sha256": "4ce0d643e27c6e7d9c5f381e56725aa5c80ad52649e7c4953d0f27393fa8f33c"
+      "path": "docs/reports/localization/stage-06-corpus-execution.json",
+      "sha256": "ac383a2a7f8be41b5876eb4b55dccda6f39f7d32f26762aabecf87a4af4c94e3"
     },
     {
       "role": "STAGE_7_CLOSURE",

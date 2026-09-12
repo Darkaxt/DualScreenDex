@@ -64,13 +64,17 @@ test("keeps candidates draft until protected exact-artifact promotion", () => {
   assert.match(promotionWorkflow, /-F prerelease=true/);
 });
 
-test("requires every RC86 release readiness gate", () => {
+test("requires every RC86 and 1.2 RC1 release readiness gate", () => {
   for (const field of [
     "v11Rc86MapPlayerAccessibility",
     "v11Rc86TruthfulHabitatAtlas",
     "v11Rc86PartyExperienceContrast",
     "v11Rc86CompactPokedexAlignment",
     "v11Rc86DraftCandidatePromotion",
+    "v12Rc1FullTranslationSystem",
+    "v12Rc1ManualInterfaceLanguageSelection",
+    "v12Rc1IndependentRomContentLanguage",
+    "v12Rc1PackagedLocalizationAcceptance",
   ]) {
     assert.match(workflow, new RegExp(`\\.${field} == true`));
   }
@@ -545,6 +549,10 @@ test("privacy-scans every assembled public asset including Stage 7 and closure e
     "dualdex-stage-07-corpus-execution.json",
     "dualdex-stage-07-closure.json",
     "dualdex-stage-08-closure.json",
+    "dualdex-localization-corpus-evidence.json",
+    "dualdex-localization-corpus-execution.json",
+    "dualdex-localization-stage-06-closure.md",
+    "dualdex-full-translation-system-closure.md",
     "canonical-corpus.json",
   ]) {
     assert.match(signingJob, new RegExp(asset.replaceAll(".", "\\.")));

@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 3,
+  "status": "COMPLETE",
+  "sourceCommit": "5397f6e3b131cf0e15e16fff4f13b4e09761e46d",
+  "generator": {
+    "name": "parser-cli",
+    "schemaVersion": 16,
+    "sha256": "8de5fada53efdd248b02f36cc9a6e86c40cfaf0da1d9e8e90795704b80bb3017"
+  },
+  "rawReportSha256": "2af6c0ba444f555d6943a644665abd43e3d808df1694beb6ceb0190e5c593b36",
+  "corpusInputDigestSha256": "974500a1b568bab72954e253c0a1efae25ea4208657804ed5f81ff3409e79d57",
+  "inputCount": 333,
+  "uniqueRomIdentities": 331,
+  "outcomes": {
+    "selected": 276,
+    "ambiguous": 2,
+    "noFamilyMatch": 55,
+    "total": 333,
+    "errors": 0
+  },
+  "languageManifests": {
+    "resolved": 261,
+    "unknown": 15
+  },
+  "catalogs": {
+    "materialized": 276,
+    "persisted": 274,
+    "catalogErrors": 0,
+    "persistenceErrors": 2
+  },
+  "recoveries": [
+    {
+      "sourceCommit": "5397f6e3b131cf0e15e16fff4f13b4e09761e46d",
+      "generator": {
+        "name": "parser-cli",
+        "schemaVersion": 16,
+        "sha256": "8de5fada53efdd248b02f36cc9a6e86c40cfaf0da1d9e8e90795704b80bb3017"
+      },
+      "inputCount": 1,
+      "selected": 1,
+      "persisted": 1,
+      "parserErrors": 0,
+      "catalogErrors": 0,
+      "persistenceErrors": 0,
+      "referenceErrors": 0,
+      "logicalDigestMatched": true,
+      "rawReportSha256": "ecf9c9b74765df0f7c6bc38e3d4846ce3d07a108674faaf841c4d306940a71aa",
+      "markdownReportSha256": "997fb5d647750864eba2d68ccab5212efb1a92acf8fb1b4628486f56f37c8449",
+      "executionReceiptSha256": "37bef316b17bfaa40a6cdac5e09ba870ff24af844bd2dcca7c31ad21c74a264a"
+    },
+    {
+      "sourceCommit": "5397f6e3b131cf0e15e16fff4f13b4e09761e46d",
+      "generator": {
+        "name": "parser-cli",
+        "schemaVersion": 16,
+        "sha256": "8de5fada53efdd248b02f36cc9a6e86c40cfaf0da1d9e8e90795704b80bb3017"
+      },
+      "inputCount": 1,
+      "selected": 1,
+      "persisted": 1,
+      "parserErrors": 0,
+      "catalogErrors": 0,
+      "persistenceErrors": 0,
+      "referenceErrors": 0,
+      "logicalDigestMatched": true,
+      "rawReportSha256": "92717da1f0345ffd6d8a3319f7697406a116b9e173926fdc3dfe709fd62e0155",
+      "markdownReportSha256": "22c5d88c84e44953df879017142b428510b4e3ec3aa75c7d94f658ed440c4459",
+      "executionReceiptSha256": "b474b2f612711bbc31c8d78af1913d9b18cff2d87aa5ffe3fe59164479fefc8c"
+    }
+  ],
+  "packagedAcceptance": {
+    "tests": 8,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "resultSha256": "cc6d9617ccfa58c0829f99c846a7c76697a3712cfc65d0749ebf5dc004abd88a"
+  },
+  "openBlockers": 0,
+  "privacy": {
+    "containsRomIdentity": false,
+    "containsRomName": false,
+    "containsSourcePath": false,
+    "containsRomBytes": false
+  }
+}

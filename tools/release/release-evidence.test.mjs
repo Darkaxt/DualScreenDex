@@ -376,3 +376,74 @@ test("requires a matching cache decision for parser or catalog changes", () => {
     /advance parser schema revision/i,
   );
 });
+
+test("accepts source-bound localization evidence with exact bounded recoveries", () => {
+  const evidence = fixture();
+  const localizationSource = "f".repeat(40);
+  const localizationGenerator = {
+    name: "parser-cli",
+    schemaVersion: 16,
+    sha256: "1".repeat(64),
+  };
+  evidence.manifest.qaBaselineSourceCommit = sourceCommit;
+  evidence.manifest.sourceCommit = localizationSource;
+  evidence.manifest.generator = localizationGenerator;
+  const summary = {
+    schemaVersion: 3,
+    status: "COMPLETE",
+    sourceCommit: localizationSource,
+    generator: localizationGenerator,
+    rawReportSha256: rawReportDigest,
+    corpusInputDigestSha256: corpusDigest,
+    inputCount: 333,
+    uniqueRomIdentities: 333,
+    outcomes: { selected: 276, ambiguous: 2, noFamilyMatch: 55, total: 333, errors: 0 },
+    languageManifests: { resolved: 261, unknown: 15 },
+    catalogs: { materialized: 276, persisted: 274, catalogErrors: 0, persistenceErrors: 2 },
+    recoveries: [0, 1].map(index => ({
+      sourceCommit: localizationSource,
+      generator: localizationGenerator,
+      inputCount: 1,
+      selected: 1,
+      persisted: 1,
+      parserErrors: 0,
+      catalogErrors: 0,
+      persistenceErrors: 0,
+      referenceErrors: 0,
+      logicalDigestMatched: true,
+      rawReportSha256: String(index + 2).repeat(64),
+      markdownReportSha256: String(index + 4).repeat(64),
+      executionReceiptSha256: String(index + 6).repeat(64),
+    })),
+    packagedAcceptance: {
+      tests: 8,
+      failures: 0,
+      errors: 0,
+      skipped: 0,
+      resultSha256: "8".repeat(64),
+    },
+    openBlockers: 0,
+    privacy: {
+      containsRomIdentity: false,
+      containsRomName: false,
+      containsSourcePath: false,
+      containsRomBytes: false,
+    },
+  };
+  replaceArtifact(evidence, "CORPUS_SUMMARY", summary);
+  replaceArtifact(evidence, "CORPUS_EXECUTION_RECEIPT", {
+    schemaVersion: 1,
+    sourceCommit: localizationSource,
+    generator: localizationGenerator,
+    rawReportSha256: rawReportDigest,
+    inputCount: 333,
+  });
+
+  const result = validate(evidence);
+  assert.equal(result.evidenceSourceCommit, localizationSource);
+  assert.equal(result.localizationClosed, true);
+
+  summary.recoveries.pop();
+  replaceArtifact(evidence, "CORPUS_SUMMARY", summary);
+  assert.throws(() => validate(evidence), /persistence error.*bounded recovery/i);
+});

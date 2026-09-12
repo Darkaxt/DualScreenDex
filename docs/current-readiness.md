@@ -4,22 +4,24 @@ This is the canonical reviewer entry point for DualDex release readiness.
 
 ## Active marker
 
-- **Final signed candidate marker:** `v1.1.0-rc.86`
-- **Release notes:** [`release/RELEASE_NOTES_1.1.0-rc.86.md`](../release/RELEASE_NOTES_1.1.0-rc.86.md)
+- **Next protected candidate:** `v1.2.0-rc.1`
+- **Release notes:** [`release/RELEASE_NOTES_1.2.0-rc.1.md`](../release/RELEASE_NOTES_1.2.0-rc.1.md)
 - **Machine-readable readiness marker:** [`release/v1-ready.json`](../release/v1-ready.json)
-- **Current state:** project-wide QA Stages 7–8 are closed with zero blockers and zero referrals; RC86 completes the Thor lower-display usability pass and is the exact candidate source for protected signing, promotion, and stable `v1.1.0` authorization.
+- **Current state:** project-wide QA Stages 7–8 remain closed with zero blockers and zero referrals; the six-stage localization system is complete with zero system blockers, and 1.2.0 RC1 is the exact candidate source for protected signing and promotion.
 
 ## Final QA evidence
 
-The final corpus evaluated all 333 scanner-eligible mainline/hack inputs in the audited 334-file physical inventory; one known spin-off is intentionally outside scanner scope. The canonical schema-2 contract binds the 333-entry multiset, 331 unique byte identities, duplicate entries, and aggregate digest. All 278 selected catalogs persisted and reopened, and parser, compatibility, catalog, and persistence error counts are zero.
+The canonical corpus remains 333 scanner-eligible inputs from the audited 334-file physical inventory, with one known spin-off outside scanner scope. The source-bound localization corpus selected 276 catalogs: 274 persisted and reopened in the consolidated run, and the two rows that exhausted the bounded six-GiB process heap each passed an exact source-bound, one-input recovery with matching logical digests. Combined evidence accounts for all 276 selected rows with zero parser, catalog, or unresolved persistence errors.
 
 - [Canonical corpus contract](../release/canonical-corpus.json)
 - [Release evidence manifest](../release/compatibility-evidence.json)
-- [Stage 7 corpus summary](reports/qa-hardening/stage-07-corpus-evidence.md)
-- [Stage 7 closure](reports/qa-hardening/stage-07-closure.md)
-- [Stage 8 integrated closure](reports/qa-hardening/stage-08-closure.md)
+- [Localization corpus summary](reports/localization/stage-06-corpus-evidence.json)
+- [Localization Stage 6 closure](reports/localization/stage-06-closure.md)
+- [Full translation system closure](reports/localization/final-translation-system-closure.md)
+- [QA Stage 7 closure](reports/qa-hardening/stage-07-closure.md)
+- [QA Stage 8 integrated closure](reports/qa-hardening/stage-08-closure.md)
 
-The release workflow validates source lineage, generator and raw-report digests, the canonical denominator/multiset digest, cache decision, exact closure state, protected tag rules, and both protected GitHub environments before signing can begin. Stable `v1.1.0` may be authorized only from the exact promoted RC86 source, APK digest, signer, provenance, and immutable release asset set.
+The release workflow validates source lineage, generator and raw-report digests, the canonical denominator/multiset digest, both exact bounded recoveries, the cache revision decision, QA and localization closure state, protected tag rules, and both protected GitHub environments before signing can begin. RC1 is a new non-replacing 1.2.0 candidate; it does not alter the already published stable `v1.1.0`.
 
 ## Historical records
 

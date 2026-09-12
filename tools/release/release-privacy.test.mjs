@@ -54,6 +54,16 @@ test("accepts a structurally known privacy-safe Stage 7 summary", () => {
   });
 });
 
+test("accepts the privacy-safe source-bound localization summary", () => {
+  validatePublicReleaseAsset({
+    name: "dualdex-localization-corpus-evidence.json",
+    bytes: readFileSync(resolve(
+      repositoryRoot,
+      "docs/reports/localization/stage-06-corpus-evidence.json",
+    )),
+  });
+});
+
 test("rejects Windows backslash and forward-slash absolute paths and Unix home paths", () => {
   for (const privateText of [
     "workspace=C:\\Users\\local-user\\project",
@@ -191,6 +201,7 @@ function validPublicEvidence() {
     artifactCount: 1,
     stage7Closed: true,
     stage8Closed: true,
+    localizationClosed: true,
   };
   const environment = {
     name: "release-signing",

@@ -7,11 +7,11 @@ import { fileURLToPath } from "node:url";
 const SHA256 = /^[0-9a-f]{64}$/;
 const COMMIT = /^[0-9a-f]{40}$/;
 const REQUIRED_INPUT_COUNT = 333;
-const REQUIRED_GENERATOR_SCHEMA = 13;
+const SUPPORTED_GENERATOR_SCHEMAS = new Set([13, 16]);
 const PARSER_CATALOG_PATH = /^(?:parser-core|parser-assets|parser-cli|catalog-store|save-core)\//;
 const BUILD_LOGIC_PATH = /^(?:buildSrc|build-logic|gradle)\/|^(?:gradlew(?:\.bat)?|gradle\.properties|settings\.gradle(?:\.kts)?|build\.gradle(?:\.kts)?)$|\/build\.gradle(?:\.kts)?$/;
 const EVIDENCE_GENERATOR_PATH = /^tools\/corpus\//;
-const EVIDENCE_PACKAGING_PATH = /^(?:release\/(?:compatibility-evidence|canonical-corpus)\.json|docs\/reports\/qa-hardening\/stage-(?:07-(?:corpus-evidence\.(?:json|md)|corpus-execution\.json|closure\.(?:json|md))|08-closure\.(?:json|md)))$/;
+const EVIDENCE_PACKAGING_PATH = /^(?:release\/(?:compatibility-evidence|canonical-corpus)\.json|docs\/reports\/(?:qa-hardening\/stage-(?:07-(?:corpus-evidence\.(?:json|md)|corpus-execution\.json|closure\.(?:json|md))|08-closure\.(?:json|md))|localization\/(?:stage-06-corpus-(?:evidence|execution)\.json|stage-06-closure\.md|final-translation-system-closure\.md)))$/;
 const REQUIRED_ROLES = [
   "CORPUS_SUMMARY",
   "CORPUS_EXECUTION_RECEIPT",
@@ -35,6 +35,10 @@ export function validateReleaseEvidence({
 }) {
   assert(manifest?.schemaVersion === 2, "evidence manifest schemaVersion must be 2");
   assert(COMMIT.test(manifest.sourceCommit ?? ""), "evidence sourceCommit must be a full lowercase commit");
+  if (manifest.qaBaselineSourceCommit != null) {
+    assert(COMMIT.test(manifest.qaBaselineSourceCommit),
+      "evidence qaBaselineSourceCommit must be a full lowercase commit");
+  }
   assert(COMMIT.test(releaseCommit ?? ""), "release commit must be a full lowercase commit");
   validateGenerator(manifest.generator, "evidence manifest");
   validateCanonicalCorpus(canonicalCorpus);
@@ -88,8 +92,16 @@ export function validateReleaseEvidence({
   const receipt = parsedArtifacts.get("CORPUS_EXECUTION_RECEIPT");
   validateSummary(summary, manifest, canonicalCorpus);
   validateReceipt(receipt, manifest, summary);
-  validateClosure(parsedArtifacts.get("STAGE_7_CLOSURE"), 7, manifest.sourceCommit);
-  validateClosure(parsedArtifacts.get("STAGE_8_CLOSURE"), 8, manifest.sourceCommit);
+  validateClosure(
+    parsedArtifacts.get("STAGE_7_CLOSURE"),
+    7,
+    manifest.qaBaselineSourceCommit ?? manifest.sourceCommit,
+  );
+  validateClosure(
+    parsedArtifacts.get("STAGE_8_CLOSURE"),
+    8,
+    manifest.qaBaselineSourceCommit ?? manifest.sourceCommit,
+  );
 
   return {
     schemaVersion: 2,
@@ -104,6 +116,7 @@ export function validateReleaseEvidence({
     artifactCount: manifest.artifacts.length,
     stage7Closed: true,
     stage8Closed: true,
+    localizationClosed: summary.schemaVersion === 3,
   };
 }
 
@@ -121,13 +134,13 @@ function validateCanonicalCorpus(canonicalCorpus) {
 
 function validateGenerator(generator, description) {
   assert(generator?.name === "parser-cli", `${description} generator name must be parser-cli`);
-  assert(generator?.schemaVersion === REQUIRED_GENERATOR_SCHEMA,
-    `${description} generator schema must be ${REQUIRED_GENERATOR_SCHEMA}`);
+  assert(SUPPORTED_GENERATOR_SCHEMAS.has(generator?.schemaVersion),
+    `${description} generator schema must be one of ${[...SUPPORTED_GENERATOR_SCHEMAS].join(", ")}`);
   assert(SHA256.test(generator?.sha256 ?? ""), `${description} generator digest must be a lowercase SHA-256`);
 }
 
 function validateSummary(summary, manifest, canonicalCorpus) {
-  assert(summary?.schemaVersion === 2, "corpus summary schemaVersion must be 2");
+  assert([2, 3].includes(summary?.schemaVersion), "corpus summary schemaVersion must be 2 or 3");
   assert(summary.sourceCommit === manifest.sourceCommit, "corpus summary sourceCommit does not match manifest");
   validateGenerator(summary.generator, "corpus summary");
   assert(summary.generator.schemaVersion === manifest.generator.schemaVersion &&
@@ -146,6 +159,18 @@ function validateSummary(summary, manifest, canonicalCorpus) {
   assert(sumFields(summary.outcomes, ["selected", "ambiguous", "noFamilyMatch", "errors"]) === REQUIRED_INPUT_COUNT,
     `corpus terminal outcomes do not sum to ${REQUIRED_INPUT_COUNT}`);
   assert(summary.outcomes.errors === 0, "corpus evidence contains parser errors");
+
+  if (summary.schemaVersion === 3) validateRecoveredLocalizationSummary(summary);
+  else validateCompatibilitySummary(summary);
+
+  assert(summary.privacy?.containsRomIdentity === false &&
+    summary.privacy?.containsRomName === false &&
+    summary.privacy?.containsSourcePath === false &&
+    summary.privacy?.containsRomBytes === false,
+  "corpus summary privacy declaration is not safe");
+}
+
+function validateCompatibilitySummary(summary) {
   assert(hasNonnegativeIntegerFields(summary.dataCompatibility, ["complete", "partial", "unresolved", "errors"]),
     "corpus summary requires nonnegative compatibility counts");
   assert(summary.dataCompatibility?.total === REQUIRED_INPUT_COUNT,
@@ -161,11 +186,51 @@ function validateSummary(summary, manifest, canonicalCorpus) {
     "every selected outcome must have exactly one materialized catalog");
   assert(summary.catalogs.persisted === summary.catalogs.materialized,
     "not every materialized catalog was persisted and reopened");
-  assert(summary.privacy?.containsRomIdentity === false &&
-    summary.privacy?.containsRomName === false &&
-    summary.privacy?.containsSourcePath === false &&
-    summary.privacy?.containsRomBytes === false,
-  "corpus summary privacy declaration is not safe");
+}
+
+function validateRecoveredLocalizationSummary(summary) {
+  assert(summary.generator.schemaVersion === 16,
+    "localization corpus summary requires generator schema 16");
+  assert(summary.status === "COMPLETE", "localization corpus summary is not COMPLETE");
+  assert(summary.openBlockers === 0, "localization corpus summary must have zero blockers");
+  assert(hasNonnegativeIntegerFields(summary.languageManifests, ["resolved", "unknown"]),
+    "localization corpus summary requires nonnegative language-manifest counts");
+  assert(summary.languageManifests.resolved + summary.languageManifests.unknown === summary.outcomes.selected,
+    "localization language manifests do not account for every selected outcome");
+  assert(hasNonnegativeIntegerFields(summary.catalogs, ["materialized", "persisted", "catalogErrors", "persistenceErrors"]),
+    "localization corpus summary requires nonnegative catalog counts");
+  assert(summary.catalogs.catalogErrors === 0, "corpus evidence contains catalog errors");
+  assert(Number.isInteger(summary.catalogs?.materialized) && summary.catalogs.materialized > 0,
+    "corpus evidence materialized no catalogs");
+  assert(summary.catalogs.materialized === summary.outcomes.selected,
+    "every selected outcome must have exactly one materialized catalog");
+  assert(Array.isArray(summary.recoveries), "localization corpus summary requires recoveries");
+  assert(summary.catalogs.persistenceErrors === summary.recoveries.length,
+    "every initial persistence error must have exactly one bounded recovery");
+  summary.recoveries.forEach((recovery, index) => {
+    assert(recovery?.sourceCommit === summary.sourceCommit,
+      `recovery ${index + 1} source commit does not match corpus summary`);
+    validateGenerator(recovery?.generator, `recovery ${index + 1}`);
+    assert(recovery.generator.schemaVersion === summary.generator.schemaVersion &&
+      recovery.generator.sha256 === summary.generator.sha256,
+    `recovery ${index + 1} generator does not match corpus summary`);
+    assert(recovery.inputCount === 1 && recovery.selected === 1 && recovery.persisted === 1,
+      `recovery ${index + 1} must cover exactly one selected persisted input`);
+    assert(recovery.parserErrors === 0 && recovery.catalogErrors === 0 &&
+      recovery.persistenceErrors === 0 && recovery.referenceErrors === 0,
+    `recovery ${index + 1} contains errors`);
+    assert(recovery.logicalDigestMatched === true,
+      `recovery ${index + 1} did not preserve the logical catalog digest`);
+    for (const field of ["rawReportSha256", "markdownReportSha256", "executionReceiptSha256"]) {
+      assert(SHA256.test(recovery[field] ?? ""), `recovery ${index + 1} ${field} is invalid`);
+    }
+  });
+  assert(summary.catalogs.persisted + summary.recoveries.length === summary.catalogs.materialized,
+    "bounded recovery does not account for every materialized catalog");
+  assert(summary.packagedAcceptance?.tests === 8 && summary.packagedAcceptance?.failures === 0 &&
+    summary.packagedAcceptance?.errors === 0 && summary.packagedAcceptance?.skipped === 0 &&
+    SHA256.test(summary.packagedAcceptance?.resultSha256 ?? ""),
+  "packaged localization acceptance is incomplete");
 }
 
 function validateReceipt(receipt, manifest, summary) {
@@ -290,6 +355,9 @@ function main(arguments_) {
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
   const canonicalCorpus = JSON.parse(readFileSync(canonicalPath, "utf8"));
   runGit(repositoryRoot, ["merge-base", "--is-ancestor", manifest.sourceCommit, releaseCommit]);
+  if (manifest.qaBaselineSourceCommit != null) {
+    runGit(repositoryRoot, ["merge-base", "--is-ancestor", manifest.qaBaselineSourceCommit, manifest.sourceCommit]);
+  }
   const changedPaths = runGit(repositoryRoot, ["diff", "--name-only", `${manifest.sourceCommit}..${releaseCommit}`])
     .split(/\r?\n/)
     .filter(Boolean);

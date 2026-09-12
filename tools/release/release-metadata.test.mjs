@@ -28,6 +28,7 @@ function readyMarker() {
       evidenceSourceCommit: testEvidenceSourceCommit,
       stage7Closed: true,
       stage8Closed: true,
+      localizationClosed: true,
       openBlockers: 0,
       openReferrals: 0,
     },
@@ -51,6 +52,7 @@ function runMetadata(tag, finalAuthorization, existingTags = []) {
       inputCount: 333,
       stage7Closed: true,
       stage8Closed: true,
+      localizationClosed: true,
     }));
     const argumentsList = [
       script,
@@ -290,6 +292,7 @@ function finalFixture(overrides = {}) {
         evidenceSourceCommit,
         stage7Closed: true,
         stage8Closed: true,
+        localizationClosed: true,
         openBlockers: 0,
         openReferrals: 0,
       },
@@ -301,6 +304,7 @@ function finalFixture(overrides = {}) {
       inputCount: 333,
       stage7Closed: true,
       stage8Closed: true,
+      localizationClosed: true,
     },
     finalAuthorization: {
       schema: 2,
@@ -369,11 +373,15 @@ test("rejects any stable product-tree change outside enumerated release metadata
   assert.throws(() => deriveReleaseMetadata(changedProduct), /product source differs/i);
 });
 
-test("readiness requires matching machine-validated Stage 7 and Stage 8 zero-gap closure", () => {
+test("readiness requires matching machine-validated QA and localization zero-gap closure", () => {
   const missingValidation = finalFixture({ releaseEvidenceValidation: undefined });
   assert.throws(() => deriveReleaseMetadata(missingValidation), /release evidence validation/i);
 
   const openStage = finalFixture();
   openStage.releaseEvidenceValidation.stage8Closed = false;
   assert.throws(() => deriveReleaseMetadata(openStage), /Stage 7 and Stage 8 closure/i);
+
+  const openLocalization = finalFixture();
+  openLocalization.releaseEvidenceValidation.localizationClosed = false;
+  assert.throws(() => deriveReleaseMetadata(openLocalization), /Stage 7 and Stage 8 closure/i);
 });

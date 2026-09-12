@@ -93,7 +93,9 @@ function validateReadyMarker(ready, versionName, certificateSha256, releaseEvide
       !COMMIT.test(closure.evidenceSourceCommit ?? "") ||
       closure.evidenceSourceCommit !== releaseEvidenceValidation.evidenceSourceCommit ||
       closure.stage7Closed !== true || closure.stage8Closed !== true ||
+      closure.localizationClosed !== true ||
       releaseEvidenceValidation.stage7Closed !== true || releaseEvidenceValidation.stage8Closed !== true ||
+      releaseEvidenceValidation.localizationClosed !== true ||
       closure.openBlockers !== 0 || closure.openReferrals !== 0 ||
       releaseEvidenceValidation.inputCount !== REQUIRED_INPUT_COUNT) {
     throw new Error("Release readiness requires matching Stage 7 and Stage 8 closure with zero gaps");

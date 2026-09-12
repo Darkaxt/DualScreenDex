@@ -55,7 +55,12 @@ export function validatePublicReleaseAsset({ name, bytes }) {
     validateProvenance(JSON.parse(text));
   } else if (name === "dualdex-stage-07-corpus-evidence.json") {
     validateStage7Summary(JSON.parse(text));
-  } else if (name === "dualdex-stage-07-corpus-execution.json") {
+  } else if (name === "dualdex-localization-corpus-evidence.json") {
+    validateLocalizationSummary(JSON.parse(text));
+  } else if ([
+    "dualdex-stage-07-corpus-execution.json",
+    "dualdex-localization-corpus-execution.json",
+  ].includes(name)) {
     const receipt = JSON.parse(text);
     assertExactKeys(receipt, [
       "schemaVersion", "sourceCommit", "generator", "rawReportSha256", "inputCount",
@@ -97,7 +102,7 @@ function structuralShape(value) {
 function validateCompatibilityEvidence(manifest) {
   assertClosedKeys(manifest, [
     "schemaVersion", "sourceCommit", "generator", "corpus", "scopeDecision", "artifacts",
-  ], ["cacheDecision"]);
+  ], ["cacheDecision", "qaBaselineSourceCommit"]);
   assertExactKeys(manifest.generator, ["name", "schemaVersion", "sha256"]);
   assertExactKeys(manifest.corpus, ["inputDigestSha256", "inputCount"]);
   assertExactKeys(manifest.scopeDecision, ["type", "attestation"]);
@@ -125,7 +130,7 @@ function validateReleaseEvidenceValidation(validation) {
   assertExactKeys(validation, [
     "schemaVersion", "releaseCommit", "evidenceSourceCommit", "scopeDecision", "cacheDecision",
     "generatorSchemaVersion", "generatorSha256", "corpusInputDigestSha256", "inputCount",
-    "artifactCount", "stage7Closed", "stage8Closed",
+    "artifactCount", "stage7Closed", "stage8Closed", "localizationClosed",
   ]);
 }
 
@@ -181,6 +186,34 @@ function validateStage7Summary(summary) {
   ]);
   if (Object.values(summary.privacy).some(value => value !== false)) {
     throw new Error("Stage 7 summary has an unsafe privacy declaration");
+  }
+}
+
+function validateLocalizationSummary(summary) {
+  assertExactKeys(summary, [
+    "schemaVersion", "status", "sourceCommit", "generator", "rawReportSha256",
+    "corpusInputDigestSha256", "inputCount", "uniqueRomIdentities", "outcomes",
+    "languageManifests", "catalogs", "recoveries", "packagedAcceptance", "openBlockers",
+    "privacy",
+  ]);
+  assertExactKeys(summary.generator, ["name", "schemaVersion", "sha256"]);
+  assertExactKeys(summary.outcomes, ["selected", "ambiguous", "noFamilyMatch", "total", "errors"]);
+  assertExactKeys(summary.languageManifests, ["resolved", "unknown"]);
+  assertExactKeys(summary.catalogs, ["materialized", "persisted", "catalogErrors", "persistenceErrors"]);
+  assertObjectArray(summary.recoveries, [
+    "sourceCommit", "generator", "inputCount", "selected", "persisted", "parserErrors",
+    "catalogErrors", "persistenceErrors", "referenceErrors", "logicalDigestMatched",
+    "rawReportSha256", "markdownReportSha256", "executionReceiptSha256",
+  ]);
+  for (const recovery of summary.recoveries) {
+    assertExactKeys(recovery.generator, ["name", "schemaVersion", "sha256"]);
+  }
+  assertExactKeys(summary.packagedAcceptance, ["tests", "failures", "errors", "skipped", "resultSha256"]);
+  assertExactKeys(summary.privacy, [
+    "containsRomIdentity", "containsRomName", "containsSourcePath", "containsRomBytes",
+  ]);
+  if (Object.values(summary.privacy).some(value => value !== false)) {
+    throw new Error("Localization summary has an unsafe privacy declaration");
   }
 }
 

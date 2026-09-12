@@ -234,6 +234,10 @@ jobs:
             docs/reports/qa-hardening/stage-07-closure.md \
             docs/reports/qa-hardening/stage-08-closure.json \
             docs/reports/qa-hardening/stage-08-closure.md \
+            docs/reports/localization/stage-06-corpus-evidence.json \
+            docs/reports/localization/stage-06-corpus-execution.json \
+            docs/reports/localization/stage-06-closure.md \
+            docs/reports/localization/final-translation-system-closure.md \
             release/canonical-corpus.json \
             release/compatibility-evidence.json \
             release/POST_RELEASE_CHECKLIST.md; do
@@ -300,6 +304,7 @@ jobs:
           jq -e '.v11Rc84ThorLowerDisplayRemediation == true and .v11Rc84ReleaseQaIsolation == true' release/v1-ready.json >/dev/null
           jq -e '.v11Rc85ActiveHeaderDestinations == true' release/v1-ready.json >/dev/null
           jq -e '.v11Rc86MapPlayerAccessibility == true and .v11Rc86TruthfulHabitatAtlas == true and .v11Rc86PartyExperienceContrast == true and .v11Rc86CompactPokedexAlignment == true and .v11Rc86DraftCandidatePromotion == true' release/v1-ready.json >/dev/null
+          jq -e '.v12Rc1FullTranslationSystem == true and .v12Rc1ManualInterfaceLanguageSelection == true and .v12Rc1IndependentRomContentLanguage == true and .v12Rc1PackagedLocalizationAcceptance == true and .qaClosure.localizationClosed == true' release/v1-ready.json >/dev/null
           if grep -Eiq '[A-Z]:\\|dualdex-expanded-corpus|ExtractedPath' \
             reports/dualdex-parser-compatibility.json \
             reports/dualdex-parser-compatibility.md \
@@ -686,6 +691,10 @@ jobs:
           cp docs/reports/qa-hardening/stage-07-closure.md "$ASSETS/dualdex-stage-07-closure.md"
           cp docs/reports/qa-hardening/stage-08-closure.json "$ASSETS/dualdex-stage-08-closure.json"
           cp docs/reports/qa-hardening/stage-08-closure.md "$ASSETS/dualdex-stage-08-closure.md"
+          cp docs/reports/localization/stage-06-corpus-evidence.json "$ASSETS/dualdex-localization-corpus-evidence.json"
+          cp docs/reports/localization/stage-06-corpus-execution.json "$ASSETS/dualdex-localization-corpus-execution.json"
+          cp docs/reports/localization/stage-06-closure.md "$ASSETS/dualdex-localization-stage-06-closure.md"
+          cp docs/reports/localization/final-translation-system-closure.md "$ASSETS/dualdex-full-translation-system-closure.md"
           release_notes="release/RELEASE_NOTES_${RELEASE_TAG#v}.md"
           test -s "$release_notes"
           cp "$release_notes" "$ASSETS/RELEASE_NOTES.md"
@@ -787,6 +796,10 @@ jobs:
               dualdex-stage-07-closure.md \
               dualdex-stage-08-closure.json \
               dualdex-stage-08-closure.md \
+              dualdex-localization-corpus-evidence.json \
+              dualdex-localization-corpus-execution.json \
+              dualdex-localization-stage-06-closure.md \
+              dualdex-full-translation-system-closure.md \
               RELEASE_NOTES.md \
               provenance.json > SHA256SUMS.txt
           )
@@ -886,6 +899,10 @@ jobs:
             "$ASSETS/dualdex-stage-07-closure.md" \
             "$ASSETS/dualdex-stage-08-closure.json" \
             "$ASSETS/dualdex-stage-08-closure.md" \
+            "$ASSETS/dualdex-localization-corpus-evidence.json" \
+            "$ASSETS/dualdex-localization-corpus-execution.json" \
+            "$ASSETS/dualdex-localization-stage-06-closure.md" \
+            "$ASSETS/dualdex-full-translation-system-closure.md" \
             "$ASSETS/RELEASE_NOTES.md"
 
           echo "GitHub created the non-replacing $RELEASE_KIND release for $RELEASE_TAG." >> "$GITHUB_STEP_SUMMARY"
