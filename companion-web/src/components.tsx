@@ -229,9 +229,10 @@ interface ChoiceProps {
   onSelect: (value: string) => void;
   label: string;
   disabledValues?: string[];
+  labels?: Readonly<Record<string, string>>;
 }
 
-export function SegmentedChoice({ values, active, onSelect, label, disabledValues = [] }: ChoiceProps) {
+export function SegmentedChoice({ values, active, onSelect, label, disabledValues = [], labels }: ChoiceProps) {
   return <div class="segmented" role="group" aria-label={label}>{values.map(value => {
     const disabled = disabledValues.includes(value);
     return <button
@@ -241,7 +242,7 @@ export function SegmentedChoice({ values, active, onSelect, label, disabledValue
       aria-disabled={disabled || undefined}
       class={active === value ? 'active' : ''}
       onClick={() => { if (!disabled) onSelect(value); }}
-    >{value}</button>;
+    >{labels?.[value] ?? value}</button>;
   })}</div>;
 }
 
@@ -249,7 +250,7 @@ export function Segmented(props: ChoiceProps) {
   return <SegmentedChoice {...props} />;
 }
 
-export function Tabs({ values, active, onSelect, label, disabledValues = [], columns = values.length, panelPrefix }: ChoiceProps & {
+export function Tabs({ values, active, onSelect, label, disabledValues = [], labels, columns = values.length, panelPrefix }: ChoiceProps & {
   columns?: number;
   panelPrefix: string;
 }) {
@@ -297,7 +298,7 @@ export function Tabs({ values, active, onSelect, label, disabledValues = [], col
       class={active === value ? 'active' : ''}
       onClick={() => { if (!disabled) onSelect(value); }}
       onKeyDown={event => onKeyDown(event, index)}
-    >{value}</button>;
+    >{labels?.[value] ?? value}</button>;
   })}</div>;
 }
 

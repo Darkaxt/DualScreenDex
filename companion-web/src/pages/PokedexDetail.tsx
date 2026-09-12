@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Catalog, State, StatName } from '../models';
 import { Header, identitySpriteClass, maskIdentityName, PokedexAvatar, speciesIdentityKnowledge, StatusMarks, tabPanelAttributes, Tabs, TypeChip, uniqueTypeIds } from '../components';
 import { gameplayCopy } from '../gameplayCopy';
+import { formatUiNumber, msg, pluralCategory } from '../i18n';
 import { statLabel } from '../natureDetails';
 import { renderPresentationMessage, renderPresentationMessages } from '../presentationMessages';
 import { catalogMediaUrl } from '../media';
@@ -41,6 +42,7 @@ export function PokedexDetail({
   const observedMoves = state.observedMoves[species.id] ?? [];
   const displayTab = !unlocked && (tab === 'STATS' || tab === 'MORE') ? 'ENTRY' : tab;
   const observedOnly = !unlocked && displayTab === 'MOVES';
+  const tabLabels = { ENTRY: msg('entry'), STATS: msg('stats'), MOVES: msg('moves'), AREA: msg('filterArea'), MORE: msg('more') };
   const activeRuleset = state.activeRulesetId == null
     ? null
     : catalog.rulesets.find(item => item.id === state.activeRulesetId) ?? null;
@@ -52,17 +54,17 @@ export function PokedexDetail({
     return slots.length ? [{ area, slots }] : [];
   });
   return <section class="screen detail-screen">
-    <Header title="POKÉDEX" kicker={`#${String(species.dex).padStart(3, '0')}`} gameTime={state.gameTime} focusKey={species.id} onBack={() => send('BACK')} />
+    <Header title={msg('pokedex').toUpperCase()} kicker={`#${String(species.dex).padStart(3, '0')}`} gameTime={state.gameTime} focusKey={species.id} onBack={() => send('BACK')} />
     <div class="detail-scroll">
       <div class="identity-card">
         <PokedexAvatar speciesId={species.id} name={species.name} available={species.hasSprite} large knowledge={identityKnowledge} state={status} catalog={catalog} />
         <div class="identity-copy"><h2>{species.name}</h2><div class="identity-line"><StatusMarks state={status} catalog={catalog} mode={state.settings.knowledgeMode} />{uniqueTypeIds(species.typeIds).map(id => <TypeChip key={id} type={catalog.types.find(type => type.id === id)} />)}</div></div>
-        <Tabs values={['ENTRY', 'STATS', 'MOVES', 'AREA', 'MORE']} active={displayTab} disabledValues={unlocked ? [] : ['STATS', 'MORE']} columns={3} panelPrefix="pokedex-detail" onSelect={value => setTab(value as DetailTab)} label="Pokédex detail" />
+        <Tabs values={['ENTRY', 'STATS', 'MOVES', 'AREA', 'MORE']} labels={tabLabels} active={displayTab} disabledValues={unlocked ? [] : ['STATS', 'MORE']} columns={3} panelPrefix="pokedex-detail" onSelect={value => setTab(value as DetailTab)} label={msg('pokedexDetail')} />
       </div>
       <div class="detail-content" data-scroll-region {...tabPanelAttributes('pokedex-detail', displayTab)}>
       {!unlocked && !observedOnly && displayTab !== 'AREA' && <div class="paper-panel withheld"><strong>{gameplayCopy.dataUnavailable}</strong><p>{gameplayCopy.catchForFullData}</p></div>}
       {unlocked && displayTab === 'ENTRY' && <>
-        <div class="paper-panel"><p class="eyebrow">POKÉDEX ENTRY</p><p class="entry-copy">{species.description || gameplayCopy.pokedexUnavailable}</p><div class="fact-grid"><span><small>HEIGHT</small><strong>{formatHeight(species.height, catalog.platform)}</strong></span><span><small>WEIGHT</small><strong>{formatWeight(species.weight, catalog.platform)}</strong></span></div></div>
+        <div class="paper-panel"><p class="eyebrow">{msg('pokedexEntry')}</p><p class="entry-copy">{species.description || gameplayCopy.pokedexUnavailable}</p><div class="fact-grid"><span><small>{msg('height')}</small><strong>{formatHeight(species.height, catalog.platform)}</strong></span><span><small>{msg('weight')}</small><strong>{formatWeight(species.weight, catalog.platform)}</strong></span></div></div>
         <HeightComparison
           species={species}
           platform={catalog.platform}
@@ -72,52 +74,52 @@ export function PokedexDetail({
         />
       </>}
       {unlocked && displayTab === 'STATS' && <div class="paper-panel">
-        <div class="section-heading"><div><p class="eyebrow">BASE STATS + INNATE RANGE</p><p>Lv 50 projection · no EV/stat experience · neutral nature where applicable.</p></div><strong>BST {baseStatSummary(species.stats)}</strong></div>
-        {status?.innateTier && <p class="range-note">Preferred recruit: <strong>{status.innateTier}</strong>{status.preferredLevel ? ` · Lv ${status.preferredLevel}` : ''}</p>}
-        <div class="stat-legend" aria-label="Stat projection legend"><span class="legend-low">LOW</span><span class="legend-typical">TYPICAL</span><span class="legend-high">HIGH</span></div>
+        <div class="section-heading"><div><p class="eyebrow">{msg('baseStatsRange')}</p><p>{msg('levelFiftyProjection')}</p></div><strong>{msg('baseStatTotal', formatUiNumber(baseStatSummary(species.stats)))}</strong></div>
+        {status?.innateTier && <p class="range-note">{msg('preferredRecruit')} <strong>{status.innateTier}</strong>{status.preferredLevel ? ` · ${msg('levelShort', formatUiNumber(status.preferredLevel))}` : ''}</p>}
+        <div class="stat-legend" aria-label={msg('statProjectionLegend')}><span class="legend-low">{msg('low')}</span><span class="legend-typical">{msg('typical')}</span><span class="legend-high">{msg('high')}</span></div>
         <div class="stat-list">{statRanges.map(item => <div key={item.name}>
-          <span class="stat-label">{statLabel(item.name)}<small>BASE {item.value}</small></span>
-          <i class="stat-impact" aria-label={`${statLabel(item.name)}: ${item.low} to ${item.high} at level 50`}>
+          <span class="stat-label">{statLabel(item.name)}<small>{msg('baseValue', formatUiNumber(item.value))}</small></span>
+          <i class="stat-impact" aria-label={msg('statRangeAtLevel', statLabel(item.name), formatUiNumber(item.low), formatUiNumber(item.high))}>
             <b class="stat-typical" style={{ width: `${item.typical / statScale * 100}%` }} />
             <b class="stat-low" style={{ left: `${item.low / statScale * 100}%`, width: `${(item.typical - item.low) / statScale * 100}%` }} />
             <b class="stat-high" style={{ left: `${item.typical / statScale * 100}%`, width: `${(item.high - item.typical) / statScale * 100}%` }} />
           </i>
           <strong class="stat-range">{item.low}–{item.high}</strong>
         </div>)}</div>
-        {locations.length > 0 && <p class="range-note">Wild encounter levels: <strong>{wildLevelRange(locations.flatMap(item => item.slots))}</strong></p>}
+        {locations.length > 0 && <p class="range-note">{msg('wildEncounterLevels')} <strong>{wildLevelRange(locations.flatMap(item => item.slots))}</strong></p>}
       </div>}
       {unlocked && displayTab === 'MOVES' && <div class="paper-panel move-sections">
-        <div class="section-heading"><div><p class="eyebrow">LEVEL-UP MOVES</p><p>{activeRuleset == null ? 'Move list not selected' : `${renderPresentationMessage(activeRuleset.label)} list`}</p></div></div>
+        <div class="section-heading"><div><p class="eyebrow">{msg('levelUpMoves')}</p><p>{activeRuleset == null ? msg('moveListNotSelected') : msg('namedList', renderPresentationMessage(activeRuleset.label))}</p></div></div>
         {activeRuleset == null && catalog.rulesets.length > 1
-          ? <div class="empty-state"><strong>{gameplayCopy.moveDataUnavailable}</strong><p>{gameplayCopy.chooseMoveList}</p>{openMoveListSettings && <button type="button" class="primary-button" onClick={openMoveListSettings}>CHOOSE MOVE LIST</button>}</div>
+          ? <div class="empty-state"><strong>{gameplayCopy.moveDataUnavailable}</strong><p>{gameplayCopy.chooseMoveList}</p>{openMoveListSettings && <button type="button" class="primary-button" onClick={openMoveListSettings}>{msg('chooseMoveListAction')}</button>}</div>
           : <div class="move-table">{moves.map(item => {
           const move = catalog.moves.find(candidate => candidate.id === item.moveId);
           return move && <button key={item.moveId} onClick={() => openMove(item.moveId)}><span>{renderPresentationMessages(item.labels)}</span><strong>{move.name}</strong><TypeChip type={catalog.types.find(type => type.id === move.typeId)} /></button>;
         })}</div>}
-        {species.moveAcquisitions.length > 0 && <><p class="eyebrow acquisition-heading">OTHER METHODS</p><div class="move-table">{species.moveAcquisitions.map((item, index) => {
+        {species.moveAcquisitions.length > 0 && <><p class="eyebrow acquisition-heading">{msg('otherMethods')}</p><div class="move-table">{species.moveAcquisitions.map((item, index) => {
           const move = catalog.moves.find(candidate => candidate.id === item.moveId);
           return move && <button key={`${item.method}-${item.moveId}-${index}`} onClick={() => openMove(item.moveId)}><span>{item.method}{item.sourceId ? ` ${item.sourceId}` : ''}</span><strong>{move.name}</strong><TypeChip type={catalog.types.find(type => type.id === move.typeId)} /></button>;
         })}</div></>}
       </div>}
       {observedOnly && <div class="paper-panel move-sections">
-        <div class="section-heading"><div><p class="eyebrow">OBSERVED MOVES</p><p>Only attacks this species has used against you.</p></div></div>
+        <div class="section-heading"><div><p class="eyebrow">{msg('observedMoves')}</p><p>{msg('observedMovesDescription')}</p></div></div>
         {observedMoves.length > 0 ? <div class="move-table">{observedMoves.map(item => {
           const move = catalog.moves.find(candidate => candidate.id === item.moveId);
-          return move && <button key={item.moveId} onClick={() => openMove(item.moveId)}><span>FREQUENCY · {item.frequency}×</span><strong>{move.name}</strong><TypeChip type={catalog.types.find(type => type.id === move.typeId)} /></button>;
+          return move && <button key={item.moveId} onClick={() => openMove(item.moveId)}><span>{msg('frequency', formatUiNumber(item.frequency))}</span><strong>{move.name}</strong><TypeChip type={catalog.types.find(type => type.id === move.typeId)} /></button>;
         })}</div> : <div class="empty-state"><strong>{gameplayCopy.noMovesRecorded}</strong><p>{gameplayCopy.movesWillAppear}</p></div>}
       </div>}
       {displayTab === 'AREA' && <PokemonAreaMap catalog={catalog} state={state} speciesId={species.id} send={send} onOpenAtlas={openAtlas} />}
       {unlocked && displayTab === 'MORE' && <div class="paper-panel more-sections">
         {(status?.specimenCount ?? 0) > 0 && <section class="specimen-entry-section">
-          <div><p class="eyebrow">YOUR POKÉMON</p><strong>{status?.specimenCount} {status?.specimenCount === 1 ? 'specimen' : 'specimens'}</strong></div>
-          <button type="button" onClick={() => openSpecimens?.(species.id)}>VIEW SPECIMENS</button>
+          <div><p class="eyebrow">{msg('yourPokemon')}</p><strong>{msg('specimenCount', formatUiNumber(status?.specimenCount ?? 0), pluralCategory(status?.specimenCount ?? 0))}</strong></div>
+          <button type="button" onClick={() => openSpecimens?.(species.id)}>{msg('viewSpecimens')}</button>
         </section>}
-        {species.abilities.length > 0 && <section><p class="eyebrow">ABILITIES</p><div class="inline-abilities">{species.abilities.map(ability => <article class="inline-ability" key={ability.id}>
+        {species.abilities.length > 0 && <section><p class="eyebrow">{msg('abilities')}</p><div class="inline-abilities">{species.abilities.map(ability => <article class="inline-ability" key={ability.id}>
           <header><strong>{ability.name}</strong><span>#{ability.id}</span></header>
           <p>{ability.description || gameplayCopy.abilityUnavailable}</p>
           {ability.mechanics.length > 0 && <AbilityMechanics mechanics={ability.mechanics} />}
         </article>)}</div></section>}
-        {species.evolutions.length > 0 && <section><p class="eyebrow">EVOLUTIONS</p>{species.evolutions.map((evolution, index) => {
+        {species.evolutions.length > 0 && <section><p class="eyebrow">{msg('evolutions')}</p>{species.evolutions.map((evolution, index) => {
           const target = catalog.species.find(candidate => candidate.id === evolution.targetSpeciesId);
           const targetStatus = state.speciesState[evolution.targetSpeciesId];
           const knowledge = speciesIdentityKnowledge(state.settings.knowledgeMode, targetStatus);
@@ -126,11 +128,11 @@ export function PokedexDetail({
           const sprite = <span class="evolution-sprite-frame">{target?.hasSprite
             ? <img
                 src={catalogMediaUrl(`/api/sprites/species/${evolution.targetSpeciesId}.png`, catalog.hash)}
-                alt={knowledge === 'unknown' ? 'Unidentified evolution sprite' : `${targetName} evolution sprite`}
+                alt={knowledge === 'unknown' ? msg('unidentifiedEvolutionSprite') : msg('evolutionSprite', targetName)}
                 aria-hidden="true"
                 class={identitySpriteClass(knowledge)}
               />
-            : <span class="evolution-sprite-missing" aria-label="Evolution sprite unavailable" />}</span>;
+            : <span class="evolution-sprite-missing" aria-label={msg('evolutionSpriteUnavailable')} />}</span>;
           const content = <>{sprite}<strong>{targetName}</strong><span>{renderPresentationMessage(evolution.condition)}</span></>;
           return target && knowledge !== 'unknown'
             ? <button class="evolution-row evolution-link" key={`${evolution.targetSpeciesId}-${index}`} onClick={() => {
@@ -139,7 +141,7 @@ export function PokedexDetail({
             }}>{content}</button>
             : <div class="evolution-row" key={`${evolution.targetSpeciesId}-${index}`}>{content}</div>;
         })}</section>}
-        {locations.length > 0 && <section><p class="eyebrow">LOCATIONS</p>{locations.map(({ area, slots }) => <div class="data-row location-row" key={area.id}><strong>{area.name}</strong><span>{wildLevelRange(slots)}{slots.some(slot => slot.weight != null) ? ` · ${Math.max(...slots.map(slot => slot.weight ?? 0))}%` : ''}</span></div>)}</section>}
+        {locations.length > 0 && <section><p class="eyebrow">{msg('locations')}</p>{locations.map(({ area, slots }) => <div class="data-row location-row" key={area.id}><strong>{area.name}</strong><span>{wildLevelRange(slots)}{slots.some(slot => slot.weight != null) ? ` · ${Math.max(...slots.map(slot => slot.weight ?? 0))}%` : ''}</span></div>)}</section>}
         {species.abilities.length === 0 && species.evolutions.length === 0 && locations.length === 0 && (status?.specimenCount ?? 0) === 0 && <div class="empty-state">{gameplayCopy.noAdditionalData}</div>}
       </div>}
       </div>
@@ -171,15 +173,15 @@ export function wildLevelRange(slots: { minimumLevel: number; maximumLevel: numb
 
 export function formatHeight(value: number | null, platform: string): string {
   if (value == null) return '—';
-  if (platform === 'GBA') return `${(value / 10).toFixed(1)} m`;
+  if (platform === 'GBA') return `${formatUiNumber(value / 10, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} m`;
   if (platform === 'GBC') return `${value & 0xff}' ${(value >>> 8) & 0xff}"`;
   return String(value);
 }
 
 export function formatWeight(value: number | null, platform: string): string {
   if (value == null) return '—';
-  if (platform === 'GBA') return `${(value / 10).toFixed(1)} kg`;
-  if (platform === 'GBC') return `${(value / 10).toFixed(1)} lb`;
+  if (platform === 'GBA') return `${formatUiNumber(value / 10, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg`;
+  if (platform === 'GBC') return `${formatUiNumber(value / 10, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} lb`;
   return String(value);
 }
 
@@ -299,14 +301,14 @@ function HeightComparison({ species, platform, knowledge, catalogHash, trainerAv
     '--person-height': `${1.7 / maximum * 100}%`,
     '--pokemon-height': `${pokemonMeters / maximum * 100}%`,
   } as Record<string, string>;
-  const metric = `${pokemonMeters.toFixed(1)} m`;
+  const metric = `${formatUiNumber(pokemonMeters, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} m`;
   return <section
     class="paper-panel height-comparison"
     role="img"
-    aria-label={`Height comparison for ${species.name}: ${metric} beside a 1.7 m person`}
+    aria-label={msg('heightComparisonDescription', species.name, metric)}
     style={style}
   >
-    <div class="height-comparison-heading"><p class="eyebrow">HEIGHT COMPARISON</p><strong>{metric}</strong></div>
+    <div class="height-comparison-heading"><p class="eyebrow">{msg('heightComparison')}</p><strong>{metric}</strong></div>
     <div class="height-ruler" aria-hidden="true">
       {ticks.map(tick => <span
         class={`height-ruler-line ${Number.isInteger(tick) ? 'major' : ''}`}
