@@ -1,3 +1,4 @@
+import { msg } from './i18n';
 import type { NatureInfo, StatName } from './models';
 
 export type NatureStat = keyof NatureInfo['statMultipliers'];
@@ -9,7 +10,15 @@ export function natureDetailFor(natures: NatureInfo[] | undefined, id: number | 
 }
 
 export function statLabel(stat: StatName): string {
-  return stat === 'SPECIAL_ATTACK' ? 'SP. ATK' : stat === 'SPECIAL_DEFENSE' ? 'SP. DEF' : stat;
+  const labels: Record<StatName, string> = {
+    HP: msg('statHp'),
+    ATTACK: msg('statAttack'),
+    DEFENSE: msg('statDefense'),
+    SPEED: msg('statSpeed'),
+    SPECIAL_ATTACK: msg('statSpecialAttack'),
+    SPECIAL_DEFENSE: msg('statSpecialDefense'),
+  };
+  return labels[stat];
 }
 
 export function natureStatLabel(stat: NatureStat | null): string | null {
@@ -18,5 +27,12 @@ export function natureStatLabel(stat: NatureStat | null): string | null {
 
 export function natureFlavorLabel(flavor: NatureInfo['likedFlavor']): string | null {
   if (flavor == null) return null;
-  return flavor[0] + flavor.slice(1).toLocaleLowerCase('en-US');
+  const labels: Record<NonNullable<NatureInfo['likedFlavor']>, string> = {
+    SPICY: msg('flavorSpicy'),
+    DRY: msg('flavorDry'),
+    SWEET: msg('flavorSweet'),
+    BITTER: msg('flavorBitter'),
+    SOUR: msg('flavorSour'),
+  };
+  return labels[flavor];
 }

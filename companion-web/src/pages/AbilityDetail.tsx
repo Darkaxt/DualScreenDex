@@ -1,6 +1,7 @@
 import type { Catalog, State } from '../models';
 import { Header } from '../components';
 import { gameplayCopy } from '../gameplayCopy';
+import { msg } from '../i18n';
 import { renderPresentationMessage } from '../presentationMessages';
 
 export function AbilityDetail({ catalog, state, abilityId, onBack }: { catalog: Catalog; state: State; abilityId: number; onBack: () => void }) {
@@ -13,9 +14,9 @@ export function AbilityDetail({ catalog, state, abilityId, onBack }: { catalog: 
   return <section class="screen ability-detail-screen">
     <Header title={ability.name} gameTime={state.gameTime} onBack={onBack} />
     <div class="ability-detail-content" data-scroll-region>
-      <div class="paper-panel"><p class="eyebrow">EFFECT</p><p class="entry-copy">{ability.description || gameplayCopy.abilityUnavailable}</p></div>
-      {mechanics.length > 0 && <div class="paper-panel"><p class="eyebrow">BATTLE EFFECTS</p><AbilityMechanics mechanics={mechanics} /></div>}
-      {recruited.length > 0 && <div class="paper-panel"><p class="eyebrow">KNOWN ON YOUR CAPTURES</p><div class="known-species">{recruited.map(species => <span key={species.id}>{species.name}</span>)}</div></div>}
+      <div class="paper-panel"><p class="eyebrow">{msg('effect')}</p><p class="entry-copy">{ability.description || gameplayCopy.abilityUnavailable}</p></div>
+      {mechanics.length > 0 && <div class="paper-panel"><p class="eyebrow">{msg('battleEffects')}</p><AbilityMechanics mechanics={mechanics} /></div>}
+      {recruited.length > 0 && <div class="paper-panel"><p class="eyebrow">{msg('knownOnCaptures')}</p><div class="known-species">{recruited.map(species => <span key={species.id}>{species.name}</span>)}</div></div>}
     </div>
   </section>;
 }
