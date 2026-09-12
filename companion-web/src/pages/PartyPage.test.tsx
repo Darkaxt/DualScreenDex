@@ -264,7 +264,7 @@ function partyState(knowledgeMode: State['settings']['knowledgeMode']): State {
         nickname: 'SPARK', level: 18, isEgg: false, gender: 'FEMALE', natureId: 3, nature: 'Adamant', abilityId: 9, abilityName: 'Static',
         heldItemId: null, heldItemName: null, hasHeldItem: true, currentHp: 31, maximumHp: 45, status: 'PAR', experienceProgress: .5,
         rarity: { relativeTier: null, innateTier: 'ELITE', baseStars: 4, areaAdjustment: null, stars: 4, areaOutcome: 'AREA_UNAVAILABLE' },
-        stats: { HP: 45, ATTACK: 28, DEFENSE: 22, SPEED: 38, 'SP. ATK': 30, 'SP. DEF': 26 },
+        stats: { HP: 45, ATTACK: 28, DEFENSE: 22, SPEED: 38, SPECIAL_ATTACK: 30, SPECIAL_DEFENSE: 26 },
         moves: [
           { slot: 0, moveId: 85, name: 'Thunderbolt', currentPp: 12, maximumPp: 15 },
           { slot: 1, moveId: null, name: null, currentPp: null, maximumPp: null },

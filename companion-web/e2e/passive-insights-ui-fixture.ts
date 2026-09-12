@@ -17,7 +17,7 @@ export const catalog = {
   theme: { method: 'MULTI_ASSET_QUANTIZATION', assetClasses: ['TRAINER', 'WORLD_MAP', 'LOCAL_MAP', 'SPECIES'], contrastCorrected: true, tokens: emeraldTokens },
   rulesets: [{ id: 'default', label: 'Default', sourceOffset: 0, confidence: 1, primary: true }],
   species: [{
-    id: 25, dex: 25, name: 'PIKACHU', typeIds: [13], stats: { HP: 35, ATTACK: 55, DEFENSE: 40, SPEED: 90, 'SP. ATK': 50, 'SP. DEF': 50 },
+    id: 25, dex: 25, name: 'PIKACHU', typeIds: [13], stats: { HP: 35, ATTACK: 55, DEFENSE: 40, SPEED: 90, SPECIAL_ATTACK: 50, SPECIAL_DEFENSE: 50 },
     description: 'It stores electricity in the electric sacs on its cheeks.', height: 4, weight: 60,
     learnset: [{ level: 18, moveId: 85 }], learnsets: { default: [{ level: 18, moveId: 85 }] },
     normalizedLearnsets: { default: [{ moveId: 85, initial: false, levels: [18], label: 'Lv 18' }] }, moveAcquisitions: [],
@@ -45,7 +45,7 @@ const member = {
   isEgg: false, gender: 'FEMALE', natureId: 3, nature: 'Adamant', abilityId: 9, abilityName: 'STATIC', heldItemId: null, heldItemName: null,
   hasHeldItem: false, currentHp: 31, maximumHp: 45, status: null, experienceProgress: .5,
   rarity: { relativeTier: 'COMPETENT', innateTier: 'VETERAN', baseStars: 3, areaAdjustment: .5, stars: 3.5 },
-  stats: { HP: 45, ATTACK: 28, DEFENSE: 22, SPEED: 38, 'SP. ATK': 30, 'SP. DEF': 26 },
+  stats: { HP: 45, ATTACK: 28, DEFENSE: 22, SPEED: 38, SPECIAL_ATTACK: 30, SPECIAL_DEFENSE: 26 },
   moves: [{ slot: 0, moveId: 85, name: 'THUNDERBOLT', currentPp: 12, maximumPp: 15 }], ivs: [31, 30, 29, 28, 27, 26], dvs: [],
 };
 

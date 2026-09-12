@@ -100,6 +100,7 @@ import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.LocalMapAssetRenderer
 import com.enrpau.dualscreendex.parser.catalog.MapLighting
 import com.enrpau.dualscreendex.parser.catalog.MapTimeOfDay
+import com.enrpau.dualscreendex.parser.catalog.CatalogTextProjection
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.catalog.RenderedMapAsset
 import com.enrpau.dualscreendex.parser.model.EngineFamily
@@ -208,6 +209,7 @@ class ProductionCompanionRuntime(
     private val projectAreaGuide: (
         ParsedCatalog,
         AppSnapshot,
+        CatalogTextProjection,
         Map<Int, List<AreaGuideObjective>>,
     ) -> AreaGuideProjection = AreaGuideBuilder::project,
     private val mapAssetRenderer: (
@@ -883,7 +885,12 @@ class ProductionCompanionRuntime(
                     areaGuideProjectionCpuNanos.addAndGet(
                         measureNanoTime {
                             areaGuideProjection = AreaGuideProjectionOutcome.Available(
-                                projectAreaGuide(currentCatalog, snapshot, objectives),
+                                projectAreaGuide(
+                                    currentCatalog,
+                                    snapshot,
+                                    ApiViewBuilder.textProjection(currentCatalog, activeLanguage),
+                                    objectives,
+                                ),
                             )
                         },
                     )
@@ -934,11 +941,15 @@ class ProductionCompanionRuntime(
     }
 
     @Synchronized
-    fun specimens(speciesId: Int): SpecimenCollectionView = ApiViewBuilder.specimens(
-        snapshot = gateway.bootstrap(),
-        catalog = requireNotNull(catalog) { "game guide is unavailable" },
-        speciesId = speciesId,
-    )
+    fun specimens(speciesId: Int): SpecimenCollectionView {
+        val currentCatalog = requireNotNull(catalog) { "game guide is unavailable" }
+        return ApiViewBuilder.specimens(
+            snapshot = gateway.bootstrap(),
+            catalog = currentCatalog,
+            speciesId = speciesId,
+            activeLanguage = activeLanguageBinding(currentCatalog),
+        )
+    }
 
     @Synchronized
     fun updateRetroArch(state: RetroArchView) {

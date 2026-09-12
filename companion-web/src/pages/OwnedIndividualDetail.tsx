@@ -1,6 +1,6 @@
-import type { Catalog, OwnedIndividualView, PartyMemberView, TypeInfo } from '../models';
+import type { Catalog, OwnedIndividualView, PartyMemberView, StatName, TypeInfo } from '../models';
 import { DexIcon, TypeChip, uniqueTypeIds } from '../components';
-import { natureDetailFor } from '../natureDetails';
+import { natureDetailFor, statLabel } from '../natureDetails';
 import { RarityStars } from './BattlePage';
 
 export type IndividualDetailModel = PartyMemberView | OwnedIndividualView;
@@ -44,7 +44,7 @@ export function OwnedIndividualDetail({ individual, catalog, locationLabel, open
       <span><small>EXP TO NEXT</small><strong>{individual.experienceProgress == null ? '—' : `${Math.round(individual.experienceProgress * 100)}%`}</strong></span>
     </div>
     <div class="party-exp" aria-label="Experience progress"><i style={{ width: `${Math.round((individual.experienceProgress ?? 0) * 100)}%` }} /></div>
-    <div class="party-stat-grid">{Object.entries(individual.stats).map(([name, value]) => <span key={name}><small>{name}</small><strong>{value}</strong></span>)}{Object.keys(individual.stats).length === 0 && <span><small>STATS</small><strong>—</strong></span>}</div>
+    <div class="party-stat-grid">{Object.entries(individual.stats).map(([name, value]) => <span key={name}><small>{statLabel(name as StatName)}</small><strong>{value}</strong></span>)}{Object.keys(individual.stats).length === 0 && <span><small>STATS</small><strong>—</strong></span>}</div>
     {(ivs.length > 0 || dvs.length > 0) && <div class="individual-innate-grid">
       {ivs.length > 0 && <span><small>IVs</small><strong>{ivs.join(' / ')}</strong></span>}
       {dvs.length > 0 && <span><small>DVs</small><strong>{dvs.join(' / ')}</strong></span>}

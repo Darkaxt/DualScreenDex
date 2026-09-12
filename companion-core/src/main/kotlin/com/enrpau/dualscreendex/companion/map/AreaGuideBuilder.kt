@@ -17,10 +17,16 @@ object AreaGuideBuilder {
         catalog: ParsedCatalog,
         snapshot: AppSnapshot,
         objectivesByArea: Map<Int, List<AreaGuideObjective>> = emptyMap(),
+    ): AreaGuideProjection = project(catalog, snapshot, catalog.defaultTextProjection(), objectivesByArea)
+
+    fun project(
+        catalog: ParsedCatalog,
+        snapshot: AppSnapshot,
+        text: CatalogTextProjection,
+        objectivesByArea: Map<Int, List<AreaGuideObjective>> = emptyMap(),
     ): AreaGuideProjection {
         requireBoundedInput(catalog, objectivesByArea)
         val outputBudget = OutputBudget()
-        val text = catalog.defaultTextProjection()
         val names = areaNames(catalog, text)
         requireAtMost("area-count", names.size.toLong(), MAX_AREA_COUNT)
         val projectedPoints = projectPoints(catalog, snapshot, names, text, outputBudget)
@@ -392,10 +398,7 @@ object AreaGuideBuilder {
         val substituted = if (resolvedName != null) {
             meaningful.replace("{PLAYER}", resolvedName, ignoreCase = true)
         } else {
-            meaningful
-                .replace("{PLAYER}'s", "Your", ignoreCase = true)
-                .replace("{PLAYER}’s", "Your", ignoreCase = true)
-                .replace("{PLAYER}", "You", ignoreCase = true)
+            meaningful.takeUnless { it.contains("{PLAYER}", ignoreCase = true) } ?: return null
         }
         return substituted.takeUnless {
             it.equals("Place", ignoreCase = true) || areaName?.let { area -> it.equals(area, ignoreCase = true) } == true

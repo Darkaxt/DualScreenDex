@@ -5,8 +5,8 @@ import org.junit.Test
 
 class PlayerPlaceholderTest {
     @Test
-    fun replacesPossessivePlayerPlaceholderWithoutARegularExpression() {
-        assertEquals("Your House", resolvePlayerPlaceholder("{PLAYER}'s House", null))
+    fun preservesRomPlaceholderWhenTrainerNameIsUnavailable() {
+        assertEquals("{PLAYER}'s House", resolvePlayerPlaceholder("{PLAYER}'s House", null))
         assertEquals("May's House", resolvePlayerPlaceholder("{PLAYER}'s House", "May"))
     }
 }

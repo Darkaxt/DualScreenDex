@@ -20,7 +20,7 @@ const species = Array.from({ length: 5 }, (_, index) => ({
 const baseMember = {
   occupied: true, nickname: null, level: 18, isEgg: false, gender: 'FEMALE', nature: 'Adamant', abilityId: null, abilityName: null,
   heldItemId: null, heldItemName: null, hasHeldItem: null, currentHp: 31, maximumHp: 45, status: null, experienceProgress: .5,
-  stats: { HP: 45, ATTACK: 28, DEFENSE: 22, SPEED: 38, 'SP. ATK': 30, 'SP. DEF': 26 }, moves: [],
+  stats: { HP: 45, ATTACK: 28, DEFENSE: 22, SPEED: 38, SPECIAL_ATTACK: 30, SPECIAL_DEFENSE: 26 }, moves: [],
 };
 
 const party = [

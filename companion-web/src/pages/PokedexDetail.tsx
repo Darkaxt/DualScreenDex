@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import type { Catalog, State } from '../models';
+import type { Catalog, State, StatName } from '../models';
 import { Header, identitySpriteClass, maskIdentityName, PokedexAvatar, speciesIdentityKnowledge, StatusMarks, tabPanelAttributes, Tabs, TypeChip, uniqueTypeIds } from '../components';
 import { gameplayCopy } from '../gameplayCopy';
+import { statLabel } from '../natureDetails';
 import { renderPresentationMessage, renderPresentationMessages } from '../presentationMessages';
 import { catalogMediaUrl } from '../media';
 import { AbilityMechanics } from './AbilityDetail';
@@ -44,7 +45,7 @@ export function PokedexDetail({
     ? null
     : catalog.rulesets.find(item => item.id === state.activeRulesetId) ?? null;
   const moves = activeRuleset == null ? [] : species.normalizedLearnsets[activeRuleset.id] ?? [];
-  const statRanges = Object.entries(species.stats ?? {}).map(([name, value]) => ({ name, value, ...projectedStatRange(value, name, catalog.platform) }));
+  const statRanges = Object.entries(species.stats ?? {}).map(([name, value]) => ({ name: name as StatName, value, ...projectedStatRange(value, name, catalog.platform) }));
   const statScale = Math.max(1, ...statRanges.map(item => item.high));
   const locations = catalog.areas.flatMap(area => {
     const slots = area.slots.filter(slot => slot.speciesId === species.id);
@@ -75,8 +76,8 @@ export function PokedexDetail({
         {status?.innateTier && <p class="range-note">Preferred recruit: <strong>{status.innateTier}</strong>{status.preferredLevel ? ` · Lv ${status.preferredLevel}` : ''}</p>}
         <div class="stat-legend" aria-label="Stat projection legend"><span class="legend-low">LOW</span><span class="legend-typical">TYPICAL</span><span class="legend-high">HIGH</span></div>
         <div class="stat-list">{statRanges.map(item => <div key={item.name}>
-          <span class="stat-label">{item.name}<small>BASE {item.value}</small></span>
-          <i class="stat-impact" aria-label={`${item.name}: ${item.low} to ${item.high} at level 50`}>
+          <span class="stat-label">{statLabel(item.name)}<small>BASE {item.value}</small></span>
+          <i class="stat-impact" aria-label={`${statLabel(item.name)}: ${item.low} to ${item.high} at level 50`}>
             <b class="stat-typical" style={{ width: `${item.typical / statScale * 100}%` }} />
             <b class="stat-low" style={{ left: `${item.low / statScale * 100}%`, width: `${(item.typical - item.low) / statScale * 100}%` }} />
             <b class="stat-high" style={{ left: `${item.typical / statScale * 100}%`, width: `${(item.high - item.typical) / statScale * 100}%` }} />

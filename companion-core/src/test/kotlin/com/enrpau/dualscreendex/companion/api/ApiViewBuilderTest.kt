@@ -24,6 +24,7 @@ import com.enrpau.dualscreendex.companion.map.AreaGuideProjectionOutcome
 import com.enrpau.dualscreendex.companion.battle.DamageForecastConfidence
 import com.enrpau.dualscreendex.companion.battle.DecimalRange
 import com.enrpau.dualscreendex.companion.battle.InclusiveRange
+import com.enrpau.dualscreendex.parser.catalog.BaseStats
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
 import com.enrpau.dualscreendex.parser.catalog.AbilityMechanic
 import com.enrpau.dualscreendex.parser.catalog.AbilityMechanicCondition
@@ -191,6 +192,67 @@ class ApiViewBuilderTest {
     }
 
     @Test
+    fun missingRomNamesUseLanguageNeutralStructuralIdentifiers() {
+        val unavailableText = CatalogField.notFound<String>("fixture")
+        val catalog = ParsedCatalog(
+            romSha256 = "a".repeat(64),
+            family = EngineFamily.EMERALD,
+            platform = Platform.GBA,
+            speciesById = mapOf(
+                1 to com.enrpau.dualscreendex.parser.catalog.SpeciesRecord(
+                    id = 1,
+                    dexNumber = CatalogField.available(1),
+                    name = unavailableText,
+                    typeIds = CatalogField.available(emptyList()),
+                    baseStats = CatalogField.available(BaseStats(45, 49, 49, 45, 65, 65)),
+                    sprite = CatalogField.notFound("fixture"),
+                    evolutionEdges = CatalogField.available(
+                        listOf(com.enrpau.dualscreendex.parser.catalog.EvolutionEdge(2, 4, 16)),
+                    ),
+                ),
+            ),
+            movesById = mapOf(
+                3 to com.enrpau.dualscreendex.parser.catalog.MoveRecord(
+                    id = 3,
+                    name = unavailableText,
+                    typeId = CatalogField.notFound("fixture"),
+                    category = CatalogField.notFound("fixture"),
+                    power = CatalogField.notFound("fixture"),
+                    accuracy = CatalogField.notFound("fixture"),
+                    pp = CatalogField.notFound("fixture"),
+                ),
+            ),
+            typesById = mapOf(
+                4 to com.enrpau.dualscreendex.parser.catalog.TypeRecord(4, unavailableText),
+            ),
+            encounterAreas = listOf(
+                EncounterArea(50, unavailableText, 1, emptyList()),
+            ),
+            captureBallsById = mapOf(
+                6 to com.enrpau.dualscreendex.parser.catalog.CaptureBallRecord(
+                    6,
+                    unavailableText,
+                    CatalogField.notFound("fixture"),
+                ),
+            ),
+        )
+
+        val view = ApiViewBuilder.catalog(catalog)
+
+        assertEquals("#1", view.species.single().name)
+        assertEquals(
+            setOf("HP", "ATTACK", "DEFENSE", "SPEED", "SPECIAL_ATTACK", "SPECIAL_DEFENSE"),
+            view.species.single().stats?.keys,
+        )
+        assertEquals("#2", view.species.single().evolutions.single().targetName)
+        assertEquals("#3", view.moves.single().name)
+        assertEquals("#4", view.types.single().name)
+        assertEquals("#50", view.areas.single().name)
+        assertEquals("#6", view.balls.single().name)
+        assertEquals("#1", ApiViewBuilder.specimens(AppSnapshot(), catalog, 1).speciesName)
+    }
+
+    @Test
     fun projectsOnlyTheActiveParsedTypeChartAndLeavesAnEmptyChartUnavailable() {
         val mutated = ParsedCatalog(
             romSha256 = "a".repeat(64),
@@ -340,7 +402,7 @@ class ApiViewBuilderTest {
         val guide = requireNotNull(state.areaGuide)
         val guidePoint = guide.areas.single().placesAndServices.single()
         assertEquals(marker.key, guidePoint.key)
-        assertEquals("Your House", marker.displayName)
+        assertEquals(null, marker.displayName)
         assertEquals(marker.displayName, guidePoint.label)
         assertEquals(map.baseAreaId, guide.trackedAreaBaseId)
         val encounters = guide.areas.single().encounters.flatMap { it.species }
@@ -433,7 +495,7 @@ class ApiViewBuilderTest {
     }
 
     @Test
-    fun identifiedEntranceWithoutTrainerUsesItsFirstDecodedSignHeadlineNotCombinedAlternatives() {
+    fun identifiedEntranceWithoutTrainerOmitsItsUnresolvedPlayerHeadline() {
         val outside = LocalMap("local/0009", "Littleroot Town", 0x0009, 320, 320, 20, 20, "local/0009/map")
         val entrance = LocalMapPoi(
             "local/0009/bg/2", outside.key, outside.baseAreaId, 7, 8,
@@ -467,7 +529,7 @@ class ApiViewBuilderTest {
             catalog,
         ).localMapPois.single()
 
-        assertEquals("Your House", view.displayName)
+        assertNull(view.displayName)
     }
 
     @Test
@@ -1505,6 +1567,24 @@ class ApiViewBuilderTest {
         assertEquals("Herbizarre", activeOverlay.species.getValue(2).name)
         assertNull(ApiViewBuilder.languageOverlay(catalog, binding.copy(projectionVersion = 7)))
         assertNull(ApiViewBuilder.languageOverlay(catalog, binding.copy(romSha256 = "b".repeat(64))))
+        assertEquals(
+            "Bulbasaur",
+            ApiViewBuilder.specimens(
+                AppSnapshot(),
+                catalog,
+                speciesId = 1,
+                activeLanguage = binding.copy(projectionVersion = 7),
+            ).speciesName,
+        )
+        assertEquals(
+            "Bulbasaur",
+            ApiViewBuilder.specimens(
+                AppSnapshot(),
+                catalog,
+                speciesId = 1,
+                activeLanguage = binding.copy(romSha256 = "b".repeat(64)),
+            ).speciesName,
+        )
     }
 
     private fun identityOnlyTrainerCard(name: String, gender: Int) = TrainerCardState(

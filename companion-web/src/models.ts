@@ -142,12 +142,14 @@ export interface PresentationMessage {
   subject?: string | null;
 }
 
+export type StatName = 'HP' | 'ATTACK' | 'DEFENSE' | 'SPEED' | 'SPECIAL_ATTACK' | 'SPECIAL_DEFENSE';
+
 export interface Species {
   id: number;
   dex: number;
   name: string;
   typeIds: number[];
-  stats: Record<string, number> | null;
+  stats: Partial<Record<StatName, number>> | null;
   description: string | null;
   height: number | null;
   weight: number | null;
@@ -632,7 +634,7 @@ export interface PartyMemberView {
   status: string | null;
   experienceProgress: number | null;
   rarity?: Rarity | null;
-  stats: Record<string, number>;
+  stats: Partial<Record<StatName, number>>;
   moves: { slot: number; moveId: number | null; name: string | null; currentPp: number | null; maximumPp: number | null }[];
 }
 
@@ -667,7 +669,7 @@ export interface OwnedIndividualView {
   status: string | null;
   experienceProgress: number | null;
   rarity: Rarity | null;
-  stats: Record<string, number>;
+  stats: Partial<Record<StatName, number>>;
   moves: { slot: number; moveId: number | null; name: string | null; currentPp: number | null; maximumPp: number | null }[];
   ivs: number[];
   dvs: number[];

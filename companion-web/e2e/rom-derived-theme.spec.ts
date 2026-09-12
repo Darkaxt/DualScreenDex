@@ -28,7 +28,7 @@ const catalog = {
   hash: 'emerald-theme-browser-control', crc32: '1F1C08FB', family: 'EMERALD', platform: 'GBA', theme,
   rulesets: [{ id: 'default', label: 'Default', sourceOffset: 0, confidence: 1, primary: true }],
   species: [{
-    id: 1, dex: 1, name: 'BULBASAUR', typeIds: [12], stats: { HP: 45, ATTACK: 49, DEFENSE: 49, SPEED: 45, 'SP. ATK': 65, 'SP. DEF': 65 },
+    id: 1, dex: 1, name: 'BULBASAUR', typeIds: [12], stats: { HP: 45, ATTACK: 49, DEFENSE: 49, SPEED: 45, SPECIAL_ATTACK: 65, SPECIAL_DEFENSE: 65 },
     description: 'A strange seed was planted on its back at birth.', height: 7, weight: 69,
     learnset: [{ level: 7, moveId: 22 }], learnsets: { default: [{ level: 7, moveId: 22 }] },
     normalizedLearnsets: { default: [{ moveId: 22, initial: false, levels: [7], label: 'Lv 7' }] },
@@ -73,7 +73,7 @@ const baseState = {
   observedMoves: {}, catalogReady: true, catalogName: 'Pokemon Emerald.gba', mapperAvailable: true, error: null, activeRulesetId: 'default', rulesetAssumed: false,
   loading: { active: false, phase: 'COMPLETE', completedUnits: 5, totalUnits: 5 },
   trainer: { name: 'MAY', gender: 'FEMALE', publicTrainerId: 12345, money: 98765, playTimeHours: 12, playTimeMinutes: 34, dexSeen: 2, dexCaught: 1, stars: 2, avatarUrl: '/api/trainer-assets/trainer%2Favatar%2Ffemale.png', badges: Array.from({ length: 8 }, (_, index) => ({ index, earned: index < 2, imageUrl: null })) },
-  party: [{ slot: 0, occupied: true, speciesId: 1, speciesName: 'BULBASAUR', spriteUrl: null, typeIds: [12], nickname: 'BULBASAUR', level: 8, isEgg: false, gender: 'MALE', natureId: 3, nature: 'Hardy', abilityId: 65, abilityName: 'OVERGROW', heldItemId: null, heldItemName: null, currentHp: 21, maximumHp: 25, status: null, experienceProgress: .5, stats: { HP: 25, ATTACK: 13, DEFENSE: 13, SPEED: 12, 'SP. ATK': 16, 'SP. DEF': 16 }, moves: [{ slot: 0, moveId: 22, name: 'VINE WHIP', currentPp: 24, maximumPp: 25 }] }],
+  party: [{ slot: 0, occupied: true, speciesId: 1, speciesName: 'BULBASAUR', spriteUrl: null, typeIds: [12], nickname: 'BULBASAUR', level: 8, isEgg: false, gender: 'MALE', natureId: 3, nature: 'Hardy', abilityId: 65, abilityName: 'OVERGROW', heldItemId: null, heldItemName: null, currentHp: 21, maximumHp: 25, status: null, experienceProgress: .5, stats: { HP: 25, ATTACK: 13, DEFENSE: 13, SPEED: 12, SPECIAL_ATTACK: 16, SPECIAL_DEFENSE: 16 }, moves: [{ slot: 0, moveId: 22, name: 'VINE WHIP', currentPp: 24, maximumPp: 25 }] }],
   battle: null,
 };
 

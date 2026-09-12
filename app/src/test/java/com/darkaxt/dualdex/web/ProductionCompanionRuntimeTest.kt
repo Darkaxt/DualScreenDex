@@ -2057,7 +2057,7 @@ class ProductionCompanionRuntimeTest {
             var attempts = 0
             val catalog = ParsedCatalog("a".repeat(64), EngineFamily.EMERALD, Platform.GBA)
             val runtime = ProductionCompanionRuntime(
-                projectAreaGuide = { _, _, _ ->
+                projectAreaGuide = { _, _, _, _ ->
                     attempts++
                     throw failure
                 },
@@ -2089,10 +2089,10 @@ class ProductionCompanionRuntimeTest {
         var attempts = 0
         val catalog = ParsedCatalog("a".repeat(64), EngineFamily.EMERALD, Platform.GBA)
         val runtime = ProductionCompanionRuntime(
-            projectAreaGuide = { activeCatalog, snapshot, objectives ->
+            projectAreaGuide = { activeCatalog, snapshot, text, objectives ->
                 attempts++
                 if (attempts == 1) throw IllegalArgumentException("first projection fails")
-                AreaGuideBuilder.project(activeCatalog, snapshot, objectives)
+                AreaGuideBuilder.project(activeCatalog, snapshot, text, objectives)
             },
         )
         runtime.loadCatalog("guide.gba", catalog)

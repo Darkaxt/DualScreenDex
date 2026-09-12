@@ -234,7 +234,7 @@ class AreaGuideBuilderTest {
 
         val area = guide.areas.single()
         assertEquals(listOf(1), area.encounters.flatMap { it.species }.map { it.speciesId })
-        assertEquals("Your House", area.placesAndServices.single().label)
+        assertNull(area.placesAndServices.single().label)
         assertEquals(emptyList<AreaGuidePoint>(), area.items)
         assertEquals(1, area.overview.knownPointCount)
         assertNull(area.overview.totalPointCount)
@@ -252,7 +252,7 @@ class AreaGuideBuilderTest {
 
         val area = guide.areas.single { it.baseAreaId == ROUTE }
         assertEquals(listOf(1, 2), area.encounters.flatMap { it.species }.map { it.speciesId })
-        assertEquals("Your House", area.placesAndServices.single().label)
+        assertNull(area.placesAndServices.single().label)
         assertEquals("Potion", area.items.single().label)
         assertEquals(2, area.overview.totalPointCount)
         assertEquals(emptyList<AreaGuidePoint>(), area.trainersAndPeople)
@@ -289,7 +289,7 @@ class AreaGuideBuilderTest {
         )
 
         val route = guide.areas.single { it.baseAreaId == ROUTE }
-        assertEquals("Your House", route.placesAndServices.single().label)
+        assertNull(route.placesAndServices.single().label)
         val unnamed = guide.areas.single { it.baseAreaId == EMPTY }.placesAndServices.single()
         assertNull(unnamed.label)
     }

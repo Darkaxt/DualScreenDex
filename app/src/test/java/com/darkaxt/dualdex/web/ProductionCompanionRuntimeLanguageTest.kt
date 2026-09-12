@@ -8,6 +8,8 @@ import com.darkaxt.dualdex.live.UnifiedGameStateDecoder
 import com.enrpau.dualscreendex.parser.catalog.CatalogField
 import com.enrpau.dualscreendex.parser.catalog.CatalogLanguageOverlay
 import com.enrpau.dualscreendex.parser.catalog.CatalogLocalization
+import com.enrpau.dualscreendex.parser.catalog.CatalogRuntimeMetadata
+import com.enrpau.dualscreendex.parser.catalog.EncounterArea
 import com.enrpau.dualscreendex.parser.catalog.LocalizedCapabilityState
 import com.enrpau.dualscreendex.parser.catalog.LocalizedTextCapability
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
@@ -44,6 +46,7 @@ class ProductionCompanionRuntimeLanguageTest {
         assertEquals("ROM_DEFAULT", offline.language?.authority)
         assertNull(offline.language?.binding?.contextEpoch)
         assertEquals("Bulbasaur", offline.catalog?.species?.single()?.name)
+        assertEquals("Bulbasaur", runtime.specimens(1).speciesName)
 
         val context = requireNotNull(runtime.battleCatalogContext())
         stateOwner.beginSession(
@@ -57,7 +60,7 @@ class ProductionCompanionRuntimeLanguageTest {
         stateOwner.acceptExistingGenerationSample(
             sampleId = 1,
             battle = LiveBattleState(false, null, BattleEncounterKind.UNKNOWN),
-            areaBaseId = null,
+            areaBaseId = 5,
             mapPosition = null,
             clock = null,
             contentLanguage = ContentLanguageReadOutcome.Live(LanguageTag.FRENCH),
@@ -76,6 +79,9 @@ class ProductionCompanionRuntimeLanguageTest {
         assertEquals(8L, binding.projectionVersion)
         assertEquals(binding, live.state.activeLanguage)
         assertEquals("Bulbizarre", live.catalog?.species?.single()?.name)
+        assertEquals("Bulbizarre", runtime.specimens(1).speciesName)
+        assertEquals("Route 1 FR", live.state.currentAreaName)
+        assertEquals("Route 1 FR", live.state.areaGuide?.areas?.single()?.name)
 
         val overlay = runtime.activeLanguageOverlay()
         assertEquals(binding, overlay.binding)
@@ -118,7 +124,7 @@ class ProductionCompanionRuntimeLanguageTest {
         stateOwner.acceptExistingGenerationSample(
             sampleId = 1,
             battle = LiveBattleState(false, null, BattleEncounterKind.UNKNOWN),
-            areaBaseId = null,
+            areaBaseId = 5,
             mapPosition = null,
             clock = null,
             contentLanguage = ContentLanguageReadOutcome.Live(LanguageTag.FRENCH),
@@ -191,27 +197,41 @@ class ProductionCompanionRuntimeLanguageTest {
                     sprite = CatalogField.notFound("fixture"),
                 ),
             ),
+            encounterAreas = listOf(
+                EncounterArea(50, CatalogField.notFound("localized"), 1, emptyList()),
+            ),
+            runtimeMetadata = CatalogRuntimeMetadata(areaBaseIds = setOf(5)),
             localization = CatalogLocalization(
                 manifest = manifest,
                 overlays = mapOf(
-                    LanguageTag.ENGLISH to overlay(LanguageTag.ENGLISH, 7, "Bulbasaur"),
-                    LanguageTag.FRENCH to overlay(LanguageTag.FRENCH, 8, "Bulbizarre"),
+                    LanguageTag.ENGLISH to overlay(LanguageTag.ENGLISH, 7, "Bulbasaur", "Route 1"),
+                    LanguageTag.FRENCH to overlay(LanguageTag.FRENCH, 8, "Bulbizarre", "Route 1 FR"),
                 ),
             ),
         )
     }
 
-    private fun overlay(language: LanguageTag, version: Long, speciesName: String) = CatalogLanguageOverlay(
+    private fun overlay(
+        language: LanguageTag,
+        version: Long,
+        speciesName: String,
+        areaName: String,
+    ) = CatalogLanguageOverlay(
         language = language,
         overlayVersion = version,
         localizedCapabilities = LocalizedTextCapability.entries.associateWith { capability ->
             when (capability) {
-                LocalizedTextCapability.SPECIES_NAMES -> LocalizedCapabilityState.available(1)
+                LocalizedTextCapability.SPECIES_NAMES,
+                LocalizedTextCapability.AREA_NAMES,
+                LocalizedTextCapability.ENCOUNTER_AREA_NAMES,
+                -> LocalizedCapabilityState.available(1)
                 LocalizedTextCapability.SPECIES_DESCRIPTIONS ->
                     LocalizedCapabilityState.notFound("fixture", expectedRecords = 1)
                 else -> LocalizedCapabilityState.notApplicable("fixture")
             }
         },
         speciesNames = mapOf(1 to CatalogField.available(speciesName)),
+        areaNames = mapOf(5 to CatalogField.available(areaName)),
+        encounterAreaNames = mapOf(50 to CatalogField.available(areaName)),
     )
 }

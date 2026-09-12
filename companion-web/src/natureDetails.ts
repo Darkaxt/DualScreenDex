@@ -1,4 +1,4 @@
-import type { NatureInfo } from './models';
+import type { NatureInfo, StatName } from './models';
 
 export type NatureStat = keyof NatureInfo['statMultipliers'];
 export const NATURE_STATS: NatureStat[] = ['ATTACK', 'DEFENSE', 'SPEED', 'SPECIAL_ATTACK', 'SPECIAL_DEFENSE'];
@@ -8,9 +8,12 @@ export function natureDetailFor(natures: NatureInfo[] | undefined, id: number | 
   return natures?.find(nature => nature.id === id) ?? null;
 }
 
-export function natureStatLabel(stat: NatureStat | null): string | null {
-  if (stat == null) return null;
+export function statLabel(stat: StatName): string {
   return stat === 'SPECIAL_ATTACK' ? 'SP. ATK' : stat === 'SPECIAL_DEFENSE' ? 'SP. DEF' : stat;
+}
+
+export function natureStatLabel(stat: NatureStat | null): string | null {
+  return stat == null ? null : statLabel(stat);
 }
 
 export function natureFlavorLabel(flavor: NatureInfo['likedFlavor']): string | null {

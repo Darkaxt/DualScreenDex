@@ -1973,9 +1973,7 @@ class WorldMapCatalogApiRealControlTest {
                 assertTrue(
                     "$label API exposed description-derived behavior as shared mechanics",
                     referencedAbilities.none { ability ->
-                        ability.mechanics.any { mechanic ->
-                            mechanic.kind == "BEHAVIOR" && mechanic.value == ability.description
-                        }
+                        ability.mechanics.any { mechanic -> mechanic.kind == "BEHAVIOR" }
                     },
                 )
             } finally {

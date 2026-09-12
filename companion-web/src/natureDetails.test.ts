@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { natureDetailFor, natureFlavorLabel, natureStatLabel } from './natureDetails';
+import { natureDetailFor, natureFlavorLabel, natureStatLabel, statLabel } from './natureDetails';
 import type { NatureInfo } from './models';
 
 describe('ROM-derived Nature details', () => {
@@ -11,6 +11,7 @@ describe('ROM-derived Nature details', () => {
     expect(natureDetailFor([nature], 3)).toBeNull();
     expect(natureDetailFor(undefined, 7)).toBeNull();
     expect(natureStatLabel('SPECIAL_ATTACK')).toBe('SP. ATK');
+    expect(statLabel('SPECIAL_DEFENSE')).toBe('SP. DEF');
     expect(natureFlavorLabel('SPICY')).toBe('Spicy');
   });
 });

@@ -735,7 +735,7 @@ object ApiViewBuilder {
         catalog: ParsedCatalog,
         activeLanguage: ActiveLanguageBindingView? = null,
     ): CatalogView {
-        val text = activeTextProjection(catalog, activeLanguage) ?: catalog.defaultTextProjection()
+        val text = textProjection(catalog, activeLanguage)
         return CatalogView(
         hash = catalog.romSha256,
         crc32 = catalog.romCrc32,
@@ -768,8 +768,8 @@ object ApiViewBuilder {
                         "ATTACK" to it.attack,
                         "DEFENSE" to it.defense,
                         "SPEED" to it.speed,
-                        "SP. ATK" to it.specialAttack,
-                        "SP. DEF" to it.specialDefense,
+                        "SPECIAL_ATTACK" to it.specialAttack,
+                        "SPECIAL_DEFENSE" to it.specialDefense,
                     )
                 },
                 description = text.speciesDescription(species.id),
@@ -841,7 +841,7 @@ object ApiViewBuilder {
                 evolutions = species.evolutionEdges.value.orEmpty().map { edge ->
                     EvolutionView(
                         edge.targetSpeciesId,
-                        text.speciesName(edge.targetSpeciesId) ?: "Species ${edge.targetSpeciesId}",
+                        text.speciesName(edge.targetSpeciesId) ?: "#${edge.targetSpeciesId}",
                         edge.methodId,
                         edge.parameter,
                         evolutionCondition(catalog, edge),
@@ -868,7 +868,7 @@ object ApiViewBuilder {
             val presentation = it.presentation.value
             TypeView(
                 it.id,
-                text.typeName(it.id) ?: "TYPE ${it.id}",
+                text.typeName(it.id) ?: "#${it.id}",
                 presentation?.foregroundArgb?.toCss(),
                 presentation?.backgroundArgb?.toCss(),
                 presentation?.borderArgb?.toCss(),
@@ -881,7 +881,7 @@ object ApiViewBuilder {
             AreaView(
                 it.id,
                 it.id / 10,
-                text.encounterAreaName(it.id) ?: "Area ${it.id}",
+                text.encounterAreaName(it.id) ?: "#${it.id}",
                 it.methodId,
                 it.slots.map { slot -> slot.speciesId }.filter { id -> id > 0 }.distinct(),
                 it.slots.map { slot ->
@@ -891,7 +891,7 @@ object ApiViewBuilder {
             )
         },
         balls = catalog.captureBallsById.values.sortedBy { it.id }.map {
-            BallView(it.id, text.itemName(it.id) ?: "Ball ${it.id}", it.generic, it.sprite.value != null)
+            BallView(it.id, text.itemName(it.id) ?: "#${it.id}", it.generic, it.sprite.value != null)
         },
         natures = catalog.naturesById.values.sortedBy { it.id }.map { nature ->
             NatureView(
@@ -1010,7 +1010,7 @@ object ApiViewBuilder {
         activeLanguage: ActiveLanguageBindingView? = null,
     ): StateView {
         val effectiveAreaBaseId = snapshot.liveAreaBaseId
-        val text = catalog?.let { activeTextProjection(it, activeLanguage) ?: it.defaultTextProjection() }
+        val text = catalog?.let { textProjection(it, activeLanguage) }
         val encounterAreasById = catalog?.encounterAreas.orEmpty().associateBy { it.id }
         val selectedAreaIds = if (snapshot.filter == com.enrpau.dualscreendex.companion.model.PokedexFilter.AREA) {
             val requested = snapshot.selectedAreaIds.ifEmpty { setOfNotNull(snapshot.selectedAreaId) }
@@ -1059,7 +1059,9 @@ object ApiViewBuilder {
             .mapValues { (_, areaBaseIds) -> areaBaseIds.distinct().sorted() }
         val areaGuideOutcome = areaGuideProjection ?: catalog?.let { activeCatalog ->
             try {
-                AreaGuideProjectionOutcome.Available(AreaGuideBuilder.project(activeCatalog, snapshot))
+                AreaGuideProjectionOutcome.Available(
+                    AreaGuideBuilder.project(activeCatalog, snapshot, requireNotNull(text)),
+                )
             } catch (failure: OutOfMemoryError) {
                 unavailableAreaGuide(failure)
             } catch (failure: Exception) {
@@ -1384,6 +1386,11 @@ object ApiViewBuilder {
         )
     }
 
+    fun textProjection(
+        catalog: ParsedCatalog,
+        binding: ActiveLanguageBindingView? = null,
+    ): CatalogTextProjection = activeTextProjection(catalog, binding) ?: catalog.defaultTextProjection()
+
     private fun activeTextProjection(
         catalog: ParsedCatalog,
         binding: ActiveLanguageBindingView?,
@@ -1408,8 +1415,13 @@ object ApiViewBuilder {
         sortedWith(compareByDescending<MoveObservation> { it.frequency }.thenBy { it.moveId })
             .map { ObservedMoveView(it.moveId, it.frequency) }
 
-    fun specimens(snapshot: AppSnapshot, catalog: ParsedCatalog, speciesId: Int): SpecimenCollectionView {
-        val text = catalog.defaultTextProjection()
+    fun specimens(
+        snapshot: AppSnapshot,
+        catalog: ParsedCatalog,
+        speciesId: Int,
+        activeLanguage: ActiveLanguageBindingView? = null,
+    ): SpecimenCollectionView {
+        val text = textProjection(catalog, activeLanguage)
         requireNotNull(catalog.speciesById[speciesId]) { "species is unavailable" }
         val selectedKey = canonicalSpeciesKey(catalog, speciesId)
         val specimens = distinctResolvedIndividuals(snapshot, catalog)
@@ -1418,7 +1430,7 @@ object ApiViewBuilder {
         return SpecimenCollectionView(
             version = snapshot.version,
             speciesId = speciesId,
-            speciesName = text.speciesName(speciesId)?.takeIf(String::isNotBlank) ?: "Pokémon #$speciesId",
+            speciesName = text.speciesName(speciesId)?.takeIf(String::isNotBlank) ?: "#$speciesId",
             specimens = specimens,
         )
     }
@@ -1817,7 +1829,7 @@ object ApiViewBuilder {
         }
     }
 
-    private val STAT_NAMES = listOf("HP", "ATTACK", "DEFENSE", "SPEED", "SP. ATK", "SP. DEF")
+    private val STAT_NAMES = listOf("HP", "ATTACK", "DEFENSE", "SPEED", "SPECIAL_ATTACK", "SPECIAL_DEFENSE")
     private const val PARTY_SLOT_COUNT = 6
     private const val MOVE_SLOT_COUNT = 4
 
@@ -1831,14 +1843,7 @@ object ApiViewBuilder {
     }
 }
 
-internal fun resolvePlayerPlaceholder(template: String, trainerName: String?): String {
-    val resolvedName = trainerName?.takeIf(String::isNotBlank)
-    return if (resolvedName != null) {
-        template.replace("{PLAYER}", resolvedName, ignoreCase = true)
-    } else {
-        template
-            .replace("{PLAYER}'s", "Your", ignoreCase = true)
-            .replace("{PLAYER}’s", "Your", ignoreCase = true)
-            .replace("{PLAYER}", "You", ignoreCase = true)
-    }
-}
+internal fun resolvePlayerPlaceholder(template: String, trainerName: String?): String = trainerName
+    ?.takeIf(String::isNotBlank)
+    ?.let { template.replace("{PLAYER}", it, ignoreCase = true) }
+    ?: template

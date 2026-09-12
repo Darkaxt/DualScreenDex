@@ -39,6 +39,7 @@ import com.enrpau.dualscreendex.parser.catalog.CatalogWorkProgress
 import com.enrpau.dualscreendex.parser.catalog.LocalMapAssetRenderer
 import com.enrpau.dualscreendex.parser.catalog.MapLighting
 import com.enrpau.dualscreendex.parser.catalog.MapTimeOfDay
+import com.enrpau.dualscreendex.parser.catalog.CatalogTextProjection
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.catalog.RenderedMapAsset
 import com.enrpau.dualscreendex.parser.io.RomImage
@@ -77,6 +78,7 @@ internal fun ProductionCompanionRuntime(
     projectAreaGuide: (
         ParsedCatalog,
         AppSnapshot,
+        CatalogTextProjection,
         Map<Int, List<AreaGuideObjective>>,
     ) -> AreaGuideProjection = AreaGuideBuilder::project,
     mapAssetRenderer: (
