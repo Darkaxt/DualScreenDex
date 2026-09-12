@@ -2,9 +2,13 @@ import { useState } from 'preact/hooks';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Catalog, SpecimenCollectionView } from '../models';
+import { setInterfaceLanguage } from '../i18n';
 import { SpecimensPage } from './SpecimensPage';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  setInterfaceLanguage('EN');
+});
 
 const collection: SpecimenCollectionView = {
   version: 7,
@@ -247,6 +251,30 @@ describe('Pokédex specimens', () => {
     scrollRegion!.scrollTop = 119;
     fireEvent.scroll(scrollRegion!);
     expect(onScrollTopChange).toHaveBeenLastCalledWith(119);
+  });
+
+  it('translates Spanish specimen loading, locations, and detail controls', async () => {
+    setInterfaceLanguage('ES');
+    render(<SpecimensPage
+      catalog={catalog}
+      speciesId={25}
+      stateVersion={7}
+      gameTime={gameTime}
+      detailKey={null}
+      onBack={vi.fn()}
+      onOpenDetail={vi.fn()}
+      onCloseDetail={vi.fn()}
+      openMove={vi.fn()}
+      openAbility={vi.fn()}
+      openNature={vi.fn()}
+      openSpecies={vi.fn()}
+      load={vi.fn().mockResolvedValue(collection)}
+    />);
+
+    expect(screen.getByText('Preparando tus Pokémon…')).toBeTruthy();
+    const specimen = await screen.findByRole('button', { name: 'Abrir los detalles de SPARK' });
+    expect(screen.getByText('Equipo · Hueco 1')).toBeTruthy();
+    expect(specimen.textContent).toContain('Nv. 18');
   });
 });
 

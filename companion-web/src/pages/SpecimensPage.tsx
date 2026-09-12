@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { boundedRequest } from '../boundedRequest';
-import type { Catalog, SpecimenCollectionView, State } from '../models';
+import type { Catalog, PresentationMessage, SpecimenCollectionView, State } from '../models';
 import { Dialog, Header } from '../components';
+import { formatUiNumber, msg } from '../i18n';
 import { specimens as loadSpecimens } from '../gateway';
 import { renderPresentationMessage } from '../presentationMessages';
 import { RarityStars } from './BattlePage';
@@ -28,7 +29,7 @@ export function SpecimensPage({ catalog, speciesId, stateVersion, gameTime, deta
   requestTimeoutMillis?: number;
 }) {
   const [collection, setCollection] = useState<SpecimenCollectionView | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<'timeout' | 'failed' | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const contentRef = useRef<HTMLDivElement>(null);
   const collectionRef = useRef<SpecimenCollectionView | null>(null);
@@ -47,7 +48,7 @@ export function SpecimensPage({ catalog, speciesId, stateVersion, gameTime, deta
     void boundedRequest(
       load(speciesId),
       requestTimeoutMillis,
-      'The specimen request took too long.',
+      'SPECIMEN_REQUEST_TIMEOUT',
     ).then(value => {
       if (!current) return;
       collectionIdentityRef.current = identity;
@@ -59,7 +60,7 @@ export function SpecimensPage({ catalog, speciesId, stateVersion, gameTime, deta
       }
     }).catch(failure => {
       if (!current) return;
-      setError(failure instanceof Error ? failure.message : 'The specimen request failed.');
+      setError(failure instanceof Error && failure.message === 'SPECIMEN_REQUEST_TIMEOUT' ? 'timeout' : 'failed');
       if (!preserveCollection) setCollection(null);
     });
     return () => {
@@ -79,49 +80,70 @@ export function SpecimensPage({ catalog, speciesId, stateVersion, gameTime, deta
   };
 
   return <section class="screen specimens-screen">
-    <Header title="SPECIMENS" kicker={collection?.speciesName ?? catalog.species.find(species => species.id === speciesId)?.name} gameTime={gameTime} onBack={onBack} />
+    <Header title={msg('specimens')} kicker={collection?.speciesName ?? catalog.species.find(species => species.id === speciesId)?.name} gameTime={gameTime} onBack={onBack} />
     <div ref={contentRef} class="specimens-content" data-scroll-region onScroll={event => onScrollTopChange?.(event.currentTarget.scrollTop)}>
-      {!collection && !error && <div class="specimens-loading" role="status"><span />Preparing your Pokémon…</div>}
+      {!collection && !error && <div class="specimens-loading" role="status"><span />{msg('preparingPokemon')}</div>}
       {error && <div class="empty-state specimens-error" role="alert">
-        <strong>SPECIMENS UNAVAILABLE</strong>
-        <p>{error} Your current game and selection are unchanged.</p>
-        <button type="button" class="primary-button" onClick={() => setReloadKey(value => value + 1)}>RETRY</button>
+        <strong>{msg('specimensUnavailable')}</strong>
+        <p>{error === 'timeout' ? msg('specimenRequestTimeout') : msg('specimenRequestFailed')} {msg('selectionUnchanged')}</p>
+        <button type="button" class="primary-button" onClick={() => setReloadKey(value => value + 1)}>{msg('retry')}</button>
       </div>}
-      {collection?.specimens.length === 0 && <div class="empty-state"><strong>NO SPECIMENS AVAILABLE</strong><p>No individual Pokémon record is available for this entry.</p></div>}
-      {collection && collection.specimens.length > 0 && <div class="specimens-grid" aria-label={`${collection.speciesName} specimens`}>
-        {collection.specimens.map(specimen => <button
-          type="button"
-          key={specimen.key}
-          ref={element => {
-            if (element) triggerRefs.current.set(specimen.key, element);
-            else triggerRefs.current.delete(specimen.key);
-          }}
-          class="specimen-card"
-          aria-label={`Open ${specimen.nickname || specimen.speciesName} details`}
-          aria-pressed={active?.key === specimen.key}
-          onClick={() => openDetail(specimen.key)}
-        >
-          <OwnedIndividualSprite individual={specimen} />
-          <span class="specimen-card-copy">
-            <strong>{specimen.nickname || specimen.speciesName}</strong>
-            {specimen.nickname && specimen.nickname !== specimen.speciesName && <small>{specimen.speciesName}</small>}
-            <span>{renderPresentationMessage(specimen.location.label)}</span>
-          </span>
-          <span class="specimen-card-meta">
-            {specimen.level != null && <b>Lv {specimen.level}</b>}
-            {specimen.rarity && <RarityStars rarity={specimen.rarity} />}
-          </span>
-        </button>)}
+      {collection?.specimens.length === 0 && <div class="empty-state"><strong>{msg('noSpecimensAvailable')}</strong><p>{msg('noIndividualRecord')}</p></div>}
+      {collection && collection.specimens.length > 0 && <div class="specimens-grid" aria-label={msg('specimenCollection', collection.speciesName)}>
+        {collection.specimens.map(specimen => {
+          const specimenName = specimen.nickname || specimen.speciesName || msg('unknownPartner');
+          return <button
+            type="button"
+            key={specimen.key}
+            ref={element => {
+              if (element) triggerRefs.current.set(specimen.key, element);
+              else triggerRefs.current.delete(specimen.key);
+            }}
+            class="specimen-card"
+            aria-label={msg('openDetails', specimenName)}
+            aria-pressed={active?.key === specimen.key}
+            onClick={() => openDetail(specimen.key)}
+          >
+            <OwnedIndividualSprite individual={specimen} />
+            <span class="specimen-card-copy">
+              <strong>{specimenName}</strong>
+              {specimen.nickname && specimen.nickname !== specimen.speciesName && <small>{specimen.speciesName}</small>}
+              <span>{specimenLocationLabel(specimen.location.label)}</span>
+            </span>
+            <span class="specimen-card-meta">
+              {specimen.level != null && <b>{msg('levelShort', formatUiNumber(specimen.level))}</b>}
+              {specimen.rarity && <RarityStars rarity={specimen.rarity} />}
+            </span>
+          </button>;
+        })}
       </div>}
     </div>
     {active && <Dialog
       key={active.key}
-      label={`${active.nickname || active.speciesName} details`}
-      closeLabel={`Close ${active.nickname || active.speciesName} details`}
+      label={msg('details', active.nickname || active.speciesName || msg('partyMember'))}
+      closeLabel={msg('closeDetails', active.nickname || active.speciesName || msg('partyMember'))}
       onClose={onCloseDetail}
       restoreFocus={lastTriggerRef.current}
     >
-      <OwnedIndividualDetail individual={active} catalog={catalog} locationLabel={renderPresentationMessage(active.location.label)} openMove={openMove} openAbility={openAbility} openNature={openNature} openSpecies={openSpecies} />
+      <OwnedIndividualDetail individual={active} catalog={catalog} locationLabel={specimenLocationLabel(active.location.label)} openMove={openMove} openAbility={openAbility} openNature={openNature} openSpecies={openSpecies} />
     </Dialog>}
   </section>;
+}
+
+function specimenLocationLabel(label: PresentationMessage): string {
+  if (label.code === 'SPECIMEN_PARTY_SLOT') {
+    return msg('partySlotLocation', formatMessageNumber(label.slotNumber));
+  }
+  if (label.code === 'SPECIMEN_BOX_SLOT') {
+    return msg(
+      'boxSlotLocation',
+      formatMessageNumber(label.boxNumber),
+      formatMessageNumber(label.slotNumber),
+    );
+  }
+  return renderPresentationMessage(label);
+}
+
+function formatMessageNumber(value: number | null | undefined): string {
+  return value == null ? '—' : formatUiNumber(value);
 }

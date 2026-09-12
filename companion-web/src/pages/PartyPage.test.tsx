@@ -1,9 +1,13 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Catalog, State } from '../models';
+import { setInterfaceLanguage } from '../i18n';
 import { PartyPage } from './PartyPage';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  setInterfaceLanguage('EN');
+});
 
 describe('Party', () => {
   it('offers one normal Analysis action without changing the roster layout', () => {
@@ -20,7 +24,7 @@ describe('Party', () => {
   it('uses a title-only header without redundant live ownership diagnostics', () => {
     const { container } = render(<PartyPage catalog={catalog} state={partyState('ORGANIC')} onBack={vi.fn()} openMove={vi.fn()} openAbility={vi.fn()} />);
 
-    expect(screen.getByText('PARTY')).toBeTruthy();
+    expect(screen.getByText('Party')).toBeTruthy();
     expect(container.querySelector('.header-title small')).toBeNull();
     expect(screen.queryByText(/LIVE|OWNED POKÉMON/)).toBeNull();
   });
@@ -35,8 +39,11 @@ describe('Party', () => {
     expect(occupied.querySelector('.party-slot-species')).toBeNull();
     expect(screen.queryByText('PIKACHU')).toBeNull();
 
-    state.party![0].nickname = null;
-    rendered.rerender(<PartyPage {...props} state={state} />);
+    const unnamedState = {
+      ...state,
+      party: state.party!.map((member, index) => index === 0 ? { ...member, nickname: null } : member),
+    };
+    rendered.rerender(<PartyPage {...props} state={unnamedState} />);
     occupied = rendered.container.querySelector('.party-slot:not(.empty)')!;
 
     expect(occupied.querySelector('.party-slot-heading strong')?.textContent).toBe('PIKACHU');
@@ -235,6 +242,21 @@ describe('Party', () => {
     expect(screen.getByText('Held item unavailable')).toBeTruthy();
     expect(container.querySelector('.party-type-art abbr')?.textContent).toBe('CO');
     expect(container.querySelector('.party-detail[data-condition="partial"]')).toBeTruthy();
+  });
+
+  it('translates German party chrome while preserving slot and species actions', () => {
+    const openSpecies = vi.fn();
+    setInterfaceLanguage('DE');
+    render(<PartyPage catalog={catalog} state={partyState('ORGANIC')} onBack={vi.fn()} openMove={vi.fn()} openAbility={vi.fn()} openSpecies={openSpecies} />);
+
+    expect(screen.getByRole('img', { name: 'Team, aktuelle Seite' })).toBeTruthy();
+    const member = screen.getByRole('button', { name: 'Teamplatz 1: SPARK' });
+    fireEvent.click(member);
+    expect(screen.getByRole('dialog', { name: 'Details zu SPARK' })).toBeTruthy();
+    expect(screen.getByText('GETRAGENES ITEM')).toBeTruthy();
+    const pokedex = screen.getByRole('button', { name: 'PIKACHU im Pokédex öffnen' });
+    fireEvent.click(pokedex);
+    expect(openSpecies).toHaveBeenCalledWith(25);
   });
 });
 

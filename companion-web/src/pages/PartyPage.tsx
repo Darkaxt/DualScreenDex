@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { Catalog, PartyMemberView, State } from '../models';
 import { Dialog, Header } from '../components';
+import { formatUiNumber, msg } from '../i18n';
 import { RarityStars } from './BattlePage';
 import { individualCondition, OwnedIndividualDetail, OwnedIndividualSprite, statusKey } from './OwnedIndividualDetail';
 
@@ -69,16 +70,23 @@ export function PartyPage({ catalog, state, onBack, openMove, openAbility, openN
     if (controlled) onCloseDetails?.();
     else setFallbackDetailSlot(null);
   };
+  const activeName = active
+    ? active.nickname
+      || active.speciesName
+      || (active.speciesId != null ? msg('pokemonNumber', formatUiNumber(active.speciesId)) : msg('partyMember'))
+    : null;
 
   return <section class="screen party-screen">
-    <Header title="PARTY" gameTime={state.gameTime} onBack={onBack} currentDestination="PARTY" onAnalysis={onOpenAnalysis} />
+    <Header title={msg('party')} gameTime={state.gameTime} onBack={onBack} currentDestination="PARTY" onAnalysis={onOpenAnalysis} />
     <div ref={contentRef} class="party-content" data-scroll-region onScroll={event => onScrollTopChange?.(event.currentTarget.scrollTop)}>
-      <div class="party-grid" data-layout="2x3" aria-label="Party slots">
+      <div class="party-grid" data-layout="2x3" aria-label={msg('partySlots')}>
         {members.map(member => {
-          const speciesLabel = member.speciesName ?? (member.speciesId != null ? `Pokémon #${member.speciesId}` : null);
-          const accessibleName = member.nickname || speciesLabel || 'Unknown partner';
-          const displayName = member.nickname || speciesLabel || 'UNKNOWN PARTNER';
+          const slotLabel = formatUiNumber(member.slot + 1);
+          const speciesLabel = member.speciesName ?? (member.speciesId != null ? msg('pokemonNumber', formatUiNumber(member.speciesId)) : null);
+          const accessibleName = member.nickname || speciesLabel || msg('unknownPartnerLabel');
+          const displayName = member.nickname || speciesLabel || msg('unknownPartner');
           const gender = partyGenderMark(member.gender);
+          const experiencePercent = partyExperiencePercent(member);
           return <button
             type="button"
             key={member.slot}
@@ -86,47 +94,47 @@ export function PartyPage({ catalog, state, onBack, openMove, openAbility, openN
             class={`party-slot ${member.slot === highlightedSlot ? 'active' : ''} ${member.occupied ? individualCondition(member) : 'empty'}`}
             disabled={!member.occupied}
             aria-pressed={member.occupied ? member.slot === highlightedSlot : undefined}
-            aria-label={member.occupied ? `Party slot ${member.slot + 1}: ${accessibleName}` : `Party slot ${member.slot + 1}: Empty`}
+            aria-label={msg('partySlot', slotLabel, member.occupied ? accessibleName : msg('empty'))}
             onClick={() => select(member.slot)}
           >
             <OwnedIndividualSprite individual={member} />
             {member.occupied && <span class="party-slot-copy">
               <span class="party-slot-heading">
                 <strong>{displayName}</strong>
-                {gender && <i class="party-slot-gender" aria-label={member.gender ?? undefined}>{gender}</i>}
-                {member.level != null && <small class="party-slot-level">Lv {member.level}</small>}
+                {gender && <i class="party-slot-gender" aria-label={partyGenderLabel(member.gender)}>{gender}</i>}
+                {member.level != null && <small class="party-slot-level">{msg('levelShort', formatUiNumber(member.level))}</small>}
                 {member.rarity && <RarityStars rarity={member.rarity} />}
               </span>
               <span class="party-slot-bars">
-                {partyExperiencePercent(member) != null && <span class="party-exp-track" aria-label={`Experience ${partyExperiencePercent(member)}%`}><b class="party-exp-fill" style={{ width: `${partyExperiencePercent(member)}%` }} /></span>}
-                <span class="party-hp-line"><b>HP</b>{partyHpPercent(member) != null && <span class="party-hp-track" aria-label={`HP ${partyHpValue(member)}`}><b class="party-hp-fill" style={{ width: `${partyHpPercent(member)}%` }} /></span>}</span>
+                {experiencePercent != null && <span class="party-exp-track" aria-label={msg('experiencePercent', formatUiNumber(experiencePercent))}><b class="party-exp-fill" style={{ width: `${experiencePercent}%` }} /></span>}
+                <span class="party-hp-line"><b>{msg('statHp')}</b>{partyHpPercent(member) != null && <span class="party-hp-track" aria-label={hpLabel(member)}><b class="party-hp-fill" style={{ width: `${partyHpPercent(member)}%` }} /></span>}</span>
                 <span class="party-hp-value"><i>{partyHpValue(member)}</i>{member.status && <em class={`party-status-dot status-${statusKey(member.status)}`}>{member.status}</em>}</span>
               </span>
             </span>}
           </button>;
         })}
       </div>
-      {!members.some(member => member.occupied) && <div class="empty-state party-empty"><strong>YOUR PARTY IS EMPTY</strong><p>Your Pokémon will appear here when they join the party.</p></div>}
+      {!members.some(member => member.occupied) && <div class="empty-state party-empty"><strong>{msg('partyEmpty')}</strong><p>{msg('partyEmptyDescription')}</p></div>}
     </div>
-    {active && <Dialog
+    {active && activeName && <Dialog
       key={active.slot}
-      label={`${active.nickname || active.speciesName || (active.speciesId != null ? `Pokémon #${active.speciesId}` : 'Party member')} details`}
-      closeLabel={`Close ${active.nickname || active.speciesName || (active.speciesId != null ? `Pokémon #${active.speciesId}` : 'party member')} details`}
+      label={msg('details', activeName)}
+      closeLabel={msg('closeDetails', activeName)}
       onClose={closeDetails}
       restoreFocus={lastTriggerRef.current}
     >
-      <OwnedIndividualDetail individual={active} catalog={catalog} locationLabel={`Party · Slot ${active.slot + 1}`} openMove={openMove} openAbility={openAbility} openNature={openNature} openSpecies={openSpecies} />
+      <OwnedIndividualDetail individual={active} catalog={catalog} locationLabel={msg('partySlotLocation', formatUiNumber(active.slot + 1))} openMove={openMove} openAbility={openAbility} openNature={openNature} openSpecies={openSpecies} />
     </Dialog>}
   </section>;
 }
 
 function hpLabel(member: PartyMemberView): string {
-  return `HP ${partyHpValue(member)}`;
+  return `${msg('statHp')} ${partyHpValue(member)}`;
 }
 
 function partyHpValue(member: PartyMemberView): string {
   if (member.currentHp == null || member.maximumHp == null) return '—';
-  return `${member.currentHp} / ${member.maximumHp}`;
+  return `${formatUiNumber(member.currentHp)} / ${formatUiNumber(member.maximumHp)}`;
 }
 
 function partyHpPercent(member: PartyMemberView): number | null {
@@ -144,6 +152,14 @@ function partyGenderMark(gender: string | null): string | null {
   const normalized = gender.trim().toUpperCase();
   if (normalized === 'F' || normalized === 'FEMALE') return '♀';
   if (normalized === 'M' || normalized === 'MALE') return '♂';
+  return gender;
+}
+
+function partyGenderLabel(gender: string | null): string | undefined {
+  if (!gender) return undefined;
+  const normalized = gender.trim().toUpperCase();
+  if (normalized === 'F' || normalized === 'FEMALE') return msg('female');
+  if (normalized === 'M' || normalized === 'MALE') return msg('male');
   return gender;
 }
 
