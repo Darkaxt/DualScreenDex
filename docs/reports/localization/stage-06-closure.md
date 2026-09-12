@@ -1,6 +1,6 @@
 # Localization Stage 6 Closure
 
-**Decision:** `HOST_COMPLETE — PACKAGED_AVD_PENDING`
+**Decision:** `COMPLETE`
 
 **Stage branch:** `feat/full-translation-system`
 
@@ -65,13 +65,11 @@ Those fifteen failures do not exercise Stage 6 interface behavior and are neithe
 
 The first Android lint pass then found a genuine Stage 6 gap: eleven debug-only QA strings lacked localized source-set resources. Four complete debug locale packs and a key-parity unit regression corrected the root cause. The focused `InterfaceLanguageSettingsTest` and `:app:lintDebug` gate passed. A fresh final `:app:assembleDebug` completed with `BUILD SUCCESSFUL` in 18 seconds after the resource correction. Debug packaging used debug signing only; no production signing material was accessed.
 
-`LocalizationPackagedAcceptanceInstrumentedTest` is present and compiles. Its execution remains intentionally pending because the required next command starts an Android emulator/device validation boundary:
+The packaged Android gate ran on the configured `qaApi35` Gradle Managed Device (API 35, x86_64). Its first aggregate execution reported two failures. Investigation separated them rather than increasing timeouts: the pre-existing packaged acceptance passed in isolation, while the localization test reproducibly waited for a `POKÉDEX` control that cannot exist on its deliberate clean, no-catalog startup surface. The same test also returned from its `AUTO` cleanup request before the main-thread locale application completed, allowing order-dependent activity recreation to cross into the next class.
 
-```bash
-JAVA_HOME='C:/Program Files/Zulu/zulu-21' ./gradlew :app:qaApi35DebugAndroidTest --stacktrace
-```
+The localization acceptance now waits for the packaged Spanish clean-start control (`CARGAR ROM O ZIP`) together with `html.lang === 'es'`, then verifies Spanish native recovery, requests `AUTO`, and waits until Android resources leave Spanish before releasing the scenario. The focused localization class passed in 6.881 seconds. The final exact `:app:qaApi35DebugAndroidTest` run passed **8/8 tests**, zero failures/errors/skips, in 30.625 seconds of test time (`BUILD SUCCESSFUL` in 1 minute 10 seconds). It covered packaged WebView bootstrap and assets, Spanish reactive WebView state, Spanish native recovery, explicit `AUTO` restoration, loopback state delivery, setup failure projection, guide retry, cache reopen, picker routing, native SQLite, and mapper isolation. The result XML SHA-256 is `cc6d9617ccfa58c0829f99c846a7c76697a3712cfc65d0749ebf5dc004abd88a`.
 
-No emulator, physical device, ADB operation, installation, production signing, release, or tag occurred.
+The managed device shut down after the Gradle task. A post-run read-only device inventory contained only the separately owned physical Thor serial; no physical-device state change, installation, or interaction occurred. Production signing, release, and tag operations were not invoked.
 
 ## Consolidated final source-bound corpus
 
@@ -127,21 +125,21 @@ Each receipt binds report schema 16, receipt schema 1, generator `8de5fada53efdd
 
 ## Blocker and deferral audit
 
-No Stage 6 implementation `STOP-SAFETY` or `STOP-CORE` defect remains from the host gates. The following acceptance work remains explicit:
+No Stage 6 implementation or acceptance `STOP-SAFETY` / `STOP-CORE` defect remains:
 
 | ID | Classification | Observed | Owner / target | Acceptance | Status |
 |---|---|---|---|---|---|
-| `LNG-B004` | `STOP-CORE` acceptance gate | Packaged Android/WebView localization instrumentation has compiled but has not executed under the required emulator boundary. | Stage 6 packaged-AVD acceptance | The exact packaged test passes without parser/network dependency and restores `AUTO`. | Open |
+| `LNG-B004` | `STOP-CORE` acceptance gate | The first aggregate managed-device run exposed an invalid clean-start `POKÉDEX` sentinel and asynchronous `AUTO` teardown. The corrected test binds Spanish packaged WebView copy to the clean no-catalog surface and awaits locale restoration. | Stage 6 packaged-AVD acceptance | The focused localization class and final exact eight-test managed-device gate pass; Spanish web/native surfaces render and `AUTO` restoration completes. | Closed |
 | `LNG-B005` | `STOP-CORE` evidence gap | Two selected corpus rows initially lacked successful persistence/reopen evidence because the final process exhausted its six-GiB heap. | Final-system acceptance | Both exact warning-adjacent rows pass separately source-bound, jobs-one persistence/reopen verification with matching logical digests. | Closed |
 | `LNG-D001` | `POST-SYSTEM` | Expanded fan-translation/language-unresolved corpus support is not universally ratified. | First post-official localization corpus stage | Generic manifests/codecs pass sanitized source-backed corpus evidence without identity hacks. | Open |
 | `LNG-D002` | `POST-SYSTEM` | Japanese and Korean interface packs are outside the initial interface set. | Post-Stage 6 interface expansion | Complete typed dictionaries, native resources, font/line-break, accessibility, and compact-layout gates pass. | Open |
 | `LNG-D003` | `POST-SYSTEM` | No RTL interface locale is bundled. | First supported RTL locale | Direction-aware layout, navigation/icons, bidirectional text, and compact acceptance pass. | Open |
 | `LNG-D004` | `POST-SYSTEM` | Non-production documents and store material remain English. | Separately commissioned documentation/release milestone | Locale set, owner, review, and publication path are implemented. | Open |
 
-`LNG-B004` remains an acceptance gate, not an omitted product feature or post-system deferral. `LNG-B005` is closed by the bounded recovery evidence below. The implementation remains fail closed while `LNG-B004` is open.
+`LNG-B004` and `LNG-B005` are closed. The remaining `LNG-D001`–`LNG-D004` rows are explicit post-system expansion work, not omitted Stage 6 behavior or acceptance.
 
 ## Privacy boundary and decision
 
 The branch audit found no added ROM, SaveRAM, SQLite, APK, archive, keystore, signing, private-memory, or raw corpus artifacts. A separate path/key scan found and removed four temporary evidence paths from public documentation; the final scan found zero added private path or signing-key patterns. Raw reports, cache databases, source inputs, and retained private evidence remain outside Git.
 
-`HOST_COMPLETE — PACKAGED_AVD_PENDING` — Stage 6 code, translations, browser acceptance, lint, host packaging, and final corpus persistence evidence are complete and pushed. Full Stage 6 acceptance is not claimed while `LNG-B004` remains open. Work pauses before the packaged Android emulator command as required.
+`COMPLETE` — Stage 6 code, translations, browser acceptance, lint, host packaging, packaged managed-device acceptance, and final corpus persistence evidence are complete. Both Stage 6 `STOP-CORE` rows are closed; remaining ledger rows are explicit post-system expansions.

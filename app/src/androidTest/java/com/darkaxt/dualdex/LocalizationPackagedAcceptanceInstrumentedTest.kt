@@ -46,7 +46,7 @@ class LocalizationPackagedAcceptanceInstrumentedTest {
                 waitForJavascript(
                     webView,
                     "document.documentElement.lang === 'es' && " +
-                        "document.body.innerText.includes('POKÉDEX')",
+                        "document.querySelector('input[aria-label=\"CARGAR ROM O ZIP\"]') !== null",
                 )
 
                 scenario.onActivity { activity ->
@@ -59,6 +59,18 @@ class LocalizationPackagedAcceptanceInstrumentedTest {
                     text(scenario, application.getString(R.string.recovery_title)) != null
                 }
                 assertNotNull(text(scenario, "DualDex no pudo iniciar su interfaz local"))
+
+                assertEquals(
+                    200,
+                    request(
+                        origin,
+                        "/api/actions",
+                        "{\"type\":\"SETTINGS\",\"interfaceLanguage\":\"AUTO\"}",
+                    ),
+                )
+                waitFor("automatic Android resources") {
+                    application.resources.configuration.locales[0].language != "es"
+                }
             }
         } finally {
             request(
