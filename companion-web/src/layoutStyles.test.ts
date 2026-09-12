@@ -304,7 +304,7 @@ describe('screen layout containment', () => {
     expect(styles).toMatch(/\.capability-actions button[^{}]*\{[^}]*color\s*:\s*var\(--semantic-primary-fg\)/)
     expect(styles).toMatch(/\.debug-actions \.danger-action[^{}]*\{[^}]*background\s*:\s*var\(--semantic-danger-bg\)/)
     expect(settingsSource).toContain('class="danger-action"')
-    expect(settingsSource).toContain('REMOVE UNUSED GAME DATA')
+    expect(settingsSource).toContain("{msg('removeUnusedGameData')}")
   })
 
   it('keeps canonical route headings in the header and avoids a nested Map main landmark', () => {

@@ -16,12 +16,17 @@ function response(payload: unknown, status = 200, contentType = 'application/jso
 describe('mapper gateway errors', () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it('uses the structured API error message without stringifying the error object', async () => {
+  it('uses the structured API presentation message instead of the diagnostic text', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => response({
-      error: { code: 'MAPPER_UNAVAILABLE', message: 'Memory capture is unavailable.', retryable: true },
-    }, 503)));
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'private mapper diagnostic',
+        retryable: true,
+        presentationMessage: { code: 'API_INTERNAL_ERROR' },
+      },
+    }, 500)));
 
-    await expect(mapperState()).rejects.toThrow('Memory capture is unavailable.');
+    await expect(mapperState()).rejects.toThrow('The server could not complete the request.');
   });
 
   it('uses bounded stable text for malformed mapper errors', async () => {
