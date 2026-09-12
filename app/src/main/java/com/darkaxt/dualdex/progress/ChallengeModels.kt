@@ -155,12 +155,16 @@ data class ChallengeDefinition(
     val pauseWhen: ChallengePredicate? = null,
     val missWhen: ChallengePredicate? = null,
     val sourceInspiration: String = "portable-pattern",
+    val presentationKey: String = key,
+    val presentationSubject: String? = null,
 ) {
     init {
         require((progressionGroup == null) == (progressionRank == null))
         require(progressionGroup == null || progressionGroup.isNotBlank())
         require(progressionRank == null || progressionRank > 0)
         require(disclosureScope == null || disclosureScope.isNotBlank())
+        require(presentationKey.isNotBlank())
+        require(presentationSubject == null || presentationSubject.isNotBlank())
     }
 }
 

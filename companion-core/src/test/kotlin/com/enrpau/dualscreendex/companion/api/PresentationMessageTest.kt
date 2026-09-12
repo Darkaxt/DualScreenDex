@@ -63,4 +63,54 @@ class PresentationMessageTest {
         )
         assertNull(PresentationMessages.ruleset("unrecognized fixture label"))
     }
+
+    @Test
+    fun progressMessagesUseClosedCodesAndTypedCounts() {
+        assertEquals(
+            PresentationMessageView(code = "PROGRESS_METRIC_DEX_SEEN"),
+            PresentationMessages.progressMetric("seen"),
+        )
+        assertEquals(
+            PresentationMessageView(code = "TIMELINE_CAPTURES", count = 2),
+            PresentationMessages.timelineChange("captures", 2),
+        )
+        assertNull(PresentationMessages.progressMetric("private-diagnostic"))
+        assertNull(PresentationMessages.timelineChange("private-diagnostic", 1))
+    }
+
+    @Test
+    fun challengeMessagesKeepRomNativeNamesAsTypedArguments() {
+        val fixedKeys = listOf(
+            "collection-first-partner",
+            "collection-growing-roster",
+            "party-new-form",
+            "exploration-open-road",
+            "exploration-curious-eye",
+            "battle-seasoned",
+            "progress-first-badge",
+            "progress-all-badges",
+            "collection-regional-record",
+            "exploration-area-items",
+            "battle-leader-no-items",
+            "special-minigame",
+        )
+        assertEquals(12, fixedKeys.count { PresentationMessages.challengeTitle(it, "Viridian Forest") != null })
+        assertEquals(12, fixedKeys.count { PresentationMessages.challengeDescription(it, "Viridian Forest") != null })
+        assertEquals(
+            PresentationMessageView(code = "CHALLENGE_EXPLORATION_AREA_ITEMS_TITLE"),
+            PresentationMessages.challengeTitle("exploration-area-items", "Viridian Forest"),
+        )
+        assertEquals(
+            PresentationMessageView(
+                code = "CHALLENGE_EXPLORATION_AREA_ITEMS_DESCRIPTION",
+                subject = "Viridian Forest",
+            ),
+            PresentationMessages.challengeDescription("exploration-area-items", "Viridian Forest"),
+        )
+        assertEquals(
+            PresentationMessageView(code = "CHALLENGE_SPECIAL_MINIGAME_TITLE", subject = "bug catching"),
+            PresentationMessages.challengeTitle("special-minigame", "bug catching"),
+        )
+        assertNull(PresentationMessages.challengeTitle("unknown-template", null))
+    }
 }

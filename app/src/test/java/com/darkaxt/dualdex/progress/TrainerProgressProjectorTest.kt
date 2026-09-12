@@ -1,6 +1,7 @@
 package com.darkaxt.dualdex.progress
 
 import com.darkaxt.dualdex.save.TrainerIdentity
+import com.enrpau.dualscreendex.companion.api.PresentationMessageView
 import com.enrpau.dualscreendex.companion.model.AppSnapshot
 import com.enrpau.dualscreendex.companion.model.TrainerCardState
 import com.enrpau.dualscreendex.companion.semantic.PlaythroughKey
@@ -45,6 +46,7 @@ class TrainerProgressProjectorTest {
             requiredCapabilities = setOf("POKEDEX_FACTS"),
             organicSafe = true,
             predicate = ChallengePredicate.CountAtLeast("captures", 1),
+            presentationKey = "collection-first-partner",
         )
         val evaluation = ChallengeEvaluation(
             visible = listOf(ChallengeResult(definition, 2, 1, true)),
@@ -67,10 +69,17 @@ class TrainerProgressProjectorTest {
         assertEquals(2L, view.trackedJourney.single { it.key == "captures" }.value)
         assertEquals(1, view.timeline.size)
         assertEquals(
-            listOf("Captures +1", "Areas visited +1", "Challenges completed +1"),
+            listOf(
+                PresentationMessageView("TIMELINE_CAPTURES", count = 1),
+                PresentationMessageView("TIMELINE_AREAS_VISITED", count = 1),
+                PresentationMessageView("TIMELINE_CHALLENGES_COMPLETED", count = 1),
+            ),
             view.timeline.single().changes,
         )
-        assertEquals("A New Partner", view.challenges.single().title)
+        assertEquals(
+            PresentationMessageView("CHALLENGE_COLLECTION_FIRST_PARTNER_TITLE"),
+            view.challenges.single().title,
+        )
         assertEquals(100, view.challenges.single().completionPercent)
         assertEquals(1, view.challengeSummary.completed)
         assertEquals(1, view.challengeSummary.applicable)
@@ -103,6 +112,7 @@ class TrainerProgressProjectorTest {
             requiredCapabilities = setOf("POKEDEX_FACTS"),
             organicSafe = true,
             predicate = ChallengePredicate.CountAtLeast("captures", 5),
+            presentationKey = "collection-growing-roster",
         )
         val evaluation = ChallengeEvaluation(
             visible = listOf(ChallengeResult(definition, progress = 2, target = 5, complete = false)),

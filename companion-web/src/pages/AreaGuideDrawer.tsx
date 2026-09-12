@@ -1,6 +1,7 @@
 import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { catalogMediaUrl } from '../media';
+import { renderPresentationMessage } from '../presentationMessages';
 import type {
   AreaGuideAreaView,
   AreaGuideEncounterSpeciesView,
@@ -159,7 +160,7 @@ export function AreaGuideDrawer({
 
       {area.objectives.length > 0 && <GuideSection title="OBJECTIVES">
         <div class="area-guide-static-list">
-          {area.objectives.map(objective => <div key={objective.key} class="area-guide-text-row">{objective.title}</div>)}
+          {area.objectives.map(objective => <div key={objective.key} class="area-guide-text-row">{renderPresentationMessage(objective.title)}</div>)}
         </div>
       </GuideSection>}
     </div>

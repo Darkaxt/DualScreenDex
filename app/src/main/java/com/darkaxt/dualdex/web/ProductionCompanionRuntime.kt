@@ -1432,7 +1432,14 @@ class ProductionCompanionRuntime(
                     .filter { it.startsWith("AREA:") }
                 areaScopes.isEmpty() || currentAreaEntity in areaScopes
             }
-            .map { AreaGuideObjective(it.key, it.title) }
+            .mapNotNull { challenge ->
+                val definition = definitionsByKey[challenge.key] ?: return@mapNotNull null
+                AreaGuideObjective(
+                    key = challenge.key,
+                    presentationKey = definition.presentationKey,
+                    presentationSubject = definition.presentationSubject,
+                )
+            }
         return if (exploration.isEmpty()) emptyMap() else mapOf(area to exploration)
     }
 

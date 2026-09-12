@@ -231,7 +231,7 @@ data class AreaGuidePointView(
     val destinationBaseAreaId: Int?,
 )
 
-data class AreaGuideObjectiveView(val key: String, val title: String)
+data class AreaGuideObjectiveView(val key: String, val title: PresentationMessageView)
 data class AreaGuideAvailabilityView(
     val status: String,
     val stage: String? = null,
@@ -527,7 +527,7 @@ data class TrainerProgressView(
     val challenges: List<ChallengeView>,
     val timeline: List<TimelineEntryView>,
 )
-data class ProgressMetricView(val key: String, val label: String, val value: Long?)
+data class ProgressMetricView(val key: String, val label: PresentationMessageView, val value: Long?)
 data class ChallengeSummaryView(
     val completed: Int,
     val applicable: Int,
@@ -535,8 +535,8 @@ data class ChallengeSummaryView(
 )
 data class ChallengeView(
     val key: String,
-    val title: String,
-    val description: String,
+    val title: PresentationMessageView,
+    val description: PresentationMessageView,
     val category: String,
     val progress: Long?,
     val target: Long?,
@@ -545,7 +545,7 @@ data class ChallengeView(
 )
 data class TimelineEntryView(
     val recordedAtEpochMs: Long,
-    val changes: List<String>,
+    val changes: List<PresentationMessageView>,
     val milestone: Boolean,
 )
 data class TrainerBadgeView(val index: Int, val earned: Boolean?, val imageUrl: String?)
@@ -1725,7 +1725,7 @@ object ApiViewBuilder {
         placesAndServices = placesAndServices.map { it.toView() },
         trainersAndPeople = trainersAndPeople.map { it.toView() },
         items = items.map { it.toView() },
-        objectives = objectives.map { it.toView() },
+        objectives = objectives.mapNotNull { it.toView() },
     )
 
     private fun AreaGuideOverview.toView() = AreaGuideOverviewView(
@@ -1764,7 +1764,9 @@ object ApiViewBuilder {
         destinationBaseAreaId = destinationBaseAreaId,
     )
 
-    private fun AreaGuideObjective.toView() = AreaGuideObjectiveView(key, title)
+    private fun AreaGuideObjective.toView() = PresentationMessages
+        .challengeTitle(presentationKey, presentationSubject)
+        ?.let { AreaGuideObjectiveView(key, it) }
 
     private fun LocalMapCatalog.isDynamic(key: String): Boolean =
         key in indexedAssets || key in timedAssets

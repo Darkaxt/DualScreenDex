@@ -89,7 +89,7 @@ describe('AreaGuideDrawer', () => {
       }],
       placesAndServices: [],
       items: [],
-      objectives: [{ key: 'final-objective', title: 'Final objective' }],
+      objectives: [{ key: 'final-objective', title: { code: 'CHALLENGE_EXPLORATION_OPEN_ROAD_TITLE' } }],
     };
     const { container } = render(<AreaGuideDrawer area={longArea} onClose={vi.fn()} />);
 
@@ -108,7 +108,7 @@ describe('AreaGuideDrawer', () => {
     Object.defineProperty(content, 'scrollTop', { configurable: true, value: 4200 });
     fireEvent.scroll(content);
     expect(screen.getByText('Species 80')).toBeTruthy();
-    expect(screen.getByText('Final objective')).toBeTruthy();
+    expect(screen.getByText('Open Road')).toBeTruthy();
   });
 
   it('does not clip six or seven row sections and resets outer scroll when the area changes', () => {
@@ -156,7 +156,7 @@ describe('AreaGuideDrawer', () => {
 
   it('shows only supplied knowledge-safe objectives', () => {
     render(<AreaGuideDrawer
-      area={{ ...area, objectives: [{ key: 'open-road', title: 'Open Road' }] }}
+      area={{ ...area, objectives: [{ key: 'open-road', title: { code: 'CHALLENGE_EXPLORATION_OPEN_ROAD_TITLE' } }] }}
       onClose={vi.fn()}
     />);
 

@@ -83,7 +83,9 @@ class AreaGuideBuilderTest {
         val destinationCount = 384
         val pointCount = 8_192
         val encounterCount = 8_192
-        val objectives = List(8_192) { index -> AreaGuideObjective("objective-$index", "Objective $index") }
+        val objectives = List(8_192) { index ->
+            AreaGuideObjective("objective-$index", "exploration-open-road", null)
+        }
         val catalog = ParsedCatalog(
             romSha256 = "a".repeat(64),
             family = EngineFamily.EMERALD,
@@ -323,7 +325,7 @@ class AreaGuideBuilderTest {
 
     @Test
     fun objectivesAreAttachedOnlyToTheirKnowledgeVisibleArea() {
-        val objective = AreaGuideObjective("open-road", "Open Road")
+        val objective = AreaGuideObjective("open-road", "exploration-open-road", null)
         val guide = AreaGuideBuilder.project(
             catalog(),
             organicSnapshot(

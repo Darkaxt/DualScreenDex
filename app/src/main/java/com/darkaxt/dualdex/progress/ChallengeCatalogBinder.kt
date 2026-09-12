@@ -174,5 +174,7 @@ object ChallengeCatalogBinder {
         organicSafe = organicSafe,
         predicate = predicate,
         sourceInspiration = sourceInspiration,
+        presentationKey = key,
+        presentationSubject = descriptionName,
     )
 }

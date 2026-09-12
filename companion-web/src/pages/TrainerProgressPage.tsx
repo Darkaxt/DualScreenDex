@@ -1,4 +1,5 @@
 import type { TrainerProgressView } from '../models';
+import { renderPresentationMessage } from '../presentationMessages';
 
 export function TrainerProgressPage({
   progress,
@@ -35,7 +36,7 @@ function MetricSection({ title, metrics }: { title: string; metrics: TrainerProg
   return <section class="progress-panel">
     <h2>{title}</h2>
     <dl class="progress-metric-grid">
-      {metrics.map(metric => <div key={metric.key}><dt>{metric.label}</dt><dd>{formatMetric(metric.key, metric.value)}</dd></div>)}
+      {metrics.map(metric => <div key={metric.key}><dt>{renderPresentationMessage(metric.label)}</dt><dd>{formatMetric(metric.key, metric.value)}</dd></div>)}
     </dl>
   </section>;
 }
@@ -51,18 +52,21 @@ function Challenges({ progress }: { progress: TrainerProgressView }) {
     </section>}
     {categories.map(category => <section key={category} class="progress-panel challenge-group">
     <h2>{titleCase(category)}</h2>
-    <div class="challenge-list">{progress.challenges.filter(challenge => challenge.category === category).map(challenge => <article key={challenge.key} class={`challenge-card ${challenge.complete ? 'is-complete' : ''}`}>
-      <div><strong>{challenge.title}</strong>{challenge.complete && <span>COMPLETE</span>}</div>
-      <p>{challenge.description}</p>
-      {challenge.target != null && challenge.completionPercent != null && <div
-        class="challenge-progress"
-        role="progressbar"
-        aria-label={`${challenge.title}: ${challenge.completionPercent}% complete`}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={challenge.completionPercent}
-      ><i style={{ width: `${challenge.completionPercent}%` }} /><b>{challenge.progress ?? 0} / {challenge.target} · {challenge.completionPercent}%</b></div>}
-    </article>)}</div>
+    <div class="challenge-list">{progress.challenges.filter(challenge => challenge.category === category).map(challenge => {
+      const title = renderPresentationMessage(challenge.title);
+      return <article key={challenge.key} class={`challenge-card ${challenge.complete ? 'is-complete' : ''}`}>
+        <div><strong>{title}</strong>{challenge.complete && <span>COMPLETE</span>}</div>
+        <p>{renderPresentationMessage(challenge.description)}</p>
+        {challenge.target != null && challenge.completionPercent != null && <div
+          class="challenge-progress"
+          role="progressbar"
+          aria-label={`${title}: ${challenge.completionPercent}% complete`}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={challenge.completionPercent}
+        ><i style={{ width: `${challenge.completionPercent}%` }} /><b>{challenge.progress ?? 0} / {challenge.target} · {challenge.completionPercent}%</b></div>}
+      </article>;
+    })}</div>
   </section>)}</div>;
 }
 
@@ -72,7 +76,10 @@ function Timeline({ progress }: { progress: TrainerProgressView }) {
     <h2>SAVE TIMELINE</h2>
     <ol>{progress.timeline.map((entry, index) => <li key={`${entry.recordedAtEpochMs}-${index}`} class={entry.milestone ? 'is-milestone' : ''}>
       <time>{new Date(entry.recordedAtEpochMs).toLocaleString()}</time>
-      <div>{entry.changes.map(change => <span key={change}>{change}</span>)}</div>
+      <div>{entry.changes.map(change => {
+        const rendered = renderPresentationMessage(change);
+        return <span key={rendered}>{rendered}</span>;
+      })}</div>
     </li>)}</ol>
   </section>;
 }

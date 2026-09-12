@@ -55,8 +55,8 @@ describe('Trainer progress', () => {
     state.trainerProgress!.challengeSummary = { completed: 1, applicable: 4, completionPercent: 25 };
     state.trainerProgress!.challenges = [{
       key: 'roster',
-      title: 'Growing Roster',
-      description: 'Catch five different Pokémon.',
+      title: { code: 'CHALLENGE_COLLECTION_GROWING_ROSTER_TITLE' },
+      description: { code: 'CHALLENGE_COLLECTION_GROWING_ROSTER_DESCRIPTION' },
       category: 'COLLECTION',
       progress: 2,
       target: 5,
@@ -102,13 +102,22 @@ function trainerState(): State {
     trainerProgress: {
       selectedDestination: 'PROGRESS', selectedSection: 'METRICS',
       gameTotals: [
-        { key: 'money', label: 'Money', value: 3000 },
-        { key: 'seen', label: 'Pokédex seen', value: 12 },
+        { key: 'money', label: { code: 'PROGRESS_METRIC_MONEY' }, value: 3000 },
+        { key: 'seen', label: { code: 'PROGRESS_METRIC_DEX_SEEN' }, value: 12 },
       ],
-      trackedJourney: [{ key: 'captures', label: 'Captures', value: 2 }],
+      trackedJourney: [{ key: 'captures', label: { code: 'PROGRESS_METRIC_CAPTURES' }, value: 2 }],
       challengeSummary: { completed: 1, applicable: 1, completionPercent: 100 },
-      challenges: [{ key: 'first', title: 'A New Partner', description: 'Catch your first Pokémon on this journey.', category: 'COLLECTION', progress: 1, target: 1, completionPercent: 100, complete: true }],
-      timeline: [{ recordedAtEpochMs: 1000, changes: ['Captures +1'], milestone: true }],
+      challenges: [{
+        key: 'first',
+        title: { code: 'CHALLENGE_COLLECTION_FIRST_PARTNER_TITLE' },
+        description: { code: 'CHALLENGE_COLLECTION_FIRST_PARTNER_DESCRIPTION' },
+        category: 'COLLECTION',
+        progress: 1,
+        target: 1,
+        completionPercent: 100,
+        complete: true,
+      }],
+      timeline: [{ recordedAtEpochMs: 1000, changes: [{ code: 'TIMELINE_CAPTURES', count: 1 }], milestone: true }],
     },
     party: [],
   };

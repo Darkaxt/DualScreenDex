@@ -1,7 +1,8 @@
 package com.darkaxt.dualdex.progress
 
-import com.enrpau.dualscreendex.companion.api.ChallengeView
 import com.enrpau.dualscreendex.companion.api.ChallengeSummaryView
+import com.enrpau.dualscreendex.companion.api.ChallengeView
+import com.enrpau.dualscreendex.companion.api.PresentationMessages
 import com.enrpau.dualscreendex.companion.api.ProgressMetricView
 import com.enrpau.dualscreendex.companion.api.TimelineEntryView
 import com.enrpau.dualscreendex.companion.api.TrainerProgressView
@@ -14,31 +15,31 @@ object TrainerProgressProjector {
         challenges: ChallengeEvaluation,
     ): TrainerProgressView {
         val trainer = snapshot.trainerCardState
-        val gameTotals = listOf(
-            ProgressMetricView("play-time", "Play time", trainer?.let { state ->
+        val gameTotals = listOfNotNull(
+            metric("play-time", trainer?.let { state ->
                 val hours = state.playTimeHours ?: return@let null
                 val minutes = state.playTimeMinutes ?: return@let null
                 hours.toLong() * 60L + minutes
             }),
-            ProgressMetricView("badges", "Badges", trainer?.badgeFlags?.countOneBits()?.toLong()),
-            ProgressMetricView("seen", "Pokédex seen", trainer?.dexSeen?.toLong()),
-            ProgressMetricView("caught", "Pokédex caught", trainer?.dexCaught?.toLong()),
-            ProgressMetricView("money", "Money", trainer?.money),
+            metric("badges", trainer?.badgeFlags?.countOneBits()?.toLong()),
+            metric("seen", trainer?.dexSeen?.toLong()),
+            metric("caught", trainer?.dexCaught?.toLong()),
+            metric("money", trainer?.money),
         )
-        val trackedLabels = linkedMapOf(
-            "battles" to "Battles",
-            "wildEncounters" to "Wild encounters",
-            "trainerBattles" to "Trainer battles",
-            "captures" to "Captures",
-            "evolutions" to "Evolutions",
-            "areas" to "Areas visited",
-            "pois" to "Points discovered",
-            "partyChanges" to "Party changes",
-            "saves" to "Saves observed",
-            "challenges" to "Challenges completed",
+        val trackedKeys = listOf(
+            "battles",
+            "wildEncounters",
+            "trainerBattles",
+            "captures",
+            "evolutions",
+            "areas",
+            "pois",
+            "partyChanges",
+            "saves",
+            "challenges",
         )
-        val trackedJourney = trackedLabels.map { (key, label) ->
-            ProgressMetricView(key, label, journal.trackedCounts[key] ?: 0L)
+        val trackedJourney = trackedKeys.mapNotNull { key ->
+            metric(key, journal.trackedCounts[key] ?: 0L)
         }
         return TrainerProgressView(
             selectedDestination = journal.preferences["trainer-destination"]
@@ -58,12 +59,21 @@ object TrainerProgressProjector {
                     complete = challenges.applicableCount > 0 && challenges.completedCount >= challenges.applicableCount,
                 ),
             ),
-            challenges = challenges.visible.map { result ->
+            challenges = challenges.visible.mapNotNull { result ->
+                val definition = result.definition
+                val title = PresentationMessages.challengeTitle(
+                    definition.presentationKey,
+                    definition.presentationSubject,
+                ) ?: return@mapNotNull null
+                val description = PresentationMessages.challengeDescription(
+                    definition.presentationKey,
+                    definition.presentationSubject,
+                ) ?: return@mapNotNull null
                 ChallengeView(
-                    key = result.definition.key,
-                    title = result.definition.title,
-                    description = result.definition.description,
-                    category = result.definition.category.name,
+                    key = definition.key,
+                    title = title,
+                    description = description,
+                    category = definition.category.name,
                     progress = result.progress,
                     target = result.target,
                     completionPercent = percentage(result.progress, result.target, result.complete),
@@ -74,12 +84,16 @@ object TrainerProgressProjector {
                 TimelineEntryView(
                     recordedAtEpochMs = entry.recordedAtEpochMs,
                     changes = entry.deltas.mapNotNull { (key, amount) ->
-                        trackedLabels[key]?.let { label -> "$label +$amount" }
+                        PresentationMessages.timelineChange(key, amount)
                     },
                     milestone = entry.milestone,
                 )
             }.filter { it.changes.isNotEmpty() },
         )
+    }
+
+    private fun metric(key: String, value: Long?) = PresentationMessages.progressMetric(key)?.let {
+        ProgressMetricView(key, it, value)
     }
 
     private fun percentage(current: Long?, target: Long?, complete: Boolean): Int? {

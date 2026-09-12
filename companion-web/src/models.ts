@@ -38,7 +38,56 @@ export type PresentationMessageCode =
   | 'DAMAGE_CONDITION_FIELD'
   | 'DAMAGE_CONDITION_MULTI_HIT'
   | 'DAMAGE_CONDITION_FIXED_DAMAGE'
-  | 'DAMAGE_RANGE_BOUNDED';
+  | 'DAMAGE_RANGE_BOUNDED'
+  | 'PROGRESS_METRIC_PLAY_TIME'
+  | 'PROGRESS_METRIC_BADGES'
+  | 'PROGRESS_METRIC_DEX_SEEN'
+  | 'PROGRESS_METRIC_DEX_CAUGHT'
+  | 'PROGRESS_METRIC_MONEY'
+  | 'PROGRESS_METRIC_BATTLES'
+  | 'PROGRESS_METRIC_WILD_ENCOUNTERS'
+  | 'PROGRESS_METRIC_TRAINER_BATTLES'
+  | 'PROGRESS_METRIC_CAPTURES'
+  | 'PROGRESS_METRIC_EVOLUTIONS'
+  | 'PROGRESS_METRIC_AREAS_VISITED'
+  | 'PROGRESS_METRIC_POINTS_DISCOVERED'
+  | 'PROGRESS_METRIC_PARTY_CHANGES'
+  | 'PROGRESS_METRIC_SAVES_OBSERVED'
+  | 'PROGRESS_METRIC_CHALLENGES_COMPLETED'
+  | 'TIMELINE_BATTLES'
+  | 'TIMELINE_WILD_ENCOUNTERS'
+  | 'TIMELINE_TRAINER_BATTLES'
+  | 'TIMELINE_CAPTURES'
+  | 'TIMELINE_EVOLUTIONS'
+  | 'TIMELINE_AREAS_VISITED'
+  | 'TIMELINE_POINTS_DISCOVERED'
+  | 'TIMELINE_PARTY_CHANGES'
+  | 'TIMELINE_SAVES_OBSERVED'
+  | 'TIMELINE_CHALLENGES_COMPLETED'
+  | 'CHALLENGE_COLLECTION_FIRST_PARTNER_TITLE'
+  | 'CHALLENGE_COLLECTION_FIRST_PARTNER_DESCRIPTION'
+  | 'CHALLENGE_COLLECTION_GROWING_ROSTER_TITLE'
+  | 'CHALLENGE_COLLECTION_GROWING_ROSTER_DESCRIPTION'
+  | 'CHALLENGE_PARTY_NEW_FORM_TITLE'
+  | 'CHALLENGE_PARTY_NEW_FORM_DESCRIPTION'
+  | 'CHALLENGE_EXPLORATION_OPEN_ROAD_TITLE'
+  | 'CHALLENGE_EXPLORATION_OPEN_ROAD_DESCRIPTION'
+  | 'CHALLENGE_EXPLORATION_CURIOUS_EYE_TITLE'
+  | 'CHALLENGE_EXPLORATION_CURIOUS_EYE_DESCRIPTION'
+  | 'CHALLENGE_BATTLE_SEASONED_TITLE'
+  | 'CHALLENGE_BATTLE_SEASONED_DESCRIPTION'
+  | 'CHALLENGE_PROGRESS_FIRST_BADGE_TITLE'
+  | 'CHALLENGE_PROGRESS_FIRST_BADGE_DESCRIPTION'
+  | 'CHALLENGE_PROGRESS_ALL_BADGES_TITLE'
+  | 'CHALLENGE_PROGRESS_ALL_BADGES_DESCRIPTION'
+  | 'CHALLENGE_COLLECTION_REGIONAL_RECORD_TITLE'
+  | 'CHALLENGE_COLLECTION_REGIONAL_RECORD_DESCRIPTION'
+  | 'CHALLENGE_EXPLORATION_AREA_ITEMS_TITLE'
+  | 'CHALLENGE_EXPLORATION_AREA_ITEMS_DESCRIPTION'
+  | 'CHALLENGE_BATTLE_LEADER_NO_ITEMS_TITLE'
+  | 'CHALLENGE_BATTLE_LEADER_NO_ITEMS_DESCRIPTION'
+  | 'CHALLENGE_SPECIAL_MINIGAME_TITLE'
+  | 'CHALLENGE_SPECIAL_MINIGAME_DESCRIPTION';
 
 export interface PresentationMessage {
   code: PresentationMessageCode;
@@ -52,6 +101,8 @@ export interface PresentationMessage {
   numerator?: number | null;
   denominator?: number | null;
   conditionValue?: number | null;
+  count?: number | null;
+  subject?: string | null;
 }
 
 export interface Species {
@@ -289,7 +340,7 @@ export interface AreaGuidePointView {
 
 export interface AreaGuideObjectiveView {
   key: string;
-  title: string;
+  title: PresentationMessage;
 }
 
 export interface WorldMapRegion {
@@ -493,7 +544,7 @@ export interface TrainerProgressView {
 
 export interface ProgressMetricView {
   key: string;
-  label: string;
+  label: PresentationMessage;
   value: number | null;
 }
 
@@ -505,8 +556,8 @@ export interface ChallengeSummaryView {
 
 export interface ChallengeView {
   key: string;
-  title: string;
-  description: string;
+  title: PresentationMessage;
+  description: PresentationMessage;
   category: 'PROGRESS' | 'COLLECTION' | 'EXPLORATION' | 'BATTLE' | 'PARTY' | 'SPECIAL';
   progress: number | null;
   target: number | null;
@@ -516,7 +567,7 @@ export interface ChallengeView {
 
 export interface TimelineEntryView {
   recordedAtEpochMs: number;
-  changes: string[];
+  changes: PresentationMessage[];
   milestone: boolean;
 }
 

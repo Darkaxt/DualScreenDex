@@ -39,6 +39,55 @@ export function renderPresentationMessage(message: PresentationMessage): string 
     case 'DAMAGE_CONDITION_MULTI_HIT': return 'Multiple hits';
     case 'DAMAGE_CONDITION_FIXED_DAMAGE': return 'Fixed damage';
     case 'DAMAGE_RANGE_BOUNDED': return 'The exact result depends on unresolved battle conditions.';
+    case 'PROGRESS_METRIC_PLAY_TIME': return 'Play time';
+    case 'PROGRESS_METRIC_BADGES': return 'Badges';
+    case 'PROGRESS_METRIC_DEX_SEEN': return 'Pokédex seen';
+    case 'PROGRESS_METRIC_DEX_CAUGHT': return 'Pokédex caught';
+    case 'PROGRESS_METRIC_MONEY': return 'Money';
+    case 'PROGRESS_METRIC_BATTLES': return 'Battles';
+    case 'PROGRESS_METRIC_WILD_ENCOUNTERS': return 'Wild encounters';
+    case 'PROGRESS_METRIC_TRAINER_BATTLES': return 'Trainer battles';
+    case 'PROGRESS_METRIC_CAPTURES': return 'Captures';
+    case 'PROGRESS_METRIC_EVOLUTIONS': return 'Evolutions';
+    case 'PROGRESS_METRIC_AREAS_VISITED': return 'Areas visited';
+    case 'PROGRESS_METRIC_POINTS_DISCOVERED': return 'Points discovered';
+    case 'PROGRESS_METRIC_PARTY_CHANGES': return 'Party changes';
+    case 'PROGRESS_METRIC_SAVES_OBSERVED': return 'Saves observed';
+    case 'PROGRESS_METRIC_CHALLENGES_COMPLETED': return 'Challenges completed';
+    case 'TIMELINE_BATTLES': return timelineChange('Battles', message.count);
+    case 'TIMELINE_WILD_ENCOUNTERS': return timelineChange('Wild encounters', message.count);
+    case 'TIMELINE_TRAINER_BATTLES': return timelineChange('Trainer battles', message.count);
+    case 'TIMELINE_CAPTURES': return timelineChange('Captures', message.count);
+    case 'TIMELINE_EVOLUTIONS': return timelineChange('Evolutions', message.count);
+    case 'TIMELINE_AREAS_VISITED': return timelineChange('Areas visited', message.count);
+    case 'TIMELINE_POINTS_DISCOVERED': return timelineChange('Points discovered', message.count);
+    case 'TIMELINE_PARTY_CHANGES': return timelineChange('Party changes', message.count);
+    case 'TIMELINE_SAVES_OBSERVED': return timelineChange('Saves observed', message.count);
+    case 'TIMELINE_CHALLENGES_COMPLETED': return timelineChange('Challenges completed', message.count);
+    case 'CHALLENGE_COLLECTION_FIRST_PARTNER_TITLE': return 'A New Partner';
+    case 'CHALLENGE_COLLECTION_FIRST_PARTNER_DESCRIPTION': return 'Catch your first Pokémon on this journey.';
+    case 'CHALLENGE_COLLECTION_GROWING_ROSTER_TITLE': return 'Growing Roster';
+    case 'CHALLENGE_COLLECTION_GROWING_ROSTER_DESCRIPTION': return 'Catch ten different Pokémon during this journey.';
+    case 'CHALLENGE_PARTY_NEW_FORM_TITLE': return 'A New Form';
+    case 'CHALLENGE_PARTY_NEW_FORM_DESCRIPTION': return 'Witness one of your Pokémon evolve.';
+    case 'CHALLENGE_EXPLORATION_OPEN_ROAD_TITLE': return 'Open Road';
+    case 'CHALLENGE_EXPLORATION_OPEN_ROAD_DESCRIPTION': return 'Visit five distinct areas with DualDex alongside you.';
+    case 'CHALLENGE_EXPLORATION_CURIOUS_EYE_TITLE': return 'Curious Eye';
+    case 'CHALLENGE_EXPLORATION_CURIOUS_EYE_DESCRIPTION': return 'Discover five points of interest while exploring.';
+    case 'CHALLENGE_BATTLE_SEASONED_TITLE': return 'Seasoned Battler';
+    case 'CHALLENGE_BATTLE_SEASONED_DESCRIPTION': return 'Take part in twenty-five battles during this journey.';
+    case 'CHALLENGE_PROGRESS_FIRST_BADGE_TITLE': return 'First Badge';
+    case 'CHALLENGE_PROGRESS_FIRST_BADGE_DESCRIPTION': return 'Earn your first resolved badge.';
+    case 'CHALLENGE_PROGRESS_ALL_BADGES_TITLE': return 'Badge Collection';
+    case 'CHALLENGE_PROGRESS_ALL_BADGES_DESCRIPTION': return 'Earn every badge in the resolved badge sequence.';
+    case 'CHALLENGE_COLLECTION_REGIONAL_RECORD_TITLE': return 'Regional Record';
+    case 'CHALLENGE_COLLECTION_REGIONAL_RECORD_DESCRIPTION': return 'Register every species in the resolved regional Pokédex.';
+    case 'CHALLENGE_EXPLORATION_AREA_ITEMS_TITLE': return 'Local Collector';
+    case 'CHALLENGE_EXPLORATION_AREA_ITEMS_DESCRIPTION': return `Collect every resolved item in ${subject(message.subject)}.`;
+    case 'CHALLENGE_BATTLE_LEADER_NO_ITEMS_TITLE': return 'Prepared Victory';
+    case 'CHALLENGE_BATTLE_LEADER_NO_ITEMS_DESCRIPTION': return `Defeat ${subject(message.subject)} without using an item during the battle.`;
+    case 'CHALLENGE_SPECIAL_MINIGAME_TITLE': return subject(message.subject);
+    case 'CHALLENGE_SPECIAL_MINIGAME_DESCRIPTION': return `Complete the resolved ${subject(message.subject)} objective.`;
   }
 }
 
@@ -54,4 +103,12 @@ function moveSplit(value: number | null | undefined): string {
   if (value === 0) return 'Physical moves';
   if (value === 1) return 'Special moves';
   return `Move split ${argument(value)}`;
+}
+
+function timelineChange(label: string, count: number | null | undefined): string {
+  return `${label} +${argument(count)}`;
+}
+
+function subject(value: string | null | undefined): string {
+  return value ?? '—';
 }

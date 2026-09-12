@@ -46,4 +46,15 @@ describe('presentation messages', () => {
     expect(renderPresentationMessage({ code: 'ABILITY_CONDITION_ATTACKING_MOVE_TYPE', conditionValue: 4 }))
       .toBe('Type 4 moves');
   });
+
+  it('renders progress and challenge arguments without backend prose', () => {
+    expect(renderPresentationMessage({ code: 'PROGRESS_METRIC_DEX_SEEN' })).toBe('Pokédex seen');
+    expect(renderPresentationMessage({ code: 'TIMELINE_CAPTURES', count: 2 })).toBe('Captures +2');
+    expect(renderPresentationMessage({
+      code: 'CHALLENGE_EXPLORATION_AREA_ITEMS_DESCRIPTION',
+      subject: 'Viridian Forest',
+    })).toBe('Collect every resolved item in Viridian Forest.');
+    expect(renderPresentationMessage({ code: 'CHALLENGE_SPECIAL_MINIGAME_TITLE', subject: 'bug catching' }))
+      .toBe('bug catching');
+  });
 });

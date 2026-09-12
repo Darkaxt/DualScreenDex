@@ -93,5 +93,6 @@ data class AreaGuidePoint(
 
 data class AreaGuideObjective(
     val key: String,
-    val title: String,
+    val presentationKey: String,
+    val presentationSubject: String?,
 )
