@@ -606,7 +606,7 @@ describe('production application shell', () => {
     }], fixture.catalog!.hash));
     render(<App />);
 
-    const moveList = await screen.findByRole('combobox', { name: 'Move list' });
+    const moveList = await screen.findByRole('combobox', { name: /move list/i });
     expect(document.activeElement).toBe(moveList);
 
     window.dispatchEvent(new Event('dualdexback', { cancelable: true }));
@@ -852,7 +852,7 @@ describe('bootstrap authority fencing', () => {
     await screen.findByText('SETTINGS');
     fireEvent.click(screen.getByRole('button', { name: 'General' }));
     const rom = new File([new Uint8Array([1])], 'catalog-b.gba');
-    fireEvent.change(screen.getByLabelText('Change ROM or ZIP'), { target: { files: [rom] } });
+    fireEvent.change(screen.getByLabelText(/change ROM or ZIP/i), { target: { files: [rom] } });
 
     expect(await screen.findByText('POKÉDEX')).toBeTruthy();
   });

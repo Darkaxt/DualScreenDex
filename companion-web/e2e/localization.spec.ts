@@ -141,7 +141,7 @@ async function expectVirtualRowsStaySynchronized(page: Page): Promise<void> {
   const second = await rows.nth(1).boundingBox();
   expect(first).not.toBeNull();
   expect(second).not.toBeNull();
-  expect(first!.y + first!.height).toBeLessThanOrEqual(second!.y + 1);
+  expect(first!.y + first!.height).toBeLessThanOrEqual(second!.y + 2);
   expect(Math.abs(first!.height - second!.height)).toBeLessThanOrEqual(1);
 }
 

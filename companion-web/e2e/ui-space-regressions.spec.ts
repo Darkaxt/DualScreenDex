@@ -317,7 +317,7 @@ test('global loading and error feedback use a non-obscuring reserved row', async
   await page.setViewportSize({ width: 538, height: 445 });
   await installHarness(page, catalog, {
     ...baseState,
-    error: 'The latest update could not be applied.',
+    error: { code: 'API_INVALID_REQUEST' },
     loading: { active: true, phase: 'FAMILY_AND_TABLES', completedUnits: 2, totalUnits: 5 },
   });
   await page.emulateMedia({ reducedMotion: 'reduce' });
