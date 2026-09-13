@@ -522,7 +522,7 @@ class OfficialMatrixApiCaptureTest {
         OfficialMatrixApiCapture.capture(fixture.source, fixture.working, fixture.expected, factory, BINDING)
 
     private fun fixture(): Fixture {
-        val root = temporary.newFolder().toPath()
+        val root = temporary.newFolder().toPath().toRealPath()
         val language = LanguageTag.FRENCH
         val manifest = RomLanguageManifest(
             defaultLanguage = language,

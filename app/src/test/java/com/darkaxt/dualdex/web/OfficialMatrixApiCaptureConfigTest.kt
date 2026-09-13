@@ -13,7 +13,7 @@ class OfficialMatrixApiCaptureConfigTest {
     @get:Rule val temporary = TemporaryFolder()
 
     @Test fun readsPinnedExplicitCapturePartition() {
-        val path = temporary.newFile("capture.json").toPath()
+        val path = temporary.newFile("capture.json").toPath().toRealPath()
         Files.write(path, """
             {
               "schemaVersion": 1,
@@ -45,7 +45,7 @@ class OfficialMatrixApiCaptureConfigTest {
     }
 
     @Test fun rejectsDigestOrSchemaMismatch() {
-        val path = temporary.newFile("capture.json").toPath()
+        val path = temporary.newFile("capture.json").toPath().toRealPath()
         val gson = GsonBuilder().create()
         val config = MatrixApiCaptureConfig(
             schemaVersion = 2,

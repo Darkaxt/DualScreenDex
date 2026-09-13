@@ -17,15 +17,6 @@ internal data class MatrixApiCaptureConfig(
     val controls: List<MatrixCacheControl>,
 )
 
-private fun Path.matchesRealPath(): Boolean {
-    val real = toRealPath()
-    return if (System.getProperty("os.name").orEmpty().startsWith("Windows")) {
-        toString().equals(real.toString(), ignoreCase = true)
-    } else {
-        this == real
-    }
-}
-
 internal object OfficialMatrixApiCaptureConfig {
     private const val MAX_CONFIG_BYTES = 1024 * 1024
     private val sha256 = Regex("[0-9a-f]{64}")
@@ -34,7 +25,7 @@ internal object OfficialMatrixApiCaptureConfig {
     fun read(path: Path, expectedSha256: String): MatrixApiCaptureConfig {
         require(sha256.matches(expectedSha256)) { "invalid configuration digest" }
         val input = path.toAbsolutePath().normalize()
-        require(Files.isRegularFile(input, NOFOLLOW_LINKS) && input.matchesRealPath()) {
+        require(Files.isRegularFile(input, NOFOLLOW_LINKS) && input.toRealPath() == input) {
             "configuration must be a regular unaliased file"
         }
         require(Files.size(input) in 1..MAX_CONFIG_BYTES.toLong()) { "configuration byte bound exceeded" }
@@ -70,7 +61,7 @@ class OfficialMatrixApiCaptureRunnerTest {
         val working = Path.of(requireNotNull(System.getProperty("dualdex.matrix.capture.working")) {
             "dualdex.matrix.capture.working is required"
         }).toAbsolutePath().normalize()
-        require(Files.isDirectory(output.parent, NOFOLLOW_LINKS) && output.parent.matchesRealPath()) {
+        require(Files.isDirectory(output.parent, NOFOLLOW_LINKS) && output.parent.toRealPath() == output.parent) {
             "output parent must be an existing unaliased directory"
         }
         require(Files.notExists(output, NOFOLLOW_LINKS)) { "output already exists or is inaccessible" }

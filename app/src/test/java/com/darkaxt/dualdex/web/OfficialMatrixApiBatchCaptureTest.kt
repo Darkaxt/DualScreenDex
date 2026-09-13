@@ -15,7 +15,7 @@ class OfficialMatrixApiBatchCaptureTest {
     @get:Rule val temporary = TemporaryFolder()
 
     @Test fun capturesEveryConfiguredCacheUnderOneExactBinding() {
-        val root = temporary.root.toPath()
+        val root = temporary.root.toPath().toRealPath()
         val cache = root.resolve("cache")
         Files.createDirectory(cache)
         val controls = listOf(
@@ -47,7 +47,7 @@ class OfficialMatrixApiBatchCaptureTest {
     }
 
     @Test fun rejectsDuplicateIdentitiesBeforeCreatingWorkingFiles() {
-        val root = temporary.root.toPath()
+        val root = temporary.root.toPath().toRealPath()
         val cache = root.resolve("cache")
         Files.createDirectory(cache)
         val control = control("1".repeat(64), "a".repeat(64), EngineFamily.RED_BLUE, "en", "gb-gen1-en")

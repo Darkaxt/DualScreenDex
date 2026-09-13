@@ -23,7 +23,7 @@ DualDex 1.2.0 RC6 packages the complete six-stage localization system. Manual Se
 - Pass the packaged API 35 Android localization acceptance gate: 8/8 tests, zero failures, errors, or skips.
 - Align the complete Web and desktop-server release gates with localized Settings labels and typed API presentation messages.
 - Keep private app and parser real-ROM control tests conditional on their explicit local inputs, and validate cache-only item projection with a structurally complete localized POI fixture.
-- Preserve unaliased capture-path validation while accepting Windows drive-letter casing differences in ordinary CI.
+- Canonicalize synthetic capture-fixture roots on Windows CI while preserving strict unaliased-path validation in the capture runner.
 - Validate schema-16 localization corpus evidence and bounded recoveries during protected candidate promotion.
 - Preserve protected GitHub-only production signing, pinned-certificate verification, immutable checksums, provenance, and non-replacing publication.
 - This candidate uses Android version code `1020006`.

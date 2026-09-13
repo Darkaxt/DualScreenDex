@@ -59,13 +59,11 @@ internal object OfficialMatrixApiCapture {
         }
         val input = source.toAbsolutePath().normalize()
         val working = workingDirectory.toAbsolutePath().normalize()
-        require(Files.isRegularFile(input, NOFOLLOW_LINKS) && input.matchesRealPath()) {
-            "source must be a regular unaliased cache"
-        }
+        require(Files.isRegularFile(input, NOFOLLOW_LINKS) && input.toRealPath() == input) { "source must be a regular unaliased cache" }
         require(input.fileName.toString() == "${expected.romSha256}.sqlite") { "source cache key mismatch" }
         require(Files.size(input) in 1..MAX_CACHE_BYTES) { "source cache byte bound exceeded" }
         require(Files.notExists(working, NOFOLLOW_LINKS)) { "working directory already exists or is inaccessible" }
-        require(Files.isDirectory(working.parent, NOFOLLOW_LINKS) && working.parent.matchesRealPath()) {
+        require(Files.isDirectory(working.parent, NOFOLLOW_LINKS) && working.parent.toRealPath() == working.parent) {
             "working parent must be an existing unaliased directory"
         }
         requireNoSidecars(input)
@@ -166,15 +164,6 @@ internal object OfficialMatrixApiCapture {
             require(Files.notExists(source.resolveSibling(source.fileName.toString() + suffix), NOFOLLOW_LINKS)) {
                 "source cache has a sidecar or inaccessible sidecar path"
             }
-        }
-    }
-
-    private fun Path.matchesRealPath(): Boolean {
-        val real = toRealPath()
-        return if (System.getProperty("os.name").orEmpty().startsWith("Windows")) {
-            toString().equals(real.toString(), ignoreCase = true)
-        } else {
-            this == real
         }
     }
 
