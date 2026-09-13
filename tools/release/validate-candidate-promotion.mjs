@@ -6,6 +6,7 @@ import process from "node:process";
 
 const EXPECTED_APPLICATION_ID = "com.darkaxt.dualdex";
 const REQUIRED_INPUT_COUNT = 333;
+const SUPPORTED_GENERATOR_SCHEMAS = new Set([13, 16]);
 
 function parseArguments(argumentsList) {
   const parsed = {};
@@ -149,8 +150,15 @@ function validatePublishedEvidenceAssets(assets) {
   const manifest = parsePublishedJson(assets, "compatibility-evidence.json");
   const canonical = parsePublishedJson(assets, "canonical-corpus.json");
   const validation = parsePublishedJson(assets, "release-evidence-validation.json");
-  const summary = parsePublishedJson(assets, "dualdex-stage-07-corpus-evidence.json");
-  const receipt = parsePublishedJson(assets, "dualdex-stage-07-corpus-execution.json");
+  const localizationEvidence = manifest?.generator?.schemaVersion === 16;
+  const summaryName = localizationEvidence
+    ? "dualdex-localization-corpus-evidence.json"
+    : "dualdex-stage-07-corpus-evidence.json";
+  const receiptName = localizationEvidence
+    ? "dualdex-localization-corpus-execution.json"
+    : "dualdex-stage-07-corpus-execution.json";
+  const summary = parsePublishedJson(assets, summaryName);
+  const receipt = parsePublishedJson(assets, receiptName);
   const stage7 = parsePublishedJson(assets, "dualdex-stage-07-closure.json");
   const stage8 = parsePublishedJson(assets, "dualdex-stage-08-closure.json");
 
@@ -168,12 +176,13 @@ function validatePublishedEvidenceAssets(assets) {
   validatePublishedSummary(summary, manifest, canonical);
   validatePublishedReceipt(receipt, manifest, summary);
 
-  validatePublishedClosure(stage7, 7, manifest.sourceCommit);
-  validatePublishedClosure(stage8, 8, manifest.sourceCommit);
+  const closureSourceCommit = manifest.qaBaselineSourceCommit ?? manifest.sourceCommit;
+  validatePublishedClosure(stage7, 7, closureSourceCommit);
+  validatePublishedClosure(stage8, 8, closureSourceCommit);
 
   const roleToName = new Map([
-    ["CORPUS_SUMMARY", "dualdex-stage-07-corpus-evidence.json"],
-    ["CORPUS_EXECUTION_RECEIPT", "dualdex-stage-07-corpus-execution.json"],
+    ["CORPUS_SUMMARY", summaryName],
+    ["CORPUS_EXECUTION_RECEIPT", receiptName],
     ["STAGE_7_CLOSURE", "dualdex-stage-07-closure.json"],
     ["STAGE_8_CLOSURE", "dualdex-stage-08-closure.json"],
   ]);
@@ -198,22 +207,25 @@ function validatePublishedEvidenceAssets(assets) {
     validation.inputCount === REQUIRED_INPUT_COUNT &&
     validation.corpusInputDigestSha256 === canonical.inputDigestSha256 &&
     validation.artifactCount === manifest.artifacts.length &&
-    validation.stage7Closed === true && validation.stage8Closed === true,
+    validation.stage7Closed === true && validation.stage8Closed === true &&
+    (summary.schemaVersion !== 3 || validation.localizationClosed === true),
   "Published release evidence validation does not match the manifest generator or prove zero-gap closure");
   return { releaseCommit: validation.releaseCommit };
 }
 
 function validatePublishedGenerator(generator, description) {
-  requireCondition(generator?.name === "parser-cli" && generator.schemaVersion === 13 &&
+  requireCondition(generator?.name === "parser-cli" &&
+    SUPPORTED_GENERATOR_SCHEMAS.has(generator.schemaVersion) &&
     /^[0-9a-f]{64}$/.test(generator.sha256 ?? ""),
   `${description} generator is invalid`);
 }
 
 function validatePublishedSummary(summary, manifest, canonical) {
-  requireCondition(summary?.schemaVersion === 2 && summary.sourceCommit === manifest.sourceCommit,
+  requireCondition([2, 3].includes(summary?.schemaVersion) && summary.sourceCommit === manifest.sourceCommit,
     "Published corpus summary source lineage is inconsistent");
   validatePublishedGenerator(summary.generator, "Published corpus summary");
-  requireCondition(summary.generator.sha256 === manifest.generator.sha256 &&
+  requireCondition(summary.generator.schemaVersion === manifest.generator.schemaVersion &&
+    summary.generator.sha256 === manifest.generator.sha256 &&
     /^[0-9a-f]{64}$/.test(summary.rawReportSha256 ?? "") &&
     manifest.corpus?.inputCount === REQUIRED_INPUT_COUNT &&
     summary.inputCount === REQUIRED_INPUT_COUNT &&
@@ -224,6 +236,17 @@ function validatePublishedSummary(summary, manifest, canonical) {
   validateTerminalCounts(summary.outcomes, ["selected", "ambiguous", "noFamilyMatch", "errors"],
     "Published corpus summary terminal outcomes");
   requireCondition(summary.outcomes.errors === 0, "Published corpus summary contains parser errors");
+  if (summary.schemaVersion === 3) validatePublishedLocalizationSummary(summary);
+  else validatePublishedCompatibilitySummary(summary);
+  requireCondition(summary.privacy?.containsRomIdentity === false &&
+    summary.privacy.containsRomName === false && summary.privacy.containsSourcePath === false &&
+    summary.privacy.containsRomBytes === false,
+  "Published corpus summary privacy declaration is unsafe");
+}
+
+function validatePublishedCompatibilitySummary(summary) {
+  requireCondition(summary.generator.schemaVersion === 13,
+    "Published compatibility summary requires generator schema 13");
   validateTerminalCounts(summary.dataCompatibility, ["complete", "partial", "unresolved", "errors"],
     "Published corpus summary compatibility outcomes");
   requireCondition(summary.dataCompatibility.errors === 0,
@@ -232,10 +255,41 @@ function validatePublishedSummary(summary, manifest, canonical) {
     summary.catalogs.materialized === summary.outcomes.selected &&
     summary.catalogs.persisted === summary.catalogs.materialized,
   "Published corpus summary does not prove catalog materialization and persistence");
-  requireCondition(summary.privacy?.containsRomIdentity === false &&
-    summary.privacy.containsRomName === false && summary.privacy.containsSourcePath === false &&
-    summary.privacy.containsRomBytes === false,
-  "Published corpus summary privacy declaration is unsafe");
+}
+
+function validatePublishedLocalizationSummary(summary) {
+  requireCondition(summary.generator.schemaVersion === 16 && summary.status === "COMPLETE" &&
+    summary.openBlockers === 0,
+  "Published localization summary is incomplete");
+  requireCondition(["resolved", "unknown"].every(field => Number.isInteger(summary.languageManifests?.[field]) &&
+    summary.languageManifests[field] >= 0) &&
+    summary.languageManifests.resolved + summary.languageManifests.unknown === summary.outcomes.selected,
+  "Published localization language manifests do not account for every selected outcome");
+  requireCondition(summary.catalogs?.catalogErrors === 0 &&
+    Number.isInteger(summary.catalogs.persistenceErrors) && summary.catalogs.persistenceErrors >= 0 &&
+    summary.catalogs.materialized === summary.outcomes.selected &&
+    Array.isArray(summary.recoveries) && summary.catalogs.persistenceErrors === summary.recoveries.length,
+  "Published localization catalog persistence evidence is incomplete");
+  for (const [index, recovery] of summary.recoveries.entries()) {
+    requireCondition(recovery?.sourceCommit === summary.sourceCommit &&
+      recovery.generator?.name === summary.generator.name &&
+      recovery.generator?.schemaVersion === summary.generator.schemaVersion &&
+      recovery.generator?.sha256 === summary.generator.sha256 &&
+      recovery.inputCount === 1 && recovery.selected === 1 && recovery.persisted === 1 &&
+      recovery.parserErrors === 0 && recovery.catalogErrors === 0 &&
+      recovery.persistenceErrors === 0 && recovery.referenceErrors === 0 &&
+      recovery.logicalDigestMatched === true &&
+      ["rawReportSha256", "markdownReportSha256", "executionReceiptSha256"]
+        .every(field => /^[0-9a-f]{64}$/.test(recovery[field] ?? "")),
+    `Published localization recovery ${index + 1} is invalid`);
+  }
+  requireCondition(summary.catalogs.persisted + summary.recoveries.length === summary.catalogs.materialized,
+    "Published localization recoveries do not account for every materialized catalog");
+  requireCondition(summary.packagedAcceptance?.tests === 8 &&
+    summary.packagedAcceptance.failures === 0 && summary.packagedAcceptance.errors === 0 &&
+    summary.packagedAcceptance.skipped === 0 &&
+    /^[0-9a-f]{64}$/.test(summary.packagedAcceptance.resultSha256 ?? ""),
+  "Published packaged localization acceptance is incomplete");
 }
 
 function validateTerminalCounts(counts, fields, description) {
@@ -303,12 +357,15 @@ export function validateReleaseAssetSet({
     "canonical-corpus.json",
     "release-evidence-validation.json",
     "repository-policy.json",
-    "dualdex-stage-07-corpus-evidence.json",
-    "dualdex-stage-07-corpus-execution.json",
     "dualdex-stage-07-closure.json",
     "dualdex-stage-08-closure.json",
   ];
-  requireCondition(requiredNames.every(name => expected.some(asset => asset.name === name)),
+  const requiredEvidencePair = [
+    ["dualdex-stage-07-corpus-evidence.json", "dualdex-stage-07-corpus-execution.json"],
+    ["dualdex-localization-corpus-evidence.json", "dualdex-localization-corpus-execution.json"],
+  ];
+  requireCondition(requiredNames.every(name => expected.some(asset => asset.name === name)) &&
+    requiredEvidencePair.some(pair => pair.every(name => expected.some(asset => asset.name === name))),
     "Immutable release asset set omits required release evidence, execution receipt, or zero-gap closure");
   const downloaded = new Map();
   for (const asset of expected) {

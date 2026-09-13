@@ -117,6 +117,104 @@ function publishedEvidenceFiles() {
   ]);
 }
 
+function publishedLocalizationEvidenceFiles() {
+  const files = publishedEvidenceFiles();
+  const manifest = JSON.parse(files.get("compatibility-evidence.json"));
+  const canonical = JSON.parse(files.get("canonical-corpus.json"));
+  const baselineCommit = "0".repeat(40);
+  const generator = {
+    name: "parser-cli",
+    schemaVersion: 16,
+    sha256: "6".repeat(64),
+  };
+  const summary = jsonBytes({
+    schemaVersion: 3,
+    status: "COMPLETE",
+    sourceCommit: manifest.sourceCommit,
+    generator,
+    rawReportSha256: "5".repeat(64),
+    corpusInputDigestSha256: canonical.inputDigestSha256,
+    inputCount: 333,
+    uniqueRomIdentities: 333,
+    outcomes: { selected: 329, ambiguous: 2, noFamilyMatch: 2, total: 333, errors: 0 },
+    languageManifests: { resolved: 328, unknown: 1 },
+    catalogs: { materialized: 329, persisted: 328, catalogErrors: 0, persistenceErrors: 1 },
+    recoveries: [{
+      sourceCommit: manifest.sourceCommit,
+      generator,
+      inputCount: 1,
+      selected: 1,
+      persisted: 1,
+      parserErrors: 0,
+      catalogErrors: 0,
+      persistenceErrors: 0,
+      referenceErrors: 0,
+      logicalDigestMatched: true,
+      rawReportSha256: "7".repeat(64),
+      markdownReportSha256: "8".repeat(64),
+      executionReceiptSha256: "9".repeat(64),
+    }],
+    packagedAcceptance: {
+      tests: 8,
+      failures: 0,
+      errors: 0,
+      skipped: 0,
+      resultSha256: "a".repeat(64),
+    },
+    openBlockers: 0,
+    privacy: {
+      containsRomIdentity: false,
+      containsRomName: false,
+      containsSourcePath: false,
+      containsRomBytes: false,
+    },
+  });
+  const receipt = jsonBytes({
+    schemaVersion: 1,
+    sourceCommit: manifest.sourceCommit,
+    generator,
+    rawReportSha256: "5".repeat(64),
+    inputCount: 333,
+  });
+  const stage7 = jsonBytes({
+    schemaVersion: 1,
+    stage: 7,
+    status: "CLOSED",
+    sourceCommit: baselineCommit,
+    openBlockers: 0,
+    openReferrals: 0,
+  });
+  const stage8 = jsonBytes({
+    schemaVersion: 1,
+    stage: 8,
+    status: "CLOSED",
+    sourceCommit: baselineCommit,
+    openBlockers: 0,
+    openReferrals: 0,
+  });
+  manifest.qaBaselineSourceCommit = baselineCommit;
+  manifest.generator = generator;
+  manifest.artifacts = [
+    ["CORPUS_SUMMARY", "docs/reports/localization/stage-06-corpus-evidence.json", summary],
+    ["CORPUS_EXECUTION_RECEIPT", "docs/reports/localization/stage-06-corpus-execution.json", receipt],
+    ["STAGE_7_CLOSURE", "docs/reports/qa-hardening/stage-07-closure.json", stage7],
+    ["STAGE_8_CLOSURE", "docs/reports/qa-hardening/stage-08-closure.json", stage8],
+  ].map(([role, path, bytes]) => ({ role, path, sha256: sha256(bytes).toLowerCase() }));
+  const validation = JSON.parse(files.get("release-evidence-validation.json"));
+  validation.generatorSchemaVersion = 16;
+  validation.generatorSha256 = generator.sha256;
+  validation.localizationClosed = true;
+  files.delete("dualdex-stage-07-corpus-evidence.json");
+  files.delete("dualdex-stage-07-corpus-execution.json");
+  files.set("compatibility-evidence.json", jsonBytes(manifest));
+  files.set("release-evidence-validation.json", jsonBytes(validation));
+  files.set("dualdex-localization-corpus-evidence.json", summary);
+  files.set("dualdex-localization-corpus-execution.json", receipt);
+  files.set("dualdex-stage-07-closure.json", stage7);
+  files.set("dualdex-stage-08-closure.json", stage8);
+  return files;
+}
+
 function packagedValidation(overrides = {}) {
   return {
     validationMode: "packaged-android-and-thor",
@@ -363,13 +461,13 @@ test("rejects incomplete automated substitution evidence", () => {
   assert.match(result.stderr, /passive-catalog/i);
 });
 
-function immutableAssetFixture() {
+function immutableAssetFixture(evidenceFiles = publishedEvidenceFiles()) {
   const files = new Map([
     ["DualDex-v1.1.0-rc.73.apk", Buffer.from("apk")],
     ["provenance.json", Buffer.from("provenance")],
     ["SHA256SUMS.txt", Buffer.from("checksums")],
     ["repository-policy.json", Buffer.from("policy")],
-    ...publishedEvidenceFiles(),
+    ...evidenceFiles,
   ]);
   const releaseAssets = [...files].map(([name, bytes], index) => ({
     name,
@@ -407,6 +505,19 @@ function removeImmutableAsset(fixture, name) {
 
 test("accepts the exact immutable public release asset set", () => {
   const fixture = immutableAssetFixture();
+
+  const result = validateReleaseAssetSet({
+    recordAssets: fixture.recordAssets,
+    releaseAssets: fixture.releaseAssets,
+    readAsset: name => fixture.files.get(name) ?? null,
+    candidateTag: "v1.1.0-rc.73",
+  });
+
+  assert.equal(result.assetCount, fixture.releaseAssets.length);
+});
+
+test("accepts source-bound localization evidence and bounded recoveries", () => {
+  const fixture = immutableAssetFixture(publishedLocalizationEvidenceFiles());
 
   const result = validateReleaseAssetSet({
     recordAssets: fixture.recordAssets,

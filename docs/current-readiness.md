@@ -4,10 +4,10 @@ This is the canonical reviewer entry point for DualDex release readiness.
 
 ## Active marker
 
-- **Next protected candidate:** `v1.2.0-rc.5`
-- **Release notes:** [`release/RELEASE_NOTES_1.2.0-rc.5.md`](../release/RELEASE_NOTES_1.2.0-rc.5.md)
+- **Next protected candidate:** `v1.2.0-rc.6`
+- **Release notes:** [`release/RELEASE_NOTES_1.2.0-rc.6.md`](../release/RELEASE_NOTES_1.2.0-rc.6.md)
 - **Machine-readable readiness marker:** [`release/v1-ready.json`](../release/v1-ready.json)
-- **Current state:** project-wide QA Stages 7–8 remain closed with zero blockers and zero referrals; the six-stage localization system is complete with zero system blockers, and 1.2.0 RC5 supersedes the failed RC1 through RC4 candidates with the Web, desktop-server, and ordinary CI gates aligned to the localized presentation contract.
+- **Current state:** project-wide QA Stages 7–8 remain closed with zero blockers and zero referrals; the six-stage localization system is complete with zero system blockers, and 1.2.0 RC6 supersedes the unpublished RC1 through RC5 candidates with the Web, desktop-server, ordinary CI, release, and promotion gates aligned to the localized presentation contract.
 
 ## Final QA evidence
 
@@ -21,7 +21,7 @@ The canonical corpus remains 333 scanner-eligible inputs from the audited 334-fi
 - [QA Stage 7 closure](reports/qa-hardening/stage-07-closure.md)
 - [QA Stage 8 integrated closure](reports/qa-hardening/stage-08-closure.md)
 
-The release workflow validates source lineage, generator and raw-report digests, the canonical denominator/multiset digest, both exact bounded recoveries, the cache revision decision, QA and localization closure state, protected tag rules, and both protected GitHub environments before signing can begin. RC5 is a new non-replacing 1.2.0 candidate; it does not alter the already published stable `v1.1.0` or move the immutable failed `v1.2.0-rc.1` through `v1.2.0-rc.4` tags.
+The release workflow validates source lineage, generator and raw-report digests, the canonical denominator/multiset digest, both exact bounded recoveries, the cache revision decision, QA and localization closure state, protected tag rules, and both protected GitHub environments before signing can begin. RC6 is a new non-replacing 1.2.0 candidate; it does not alter the already published stable `v1.1.0` or move the immutable unpublished `v1.2.0-rc.1` through `v1.2.0-rc.5` tags.
 
 ## Historical records
 
