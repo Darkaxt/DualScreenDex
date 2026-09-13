@@ -272,6 +272,8 @@ test("allows downstream evidence-policy corrections with nonparser reuse", () =>
   });
 
   const result = validate(evidence, [
+    "parser-core/src/test/kotlin/ParserContractTest.kt",
+    "catalog-store/src/test/kotlin/CatalogStoreTest.kt",
     "tools/release/validate-release-evidence.mjs",
     "tools/release/validate-candidate-promotion.mjs",
     "tools/release/derive-release-metadata.mjs",

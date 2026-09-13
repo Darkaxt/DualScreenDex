@@ -260,7 +260,7 @@ function validateCacheDecision({
   catalogSchemaRevision,
   priorCatalogSchemaRevision,
 }) {
-  const affectingPaths = decisionPaths.filter(path => PARSER_CATALOG_PATH.test(path));
+  const affectingPaths = decisionPaths.filter(isParserCatalogProductionPath);
   if (affectingPaths.length === 0) {
     assert(decision == null, "cache decision is permitted only for parser/catalog-affecting changes");
     return "NOT_APPLICABLE";
@@ -304,8 +304,12 @@ function sumFields(value, fields) {
   return fields.reduce((total, field) => total + (Number.isInteger(value?.[field]) ? value[field] : Number.NaN), 0);
 }
 
+function isParserCatalogProductionPath(path) {
+  return PARSER_CATALOG_PATH.test(path) && !path.includes("/src/test/");
+}
+
 function isEvidenceAffectingPath(path) {
-  return PARSER_CATALOG_PATH.test(path) || BUILD_LOGIC_PATH.test(path) || EVIDENCE_GENERATOR_PATH.test(path);
+  return isParserCatalogProductionPath(path) || BUILD_LOGIC_PATH.test(path) || EVIDENCE_GENERATOR_PATH.test(path);
 }
 
 function isSafeRelativePath(path) {
