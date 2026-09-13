@@ -1,0 +1,280 @@
+{
+  "schema": 1,
+  "candidateTag": "v1.2.0-rc.6",
+  "apkSha256": "9E70EBBE8829BBCEB3C73F11CE8670F5224283F2D29F3BF15274A188545481A3",
+  "sourceCommit": "e7eed4bff32cf81ff4021e2db98ec87d575c073e",
+  "validationMode": "automated-passive-catalog",
+  "automatedValidationWorkflowRunUrl": "https://github.com/Darkaxt/DualScreenDex/actions/runs/34728957828",
+  "userAuthorizedAutomatedPromotion": true,
+  "gameplayRuntimeChanged": false,
+  "catalogPersistenceValidated": true,
+  "runtimeApiValidated": true,
+  "webPresentationValidated": true,
+  "releaseCiValidated": true,
+  "controls": [
+    {
+      "romSha256": "22c0dfec9ce004dceebe280d71fa2579fa376064f70284bbf46322e163aa1160",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "fdcc3c8c43813cf8731fc037d2a6d191bac75439c34b24ba1c27526e6acdc8a2",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "4aacb5b3ac7a741d99f507e7c31393c015dea26a3ce8876021c50e7c761c1141",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "178b0da870a3cc58414940412eb6473f515b8941cb83d81a1a42d05ca82749e7",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "2592aef20701fa1d5df5cf3343ffb4293092c911177868fa4a94698c27f7be89",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "136ada06cb68656b7de475fa4b278d37dbeff8f5257e7dfdf7f4a4aec19a90f3",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "7c599c56849efeebeb93bd71f714932ae4cdf980db51c9c1016b4431057f71d4",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "a9dec84dfe7f62ab2220bafaef7479da0929d066ece16a6885f6226db19085af",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "e32c82bd10f174cf4019123b36f3ef7729105fb6634d9aa6b61413ee5101a55e",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "e79b40e6189550b4870b06918a5c59e04d3a2e1d7c92718aeda92181201f51e4",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "63cbff3500b657cb6966568beb0780de3655d3a0b2e5ac6e0ec33d5d01a916ad",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "33f5610b9186b4add09fef68895deb00f552b997b3d133b5a961e5123506343c",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "eed4fb0242bcbb6e0b0b80b197b47e3aec99ef4c5562cc45bae50ae86b970507",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "729041b940afe031302d630fdbe57c0c145f3f7b6d9b8eca5e98678d0ca4d059",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "ab696c065639e4d73c3c3ed9d4fbf9c7fed593761f3b6746256ff82465596554",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "245866842349cedbe2a034c6d20438d26d18b627b3d0909d7cb795fc87d7675a",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "ad52b593ef0c7439e1409d3f0a1ec3ff865a494ca46c2184fe65573759838f3a",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "cec5fc4dbe38cd8026bd6664a1a041d9dc91e8d4249bab04e7bde70c3cdf4e06",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "542f275f8632ef5265e5cde80a8ba1f0ec11ce714ef9d773088a92680bd17d73",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "fb0016d27b1e5374e1ec9fcad60e6628d8646103b5313ca683417f52b97e7e4e",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "7b78e33a348a0729e38ee0fd778cf49b3e07c35d2175ebc74d8f9be41f41455b",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "6103cadf2ae505f4b489a8a414c8db27a2307d797ddf8a3a848659b591dd4023",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "367e606f82b9e2e16d0cc8011c5ba2df1862da574e57ffd66e786a82af5b6e22",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "27a07a1d3faf9c6a0b1b60d5e88ee3a4159a751a47b4c46ab09f1202d52bac3e",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "9c273e86e6120c6a038160ccb0153b8b20425b84fc08a496281c1d1bcac492f6",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "ebbac63c0c4309c82dbb6723e7163369784f962b4fd3e2f486075307c3008a22",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "9cd186b288dbcd52413d561ae449f1f700c32b45af56dbf849095d4a0c8637a6",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "5ca7ba01642a3b27b0cc0b5349b52792795b62d3ed977e98a09390659af96b7b",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "a756cf7ad888aa46de4b9699a177a0edf1775e59eb6330014c6f5c139be9c45d",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "23766290f3b2347f815f1e8977c3b84047ed880cadda8c4f1a3595a633daa303",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "e805d00b0002156d38b96efd57c823b0db3a3ef4cd32f98bd9bb4779bda3dd5b",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "3f0dc460ca8d06be1c9ac96307c939c0ea7baa366b40c2f1f4ad63242b6c4816",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "e0b620d576bc503e083bb9d2af1f5ffc40127b84e6ca734e3c45534d0d008043",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "0fdd36e92b75bed65d09df4635ab0b707b288c2bf1dc4c6e7a4a4f0eebe9d64c",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "0db39958c19abcedc7670fb16fd3274a5b205df794eb7491bea0580aa752e095",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "9678645ca67932a42c92b1d6bac118925a6be9f67135ae8fe7747df85cdabdd0",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "be116b6fa8d8c12d7ccff3faefd5defd886faa427ff2c85c06d245cbe4e531b2",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "a7ea012b67a27da2893bfdfcb5f64915607b26904b4fc635a1055e8e40e692ab",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "aed41ea3e785ac9c06fd641270ff30b59de5fc64fed4349e81a9aaa4ba7d31f9",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "8cbaa499397e4f1a679c992ea9382a2dd7942ab398b48c19829c2d9529de47bf",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "55d56d6f73225886bfdc0db1ddb754d2f4dfc6ef5ae74ddfa079c23b6ec80039",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "77b31f874fd877fbf48757f315ffc3144e06fc7222aba6ac4eda2045ebf5d3fa",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "e3f0663e16ac240bc1c6681cdb95ca7230d86fca23eb931ea58f4abce0002856",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "1349408f328f633b33e059e654edabd19810530df9c883eda03a85d5bb10161a",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    }
+  ]
+}
