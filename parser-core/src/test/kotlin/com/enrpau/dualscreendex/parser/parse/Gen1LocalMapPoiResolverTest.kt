@@ -6,6 +6,7 @@ import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiKind
 import com.enrpau.dualscreendex.parser.io.RomImage
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 class Gen1LocalMapPoiResolverTest {
@@ -161,7 +162,9 @@ class Gen1LocalMapPoiResolverTest {
         "1349408f328f633b33e059e654edabd19810530df9c883eda03a85d5bb10161a")
 
     private fun nativeReferences(family: String, sha: String) {
-        val directory = java.io.File(requireNotNull(System.getenv("DUALDEX_NATIVE_CONTROLS")), "ja/$family")
+        val configured = System.getenv("DUALDEX_NATIVE_CONTROLS")
+        assumeTrue("set DUALDEX_NATIVE_CONTROLS for exact Gen I reference evidence", !configured.isNullOrBlank())
+        val directory = java.io.File(requireNotNull(configured), "ja/$family")
         val file = requireNotNull(directory.listFiles()).single { it.isFile }
         val rom = RomImage(file.readBytes())
         assertEquals(sha, rom.sha256)

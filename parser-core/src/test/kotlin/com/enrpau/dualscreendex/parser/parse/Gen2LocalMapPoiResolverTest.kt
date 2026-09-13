@@ -18,6 +18,7 @@ import com.enrpau.dualscreendex.parser.text.PokemonTextToken
 import com.enrpau.dualscreendex.parser.text.PokemonTextTokenDecoder
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 class Gen2LocalMapPoiResolverTest {
@@ -413,7 +414,9 @@ class Gen2LocalMapPoiResolverTest {
         listOf(Gen2LocalMapPoiResolver.Source(1, 1, ATTRIBUTES_1)), listOf(localMap(1)), EngineFamily.GOLD_SILVER, null)
 
     private fun nativeItemReferences(family: String, sha: String, language: String = "ja") {
-        val directory = java.io.File(requireNotNull(System.getenv("DUALDEX_NATIVE_CONTROLS")), "$language/$family")
+        val configured = System.getenv("DUALDEX_NATIVE_CONTROLS")
+        assumeTrue("set DUALDEX_NATIVE_CONTROLS for exact Gen II item evidence", !configured.isNullOrBlank())
+        val directory = java.io.File(requireNotNull(configured), "$language/$family")
         val file = requireNotNull(directory.listFiles()).single { it.isFile }
         val rom = RomImage(file.readBytes())
         assertEquals(sha, rom.sha256)
