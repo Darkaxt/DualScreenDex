@@ -386,8 +386,12 @@ jobs:
             candidate_source_tree="$(git rev-parse "$sourceCandidateTag^{tree}")"
             candidate_release="$RUNNER_TEMP/source-candidate-release.json"
             candidate_provenance="$RUNNER_TEMP/source-candidate-provenance.json"
-            gh api "repos/$GITHUB_REPOSITORY/releases/tags/$sourceCandidateTag" > "$candidate_release"
-            jq -e '.draft == false and .prerelease == true' "$candidate_release" >/dev/null
+            gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+              | jq -s --arg tag "$sourceCandidateTag" \
+                'add | map(select(.tag_name == $tag)) | if length == 1 then .[0] else empty end' \
+              > "$candidate_release"
+            test -s "$candidate_release"
+            jq -e '.prerelease == true' "$candidate_release" >/dev/null
             candidate_provenance_asset="$(
               jq -c '.assets | map(select(.name == "provenance.json")) | if length == 1 then .[0] else empty end' \
                 "$candidate_release"

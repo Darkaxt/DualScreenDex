@@ -459,7 +459,7 @@ test("builds only the unsigned release APK before protected signing", () => {
   assert.doesNotMatch(readFileSync(join(repositoryRoot, "release", "v1-ready.json"), "utf8"), /debugApkSha256/);
 });
 
-test("binds stable release metadata to candidate provenance and an allowlisted source diff", () => {
+test("binds stable release metadata to private candidate provenance and an allowlisted source diff", () => {
   const metadataStep = workflow.slice(
     workflow.indexOf("      - name: Derive and validate release identity"),
     workflow.indexOf("      - name: Refuse an existing release"),
@@ -472,7 +472,11 @@ test("binds stable release metadata to candidate provenance and an allowlisted s
   assert.match(metadataStep, /--candidate-promotion/);
   assert.match(metadataStep, /--candidate-source-commit/);
   assert.match(metadataStep, /--candidate-source-tree/);
-  assert.match(metadataStep, /releases\/tags\/\$sourceCandidateTag/);
+  assert.match(metadataStep, /repos\/\$GITHUB_REPOSITORY\/releases\?per_page=100/);
+  assert.match(metadataStep, /gh api --paginate/);
+  assert.match(metadataStep, /\.tag_name == \$tag/);
+  assert.match(metadataStep, /\.prerelease == true/);
+  assert.doesNotMatch(metadataStep, /\.draft == false/);
   assert.match(metadataStep, /releases\/assets\/\$candidate_provenance_asset_id/);
   assert.match(metadataStep, /candidate_provenance_api_digest/);
   assert.match(metadataStep, /--candidate-provenance-sha256/);

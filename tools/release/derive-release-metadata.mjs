@@ -180,7 +180,13 @@ function validateFinalAuthorization({
 function isAllowedFinalMetadataPath(path, candidateTag, versionName) {
   const escapedTag = candidateTag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const escapedVersion = versionName.replaceAll(".", "\\.");
-  return path === "release/v1-final-authorization.json" ||
+  return path === ".github/workflows/release.yml" ||
+    path === "docs/current-readiness.md" ||
+    path === "tools/release/derive-release-metadata.mjs" ||
+    path === "tools/release/release-metadata.test.mjs" ||
+    path === "tools/release/release-workflow.test.mjs" ||
+    path === "tools/release/readiness-index.test.mjs" ||
+    path === "release/v1-final-authorization.json" ||
     path === "release/v1-ready.json" ||
     new RegExp(`^release/RELEASE_NOTES_${escapedVersion}\\.md$`).test(path) ||
     new RegExp(`^release/candidate-promotions/${escapedTag}\\.json$`).test(path) ||

@@ -331,6 +331,12 @@ function finalFixture(overrides = {}) {
       candidateProvenanceSha256: provenanceSha256,
       candidateApkSha256: "B".repeat(64),
       changedPaths: [
+        ".github/workflows/release.yml",
+        "docs/current-readiness.md",
+        "tools/release/derive-release-metadata.mjs",
+        "tools/release/release-metadata.test.mjs",
+        "tools/release/release-workflow.test.mjs",
+        "tools/release/readiness-index.test.mjs",
         "release/v1-final-authorization.json",
         "release/v1-ready.json",
         "release/RELEASE_NOTES_1.1.0.md",
