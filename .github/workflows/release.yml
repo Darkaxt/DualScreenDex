@@ -364,7 +364,6 @@ jobs:
         id: metadata
         shell: bash
         env:
-          GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
@@ -384,32 +383,13 @@ jobs:
             test -s "$candidate_promotion"
             candidate_source_commit="$(git rev-parse "$sourceCandidateTag^{commit}")"
             candidate_source_tree="$(git rev-parse "$sourceCandidateTag^{tree}")"
-            candidate_release="$RUNNER_TEMP/source-candidate-release.json"
-            candidate_provenance="$RUNNER_TEMP/source-candidate-provenance.json"
-            gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
-              | jq -s --arg tag "$sourceCandidateTag" \
-                'add | map(select(.tag_name == $tag)) | if length == 1 then .[0] else empty end' \
-              > "$candidate_release"
-            test -s "$candidate_release"
-            jq -e '.prerelease == true' "$candidate_release" >/dev/null
-            candidate_provenance_asset="$(
-              jq -c '.assets | map(select(.name == "provenance.json")) | if length == 1 then .[0] else empty end' \
-                "$candidate_release"
+            candidate_provenance_sha256="$(
+              jq -r '.candidateProvenanceSha256 | ascii_downcase' "$candidate_promotion"
             )"
-            test -n "$candidate_provenance_asset"
-            candidate_provenance_asset_id="$(jq -r '.id' <<< "$candidate_provenance_asset")"
-            candidate_provenance_api_digest="$(jq -r '.digest' <<< "$candidate_provenance_asset")"
-            gh api -H 'Accept: application/octet-stream' \
-              "repos/$GITHUB_REPOSITORY/releases/assets/$candidate_provenance_asset_id" \
-              > "$candidate_provenance"
-            candidate_provenance_sha256="$(sha256sum "$candidate_provenance" | cut -d ' ' -f 1)"
-            [[ "$candidate_provenance_api_digest" == "sha256:$candidate_provenance_sha256" ]]
-            jq -e \
-              --arg tag "$sourceCandidateTag" \
-              --arg commit "$candidate_source_commit" \
-              '.schema == 1 and .releaseKind == "candidate" and .tag == $tag and .commit == $commit' \
-              "$candidate_provenance" >/dev/null
-            candidate_apk_sha256="$(jq -r '.apkSha256 | ascii_downcase' "$candidate_provenance")"
+            candidate_apk_sha256="$(
+              jq -r '.apkSha256 | ascii_downcase' "$candidate_promotion"
+            )"
+            [[ "$candidate_provenance_sha256" =~ ^[a-f0-9]{64}$ ]]
             [[ "$candidate_apk_sha256" =~ ^[a-f0-9]{64}$ ]]
             git diff --name-only "$candidate_source_commit..$GITHUB_SHA" \
               > "$RUNNER_TEMP/final-release-changed-paths.txt"

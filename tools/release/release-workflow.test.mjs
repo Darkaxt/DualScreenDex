@@ -472,13 +472,9 @@ test("binds stable release metadata to private candidate provenance and an allow
   assert.match(metadataStep, /--candidate-promotion/);
   assert.match(metadataStep, /--candidate-source-commit/);
   assert.match(metadataStep, /--candidate-source-tree/);
-  assert.match(metadataStep, /repos\/\$GITHUB_REPOSITORY\/releases\?per_page=100/);
-  assert.match(metadataStep, /gh api --paginate/);
-  assert.match(metadataStep, /\.tag_name == \$tag/);
-  assert.match(metadataStep, /\.prerelease == true/);
-  assert.doesNotMatch(metadataStep, /\.draft == false/);
-  assert.match(metadataStep, /releases\/assets\/\$candidate_provenance_asset_id/);
-  assert.match(metadataStep, /candidate_provenance_api_digest/);
+  assert.match(metadataStep, /candidateProvenanceSha256 \| ascii_downcase/);
+  assert.match(metadataStep, /\.apkSha256 \| ascii_downcase/);
+  assert.doesNotMatch(metadataStep, /gh api|releases\?per_page|\.draft == false/);
   assert.match(metadataStep, /--candidate-provenance-sha256/);
   assert.match(metadataStep, /--candidate-apk-sha256/);
   assert.match(metadataStep, /--changed-paths/);
