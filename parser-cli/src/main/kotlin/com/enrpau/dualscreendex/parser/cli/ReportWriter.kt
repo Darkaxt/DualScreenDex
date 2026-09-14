@@ -143,10 +143,10 @@ data class CorpusResult(
     val dataCompatibility: DataStructureCompatibility = assessDataCompatibility(
         result, catalog, samples, catalogError, error,
     ),
-    val compatibilityPercent: Double = calculateCompatibility(result).compatibilityPercent,
-    val resolvedFeatureCount: Int = calculateCompatibility(result).resolvedFeatureCount,
-    val expectedFeatureCount: Int = calculateCompatibility(result).expectedFeatureCount,
-    val manualReviewRequired: Boolean = calculateCompatibility(result).manualReviewRequired ||
+    val compatibilityPercent: Double = calculateCompatibility(result, catalog).compatibilityPercent,
+    val resolvedFeatureCount: Int = calculateCompatibility(result, catalog).resolvedFeatureCount,
+    val expectedFeatureCount: Int = calculateCompatibility(result, catalog).expectedFeatureCount,
+    val manualReviewRequired: Boolean = calculateCompatibility(result, catalog).manualReviewRequired ||
         catalogError != null || persistenceError != null || error != null || samples?.referenceErrors?.isNotEmpty() == true,
     val rawHeader: CorpusRawHeaderObservation? = null,
 )
@@ -178,24 +178,56 @@ data class RomCompatibilityScore(
     val manualReviewRequired: Boolean,
 )
 
-internal fun calculateCompatibility(result: ParseResult?): RomCompatibilityScore {
+private val LOCALIZED_ROM_CAPABILITIES = mapOf(
+    RomCapability.SPECIES_NAMES to "SPECIES_NAMES",
+    RomCapability.POKEDEX_DESCRIPTIONS to "SPECIES_DESCRIPTIONS",
+    RomCapability.MOVE_DESCRIPTIONS to "MOVE_DESCRIPTIONS",
+    RomCapability.ABILITY_DESCRIPTIONS to "ABILITY_DESCRIPTIONS",
+)
+
+internal fun calculateCompatibility(
+    result: ParseResult?,
+    catalog: CatalogMetrics? = null,
+): RomCompatibilityScore {
     val byCapability = result?.capabilities.orEmpty().associateBy { it.capability }
+    fun localized(capability: RomCapability): LocalizedCapabilityMetrics? =
+        LOCALIZED_ROM_CAPABILITIES[capability]?.let { catalog?.localizedCapabilities?.get(it) }
     val applicable = RomCapability.entries.filter { capability ->
-        byCapability[capability]?.status != CapabilityStatus.NOT_APPLICABLE
+        (localized(capability)?.status ?: byCapability[capability]?.status) != CapabilityStatus.NOT_APPLICABLE
     }
-    val coverages = applicable.map { capability -> featureCoverage(byCapability[capability]) }
+    val coverages = applicable.map { capability ->
+        localized(capability)?.let(::featureCoverage) ?: featureCoverage(byCapability[capability])
+    }
     val expected = coverages.size
     val resolved = coverages.count { it > 0.0 }
     val percent = if (expected == 0) 100.0 else 100.0 * coverages.sum() / expected
-    val manualReview = result?.status == SelectionStatus.AMBIGUOUS || result?.status == SelectionStatus.ERROR || result?.capabilities.orEmpty().any {
-        it.status == CapabilityStatus.AMBIGUOUS || it.reviewStatus == CapabilityReviewStatus.MANUAL_REVIEW
-    }
+    val manualReview = result?.status == SelectionStatus.AMBIGUOUS || result?.status == SelectionStatus.ERROR ||
+        result?.capabilities.orEmpty().any {
+            it.status == CapabilityStatus.AMBIGUOUS || it.reviewStatus == CapabilityReviewStatus.MANUAL_REVIEW
+        } || RomCapability.entries.mapNotNull(::localized).any {
+            it.status == CapabilityStatus.AMBIGUOUS || it.reviewStatus == CapabilityReviewStatus.MANUAL_REVIEW
+        }
     return RomCompatibilityScore(
         compatibilityPercent = round(percent.coerceIn(0.0, 100.0) * 100.0) / 100.0,
         resolvedFeatureCount = resolved,
         expectedFeatureCount = expected,
         manualReviewRequired = manualReview,
     )
+}
+
+private fun featureCoverage(evidence: LocalizedCapabilityMetrics): Double {
+    if (
+        evidence.status == CapabilityStatus.NOT_FOUND ||
+        evidence.status == CapabilityStatus.AMBIGUOUS ||
+        evidence.status == CapabilityStatus.NOT_APPLICABLE
+    ) {
+        return 0.0
+    }
+    return if (evidence.expectedRecords > 0) {
+        evidence.coveredRecords.toDouble().div(evidence.expectedRecords).coerceIn(0.0, 1.0)
+    } else {
+        0.0
+    }
 }
 
 private fun featureCoverage(evidence: CapabilityEvidence?): Double {

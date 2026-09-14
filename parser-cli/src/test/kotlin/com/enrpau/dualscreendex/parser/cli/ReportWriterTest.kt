@@ -744,6 +744,75 @@ class ReportWriterTest {
     }
 
     @Test
+    fun numericCompatibilityUsesMaterializedLocalizedCapabilitiesAndExcludesNotApplicableEntries() {
+        val localizedCapabilities = setOf(
+            RomCapability.SPECIES_NAMES,
+            RomCapability.POKEDEX_DESCRIPTIONS,
+            RomCapability.MOVE_DESCRIPTIONS,
+            RomCapability.ABILITY_DESCRIPTIONS,
+        )
+        val notApplicable = setOf(
+            RomCapability.TUTOR_MOVES,
+            RomCapability.ABILITIES,
+            RomCapability.ABILITY_MECHANICS,
+            RomCapability.BALL_CATALOG,
+            RomCapability.NATURES,
+        )
+        val capabilities = RomCapability.entries
+            .filterNot(localizedCapabilities::contains)
+            .map { capability ->
+                if (capability in notApplicable) {
+                    CapabilityEvidence(
+                        capability,
+                        compatible = false,
+                        confidence = 0.0,
+                        status = CapabilityStatus.NOT_APPLICABLE,
+                    )
+                } else {
+                    CapabilityEvidence(
+                        capability,
+                        compatible = true,
+                        confidence = 1.0,
+                        status = CapabilityStatus.AVAILABLE,
+                    )
+                }
+            }
+        fun localized(status: CapabilityStatus, covered: Int, expected: Int) = LocalizedCapabilityMetrics(
+            status = status,
+            confidence = if (status == CapabilityStatus.AVAILABLE) 1.0 else 0.0,
+            coveredRecords = covered,
+            expectedRecords = expected,
+            reviewStatus = CapabilityReviewStatus.NONE,
+            validatorReviewRecommended = false,
+        )
+        val catalog = CatalogMetrics(
+            species = 1, namedSpecies = 1, speciesWithStats = 1, speciesWithSprites = 1,
+            speciesWithDescriptions = 1, evolutionEdges = 1, learnsetEntries = 1,
+            learnsetRulesets = 1, moves = 1, movesWithDetails = 1, movesWithDescriptions = 1,
+            eggMoveLinks = 1, machineMoveLinks = 1, tutorMoveLinks = 0, types = 1,
+            typeMatchups = 1, abilities = 0, abilitiesWithDescriptions = 0,
+            abilitiesWithMechanics = 0, captureBalls = 0,
+            localizedCapabilities = mapOf(
+                "SPECIES_NAMES" to localized(CapabilityStatus.AVAILABLE, 1, 1),
+                "SPECIES_DESCRIPTIONS" to localized(CapabilityStatus.AVAILABLE, 1, 1),
+                "MOVE_DESCRIPTIONS" to localized(CapabilityStatus.AVAILABLE, 1, 1),
+                "ABILITY_DESCRIPTIONS" to localized(CapabilityStatus.NOT_APPLICABLE, 0, 0),
+            ),
+        )
+        val entry = CorpusResult(
+            "Bronze.gbc",
+            "Bronze.gbc",
+            durationMillis = 1,
+            result = sampleResult().copy(capabilities = capabilities),
+            catalog = catalog,
+        )
+
+        assertEquals(100.0, entry.compatibilityPercent, 0.001)
+        assertEquals(18, entry.resolvedFeatureCount)
+        assertEquals(18, entry.expectedFeatureCount)
+    }
+
+    @Test
     fun numericCompatibilityPrefersSemanticCoverageOverRawTableValidity() {
         val capabilities = RomCapability.entries.map { capability ->
             if (capability == RomCapability.EVOLUTIONS) {
