@@ -324,31 +324,22 @@ SaveRAM evidence is reported separately for [Generations I/II](docs/reports/gen1
 
 ## Project status
 
-| Area | Status |
+The current stable release is [**v1.2.0**](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.2.0). Its localization architecture keeps the companion interface language independent from parser-proven ROM-content language, supports manual language selection where the ROM exposes a validated projection, and fails closed when optional localized data cannot be established.
+
+The canonical benchmark contains **333 input builds / 331 unique ROM identities** across Generations I–III. The current parser selects and materializes **276** catalogs, reports **2** ambiguous family matches and **55** no-family matches, and completes with **0 parser errors**. Of the selected catalogs, **261** have a resolved ROM-language manifest and **15** remain unknown. No benchmark row currently proves more than one ROM-content projection; this is a statement about parser evidence, not a claim that the projects themselves are monolingual.
+
+See the [per-ROM compatibility matrix](docs/rom-compatibility-matrix.md) for every benchmark input grouped by generation and detected engine family, including capability confidence, weighted coverage, and parser-proven language counts. Percentages represent bounded static structural confidence unless a separate live test is cited; they do not certify author intent or complete runtime behavior.
+
+| Area | Current status |
 | --- | --- |
-| Static GB/GBC/GBA ROM parser | [Current full corpus](docs/reports/2026-08-26-gen1-gen3-full-corpus-status.md) ([JSON](docs/reports/2026-08-26-gen1-gen3-full-corpus-status.json)): 256/331 selected and persisted/reopened; 72 explicit no-family matches, two ambiguous, one bounded oversized-input error |
-| Direct and streamed ZIP input | Implemented |
-| Decoded `ParsedCatalog` materialization | Implemented |
-| Progressive partial-catalog loading | Implemented in the Android runtime with `Loading... (N%)` state |
-| Per-ROM SQLite catalog cache | Implemented and reopen-validated on Android |
-| Species and capture-ball sprite decoding | Implemented without AWT/Android dependencies |
-| Area encounters, type colors, and type chart | Implemented and reported independently |
-| Ability descriptions and focused detail pages | Implemented for validated ROMs |
-| Ability implementation | Five official Gen III ROMs: 77/77 source-backed behavior records; binary linkage 55–58/77; normalized numeric mechanics remain 2/77 |
-| Portable Challenges | [14-control Stage 6 report](docs/reports/passive-insights-progress/challenge-expansion-compatibility.json): 65.48% applicable template slots, 94.55% fully observable/applicable, 100.00% validated/observable, zero errors |
-| ROM-derived maps | Current corpus coverage — World: Gen I 87.37%, Gen II 40.74%, Gen III 54.55%; Local: Gen I 54.74%, Gen II 18.52%, Gen III 59.35%; malformed optional rows fail closed independently |
-| Packaged production UI | Implemented and exact-viewport browser/WebView validated |
-| Browser-hosted plausible simulator | Retained as a development harness; absent from production assets |
-| Loopback HTTP companion server | Implemented and bound only to `127.0.0.1` |
-| Runtime memory transport | Implemented as a shared read-only RetroArch adapter used by production battle reads and isolated issue reports |
-| Dynamic battle-memory resolver | Generation I–III production shapes implemented; Generation III double targets are inferred where possible; unsupported layouts degrade independently |
-| SaveRAM readers and Organic discovery ledger | Implemented and persisted per ROM for Generations I–III, including supported live battle observations |
-| Thor-first companion UI and settings | Implemented in the packaged Android companion |
-| Passive RetroArch active-ROM activation | Implemented and live-validated against current nightly NCI responses; identical SHA-256 copies resolve deterministically |
-| Multi-folder ROM/config/SaveRAM storage | Implemented with Android All files access; SAF folder grants remain fallbacks |
-| Optional Docked / resizable 4:3 Overlay Android display modes | Implemented in the RC13 candidate; floating-ball/4:3 smoke passed, physical resizing acceptance pending |
-| Replacement of inherited OCR Android app | Implemented through the current staged Android host |
-| Final signed candidate target | `v1.1.0-rc.86` contains the completed Thor lower-display remediation and the exact source intended for protected candidate signing and stable `v1.1.0` authorization. Candidate and stable APKs are built only by the protected GitHub workflow; promotion revalidates the signed APK, certificate, provenance, source-bound workflow evidence, and immutable release asset set without replacing any asset. |
+| Static GB/GBC/GBA ROM parser | 276/333 inputs select and materialize a catalog; 2 ambiguous, 55 unmatched, 0 errors. Optional capabilities fail closed independently. |
+| ROM and interface localization | Independent authority implemented in v1.2.0; 261 resolved and 15 unknown language manifests among selected catalogs; manual Settings selection is retained where validated projections exist. |
+| Direct and streamed ZIP input | Implemented with bounded read-only scanning and no temporary ROM extraction. |
+| Decoded catalog and cache | Progressive partial-catalog loading plus per-ROM SQLite persistence/reopen are implemented. |
+| Pokédex, moves, abilities, encounters, and maps | Capability-specific confidence and applicability are published in the [matrix](docs/rom-compatibility-matrix.md); absent or malformed optional modules do not invalidate the base catalog. |
+| Runtime and SaveRAM state | Shared read-only RetroArch transport, dynamic Gen I–III battle readers, and per-ROM discovery ledgers are implemented with independent degradation. |
+| Packaged companion | Thor-first WebView UI, loopback-only HTTP server, Docked/Overlay display modes, storage setup, and passive ROM activation are implemented. Controller input remains with the game. |
+| Release integrity | Stable production APKs are built and signed only through the protected GitHub workflow using the pinned public certificate identity. |
 
 ## Parser development
 
