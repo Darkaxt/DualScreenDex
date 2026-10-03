@@ -208,7 +208,11 @@ function validateLocalizationSummary(summary) {
   for (const recovery of summary.recoveries) {
     assertExactKeys(recovery.generator, ["name", "schemaVersion", "sha256"]);
   }
-  assertExactKeys(summary.packagedAcceptance, ["tests", "failures", "errors", "skipped", "resultSha256"]);
+  assertClosedKeys(summary.packagedAcceptance, ["tests", "failures", "errors", "skipped", "resultSha256"], ["sourceCommit"]);
+  if (summary.packagedAcceptance.sourceCommit != null &&
+      !/^[0-9a-f]{40}$/.test(summary.packagedAcceptance.sourceCommit)) {
+    throw new Error("Packaged acceptance source commit is invalid");
+  }
   assertExactKeys(summary.privacy, [
     "containsRomIdentity", "containsRomName", "containsSourcePath", "containsRomBytes",
   ]);

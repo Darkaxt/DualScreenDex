@@ -516,6 +516,41 @@ test("accepts the exact immutable public release asset set", () => {
   assert.equal(result.assetCount, fixture.releaseAssets.length);
 });
 
+test("accepts an immutable 342-input release bound to the current canonical corpus", () => {
+  const files = publishedEvidenceFiles();
+  for (const name of ["canonical-corpus.json", "release-evidence-validation.json",
+    "dualdex-stage-07-corpus-evidence.json", "dualdex-stage-07-corpus-execution.json"]) {
+    const value = JSON.parse(files.get(name));
+    value.inputCount = 342;
+    if ("uniqueRomIdentityCount" in value) value.uniqueRomIdentityCount = 342;
+    if ("uniqueRomIdentities" in value) {
+      value.uniqueRomIdentities = 342;
+      value.outcomes.total = 342;
+      value.outcomes.noFamilyMatch += 9;
+      value.dataCompatibility.total = 342;
+      value.dataCompatibility.unresolved += 9;
+    }
+    files.set(name, jsonBytes(value));
+  }
+  const manifest = JSON.parse(files.get("compatibility-evidence.json"));
+  manifest.corpus.inputCount = 342;
+  for (const [role, name] of [
+    ["CORPUS_SUMMARY", "dualdex-stage-07-corpus-evidence.json"],
+    ["CORPUS_EXECUTION_RECEIPT", "dualdex-stage-07-corpus-execution.json"],
+  ]) manifest.artifacts.find(artifact => artifact.role === role).sha256 = sha256(files.get(name)).toLowerCase();
+  files.set("compatibility-evidence.json", jsonBytes(manifest));
+  const fixture = immutableAssetFixture(files);
+  const input = {
+    recordAssets: fixture.recordAssets, releaseAssets: fixture.releaseAssets,
+    readAsset: name => fixture.files.get(name) ?? null, candidateTag: "v1.1.0-rc.73",
+  };
+  assert.equal(validateReleaseAssetSet(input).assetCount, fixture.releaseAssets.length);
+  const receipt = JSON.parse(fixture.files.get("dualdex-stage-07-corpus-execution.json"));
+  receipt.inputCount = 333;
+  replacePublishedArtifact(fixture, "dualdex-stage-07-corpus-execution.json", "CORPUS_EXECUTION_RECEIPT", receipt);
+  assert.throws(() => validateReleaseAssetSet(input), /receipt/i);
+});
+
 test("accepts source-bound localization evidence and bounded recoveries", () => {
   const fixture = immutableAssetFixture(publishedLocalizationEvidenceFiles());
 

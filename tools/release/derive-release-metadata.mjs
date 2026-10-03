@@ -5,7 +5,7 @@ import { pathToFileURL } from "node:url";
 const EXPECTED_APPLICATION_ID = "com.darkaxt.dualdex";
 const FINAL_VERSION_QUALIFIER = 99;
 const MAX_RC_NUMBER = FINAL_VERSION_QUALIFIER - 1;
-const REQUIRED_INPUT_COUNT = 333;
+const HISTORICAL_INPUT_COUNT = 333;
 const COMMIT = /^[0-9a-f]{40}$/;
 
 function parseArguments(argumentsList) {
@@ -89,7 +89,9 @@ function validateReadyMarker(ready, versionName, certificateSha256, releaseEvide
     throw new Error("Release evidence validation is missing or unsupported");
   }
   const closure = ready.qaClosure;
+  const inputCount = closure?.inputCount ?? HISTORICAL_INPUT_COUNT;
   if (closure?.schemaVersion !== 1 ||
+      !Number.isInteger(inputCount) || inputCount < 1 || inputCount > 10_000 ||
       !COMMIT.test(closure.evidenceSourceCommit ?? "") ||
       closure.evidenceSourceCommit !== releaseEvidenceValidation.evidenceSourceCommit ||
       closure.stage7Closed !== true || closure.stage8Closed !== true ||
@@ -97,7 +99,7 @@ function validateReadyMarker(ready, versionName, certificateSha256, releaseEvide
       releaseEvidenceValidation.stage7Closed !== true || releaseEvidenceValidation.stage8Closed !== true ||
       releaseEvidenceValidation.localizationClosed !== true ||
       closure.openBlockers !== 0 || closure.openReferrals !== 0 ||
-      releaseEvidenceValidation.inputCount !== REQUIRED_INPUT_COUNT) {
+      releaseEvidenceValidation.inputCount !== inputCount) {
     throw new Error("Release readiness requires matching Stage 7 and Stage 8 closure with zero gaps");
   }
 }

@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const SHA256 = /^[0-9a-f]{64}$/;
 const COMMIT = /^[0-9a-f]{40}$/;
-const REQUIRED_INPUT_COUNT = 333;
+const MAX_INPUT_COUNT = 10_000;
 const SUPPORTED_GENERATOR_SCHEMAS = new Set([13, 16]);
 const PARSER_CATALOG_PATH = /^(?:parser-core|parser-assets|parser-cli|catalog-store|save-core)\//;
 const BUILD_LOGIC_PATH = /^(?:buildSrc|build-logic|gradle)\/|^(?:gradlew(?:\.bat)?|gradle\.properties|settings\.gradle(?:\.kts)?|build\.gradle(?:\.kts)?)$|\/build\.gradle(?:\.kts)?$/;
@@ -122,11 +122,12 @@ export function validateReleaseEvidence({
 
 function validateCanonicalCorpus(canonicalCorpus) {
   assert(canonicalCorpus?.schemaVersion === 2, "canonical corpus schemaVersion must be 2");
-  assert(canonicalCorpus.inputCount === REQUIRED_INPUT_COUNT,
-    `canonical corpus must contain exactly ${REQUIRED_INPUT_COUNT} inputs`);
+  const inputCount = canonicalCorpus.inputCount;
+  assert(Number.isInteger(inputCount) && inputCount > 0 && inputCount <= MAX_INPUT_COUNT,
+    `canonical corpus input count must be between 1 and ${MAX_INPUT_COUNT}`);
   assert(Number.isInteger(canonicalCorpus.uniqueRomIdentityCount) &&
     canonicalCorpus.uniqueRomIdentityCount > 0 &&
-    canonicalCorpus.uniqueRomIdentityCount <= REQUIRED_INPUT_COUNT,
+    canonicalCorpus.uniqueRomIdentityCount <= inputCount,
   "canonical corpus unique ROM identity count is invalid");
   assert(SHA256.test(canonicalCorpus.inputDigestSha256 ?? ""),
     "canonical corpus input digest must be a lowercase SHA-256");
@@ -140,6 +141,7 @@ function validateGenerator(generator, description) {
 }
 
 function validateSummary(summary, manifest, canonicalCorpus) {
+  const inputCount = canonicalCorpus.inputCount;
   assert([2, 3].includes(summary?.schemaVersion), "corpus summary schemaVersion must be 2 or 3");
   assert(summary.sourceCommit === manifest.sourceCommit, "corpus summary sourceCommit does not match manifest");
   validateGenerator(summary.generator, "corpus summary");
@@ -149,19 +151,19 @@ function validateSummary(summary, manifest, canonicalCorpus) {
   assert(SHA256.test(summary.rawReportSha256 ?? ""), "corpus summary raw report digest is invalid");
   assert(summary.corpusInputDigestSha256 === canonicalCorpus.inputDigestSha256,
     "corpus summary input digest does not match canonical corpus");
-  assert(summary.inputCount === REQUIRED_INPUT_COUNT, `corpus summary must contain exactly ${REQUIRED_INPUT_COUNT} inputs`);
+  assert(summary.inputCount === inputCount, `corpus summary must contain exactly ${inputCount} inputs`);
   assert(summary.uniqueRomIdentities === canonicalCorpus.uniqueRomIdentityCount,
     "corpus summary unique ROM identity count does not match canonical corpus");
   assert(hasNonnegativeIntegerFields(summary.outcomes, ["selected", "ambiguous", "noFamilyMatch", "errors"]),
     "corpus summary requires nonnegative parser outcome counts");
-  assert(summary.outcomes?.total === REQUIRED_INPUT_COUNT,
-    `corpus terminal outcome total must equal ${REQUIRED_INPUT_COUNT}`);
-  assert(sumFields(summary.outcomes, ["selected", "ambiguous", "noFamilyMatch", "errors"]) === REQUIRED_INPUT_COUNT,
-    `corpus terminal outcomes do not sum to ${REQUIRED_INPUT_COUNT}`);
+  assert(summary.outcomes?.total === inputCount,
+    `corpus terminal outcome total must equal ${inputCount}`);
+  assert(sumFields(summary.outcomes, ["selected", "ambiguous", "noFamilyMatch", "errors"]) === inputCount,
+    `corpus terminal outcomes do not sum to ${inputCount}`);
   assert(summary.outcomes.errors === 0, "corpus evidence contains parser errors");
 
   if (summary.schemaVersion === 3) validateRecoveredLocalizationSummary(summary);
-  else validateCompatibilitySummary(summary);
+  else validateCompatibilitySummary(summary, inputCount);
 
   assert(summary.privacy?.containsRomIdentity === false &&
     summary.privacy?.containsRomName === false &&
@@ -170,13 +172,13 @@ function validateSummary(summary, manifest, canonicalCorpus) {
   "corpus summary privacy declaration is not safe");
 }
 
-function validateCompatibilitySummary(summary) {
+function validateCompatibilitySummary(summary, inputCount) {
   assert(hasNonnegativeIntegerFields(summary.dataCompatibility, ["complete", "partial", "unresolved", "errors"]),
     "corpus summary requires nonnegative compatibility counts");
-  assert(summary.dataCompatibility?.total === REQUIRED_INPUT_COUNT,
-    `compatibility terminal total must equal ${REQUIRED_INPUT_COUNT}`);
-  assert(sumFields(summary.dataCompatibility, ["complete", "partial", "unresolved", "errors"]) === REQUIRED_INPUT_COUNT,
-    `compatibility outcomes do not sum to ${REQUIRED_INPUT_COUNT}`);
+  assert(summary.dataCompatibility?.total === inputCount,
+    `compatibility terminal total must equal ${inputCount}`);
+  assert(sumFields(summary.dataCompatibility, ["complete", "partial", "unresolved", "errors"]) === inputCount,
+    `compatibility outcomes do not sum to ${inputCount}`);
   assert(summary.dataCompatibility.errors === 0, "corpus evidence contains compatibility errors");
   assert(summary.catalogs?.catalogErrors === 0, "corpus evidence contains catalog errors");
   assert(summary.catalogs?.persistenceErrors === 0, "corpus evidence contains persistence errors");
@@ -231,9 +233,12 @@ function validateRecoveredLocalizationSummary(summary) {
     summary.packagedAcceptance?.errors === 0 && summary.packagedAcceptance?.skipped === 0 &&
     SHA256.test(summary.packagedAcceptance?.resultSha256 ?? ""),
   "packaged localization acceptance is incomplete");
+  assert(summary.packagedAcceptance.sourceCommit == null || COMMIT.test(summary.packagedAcceptance.sourceCommit),
+    "packaged localization acceptance source commit is invalid");
 }
 
 function validateReceipt(receipt, manifest, summary) {
+  const inputCount = summary.inputCount;
   assert(receipt?.schemaVersion === 1, "execution receipt schemaVersion must be 1");
   assert(receipt.sourceCommit === manifest.sourceCommit, "execution receipt source commit does not match manifest");
   validateGenerator(receipt.generator, "execution receipt");
@@ -242,8 +247,8 @@ function validateReceipt(receipt, manifest, summary) {
   "execution receipt generator does not match manifest");
   assert(receipt.rawReportSha256 === summary.rawReportSha256,
     "execution receipt raw report digest does not match corpus summary");
-  assert(receipt.inputCount === REQUIRED_INPUT_COUNT,
-    `execution receipt input count must be ${REQUIRED_INPUT_COUNT}`);
+  assert(receipt.inputCount === inputCount,
+    `execution receipt input count must be ${inputCount}`);
 }
 
 function validateClosure(closure, stage, sourceCommit) {
@@ -361,6 +366,15 @@ function main(arguments_) {
   runGit(repositoryRoot, ["merge-base", "--is-ancestor", manifest.sourceCommit, releaseCommit]);
   if (manifest.qaBaselineSourceCommit != null) {
     runGit(repositoryRoot, ["merge-base", "--is-ancestor", manifest.qaBaselineSourceCommit, manifest.sourceCommit]);
+  }
+  const summaryArtifact = manifest.artifacts?.find(artifact => artifact.role === "CORPUS_SUMMARY");
+  if (summaryArtifact && isSafeRelativePath(summaryArtifact.path)) {
+    const packagedSource = JSON.parse(readFileSync(resolve(repositoryRoot, summaryArtifact.path), "utf8"))
+      .packagedAcceptance?.sourceCommit;
+    if (packagedSource != null) {
+      assert(COMMIT.test(packagedSource), "packaged localization acceptance source commit is invalid");
+      runGit(repositoryRoot, ["merge-base", "--is-ancestor", packagedSource, manifest.sourceCommit]);
+    }
   }
   const changedPaths = runGit(repositoryRoot, ["diff", "--name-only", `${manifest.sourceCommit}..${releaseCommit}`])
     .split(/\r?\n/)

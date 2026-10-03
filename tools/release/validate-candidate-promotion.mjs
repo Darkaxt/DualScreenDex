@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import process from "node:process";
 
 const EXPECTED_APPLICATION_ID = "com.darkaxt.dualdex";
-const REQUIRED_INPUT_COUNT = 333;
+const MAX_INPUT_COUNT = 10_000;
 const SUPPORTED_GENERATOR_SCHEMAS = new Set([13, 16]);
 
 function parseArguments(argumentsList) {
@@ -149,6 +149,7 @@ function parsePublishedJson(assets, name) {
 function validatePublishedEvidenceAssets(assets) {
   const manifest = parsePublishedJson(assets, "compatibility-evidence.json");
   const canonical = parsePublishedJson(assets, "canonical-corpus.json");
+  const inputCount = canonical?.inputCount;
   const validation = parsePublishedJson(assets, "release-evidence-validation.json");
   const localizationEvidence = manifest?.generator?.schemaVersion === 16;
   const summaryName = localizationEvidence
@@ -167,12 +168,12 @@ function validatePublishedEvidenceAssets(assets) {
     "Published release evidence source commit is invalid");
   validatePublishedGenerator(manifest.generator, "Published release evidence");
   requireCondition(canonical?.schemaVersion === 2 &&
-    canonical.inputCount === REQUIRED_INPUT_COUNT &&
+    Number.isInteger(inputCount) && inputCount > 0 && inputCount <= MAX_INPUT_COUNT &&
     Number.isInteger(canonical.uniqueRomIdentityCount) &&
     canonical.uniqueRomIdentityCount > 0 &&
-    canonical.uniqueRomIdentityCount <= REQUIRED_INPUT_COUNT &&
+    canonical.uniqueRomIdentityCount <= inputCount &&
     /^[0-9a-f]{64}$/.test(canonical.inputDigestSha256 ?? ""),
-  `Published canonical corpus must bind exactly ${REQUIRED_INPUT_COUNT} inputs and its unique identity count`);
+  `Published canonical corpus must bind exactly ${inputCount} inputs and its unique identity count`);
   validatePublishedSummary(summary, manifest, canonical);
   validatePublishedReceipt(receipt, manifest, summary);
 
@@ -204,7 +205,7 @@ function validatePublishedEvidenceAssets(assets) {
     validation.cacheDecision === expectedCacheDecision &&
     validation.generatorSchemaVersion === manifest.generator.schemaVersion &&
     validation.generatorSha256 === manifest.generator.sha256 &&
-    validation.inputCount === REQUIRED_INPUT_COUNT &&
+    validation.inputCount === inputCount &&
     validation.corpusInputDigestSha256 === canonical.inputDigestSha256 &&
     validation.artifactCount === manifest.artifacts.length &&
     validation.stage7Closed === true && validation.stage8Closed === true &&
@@ -221,34 +222,35 @@ function validatePublishedGenerator(generator, description) {
 }
 
 function validatePublishedSummary(summary, manifest, canonical) {
+  const inputCount = canonical.inputCount;
   requireCondition([2, 3].includes(summary?.schemaVersion) && summary.sourceCommit === manifest.sourceCommit,
     "Published corpus summary source lineage is inconsistent");
   validatePublishedGenerator(summary.generator, "Published corpus summary");
   requireCondition(summary.generator.schemaVersion === manifest.generator.schemaVersion &&
     summary.generator.sha256 === manifest.generator.sha256 &&
     /^[0-9a-f]{64}$/.test(summary.rawReportSha256 ?? "") &&
-    manifest.corpus?.inputCount === REQUIRED_INPUT_COUNT &&
-    summary.inputCount === REQUIRED_INPUT_COUNT &&
+    manifest.corpus?.inputCount === inputCount &&
+    summary.inputCount === inputCount &&
     summary.uniqueRomIdentities === canonical.uniqueRomIdentityCount &&
     manifest.corpus?.inputDigestSha256 === canonical.inputDigestSha256 &&
     summary.corpusInputDigestSha256 === canonical.inputDigestSha256,
-  `Published corpus summary does not match the canonical ${REQUIRED_INPUT_COUNT}-input evidence`);
+  `Published corpus summary does not match the canonical ${inputCount}-input evidence`);
   validateTerminalCounts(summary.outcomes, ["selected", "ambiguous", "noFamilyMatch", "errors"],
-    "Published corpus summary terminal outcomes");
+    "Published corpus summary terminal outcomes", inputCount);
   requireCondition(summary.outcomes.errors === 0, "Published corpus summary contains parser errors");
   if (summary.schemaVersion === 3) validatePublishedLocalizationSummary(summary);
-  else validatePublishedCompatibilitySummary(summary);
+  else validatePublishedCompatibilitySummary(summary, inputCount);
   requireCondition(summary.privacy?.containsRomIdentity === false &&
     summary.privacy.containsRomName === false && summary.privacy.containsSourcePath === false &&
     summary.privacy.containsRomBytes === false,
   "Published corpus summary privacy declaration is unsafe");
 }
 
-function validatePublishedCompatibilitySummary(summary) {
+function validatePublishedCompatibilitySummary(summary, inputCount) {
   requireCondition(summary.generator.schemaVersion === 13,
     "Published compatibility summary requires generator schema 13");
   validateTerminalCounts(summary.dataCompatibility, ["complete", "partial", "unresolved", "errors"],
-    "Published corpus summary compatibility outcomes");
+    "Published corpus summary compatibility outcomes", inputCount);
   requireCondition(summary.dataCompatibility.errors === 0,
     "Published corpus summary contains compatibility errors");
   requireCondition(summary.catalogs?.catalogErrors === 0 && summary.catalogs.persistenceErrors === 0 &&
@@ -292,11 +294,11 @@ function validatePublishedLocalizationSummary(summary) {
   "Published packaged localization acceptance is incomplete");
 }
 
-function validateTerminalCounts(counts, fields, description) {
+function validateTerminalCounts(counts, fields, description, inputCount) {
   requireCondition(fields.every(field => Number.isInteger(counts?.[field]) && counts[field] >= 0) &&
-    counts?.total === REQUIRED_INPUT_COUNT &&
-    fields.reduce((sum, field) => sum + counts[field], 0) === REQUIRED_INPUT_COUNT,
-  `${description} must sum to ${REQUIRED_INPUT_COUNT}`);
+    counts?.total === inputCount &&
+    fields.reduce((sum, field) => sum + counts[field], 0) === inputCount,
+  `${description} must sum to ${inputCount}`);
 }
 
 function validatePublishedReceipt(receipt, manifest, summary) {
@@ -307,7 +309,7 @@ function validatePublishedReceipt(receipt, manifest, summary) {
   validatePublishedGenerator(receipt.generator, "Published execution receipt");
   requireCondition(receipt.generator.sha256 === manifest.generator.sha256 &&
     receipt.rawReportSha256 === summary.rawReportSha256 &&
-    receipt.inputCount === REQUIRED_INPUT_COUNT,
+    receipt.inputCount === summary.inputCount,
   "Published execution receipt does not match schema-2 release evidence");
 }
 

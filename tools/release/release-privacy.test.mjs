@@ -64,6 +64,17 @@ test("accepts the privacy-safe source-bound localization summary", () => {
   });
 });
 
+test("retains explicit historical packaged-test provenance without allowing unknown fields", () => {
+  const summary = JSON.parse(readFileSync(resolve(repositoryRoot,
+    "docs/reports/localization/stage-06-corpus-evidence.json"), "utf8"));
+  summary.packagedAcceptance.sourceCommit = summary.sourceCommit;
+  const input = { name: "dualdex-localization-corpus-evidence.json", bytes: Buffer.from(JSON.stringify(summary)) };
+  validatePublicReleaseAsset(input);
+  summary.packagedAcceptance.privateContext = "not an allowed evidence field";
+  input.bytes = Buffer.from(JSON.stringify(summary));
+  assert.throws(() => validatePublicReleaseAsset(input), /unknown|shape/i);
+});
+
 test("rejects Windows backslash and forward-slash absolute paths and Unix home paths", () => {
   for (const privateText of [
     "workspace=C:\\Users\\local-user\\project",

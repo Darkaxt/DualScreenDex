@@ -167,7 +167,7 @@ jobs:
             > "$RUNNER_TEMP/release-decision-paths.txt"
           node tools/release/validate-release-evidence.mjs \
             --manifest release/compatibility-evidence.json \
-            --canonical-corpus release/canonical-corpus.json \
+            --canonical-corpus release/current-library-corpus.json \
             --catalog-schema catalog-store/src/main/kotlin/com/darkaxt/dualdex/catalog/CatalogSchema.kt \
             --comparison-ref "$decision_range_base" \
             --decision-paths "$RUNNER_TEMP/release-decision-paths.txt" \
@@ -470,7 +470,7 @@ jobs:
             "$RUNNER_TEMP/dualdex-unsigned/repository-policy.json"
           cp release/compatibility-evidence.json \
             "$RUNNER_TEMP/dualdex-unsigned/compatibility-evidence.json"
-          cp release/canonical-corpus.json \
+          cp release/current-library-corpus.json \
             "$RUNNER_TEMP/dualdex-unsigned/canonical-corpus.json"
           cp "$RUNNER_TEMP/release-evidence-validation.json" \
             "$RUNNER_TEMP/dualdex-unsigned/release-evidence-validation.json"
@@ -675,8 +675,11 @@ jobs:
           cp docs/reports/qa-hardening/stage-07-closure.md "$ASSETS/dualdex-stage-07-closure.md"
           cp docs/reports/qa-hardening/stage-08-closure.json "$ASSETS/dualdex-stage-08-closure.json"
           cp docs/reports/qa-hardening/stage-08-closure.md "$ASSETS/dualdex-stage-08-closure.md"
-          cp docs/reports/localization/stage-06-corpus-evidence.json "$ASSETS/dualdex-localization-corpus-evidence.json"
-          cp docs/reports/localization/stage-06-corpus-execution.json "$ASSETS/dualdex-localization-corpus-execution.json"
+          corpus_summary="$(jq -r '.artifacts[] | select(.role == "CORPUS_SUMMARY") | .path' release/compatibility-evidence.json)"
+          corpus_receipt="$(jq -r '.artifacts[] | select(.role == "CORPUS_EXECUTION_RECEIPT") | .path' release/compatibility-evidence.json)"
+          cp "$corpus_summary" "$ASSETS/dualdex-localization-corpus-evidence.json"
+          cp "$corpus_receipt" "$ASSETS/dualdex-localization-corpus-execution.json"
+          cp docs/reports/corpus/2026-10-03-library-compatibility.md "$ASSETS/dualdex-current-library-compatibility.md"
           cp docs/reports/localization/stage-06-closure.md "$ASSETS/dualdex-localization-stage-06-closure.md"
           cp docs/reports/localization/final-translation-system-closure.md "$ASSETS/dualdex-full-translation-system-closure.md"
           release_notes="release/RELEASE_NOTES_${RELEASE_TAG#v}.md"
@@ -782,6 +785,7 @@ jobs:
               dualdex-stage-08-closure.md \
               dualdex-localization-corpus-evidence.json \
               dualdex-localization-corpus-execution.json \
+              dualdex-current-library-compatibility.md \
               dualdex-localization-stage-06-closure.md \
               dualdex-full-translation-system-closure.md \
               RELEASE_NOTES.md \
@@ -885,6 +889,7 @@ jobs:
             "$ASSETS/dualdex-stage-08-closure.md" \
             "$ASSETS/dualdex-localization-corpus-evidence.json" \
             "$ASSETS/dualdex-localization-corpus-execution.json" \
+            "$ASSETS/dualdex-current-library-compatibility.md" \
             "$ASSETS/dualdex-localization-stage-06-closure.md" \
             "$ASSETS/dualdex-full-translation-system-closure.md" \
             "$ASSETS/RELEASE_NOTES.md"

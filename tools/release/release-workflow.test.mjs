@@ -35,6 +35,16 @@ const catalogSchema = readFileSync(
   "utf8",
 );
 
+test("publishes the current-corpus authority and manifest-selected evidence without rewriting frozen reports", () => {
+  assert.match(workflow, /--canonical-corpus release\/current-library-corpus\.json/);
+  assert.match(workflow, /cp release\/current-library-corpus\.json/);
+  assert.match(workflow, /corpus_summary=.*CORPUS_SUMMARY/);
+  assert.match(workflow, /corpus_receipt=.*CORPUS_EXECUTION_RECEIPT/);
+  assert.match(workflow, /cp "\$corpus_summary" "\$ASSETS\/dualdex-localization-corpus-evidence\.json"/);
+  assert.match(workflow, /cp "\$corpus_receipt" "\$ASSETS\/dualdex-localization-corpus-execution\.json"/);
+  assert.match(workflow, /dualdex-current-library-compatibility\.md/);
+});
+
 test("keeps candidates draft until protected exact-artifact promotion", () => {
   assert.match(releaseMetadata, /draft:\s*String\(parsedTag\.isCandidate\)/);
   assert.match(workflow, /if \[\[ "\$DRAFT" == "true" \]\]; then flags\+=\(--draft\); fi/);
@@ -257,7 +267,7 @@ test("requires a machine-readable cache decision for parser and catalog changes"
     workflow.indexOf("  sign-and-publish:"),
   );
 
-  assert.match(verifyJob, /--canonical-corpus release\/canonical-corpus\.json/);
+  assert.match(verifyJob, /--canonical-corpus release\/current-library-corpus\.json/);
   assert.match(verifyJob, /--catalog-schema/);
   assert.match(verifyJob, /--output "\$RUNNER_TEMP\/release-evidence-validation\.json"/);
   assert.match(verifyJob, /--release-evidence-validation/);

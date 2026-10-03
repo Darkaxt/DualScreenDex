@@ -35,6 +35,24 @@ function readyMarker() {
   };
 }
 
+test("binds a current-library candidate to its explicit 342-input readiness contract", () => {
+  const ready = readyMarker();
+  ready.versionName = "1.2.1";
+  ready.qaClosure.inputCount = 342;
+  const validation = {
+    schemaVersion: 2, evidenceSourceCommit: testEvidenceSourceCommit, inputCount: 342,
+    stage7Closed: true, stage8Closed: true, localizationClosed: true,
+  };
+  const input = {
+    tag: "v1.2.1-rc.1", ready,
+    certificateFingerprint: ready.productionCertificateSha256,
+    releaseEvidenceValidation: validation,
+  };
+  assert.equal(deriveReleaseMetadata(input).version_code, "1020101");
+  validation.inputCount = 333;
+  assert.throws(() => deriveReleaseMetadata(input), /readiness requires matching/i);
+});
+
 function createTemporaryDirectory() {
   return mkdtempSync(join(process.env.RUNNER_TEMP || tmpdir(), "dualdex-release-test-"));
 }

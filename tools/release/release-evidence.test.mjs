@@ -142,11 +142,52 @@ test("accepts exactly complete source-bound fresh evidence and zero-gap closures
   assert.equal(result.stage8Closed, true);
 });
 
+function currentCorpusFixture() {
+  const evidence = fixture();
+  evidence.canonicalCorpus.inputCount = 342;
+  evidence.canonicalCorpus.uniqueRomIdentityCount = 342;
+  evidence.manifest.corpus.inputCount = 342;
+  const summary = artifactValue(evidence, "CORPUS_SUMMARY");
+  summary.inputCount = 342;
+  summary.uniqueRomIdentities = 342;
+  summary.outcomes = { selected: 300, ambiguous: 2, noFamilyMatch: 40, total: 342, errors: 0 };
+  summary.dataCompatibility = { complete: 200, partial: 100, unresolved: 42, total: 342, errors: 0 };
+  summary.catalogs.materialized = 300;
+  summary.catalogs.persisted = 300;
+  replaceArtifact(evidence, "CORPUS_SUMMARY", summary);
+  const receipt = artifactValue(evidence, "CORPUS_EXECUTION_RECEIPT");
+  receipt.inputCount = 342;
+  replaceArtifact(evidence, "CORPUS_EXECUTION_RECEIPT", receipt);
+  return evidence;
+}
+
+test("accepts the independently bound 342-input current corpus without relabeling historical evidence", () => {
+  assert.equal(validate(currentCorpusFixture()).inputCount, 342);
+});
+
+test("rejects current-corpus counts that disagree with its canonical contract or receipt", () => {
+  const mismatchedSummary = currentCorpusFixture();
+  const summary = artifactValue(mismatchedSummary, "CORPUS_SUMMARY");
+  summary.inputCount = 333;
+  replaceArtifact(mismatchedSummary, "CORPUS_SUMMARY", summary);
+  assert.throws(() => validate(mismatchedSummary), /summary.*342/i);
+  const mismatchedReceipt = currentCorpusFixture();
+  const receipt = artifactValue(mismatchedReceipt, "CORPUS_EXECUTION_RECEIPT");
+  receipt.inputCount = 333;
+  replaceArtifact(mismatchedReceipt, "CORPUS_EXECUTION_RECEIPT", receipt);
+  assert.throws(() => validate(mismatchedReceipt), /receipt.*342/i);
+});
+
 test("rejects a noncanonical denominator, digest, or unique input set", () => {
   const wrongCount = fixture();
-  wrongCount.canonicalCorpus.inputCount = 334;
   wrongCount.manifest.corpus.inputCount = 334;
-  assert.throws(() => validate(wrongCount), /canonical corpus.*333/i);
+  assert.throws(() => validate(wrongCount), /manifest corpus input count.*canonical/i);
+
+  for (const count of [0, -1, 1.5, 10_001]) {
+    const unbounded = fixture();
+    unbounded.canonicalCorpus.inputCount = count;
+    assert.throws(() => validate(unbounded), /canonical corpus input count/i);
+  }
 
   const wrongDigest = fixture();
   wrongDigest.canonicalCorpus.inputDigestSha256 = "f".repeat(64);
