@@ -1,7 +1,14 @@
 package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
+import com.enrpau.dualscreendex.parser.catalog.MoveCategory
+import com.enrpau.dualscreendex.parser.catalog.RecordMaterializers
 import com.enrpau.dualscreendex.parser.catalog.TypeSemanticRole
+import com.enrpau.dualscreendex.parser.model.EngineFamily
+import com.enrpau.dualscreendex.parser.model.Platform
+import com.enrpau.dualscreendex.parser.model.ProfileTables
+import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
+import com.enrpau.dualscreendex.parser.model.TableRecordFormat
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.text.Gen2PlainNameCodec
@@ -63,5 +70,20 @@ class Gen2CompiledHelperRealControlTest {
         assertEquals(TypeSemanticRole.GRASS, types[11]?.semanticRole)
         assertEquals(TypeSemanticRole.FAIRY, types[17]?.semanticRole)
         assertEquals(TypeSemanticRole.MYSTERY, types[18]?.semanticRole)
+        val moveData = requireNotNull(Gen2CompactMoveResolver.resolve(rom, 255, types.keys))
+        assertEquals(8, moveData.recordSize)
+        assertEquals(TableRecordFormat.GEN2_SPLIT_MOVE_8, moveData.format)
+        val moves = RecordMaterializers.moves(rom, ResolvedRomLayout(
+            EngineFamily.CRYSTAL, 2, Platform.GBC, null, 255, ProfileTables(moveData = moveData),
+        ))
+        assertEquals((1..255).toSet(), moves.keys)
+        assertTrue(moves.values.all { it.typeId.value in types.keys })
+        assertEquals(setOf(MoveCategory.PHYSICAL, MoveCategory.SPECIAL, MoveCategory.STATUS),
+            moves.values.map { it.category.value }.toSet())
+        moves.forEach { (id, move) ->
+            val rawCategory = rom.u8(moveData.offset + (id - 1) * 8 + 7)
+            assertEquals(listOf(MoveCategory.PHYSICAL, MoveCategory.SPECIAL, MoveCategory.STATUS)[rawCategory],
+                move.category.value)
+        }
     }
 }

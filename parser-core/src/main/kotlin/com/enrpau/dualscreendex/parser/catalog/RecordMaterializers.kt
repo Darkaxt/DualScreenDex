@@ -472,11 +472,21 @@ object RecordMaterializers {
             val ppOffset = if (gen3) 4 else 5
             val power = rom.u8(base + powerOffset)
             val typeId = rom.u8(base + typeOffset)
+            val moveCategory = if (layout.generation == 2 && data.format == TableRecordFormat.GEN2_SPLIT_MOVE_8) {
+                when (rom.u8(base + 7)) {
+                    0 -> MoveCategory.PHYSICAL
+                    1 -> MoveCategory.SPECIAL
+                    2 -> MoveCategory.STATUS
+                    else -> MoveCategory.UNKNOWN
+                }
+            } else {
+                category(layout.generation, typeId, power)
+            }
             id to MoveRecord(
                 id = id,
                 name = nameField(rom, names, index, codec, cancellation),
                 typeId = CatalogField.available(typeId),
-                category = CatalogField.available(category(layout.generation, typeId, power)),
+                category = CatalogField.available(moveCategory),
                 power = CatalogField.available(power),
                 accuracy = CatalogField.available(rom.u8(base + accuracyOffset)),
                 pp = CatalogField.available(rom.u8(base + ppOffset)),

@@ -14,6 +14,19 @@ class GbCompiledFarCopyTest {
         assertEquals(GbCompiledFarCopyAuthority(STATE, 127), resolve(hramFixture()))
     }
 
+    @Test fun resolvesByteReadOnlyWithCompleteWrapperAndReturn() {
+        listOf(stackFixture(), hramFixture()).forEach { bytes ->
+            bytes.put(COPY + 3, "7e c9")
+            val expected = if (bytes[STACK] == 0xE8.toByte()) 255 else 127
+            assertEquals(GbCompiledFarCopyAuthority(STATE, expected), GbCompiledFarCopy.readByte(RomImage(bytes), COPY))
+            assertNull(resolve(bytes))
+            assertNull(GbCompiledFarCopy.readByte(RomImage(bytes.copyOf().also { it[COPY + 4] = 0 }), COPY))
+            assertNull(GbCompiledFarCopy.readByte(RomImage(bytes.copyOf().also { it[STACK + 9] = 0 }), COPY))
+            assertNull(GbCompiledFarCopy.readByte(RomImage(bytes.copyOf(COPY + 4)), COPY))
+            assertNull(GbCompiledFarCopy.readByte(RomImage(bytes), -1))
+        }
+    }
+
     @Test fun followsInlineOrJumpedBankSwitchVectors() {
         val bytes = stackFixture()
         bytes.word(STACK + 25, BANK_SWITCH)

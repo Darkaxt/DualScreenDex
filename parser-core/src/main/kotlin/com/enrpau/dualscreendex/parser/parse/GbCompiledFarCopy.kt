@@ -4,11 +4,19 @@ import com.enrpau.dualscreendex.parser.io.RomImage
 
 internal data class GbCompiledFarCopyAuthority(val bankRegister: Int, val maximumBank: Int)
 
-/** Complete home-bank far-copy authority, including the saved-bank restoration chain. */
+/** Complete home-bank far-copy/read authority, including the saved-bank restoration chain. */
 internal object GbCompiledFarCopy {
     fun resolve(rom: RomImage, address: Int): GbCompiledFarCopyAuthority? {
         if (!within(rom, address, 3) || rom.u8(address) != 0xCD ||
             !GbCompiledBankCalls.byteCopy(rom, address + 3)
+        ) return null
+        val wrapper = rom.u16le(address + 1)
+        return stackRewritten(rom, wrapper) ?: hramDispatched(rom, wrapper)
+    }
+
+    fun readByte(rom: RomImage, address: Int): GbCompiledFarCopyAuthority? {
+        if (!within(rom, address, 5) || rom.u8(address) != 0xCD ||
+            !homeBytes(rom, address + 3, 0x7E, 0xC9)
         ) return null
         val wrapper = rom.u16le(address + 1)
         return stackRewritten(rom, wrapper) ?: hramDispatched(rom, wrapper)

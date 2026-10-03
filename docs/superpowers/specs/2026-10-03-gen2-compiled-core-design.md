@@ -45,6 +45,18 @@ Modern authority replaces incompatible inherited roots as a coherent unit. Subse
 
 Each implementation checkpoint is smart-synced, committed, and pushed. Preserve compact private evidence before ticketed cleanup of registered disposable outputs. Public evidence contains counters, filenames, provenance, and limitations—not ROM bytes, bulk decoded tables, or private paths.
 
+## Verified modern move checkpoint
+
+Both retained modern builds independently prove eight-byte move copying, complete restart multiplication, bank switch/restoration, and the linked category getter. The getter reads category at byte 7 and type at byte 3, preserves the table pointer, and has an option-controlled type-based alternative. The static catalog records the stored physical/special/status category; it does not claim the active runtime option. Far-byte reads now reuse the complete bank-wrapper proofs without admitting byte-read bodies as copy routines.
+
+The resolver validates every requested record, including sequential animation/index bytes, PP, decoded type references, and category values. It rejects incomplete consumers/helpers, inconsistent banks/read targets, out-of-home code, bank-crossing/truncated tables, and competing roots. A dedicated `GEN2_SPLIT_MOVE_8` format prevents fallback to retail type-based category guesses. Move names and the production move-count authority still await the coherent core integration.
+
+Three new positives failed before implementation: two structural resolutions and stored-category materialization. The affected helper/move/materializer suite passes **74 tests with zero failures, errors, or skips**. Both exact real controls resolve and materialize 255 move-detail records, retain all three stored categories, and close their type references. These are direct helper/type/move checks, not parser-family admission, species joins, persistence, or a corpus run.
+
+### Safe restart checkpoint — October 3, 2026
+
+Work is paused at the user's request for a proxy restart after this verified checkpoint is committed and pushed. No background job, collector, parser cohort, Android test, or cleanup apply is active. The composite library matrix remains unchanged: all four Gen II targets are still unmatched. Resume with the modern compact species/name/base/form-index authority and integration; do not repeat completed helper/type/move tests merely to reconstruct context. Then address Ambrosia/Sour independently and run the final bounded cohort/persistence gate only after stage code is final. The registered private scratch root and open cleanup transaction remain retained until stage completion.
+
 ## Verified type-label and static n-gram checkpoint
 
 The modern type-label ABIs are independent: Polished uses byte offsets relative to each table cell; Inheritance uses bank-local word pointers. Both expose a complete 19-role domain, including Fairy and Mystery. The compiled getters, restart-copy routine, bank-contained tables/strings, unique semantic domain, and competing-root rejection authorize interpretation. Native type IDs are retained; neither build's Fire is retail type 20.
