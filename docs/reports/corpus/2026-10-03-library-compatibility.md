@@ -2,15 +2,15 @@
 
 This document lists all 342 deduplicated ROM identities in the October 3, 2026 current library snapshot. Routed ROMs are grouped by generation and detected engine family; a row describes the scanned build named in the **ROM** column, not every release of that project.
 
-Capability percentages are parser confidence derived from bounded structural evidence. They are not a probability that every feature behaves exactly as the ROM author intended. Unless separately identified by a live test, these rows are static catalog observations. The focused Gen I updates validate in-memory materialization, not persistence/reopen or live Android behavior.
+Capability percentages are parser confidence derived from bounded structural evidence. They are not a probability that every feature behaves exactly as the ROM author intended. Unless separately identified by a live test, these rows are static catalog observations. The focused Gen I updates validate in-memory materialization. The focused Gen II update additionally verifies SQLite write/reopen equality for all 15 selected affected catalogs; neither update validates live Android behavior.
 
 - Inputs: **342**
-- Detected family and catalog: **296**
-- Resolved ROM-language manifests: **281**
+- Detected family and catalog: **300**
+- Resolved ROM-language manifests: **285**
 - Resolved manifests reporting more than one language: **0**
 - Unknown ROM-language manifests: **15**
 - Ambiguous family: **2**
-- No family match: **44**
+- No family match: **40**
 - Parser errors: **0**
 
 The **Languages** column is the number of parser-proven ROM-content projections. `?` means the parser could not establish language authority. It does not assume that every resolved ROM supports English.
@@ -52,8 +52,8 @@ Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for 
 |---:|---|---:|---:|---:|
 | 1 | Red/Blue family | 95 | 93.74% | 0 |
 | 1 | Yellow family | 8 | 93.61% | 0 |
-| 2 | Gold/Silver family | 3 | 96.30% | 0 |
-| 2 | Crystal family | 12 | 70.99% | 0 |
+| 2 | Gold/Silver family | 5 | 86.67% | 0 |
+| 2 | Crystal family | 14 | 65.39% | 0 |
 | 3 | Ruby/Sapphire family | 15 | 91.80% | 0 |
 | 3 | Emerald family | 74 | 81.58% | 0 |
 | 3 | FireRed/LeafGreen family | 89 | 89.81% | 0 |
@@ -116,14 +116,14 @@ Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for 
 | Grape (Final 1.7).gb | 1 | 61.13% | P 95% | 100% | P 95% | 100% | P 95% | 100% | P 100% | P 92% | 100% | 0% | N/A | 0% | N/A | 0% | N/A | N/A | N/A | N/A | 0% | 100% | N/A | 0% | 0% | N/A |
 | Intense Indigo (Blue Full Color QOL Gen2UI).gbc | 1 | 99.34% | P 97% | 100% | P 97% | 100% | P 97% | P 99% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
 | Intense Indigo (Blue Full Color QOL).gbc | 1 | 99.34% | P 97% | 100% | P 97% | 100% | P 97% | P 99% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Intense Indigo (Blue QOL) .gbc | 1 | 99.50% | P 97% | 100% | P 97% | 100% | P 97% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
 | Intense Indigo (Blue QOL) (28.07.26).gb | 1 | 99.50% | P 97% | 100% | P 97% | 100% | P 97% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Intense Indigo (Blue QOL) .gbc | 1 | 99.50% | P 97% | 100% | P 97% | 100% | P 97% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
 | Intense Indigo (Blue) (28.07.26).gb | 1 | 99.50% | P 97% | 100% | P 97% | 100% | P 97% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
 | Intense Indigo (Blue).gbc | 1 | 99.50% | P 97% | 100% | P 97% | 100% | P 97% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
 | Intense Indigo (Red Full Color QOL Gen2UI).gbc | 1 | 99.34% | P 97% | 100% | P 97% | 100% | P 97% | P 99% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
 | Intense Indigo (Red Full Color QOL) .gbc | 1 | 99.34% | P 97% | 100% | P 97% | 100% | P 97% | P 99% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Intense Indigo (Red QOL) .gbc | 1 | 99.50% | P 97% | 100% | P 97% | 100% | P 97% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
 | Intense Indigo (Red QOL) (28.07.26).gb | 1 | 99.50% | P 97% | 100% | P 97% | 100% | P 97% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Intense Indigo (Red QOL) .gbc | 1 | 99.50% | P 97% | 100% | P 97% | 100% | P 97% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
 | Intense Indigo (Red) (28.07.26).gb | 1 | 99.50% | P 97% | 100% | P 97% | 100% | P 97% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
 | Intense Indigo (Red).gbc | 1 | 99.50% | P 97% | 100% | P 97% | 100% | P 97% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
 | Intense IndigoLite (Blue Full Color QOL Gen2UI).gbc | 1 | 99.34% | P 97% | 100% | P 97% | 100% | P 97% | P 99% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
@@ -181,40 +181,46 @@ Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for 
 
 </details>
 
+
 ## Generation II
 
 ### Gold/Silver family
 
-<details><summary>3 ROM inputs</summary>
+<details><summary>5 ROM inputs</summary>
 
 | ROM | Languages | Coverage | Species | Names | Types | Chart | Stats | Sprites | Dex text | Evos | Moves | Move data | Move text | Learnsets | Egg | Machines | Tutors | Abilities | Ability text | Ability logic | Encounters | Type UI | Balls | World map | Local maps | Natures |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | Bronze (Girl Patch) (v1.23).gbc | 1 | 100.00% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
 | Bronze (v1.23).gbc | 1 | 100.00% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
 | Dark Energy (v5.01).gbc | 1 | 88.89% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 0% | 0% | N/A |
+| Gold 97 Reforged (v6.1f).gbc | 1 | 72.22% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 0% | 0% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Silver 97 Reforged (v6.1f).gbc | 1 | 72.22% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 0% | 0% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
 
 </details>
 
 ### Crystal family
 
-<details><summary>12 ROM inputs</summary>
+<details><summary>14 ROM inputs</summary>
 
 | ROM | Languages | Coverage | Species | Names | Types | Chart | Stats | Sprites | Dex text | Evos | Moves | Move data | Move text | Learnsets | Egg | Machines | Tutors | Abilities | Ability text | Ability logic | Encounters | Type UI | Balls | World map | Local maps | Natures |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Ambrosia (v2.9.0).gbc | 1 | 63.10% | P 100% | 100% | P 100% | 0% | P 100% | 100% | 0% | 0% | 100% | 100% | 100% | 0% | 0% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 0% | 0% | N/A |
 | Anniversary Crystal (v1.2.3).gbc | 1 | 51.81% | P 95% | 100% | P 95% | 0% | P 95% | 100% | 0% | 0% | 100% | 0% | 100% | 0% | 0% | 0% | 0% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
 | Bronze 2 (v1.05).gbc | 1 | 100.00% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
 | Crystal Clear (Color Filter) (v2.6).gbc | 1 | 57.89% | 100% | 100% | 100% | 0% | 100% | 100% | 0% | 0% | 100% | 0% | 100% | 0% | 0% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 0% | 0% | N/A |
 | Crystal Clear (v2.6).gbc | 1 | 57.89% | 100% | 100% | 100% | 0% | 100% | 100% | 0% | 0% | 100% | 0% | 100% | 0% | 0% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 0% | 0% | N/A |
+| Crystal Inheritance (v1.1).gbc | 1 | 29.17% | 100% | 100% | 100% | 0% | 100% | 0% | 0% | 0% | 100% | 100% | 0% | 0% | 0% | 0% | 0% | 0% | 0% | 0% | 0% | 100% | 0% | 0% | 0% | 0% |
 | Crystal Kaizo (01.08.26).gbc | 1 | 73.68% | 100% | 100% | 100% | 100% | 100% | 0% | 0% | 0% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
 | Crystal Legacy (06.01.25).gbc | 1 | 73.68% | 100% | 100% | 100% | 0% | 100% | 100% | 0% | 0% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
 | Crystal Legacy Timeless (v1.1.3).gbc | 1 | 73.68% | 100% | 100% | 100% | 0% | 100% | 100% | 0% | 0% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
 | Digimon Crystal (v11.02.24).gbc | 1 | 87.08% | P 91% | 100% | P 91% | 0% | P 91% | 100% | 100% | P 90% | 100% | 0% | 100% | P 90% | 100% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Gold 97 Reforged (v6.1f).gbc | 1 | 63.16% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 0% | 0% | 0% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
 | Kalos Crystal (v1.0).gbc | 1 | 77.31% | P 93% | 100% | P 93% | 0% | P 93% | P 91% | 100% | 0% | 100% | P 97% | 100% | 0% | 0% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
 | Mystic Crystal (v1.0).gbc | 1 | 72.55% | P 93% | 100% | P 93% | 0% | P 93% | 100% | 100% | 0% | 100% | 0% | 100% | 0% | 100% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Silver 97 Reforged (v6.1f).gbc | 1 | 63.16% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 0% | 0% | 0% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Polished Crystal (14.09.26).gbc | 1 | 29.17% | 100% | 100% | 100% | 0% | 100% | 0% | 0% | 0% | 100% | 100% | 0% | 0% | 0% | 0% | 0% | 0% | 0% | 0% | 0% | 100% | 0% | 0% | 0% | 0% |
+| Sour Crystal (v7.0a).gbc | 1 | 68.42% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 100% | 0% | 0% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
 
 </details>
+
 
 ## Generation III
 
@@ -229,8 +235,8 @@ Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for 
 | Giratina Strikes Back.gba | 1 | 94.44% | P 94% | P 94% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | P 100% | P 100% | 100% | 99% | N/A | 100% | 100% | 100% | 100% | 100% | 100% | 0% | P 91% | 100% |
 | Giratina's Legend (Demo) (v1.0.2).gba | 1 | 95.41% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | P 95% | 100% | 95% | N/A | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 99% | 100% |
 | Light Platinum (Old Version) (Fixed).gba | 1 | 99.69% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 96% | N/A | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% |
-| Light Platinum.gba | 1 | 99.68% | 100% | 100% | 100% | 100% | 100% | 100% | P 94% | P 100% | 100% | 100% | 100% | 100% | 100% | 99% | N/A | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 99% | 100% |
 | Light Platinum+ (Fixed).gba | 1 | 91.25% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 100% | 100% | 100% | 100% | 0% | 100% | 98% | N/A | 100% | 100% | 0% | 100% | 100% | 100% | 100% | P 99% | 100% |
+| Light Platinum.gba | 1 | 99.68% | 100% | 100% | 100% | 100% | 100% | 100% | P 94% | P 100% | 100% | 100% | 100% | 100% | 100% | 99% | N/A | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 99% | 100% |
 | Omega Ruby Origins (v1.4.8.7).gba | ? | 78.19% | 100% | 0% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | P 98% | 100% | 99% | N/A | 0% | 0% | 0% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Quartz Minus (v1.1).gba | 1 | 95.12% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 96% | N/A | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% |
 | Ruby Destiny - Broken Timeline (v1).gba | ? | 69.63% | ? 0% | 0% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 0% | 100% | 81% | N/A | 0% | 0% | P 100% | 100% | 100% | 100% | 100% | 100% | 100% |
@@ -298,8 +304,8 @@ Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for 
 | Mystique (1.1.1).gba | 1 | 89.62% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 37% | 100% | 100% | P 99% | 100% | P 31% | P 94% | N/A | 99% | P 99% | 100% | 100% | 100% | 100% | 100% | 100% | P 50% |
 | National History Museum (v1.0.4).gba | 1 | 79.14% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 0% | P 99% | 100% | 100% | 74% | 90% | ? 95% | 0% | 0% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Peach (Demo) (v1.4).gba | 1 | 58.33% | 100% | 100% | 100% | 0% | 100% | 0% | 0% | 100% | 95% | 100% | 100% | 100% | 0% | 0% | 90% | ? 95% | 0% | 0% | 100% | 100% | 0% | 0% | P 100% | 100% |
-| Pokémon Hearth (v0.1.27).gba | 1 | 72.22% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 35% | 100% | 100% | P 99% | 100% | P 31% | P 96% | N/A | 100% | 100% | 100% | 0% | 100% | 0% | 0% | 0% | P 50% |
 | Pokescape (v1.0.4).gba | 1 | 74.97% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 0% | P 99% | 100% | 100% | 74% | 90% | ? 95% | 0% | 0% | 100% | 100% | 100% | 0% | 100% | 100% |
+| Pokémon Hearth (v0.1.27).gba | 1 | 72.22% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 35% | 100% | 100% | P 99% | 100% | P 31% | P 96% | N/A | 100% | 100% | 100% | 0% | 100% | 0% | 0% | 0% | P 50% |
 | Quetzal (Emerald Multiplayer) (v0.8.4).gba | 1 | 53.79% | 91% | P 91% | 100% | 100% | 100% | 100% | 0% | 0% | 95% | 100% | 100% | 0% | 0% | 0% | 83% | ? 95% | 0% | 0% | ? 0% | 100% | 100% | 0% | 0% | 100% |
 | R.O.W.E. (2.1.9.1 Experimental).gba | 1 | 41.29% | 0% | P 91% | 0% | 0% | 0% | 100% | 0% | 0% | 95% | 100% | 0% | 0% | 0% | 0% | 82% | 100% | 100% | 0% | 0% | 100% | 100% | ? 0% | 0% | 100% |
 | Recollection Quest (v1.2).gba | 1 | 75.26% | 100% | 100% | 100% | 100% | 100% | P 100% | P 100% | 0% | 100% | 100% | P 99% | 100% | P 32% | P 100% | N/A | 100% | 100% | 100% | 0% | 100% | 100% | 0% | 0% | P 50% |
@@ -341,8 +347,8 @@ Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for 
 | Aesthetic Red (Music & Graphics Only) (v1.2).gba | 1 | 99.49% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 96% | 96% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Amethyst (v1.3.0).gba | 1 | 91.68% | 97% | P 100% | 97% | 100% | 97% | 100% | 100% | 100% | 100% | 100% | 94% | P 100% | 100% | 96% | 94% | 100% | 100% | P 100% | 100% | 100% | 100% | 0% | 100% | 100% |
 | Amnesia (Save Fix).gba | 1 | 99.49% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 96% | 96% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% |
-| AshGray - Newerest Edition (v1.0).gba | 1 | 99.47% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 96% | 96% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 99% | 100% |
 | AshGray (v4.6).gba | 1 | 99.47% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 96% | 96% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 99% | 100% |
+| AshGray - Newerest Edition (v1.0).gba | 1 | 99.47% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 96% | 96% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 99% | 100% |
 | Bill's Secret Garden DX (v2.0).gba | 1 | 95.80% | P 98% | P 100% | P 98% | 100% | P 98% | P 99% | 100% | 100% | 100% | 100% | 95% | P 100% | 100% | 95% | 97% | 100% | 100% | P 100% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Celia's Stupid Romhack (1.1.4).gba | 1 | 87.33% | P 100% | P 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | ? 0% | P 84% | 100% | 51% | 56% | 89% | 99% | P 97% | 0% | 100% | 100% | 100% | 100% | P 99% | 100% |
 | Chaos Black (Fixed) (v3.1).gba | 1 | 99.49% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 96% | 96% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% |
@@ -423,11 +429,9 @@ Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for 
 
 </details>
 
-## Unclassified inputs
+## Unmatched and ambiguous inputs
 
-These inputs remain in the 342-ROM denominator but do not have a selected family, so no family-specific capability claim is made.
-
-| ROM | Platform | Routing outcome |
+| ROM | Platform | Outcome |
 |---|---|---|
 | Brown (v6.1.2).gb | GB | No family match |
 | Let´s Go Pikachu (v6.0).gba | GB | No family match |
@@ -462,15 +466,11 @@ These inputs remain in the 342-ROM denominator but do not have a selected family
 | Voyager (Battle Frontier Demo) (v1.1).gba | GBA | No family match |
 | Voyager (v0.3.6).gba | GBA | No family match |
 | WaveBlue (v1.9.4).gba | GBA | No family match |
-| Ambrosia (v2.9.0).gbc | GBC | No family match |
 | Black & White 3 - Genesis (24.12.23).gbc | GBC | No family match |
-| Crystal Inheritance (v1.1).gbc | GBC | No family match |
 | Fools Gold (v1.3.2).gbc | GBC | No family match |
 | Orange (Suloku Patch 2026.0.2 PSS).gbc | GBC | No family match |
 | Peridot Version (v2.3.0).gbc | GBC | No family match |
-| Polished Crystal (14.09.26).gbc | GBC | No family match |
 | Prism (v0.95.0254).gbc | GBC | No family match |
-| Sour Crystal (v7.0a).gbc | GBC | No family match |
 | TCG - Generations (1.7.2b).gbc | GBC | No family match |
 | TCG - Neo (Legacy) (v1.43).gbc | GBC | No family match |
 | TCG - Neo (v1.43).gbc | GBC | No family match |
@@ -478,8 +478,8 @@ These inputs remain in the 342-ROM denominator but do not have a selected family
 
 ## Evidence and privacy
 
-This is a composite snapshot, not a new full-corpus run. The original library refresh parsed 46 changed identities and inherited 296 byte-identical historical rows. The [focused Gen I acceptance](2026-10-03-gen1-core-acceptance.md) supersedes 30 rows using three source-bound runs (48 executions, 30 distinct identities), adding ten selected catalogs. The effective evidence split is 277 inherited historical rows, 35 retained delta rows, and 30 focused Gen I rows.
+This is a composite snapshot, not a full-corpus run: **263 historical + 31 retained delta + 30 focused Gen I + 18 focused Gen II rows**. The [Gen I acceptance](2026-10-03-gen1-core-acceptance.md) retains its three checkpoints. The [Gen II acceptance](2026-10-03-gen2-core-acceptance.md) binds 14 accepted rows to `49bc83cd` and four classic rows to `51ecbae0`, with 15 selected catalogs verified through SQLite write/reopen and decoded reference closure.
 
-Focused row provenance is 15 unaffected controls at `d61fb188`, six corrected PureRGB/control rows at `f5e2a101`, and nine Yellow/latest-control rows at `3f2b95e8`. Initial incorrect PureRGB joins and sprite regressions are not accepted evidence. These rows were not all scanned against the final source checkpoint. [Machine-readable evidence](2026-10-03-library-compatibility.json) retains aliases, per-row sources, and the original delta receipt; [focused receipts and counters](2026-10-03-gen1-core-acceptance.json) bind the affected cohorts.
+Ambrosia move categories and its custom type semantic role remain unavailable, not retail guesses. Gold/Silver 97 use the existing complete-type-chart score-tie breaker, not independently proved lineage; tutor applicability remains a follow-up. Per-field counters and caveats are authoritative over broad capability labels.
 
-The current snapshot has its own [identity authority](../../../release/current-library-corpus.json). The [333-input release matrix](../../rom-compatibility-matrix.md) and stable-release canonical identity remain frozen. No APK was built or released; no new persistence, SaveRAM, live-WRAM, or Android acceptance is claimed. No ROM bytes, decoded bulk data, private source paths, saves, or parser diagnostics are published.
+The [machine-readable evidence](2026-10-03-library-compatibility.json) retains aliases and per-row checkpoints. The [current identity authority](../../../release/current-library-corpus.json), [333-input release matrix](../../rom-compatibility-matrix.md), and release canonical identity remain unchanged. No APK, SaveRAM, live-WRAM, Android or new official-ROM acceptance is claimed. No ROM bytes, decoded bulk data, private paths or saves are published.

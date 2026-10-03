@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
   "date": "2026-10-03",
-  "evidenceMode": "verified-baseline-and-delta-plus-focused-gen1-checkpoints",
+  "evidenceMode": "verified-baseline-and-delta-plus-focused-gen1-and-gen2-checkpoints",
   "baselineDocumentCommit": "a306bffd64dfb50d81076a91657bb76c1f8e9617",
   "deltaSourceCommit": "a306bffd64dfb50d81076a91657bb76c1f8e9617",
   "summary": {
     "inputCount": 342,
-    "selectedCount": 296,
+    "selectedCount": 300,
     "ambiguousCount": 2,
-    "noFamilyMatchCount": 44,
+    "noFamilyMatchCount": 40,
     "errorCount": 0,
-    "resolvedLanguageManifests": 281,
+    "resolvedLanguageManifests": 285,
     "unknownLanguageManifests": 15,
     "multilingualCount": 0
   },
@@ -755,9 +755,8 @@
     },
     {
       "name": "Orange (Suloku Patch 2026.0.2 PSS).gbc",
-      "platform": "GBC",
-      "outcome": "NO_FAMILY_MATCH",
-      "evidence": "inherited-byte-identical",
+      "evidence": "fresh-focused-gen2-core-scan",
+      "sourceCommit": "49bc83cd74e16ae1730d8c80e134c6e925ac9e4d",
       "aliases": [
         {
           "archive": "Pokemon Orange (Suloku Patch 2026.0.2).7z",
@@ -769,7 +768,10 @@
           "name": "Orange (Suloku Patch 2026.0.2).gbc",
           "console": "Nintendo - Game Boy Color"
         }
-      ]
+      ],
+      "role": "related-control",
+      "platform": "GBC",
+      "outcome": "NO_FAMILY_MATCH"
     },
     {
       "name": "Soulgold (v1.1.4).gba",
@@ -2994,6 +2996,16 @@
     },
     {
       "name": "Crystal Legacy (06.01.25).gbc",
+      "evidence": "fresh-focused-gen2-core-scan",
+      "sourceCommit": "49bc83cd74e16ae1730d8c80e134c6e925ac9e4d",
+      "aliases": [
+        {
+          "archive": "Pokemon Crystal Legacy (06.01.25).7z",
+          "name": "Crystal Legacy (06.01.25).gbc",
+          "console": "Nintendo - Game Boy Color"
+        }
+      ],
+      "role": "related-control",
       "generation": 2,
       "family": "CRYSTAL",
       "languageCount": 1,
@@ -3001,109 +3013,144 @@
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "SPECIES_NAMES": {
-          "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "SPECIES_TYPES": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "TYPE_CHART": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0892018779342723
         },
         "BASE_STATS": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "SPRITES": {
           "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "POKEDEX_DESCRIPTIONS": {
-          "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 1.0
         },
         "EVOLUTIONS": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "MOVE_CATALOG": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "MOVE_DETAILS": {
           "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "MOVE_DESCRIPTIONS": {
-          "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "LEARNSETS": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "EGG_MOVES": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "MACHINE_MOVES": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "TUTOR_MOVES": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "ABILITIES": {
           "status": "NOT_APPLICABLE",
-          "confidence": 0
-        },
-        "ABILITY_DESCRIPTIONS": {
-          "status": "NOT_APPLICABLE",
-          "confidence": 0
+          "confidence": 0.0
         },
         "ABILITY_MECHANICS": {
           "status": "NOT_APPLICABLE",
-          "confidence": 0
+          "confidence": 0.0
         },
         "AREA_ENCOUNTERS": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "TYPE_PRESENTATION": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "BALL_CATALOG": {
           "status": "NOT_APPLICABLE",
-          "confidence": 0
+          "confidence": 0.0
         },
         "WORLD_MAP": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "LOCAL_MAP": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "NATURES": {
           "status": "NOT_APPLICABLE",
-          "confidence": 0
+          "confidence": 0.0
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0
         }
       },
-      "evidence": "inherited-byte-identical",
-      "aliases": [
-        {
-          "archive": "Pokemon Crystal Legacy (06.01.25).7z",
-          "name": "Crystal Legacy (06.01.25).gbc",
-          "console": "Nintendo - Game Boy Color"
-        }
-      ]
+      "catalogCounters": {
+        "species": 251,
+        "namedSpecies": 251,
+        "speciesWithStats": 251,
+        "speciesWithSprites": 251,
+        "speciesWithDescriptions": 0,
+        "evolutionEdges": 0,
+        "learnsetEntries": 0,
+        "learnsetRulesets": 0,
+        "moves": 251,
+        "movesWithDetails": 251,
+        "movesWithDescriptions": 251,
+        "eggMoveLinks": 480,
+        "machineMoveLinks": 6485,
+        "tutorMoveLinks": 220,
+        "types": 18,
+        "namedTypes": 18,
+        "typesWithSemanticRoles": 18,
+        "typeMatchups": 0,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 335,
+        "movesWithCategories": 251,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "persistenceError": false,
+        "referenceErrorCount": 0,
+        "sqliteReopenEqualityVerified": true,
+        "catalogLogicalDigestVersion": 1,
+        "beforeCatalogSha256": "6882ccb0d0ef55d71949c45306188de5de16924ee62a81e40f87d40120380739",
+        "afterCatalogSha256": "6882ccb0d0ef55d71949c45306188de5de16924ee62a81e40f87d40120380739"
+      },
+      "comparison": {
+        "familyBefore": "CRYSTAL",
+        "outcomeBefore": "SELECTED",
+        "coverageBefore": 73.68
+      }
     },
     {
       "name": "Gaia (v3.2).gba",
@@ -4627,16 +4674,18 @@
     },
     {
       "name": "Peridot Version (v2.3.0).gbc",
-      "platform": "GBC",
-      "outcome": "NO_FAMILY_MATCH",
-      "evidence": "inherited-byte-identical",
+      "evidence": "fresh-focused-gen2-core-scan",
+      "sourceCommit": "49bc83cd74e16ae1730d8c80e134c6e925ac9e4d",
       "aliases": [
         {
           "archive": "Pokemon Peridot Version (v2.3.0).7z",
           "name": "Peridot Version (v2.3.0).gbc",
           "console": "Nintendo - Game Boy Color"
         }
-      ]
+      ],
+      "role": "related-control",
+      "platform": "GBC",
+      "outcome": "NO_FAMILY_MATCH"
     },
     {
       "name": "Pokescape (v1.0.4).gba",
@@ -9121,9 +9170,8 @@
     },
     {
       "name": "Polished Crystal (14.09.26).gbc",
-      "platform": "GBC",
-      "outcome": "NO_FAMILY_MATCH",
-      "evidence": "fresh-delta-scan",
+      "evidence": "fresh-focused-gen2-core-scan",
+      "sourceCommit": "49bc83cd74e16ae1730d8c80e134c6e925ac9e4d",
       "aliases": [
         {
           "archive": "Pokemon Polished Crystal (14.09.26).7z",
@@ -9135,7 +9183,153 @@
           "name": "Polished Crystal (Faithful) (14.09.26).gbc",
           "console": "Nintendo - Game Boy Color"
         }
-      ]
+      ],
+      "role": "target",
+      "generation": 2,
+      "family": "CRYSTAL",
+      "languageCount": 1,
+      "compatibilityPercent": 29.17,
+      "capabilities": {
+        "SPECIES_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "SPECIES_TYPES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "TYPE_CHART": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "BASE_STATS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "SPRITES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "EVOLUTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "MOVE_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "MOVE_DETAILS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "LEARNSETS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "EGG_MOVES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "MACHINE_MOVES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "TUTOR_MOVES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "ABILITIES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "ABILITY_MECHANICS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "AREA_ENCOUNTERS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "TYPE_PRESENTATION": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "BALL_CATALOG": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "WORLD_MAP": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "LOCAL_MAP": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "NATURES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        }
+      },
+      "catalogCounters": {
+        "species": 289,
+        "namedSpecies": 289,
+        "speciesWithStats": 289,
+        "speciesWithSprites": 0,
+        "speciesWithDescriptions": 0,
+        "evolutionEdges": 0,
+        "learnsetEntries": 0,
+        "learnsetRulesets": 0,
+        "moves": 255,
+        "movesWithDetails": 255,
+        "movesWithDescriptions": 0,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 0,
+        "tutorMoveLinks": 0,
+        "types": 19,
+        "namedTypes": 19,
+        "typesWithSemanticRoles": 19,
+        "typeMatchups": 0,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 0,
+        "movesWithCategories": 255,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "persistenceError": false,
+        "referenceErrorCount": 0,
+        "sqliteReopenEqualityVerified": true,
+        "catalogLogicalDigestVersion": 1,
+        "beforeCatalogSha256": "e9360cd6abba4bf6a9705bde840ee48cc143a3150794e1f0e144089c71222157",
+        "afterCatalogSha256": "e9360cd6abba4bf6a9705bde840ee48cc143a3150794e1f0e144089c71222157"
+      },
+      "comparison": {
+        "familyBefore": null,
+        "outcomeBefore": "NO_FAMILY_MATCH",
+        "coverageBefore": null
+      }
     },
     {
       "name": "PureRed (03.09.26).gbc",
@@ -9519,7 +9713,7 @@
       ]
     },
     {
-      "name": "Regis’ Origin (v1.0).gba",
+      "name": "Regis\u2019 Origin (v1.0).gba",
       "generation": 3,
       "family": "EMERALD",
       "languageCount": 1,
@@ -9625,8 +9819,8 @@
       "evidence": "inherited-byte-identical",
       "aliases": [
         {
-          "archive": "Pokemon Regis’ Origin (v1.0).7z",
-          "name": "Regis’ Origin (v1.0).gba",
+          "archive": "Pokemon Regis\u2019 Origin (v1.0).7z",
+          "name": "Regis\u2019 Origin (v1.0).gba",
           "console": "Nintendo - Game Boy Advance"
         }
       ]
@@ -9917,7 +10111,7 @@
       }
     },
     {
-      "name": "Pokémon Hearth (v0.1.27).gba",
+      "name": "Pok\u00e9mon Hearth (v0.1.27).gba",
       "generation": 3,
       "family": "EMERALD",
       "languageCount": 1,
@@ -10024,7 +10218,7 @@
       "aliases": [
         {
           "archive": "Pokemon Hearth (v0.1.27).7z",
-          "name": "Pokémon Hearth (v0.1.27).gba",
+          "name": "Pok\u00e9mon Hearth (v0.1.27).gba",
           "console": "Nintendo - Game Boy Advance"
         }
       ]
@@ -11394,16 +11588,161 @@
     },
     {
       "name": "Ambrosia (v2.9.0).gbc",
-      "platform": "GBC",
-      "outcome": "NO_FAMILY_MATCH",
-      "evidence": "fresh-delta-scan",
+      "evidence": "fresh-focused-gen2-core-scan",
+      "sourceCommit": "51ecbae00f3dda6403140ba85199ea597b01c9c6",
       "aliases": [
         {
           "archive": "Pokemon Ambrosia (v2.9.0).7z",
           "name": "Ambrosia (v2.9.0).gbc",
           "console": "Nintendo - Game Boy Color"
         }
-      ]
+      ],
+      "role": "target",
+      "generation": 2,
+      "family": "CRYSTAL",
+      "languageCount": 1,
+      "compatibilityPercent": 63.1,
+      "capabilities": {
+        "SPECIES_CATALOG": {
+          "status": "PARTIAL",
+          "confidence": 0.9960474308300395
+        },
+        "SPECIES_TYPES": {
+          "status": "PARTIAL",
+          "confidence": 0.9960474308300395
+        },
+        "TYPE_CHART": {
+          "status": "NOT_FOUND",
+          "confidence": 0.011111111111111112
+        },
+        "BASE_STATS": {
+          "status": "PARTIAL",
+          "confidence": 0.9960474308300395
+        },
+        "SPRITES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "EVOLUTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "MOVE_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "MOVE_DETAILS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "LEARNSETS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "EGG_MOVES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "MACHINE_MOVES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "TUTOR_MOVES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "ABILITIES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0
+        },
+        "ABILITY_MECHANICS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0
+        },
+        "AREA_ENCOUNTERS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "TYPE_PRESENTATION": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "BALL_CATALOG": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0
+        },
+        "WORLD_MAP": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "LOCAL_MAP": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "NATURES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0
+        }
+      },
+      "catalogCounters": {
+        "species": 253,
+        "namedSpecies": 253,
+        "speciesWithStats": 253,
+        "speciesWithSprites": 253,
+        "speciesWithDescriptions": 0,
+        "evolutionEdges": 0,
+        "learnsetEntries": 0,
+        "learnsetRulesets": 0,
+        "moves": 251,
+        "movesWithDetails": 251,
+        "movesWithDescriptions": 251,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 6294,
+        "tutorMoveLinks": 188,
+        "types": 19,
+        "namedTypes": 19,
+        "typesWithSemanticRoles": 18,
+        "typeMatchups": 0,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 382,
+        "movesWithCategories": 0,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "persistenceError": false,
+        "referenceErrorCount": 0,
+        "sqliteReopenEqualityVerified": true,
+        "catalogLogicalDigestVersion": 1,
+        "beforeCatalogSha256": "65f246ad15c52160d6fa2ed738e8d710937f917d56fc808f96e8cc3f3142d858",
+        "afterCatalogSha256": "65f246ad15c52160d6fa2ed738e8d710937f917d56fc808f96e8cc3f3142d858"
+      },
+      "comparison": {
+        "familyBefore": null,
+        "outcomeBefore": "NO_FAMILY_MATCH",
+        "coverageBefore": null
+      }
     },
     {
       "name": "Parallel Emerald (v1.2).gba",
@@ -11772,109 +12111,8 @@
     },
     {
       "name": "Gold 97 Reforged (v6.1f).gbc",
-      "generation": 2,
-      "family": "CRYSTAL",
-      "languageCount": 1,
-      "compatibilityPercent": 63.16,
-      "capabilities": {
-        "SPECIES_CATALOG": {
-          "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "SPECIES_NAMES": {
-          "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "SPECIES_TYPES": {
-          "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "TYPE_CHART": {
-          "status": "NOT_FOUND",
-          "confidence": 0
-        },
-        "BASE_STATS": {
-          "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "SPRITES": {
-          "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "POKEDEX_DESCRIPTIONS": {
-          "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "EVOLUTIONS": {
-          "status": "NOT_FOUND",
-          "confidence": 0
-        },
-        "MOVE_CATALOG": {
-          "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "MOVE_DETAILS": {
-          "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "MOVE_DESCRIPTIONS": {
-          "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "LEARNSETS": {
-          "status": "NOT_FOUND",
-          "confidence": 0
-        },
-        "EGG_MOVES": {
-          "status": "NOT_FOUND",
-          "confidence": 0
-        },
-        "MACHINE_MOVES": {
-          "status": "NOT_FOUND",
-          "confidence": 0
-        },
-        "TUTOR_MOVES": {
-          "status": "NOT_FOUND",
-          "confidence": 0
-        },
-        "ABILITIES": {
-          "status": "NOT_APPLICABLE",
-          "confidence": 0
-        },
-        "ABILITY_DESCRIPTIONS": {
-          "status": "NOT_APPLICABLE",
-          "confidence": 0
-        },
-        "ABILITY_MECHANICS": {
-          "status": "NOT_APPLICABLE",
-          "confidence": 0
-        },
-        "AREA_ENCOUNTERS": {
-          "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "TYPE_PRESENTATION": {
-          "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "BALL_CATALOG": {
-          "status": "NOT_APPLICABLE",
-          "confidence": 0
-        },
-        "WORLD_MAP": {
-          "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "LOCAL_MAP": {
-          "status": "NOT_FOUND",
-          "confidence": 0
-        },
-        "NATURES": {
-          "status": "NOT_APPLICABLE",
-          "confidence": 0
-        }
-      },
-      "evidence": "inherited-byte-identical",
+      "evidence": "fresh-focused-gen2-core-scan",
+      "sourceCommit": "51ecbae00f3dda6403140ba85199ea597b01c9c6",
       "aliases": [
         {
           "archive": "Pokemon Gold & Silver 97 Reforged (v6.1f).7z",
@@ -11886,7 +12124,153 @@
           "name": "Gold 97 Reforged (v6.1f).gbc",
           "console": "Nintendo - Game Boy Color"
         }
-      ]
+      ],
+      "role": "related-control",
+      "generation": 2,
+      "family": "GOLD_SILVER",
+      "languageCount": 1,
+      "compatibilityPercent": 72.22,
+      "capabilities": {
+        "SPECIES_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "SPECIES_TYPES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "TYPE_CHART": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "BASE_STATS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "SPRITES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "EVOLUTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "MOVE_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "MOVE_DETAILS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "LEARNSETS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "EGG_MOVES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "MACHINE_MOVES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "TUTOR_MOVES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0
+        },
+        "ABILITIES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0
+        },
+        "ABILITY_MECHANICS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0
+        },
+        "AREA_ENCOUNTERS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "TYPE_PRESENTATION": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "BALL_CATALOG": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0
+        },
+        "WORLD_MAP": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "LOCAL_MAP": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "NATURES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0
+        }
+      },
+      "catalogCounters": {
+        "species": 253,
+        "namedSpecies": 253,
+        "speciesWithStats": 253,
+        "speciesWithSprites": 253,
+        "speciesWithDescriptions": 253,
+        "evolutionEdges": 0,
+        "learnsetEntries": 0,
+        "learnsetRulesets": 0,
+        "moves": 251,
+        "movesWithDetails": 251,
+        "movesWithDescriptions": 251,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 0,
+        "tutorMoveLinks": 0,
+        "types": 18,
+        "namedTypes": 0,
+        "typesWithSemanticRoles": 0,
+        "typeMatchups": 104,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 347,
+        "movesWithCategories": 248,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "persistenceError": false,
+        "referenceErrorCount": 0,
+        "sqliteReopenEqualityVerified": true,
+        "catalogLogicalDigestVersion": 1,
+        "beforeCatalogSha256": "ce2f1b251ae2a195ceb0ef2ddcf609596d28dc58eb4da9b4ead31e269f29b5b6",
+        "afterCatalogSha256": "ce2f1b251ae2a195ceb0ef2ddcf609596d28dc58eb4da9b4ead31e269f29b5b6"
+      },
+      "comparison": {
+        "familyBefore": "CRYSTAL",
+        "outcomeBefore": "SELECTED",
+        "coverageBefore": 63.16
+      }
     },
     {
       "name": "Emerald Seaglass (v3.0).gba",
@@ -12242,6 +12626,16 @@
     },
     {
       "name": "Anniversary Crystal (v1.2.3).gbc",
+      "evidence": "fresh-focused-gen2-core-scan",
+      "sourceCommit": "49bc83cd74e16ae1730d8c80e134c6e925ac9e4d",
+      "aliases": [
+        {
+          "archive": "Pokemon Anniversary Crystal (v1.2.3).7z",
+          "name": "Anniversary Crystal (v1.2.3).gbc",
+          "console": "Nintendo - Game Boy Color"
+        }
+      ],
+      "role": "related-control",
       "generation": 2,
       "family": "CRYSTAL",
       "languageCount": 1,
@@ -12249,109 +12643,144 @@
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "PARTIAL",
-          "confidence": 0.95
-        },
-        "SPECIES_NAMES": {
-          "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 0.9482071713147411
         },
         "SPECIES_TYPES": {
           "status": "PARTIAL",
-          "confidence": 0.95
+          "confidence": 0.9482071713147411
         },
         "TYPE_CHART": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.11392405063291139
         },
         "BASE_STATS": {
           "status": "PARTIAL",
-          "confidence": 0.95
+          "confidence": 0.9482071713147411
         },
         "SPRITES": {
           "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "POKEDEX_DESCRIPTIONS": {
-          "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 1.0
         },
         "EVOLUTIONS": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "MOVE_CATALOG": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "MOVE_DETAILS": {
           "status": "NOT_FOUND",
-          "confidence": 0
-        },
-        "MOVE_DESCRIPTIONS": {
-          "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 0.28286852589641437
         },
         "LEARNSETS": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "EGG_MOVES": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "MACHINE_MOVES": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "TUTOR_MOVES": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "ABILITIES": {
           "status": "NOT_APPLICABLE",
-          "confidence": 0
-        },
-        "ABILITY_DESCRIPTIONS": {
-          "status": "NOT_APPLICABLE",
-          "confidence": 0
+          "confidence": 0.0
         },
         "ABILITY_MECHANICS": {
           "status": "NOT_APPLICABLE",
-          "confidence": 0
+          "confidence": 0.0
         },
         "AREA_ENCOUNTERS": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "TYPE_PRESENTATION": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "BALL_CATALOG": {
           "status": "NOT_APPLICABLE",
-          "confidence": 0
+          "confidence": 0.0
         },
         "WORLD_MAP": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "LOCAL_MAP": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "NATURES": {
           "status": "NOT_APPLICABLE",
-          "confidence": 0
+          "confidence": 0.0
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0
         }
       },
-      "evidence": "inherited-byte-identical",
-      "aliases": [
-        {
-          "archive": "Pokemon Anniversary Crystal (v1.2.3).7z",
-          "name": "Anniversary Crystal (v1.2.3).gbc",
-          "console": "Nintendo - Game Boy Color"
-        }
-      ]
+      "catalogCounters": {
+        "species": 251,
+        "namedSpecies": 251,
+        "speciesWithStats": 238,
+        "speciesWithSprites": 251,
+        "speciesWithDescriptions": 0,
+        "evolutionEdges": 0,
+        "learnsetEntries": 0,
+        "learnsetRulesets": 0,
+        "moves": 251,
+        "movesWithDetails": 0,
+        "movesWithDescriptions": 251,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 0,
+        "tutorMoveLinks": 0,
+        "types": 17,
+        "namedTypes": 17,
+        "typesWithSemanticRoles": 17,
+        "typeMatchups": 0,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 410,
+        "movesWithCategories": 0,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "persistenceError": false,
+        "referenceErrorCount": 0,
+        "sqliteReopenEqualityVerified": true,
+        "catalogLogicalDigestVersion": 1,
+        "beforeCatalogSha256": "aba186e9282883c765bca3246664491caeea70638fa6c54dfa1b073db42a1b44",
+        "afterCatalogSha256": "aba186e9282883c765bca3246664491caeea70638fa6c54dfa1b073db42a1b44"
+      },
+      "comparison": {
+        "familyBefore": "CRYSTAL",
+        "outcomeBefore": "SELECTED",
+        "coverageBefore": 51.81
+      }
     },
     {
       "name": "Noon (Completed).gba",
@@ -13755,109 +14184,8 @@
     },
     {
       "name": "Silver 97 Reforged (v6.1f).gbc",
-      "generation": 2,
-      "family": "CRYSTAL",
-      "languageCount": 1,
-      "compatibilityPercent": 63.16,
-      "capabilities": {
-        "SPECIES_CATALOG": {
-          "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "SPECIES_NAMES": {
-          "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "SPECIES_TYPES": {
-          "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "TYPE_CHART": {
-          "status": "NOT_FOUND",
-          "confidence": 0
-        },
-        "BASE_STATS": {
-          "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "SPRITES": {
-          "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "POKEDEX_DESCRIPTIONS": {
-          "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "EVOLUTIONS": {
-          "status": "NOT_FOUND",
-          "confidence": 0
-        },
-        "MOVE_CATALOG": {
-          "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "MOVE_DETAILS": {
-          "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "MOVE_DESCRIPTIONS": {
-          "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "LEARNSETS": {
-          "status": "NOT_FOUND",
-          "confidence": 0
-        },
-        "EGG_MOVES": {
-          "status": "NOT_FOUND",
-          "confidence": 0
-        },
-        "MACHINE_MOVES": {
-          "status": "NOT_FOUND",
-          "confidence": 0
-        },
-        "TUTOR_MOVES": {
-          "status": "NOT_FOUND",
-          "confidence": 0
-        },
-        "ABILITIES": {
-          "status": "NOT_APPLICABLE",
-          "confidence": 0
-        },
-        "ABILITY_DESCRIPTIONS": {
-          "status": "NOT_APPLICABLE",
-          "confidence": 0
-        },
-        "ABILITY_MECHANICS": {
-          "status": "NOT_APPLICABLE",
-          "confidence": 0
-        },
-        "AREA_ENCOUNTERS": {
-          "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "TYPE_PRESENTATION": {
-          "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "BALL_CATALOG": {
-          "status": "NOT_APPLICABLE",
-          "confidence": 0
-        },
-        "WORLD_MAP": {
-          "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "LOCAL_MAP": {
-          "status": "NOT_FOUND",
-          "confidence": 0
-        },
-        "NATURES": {
-          "status": "NOT_APPLICABLE",
-          "confidence": 0
-        }
-      },
-      "evidence": "inherited-byte-identical",
+      "evidence": "fresh-focused-gen2-core-scan",
+      "sourceCommit": "51ecbae00f3dda6403140ba85199ea597b01c9c6",
       "aliases": [
         {
           "archive": "Pokemon Gold & Silver 97 Reforged (v6.1f).7z",
@@ -13869,7 +14197,153 @@
           "name": "Silver 97 Reforged (v6.1f).gbc",
           "console": "Nintendo - Game Boy Color"
         }
-      ]
+      ],
+      "role": "related-control",
+      "generation": 2,
+      "family": "GOLD_SILVER",
+      "languageCount": 1,
+      "compatibilityPercent": 72.22,
+      "capabilities": {
+        "SPECIES_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "SPECIES_TYPES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "TYPE_CHART": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "BASE_STATS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "SPRITES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "EVOLUTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "MOVE_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "MOVE_DETAILS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "LEARNSETS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "EGG_MOVES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "MACHINE_MOVES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "TUTOR_MOVES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0
+        },
+        "ABILITIES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0
+        },
+        "ABILITY_MECHANICS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0
+        },
+        "AREA_ENCOUNTERS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "TYPE_PRESENTATION": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "BALL_CATALOG": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0
+        },
+        "WORLD_MAP": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "LOCAL_MAP": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "NATURES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0
+        }
+      },
+      "catalogCounters": {
+        "species": 253,
+        "namedSpecies": 253,
+        "speciesWithStats": 253,
+        "speciesWithSprites": 253,
+        "speciesWithDescriptions": 253,
+        "evolutionEdges": 0,
+        "learnsetEntries": 0,
+        "learnsetRulesets": 0,
+        "moves": 251,
+        "movesWithDetails": 251,
+        "movesWithDescriptions": 251,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 0,
+        "tutorMoveLinks": 0,
+        "types": 18,
+        "namedTypes": 0,
+        "typesWithSemanticRoles": 0,
+        "typeMatchups": 104,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 347,
+        "movesWithCategories": 248,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "persistenceError": false,
+        "referenceErrorCount": 0,
+        "sqliteReopenEqualityVerified": true,
+        "catalogLogicalDigestVersion": 1,
+        "beforeCatalogSha256": "68831b79de8a1eaae21a9daefa261e7ea43e0d385ed89d20834019fff8283805",
+        "afterCatalogSha256": "68831b79de8a1eaae21a9daefa261e7ea43e0d385ed89d20834019fff8283805"
+      },
+      "comparison": {
+        "familyBefore": "CRYSTAL",
+        "outcomeBefore": "SELECTED",
+        "coverageBefore": 63.16
+      }
     },
     {
       "name": "Cloud White 2 (v279).gba",
@@ -14782,109 +15256,8 @@
     },
     {
       "name": "Crystal Clear (Color Filter) (v2.6).gbc",
-      "generation": 2,
-      "family": "CRYSTAL",
-      "languageCount": 1,
-      "compatibilityPercent": 57.89,
-      "capabilities": {
-        "SPECIES_CATALOG": {
-          "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "SPECIES_NAMES": {
-          "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "SPECIES_TYPES": {
-          "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "TYPE_CHART": {
-          "status": "NOT_FOUND",
-          "confidence": 0
-        },
-        "BASE_STATS": {
-          "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "SPRITES": {
-          "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "POKEDEX_DESCRIPTIONS": {
-          "status": "NOT_FOUND",
-          "confidence": 0
-        },
-        "EVOLUTIONS": {
-          "status": "NOT_FOUND",
-          "confidence": 0
-        },
-        "MOVE_CATALOG": {
-          "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "MOVE_DETAILS": {
-          "status": "NOT_FOUND",
-          "confidence": 0
-        },
-        "MOVE_DESCRIPTIONS": {
-          "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "LEARNSETS": {
-          "status": "NOT_FOUND",
-          "confidence": 0
-        },
-        "EGG_MOVES": {
-          "status": "NOT_FOUND",
-          "confidence": 0
-        },
-        "MACHINE_MOVES": {
-          "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "TUTOR_MOVES": {
-          "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "ABILITIES": {
-          "status": "NOT_APPLICABLE",
-          "confidence": 0
-        },
-        "ABILITY_DESCRIPTIONS": {
-          "status": "NOT_APPLICABLE",
-          "confidence": 0
-        },
-        "ABILITY_MECHANICS": {
-          "status": "NOT_APPLICABLE",
-          "confidence": 0
-        },
-        "AREA_ENCOUNTERS": {
-          "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "TYPE_PRESENTATION": {
-          "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "BALL_CATALOG": {
-          "status": "NOT_APPLICABLE",
-          "confidence": 0
-        },
-        "WORLD_MAP": {
-          "status": "NOT_FOUND",
-          "confidence": 0
-        },
-        "LOCAL_MAP": {
-          "status": "NOT_FOUND",
-          "confidence": 0
-        },
-        "NATURES": {
-          "status": "NOT_APPLICABLE",
-          "confidence": 0
-        }
-      },
-      "evidence": "inherited-byte-identical",
+      "evidence": "fresh-focused-gen2-core-scan",
+      "sourceCommit": "49bc83cd74e16ae1730d8c80e134c6e925ac9e4d",
       "aliases": [
         {
           "archive": "Pokemon Crystal Clear (Color Filter) (v2.6).7z",
@@ -14896,7 +15269,153 @@
           "name": "Crystal Clear (Color Filter) (v2.6).gbc",
           "console": "Nintendo - Game Boy Color"
         }
-      ]
+      ],
+      "role": "related-control",
+      "generation": 2,
+      "family": "CRYSTAL",
+      "languageCount": 1,
+      "compatibilityPercent": 57.89,
+      "capabilities": {
+        "SPECIES_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "SPECIES_TYPES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "TYPE_CHART": {
+          "status": "NOT_FOUND",
+          "confidence": 0.12
+        },
+        "BASE_STATS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "SPRITES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "EVOLUTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "MOVE_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "MOVE_DETAILS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.3466135458167331
+        },
+        "LEARNSETS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "EGG_MOVES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "MACHINE_MOVES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "TUTOR_MOVES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "ABILITIES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0
+        },
+        "ABILITY_MECHANICS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0
+        },
+        "AREA_ENCOUNTERS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "TYPE_PRESENTATION": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "BALL_CATALOG": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0
+        },
+        "WORLD_MAP": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "LOCAL_MAP": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "NATURES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0
+        }
+      },
+      "catalogCounters": {
+        "species": 251,
+        "namedSpecies": 251,
+        "speciesWithStats": 251,
+        "speciesWithSprites": 251,
+        "speciesWithDescriptions": 0,
+        "evolutionEdges": 0,
+        "learnsetEntries": 0,
+        "learnsetRulesets": 0,
+        "moves": 170,
+        "movesWithDetails": 0,
+        "movesWithDescriptions": 170,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 6402,
+        "tutorMoveLinks": 220,
+        "types": 17,
+        "namedTypes": 17,
+        "typesWithSemanticRoles": 17,
+        "typeMatchups": 0,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 486,
+        "movesWithCategories": 0,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "persistenceError": false,
+        "referenceErrorCount": 0,
+        "sqliteReopenEqualityVerified": true,
+        "catalogLogicalDigestVersion": 1,
+        "beforeCatalogSha256": "cfb5a521c0be95acbb0f4a92e1f880c652d8360a6da1398487c249924754f077",
+        "afterCatalogSha256": "cfb5a521c0be95acbb0f4a92e1f880c652d8360a6da1398487c249924754f077"
+      },
+      "comparison": {
+        "familyBefore": "CRYSTAL",
+        "outcomeBefore": "SELECTED",
+        "coverageBefore": 57.89
+      }
     },
     {
       "name": "Adventure Red Chapter (Beta 15 + Expansion Fix C).gba",
@@ -16657,6 +17176,16 @@
     },
     {
       "name": "Kalos Crystal (v1.0).gbc",
+      "evidence": "fresh-focused-gen2-core-scan",
+      "sourceCommit": "49bc83cd74e16ae1730d8c80e134c6e925ac9e4d",
+      "aliases": [
+        {
+          "archive": "Pokemon Kalos Crystal (v1.0).7z",
+          "name": "Kalos Crystal (v1.0).gbc",
+          "console": "Nintendo - Game Boy Color"
+        }
+      ],
+      "role": "related-control",
       "generation": 2,
       "family": "CRYSTAL",
       "languageCount": 1,
@@ -16664,109 +17193,144 @@
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "PARTIAL",
-          "confidence": 0.93
-        },
-        "SPECIES_NAMES": {
-          "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 0.9344978165938864
         },
         "SPECIES_TYPES": {
           "status": "PARTIAL",
-          "confidence": 0.93
+          "confidence": 0.9344978165938864
         },
         "TYPE_CHART": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.8898305084745762
         },
         "BASE_STATS": {
           "status": "PARTIAL",
-          "confidence": 0.93
+          "confidence": 0.9344978165938864
         },
         "SPRITES": {
           "status": "PARTIAL",
-          "confidence": 0.91
-        },
-        "POKEDEX_DESCRIPTIONS": {
-          "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 0.9123505976095617
         },
         "EVOLUTIONS": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "MOVE_CATALOG": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "MOVE_DETAILS": {
           "status": "PARTIAL",
-          "confidence": 0.97
-        },
-        "MOVE_DESCRIPTIONS": {
-          "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 0.9721115537848606
         },
         "LEARNSETS": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "EGG_MOVES": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "MACHINE_MOVES": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "TUTOR_MOVES": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "ABILITIES": {
           "status": "NOT_APPLICABLE",
-          "confidence": 0
-        },
-        "ABILITY_DESCRIPTIONS": {
-          "status": "NOT_APPLICABLE",
-          "confidence": 0
+          "confidence": 0.0
         },
         "ABILITY_MECHANICS": {
           "status": "NOT_APPLICABLE",
-          "confidence": 0
+          "confidence": 0.0
         },
         "AREA_ENCOUNTERS": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "TYPE_PRESENTATION": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "BALL_CATALOG": {
           "status": "NOT_APPLICABLE",
-          "confidence": 0
+          "confidence": 0.0
         },
         "WORLD_MAP": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "LOCAL_MAP": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "NATURES": {
           "status": "NOT_APPLICABLE",
-          "confidence": 0
+          "confidence": 0.0
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0
         }
       },
-      "evidence": "inherited-byte-identical",
-      "aliases": [
-        {
-          "archive": "Pokemon Kalos Crystal (v1.0).7z",
-          "name": "Kalos Crystal (v1.0).gbc",
-          "console": "Nintendo - Game Boy Color"
-        }
-      ]
+      "catalogCounters": {
+        "species": 229,
+        "namedSpecies": 229,
+        "speciesWithStats": 214,
+        "speciesWithSprites": 208,
+        "speciesWithDescriptions": 229,
+        "evolutionEdges": 0,
+        "learnsetEntries": 0,
+        "learnsetRulesets": 0,
+        "moves": 251,
+        "movesWithDetails": 251,
+        "movesWithDescriptions": 251,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 5939,
+        "tutorMoveLinks": 130,
+        "types": 20,
+        "namedTypes": 0,
+        "typesWithSemanticRoles": 0,
+        "typeMatchups": 0,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 335,
+        "movesWithCategories": 246,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "persistenceError": false,
+        "referenceErrorCount": 0,
+        "sqliteReopenEqualityVerified": true,
+        "catalogLogicalDigestVersion": 1,
+        "beforeCatalogSha256": "23e3d6c14b8d5a7474a42151aed7c75dba37f22fca1ae525aed1aee57afeb47d",
+        "afterCatalogSha256": "23e3d6c14b8d5a7474a42151aed7c75dba37f22fca1ae525aed1aee57afeb47d"
+      },
+      "comparison": {
+        "familyBefore": "CRYSTAL",
+        "outcomeBefore": "SELECTED",
+        "coverageBefore": 77.31
+      }
     },
     {
       "name": "Cloud White 3 (v277).gba",
@@ -17839,6 +18403,16 @@
     },
     {
       "name": "Mystic Crystal (v1.0).gbc",
+      "evidence": "fresh-focused-gen2-core-scan",
+      "sourceCommit": "49bc83cd74e16ae1730d8c80e134c6e925ac9e4d",
+      "aliases": [
+        {
+          "archive": "Pokemon Mystic Crystal (v1.0).7z",
+          "name": "Mystic Crystal (v1.0).gbc",
+          "console": "Nintendo - Game Boy Color"
+        }
+      ],
+      "role": "related-control",
       "generation": 2,
       "family": "CRYSTAL",
       "languageCount": 1,
@@ -17846,109 +18420,144 @@
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "PARTIAL",
-          "confidence": 0.93
-        },
-        "SPECIES_NAMES": {
-          "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 0.9282868525896414
         },
         "SPECIES_TYPES": {
           "status": "PARTIAL",
-          "confidence": 0.93
+          "confidence": 0.9282868525896414
         },
         "TYPE_CHART": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.1322314049586777
         },
         "BASE_STATS": {
           "status": "PARTIAL",
-          "confidence": 0.93
+          "confidence": 0.9282868525896414
         },
         "SPRITES": {
           "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "POKEDEX_DESCRIPTIONS": {
-          "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "EVOLUTIONS": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "MOVE_CATALOG": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "MOVE_DETAILS": {
           "status": "NOT_FOUND",
-          "confidence": 0
-        },
-        "MOVE_DESCRIPTIONS": {
-          "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 0.055776892430278883
         },
         "LEARNSETS": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "EGG_MOVES": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "MACHINE_MOVES": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "TUTOR_MOVES": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "ABILITIES": {
           "status": "NOT_APPLICABLE",
-          "confidence": 0
-        },
-        "ABILITY_DESCRIPTIONS": {
-          "status": "NOT_APPLICABLE",
-          "confidence": 0
+          "confidence": 0.0
         },
         "ABILITY_MECHANICS": {
           "status": "NOT_APPLICABLE",
-          "confidence": 0
+          "confidence": 0.0
         },
         "AREA_ENCOUNTERS": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "TYPE_PRESENTATION": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "BALL_CATALOG": {
           "status": "NOT_APPLICABLE",
-          "confidence": 0
+          "confidence": 0.0
         },
         "WORLD_MAP": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "LOCAL_MAP": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "NATURES": {
           "status": "NOT_APPLICABLE",
-          "confidence": 0
+          "confidence": 0.0
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0
         }
       },
-      "evidence": "inherited-byte-identical",
-      "aliases": [
-        {
-          "archive": "Pokemon Mystic Crystal (v1.0).7z",
-          "name": "Mystic Crystal (v1.0).gbc",
-          "console": "Nintendo - Game Boy Color"
-        }
-      ]
+      "catalogCounters": {
+        "species": 251,
+        "namedSpecies": 251,
+        "speciesWithStats": 233,
+        "speciesWithSprites": 251,
+        "speciesWithDescriptions": 251,
+        "evolutionEdges": 0,
+        "learnsetEntries": 0,
+        "learnsetRulesets": 0,
+        "moves": 251,
+        "movesWithDetails": 0,
+        "movesWithDescriptions": 251,
+        "eggMoveLinks": 480,
+        "machineMoveLinks": 6378,
+        "tutorMoveLinks": 220,
+        "types": 17,
+        "namedTypes": 17,
+        "typesWithSemanticRoles": 17,
+        "typeMatchups": 0,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 523,
+        "movesWithCategories": 0,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "persistenceError": false,
+        "referenceErrorCount": 0,
+        "sqliteReopenEqualityVerified": true,
+        "catalogLogicalDigestVersion": 1,
+        "beforeCatalogSha256": "5f34b8e6eb11cd612a7d308fce566d2210fb48c2601aee0c70e8ba274d40d1da",
+        "afterCatalogSha256": "5f34b8e6eb11cd612a7d308fce566d2210fb48c2601aee0c70e8ba274d40d1da"
+      },
+      "comparison": {
+        "familyBefore": "CRYSTAL",
+        "outcomeBefore": "SELECTED",
+        "coverageBefore": 72.55
+      }
     },
     {
       "name": "Battle Theater (V2.6.0).gba",
@@ -19169,16 +19778,161 @@
     },
     {
       "name": "Crystal Inheritance (v1.1).gbc",
-      "platform": "GBC",
-      "outcome": "NO_FAMILY_MATCH",
-      "evidence": "fresh-delta-scan",
+      "evidence": "fresh-focused-gen2-core-scan",
+      "sourceCommit": "49bc83cd74e16ae1730d8c80e134c6e925ac9e4d",
       "aliases": [
         {
           "archive": "Pokemon Crystal Inheritance (v1.1).7z",
           "name": "Crystal Inheritance (v1.1).gbc",
           "console": "Nintendo - Game Boy Color"
         }
-      ]
+      ],
+      "role": "target",
+      "generation": 2,
+      "family": "CRYSTAL",
+      "languageCount": 1,
+      "compatibilityPercent": 29.17,
+      "capabilities": {
+        "SPECIES_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "SPECIES_TYPES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "TYPE_CHART": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "BASE_STATS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "SPRITES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "EVOLUTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "MOVE_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "MOVE_DETAILS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "LEARNSETS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "EGG_MOVES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "MACHINE_MOVES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "TUTOR_MOVES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "ABILITIES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "ABILITY_MECHANICS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "AREA_ENCOUNTERS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "TYPE_PRESENTATION": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "BALL_CATALOG": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "WORLD_MAP": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "LOCAL_MAP": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "NATURES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        }
+      },
+      "catalogCounters": {
+        "species": 254,
+        "namedSpecies": 254,
+        "speciesWithStats": 254,
+        "speciesWithSprites": 0,
+        "speciesWithDescriptions": 0,
+        "evolutionEdges": 0,
+        "learnsetEntries": 0,
+        "learnsetRulesets": 0,
+        "moves": 255,
+        "movesWithDetails": 255,
+        "movesWithDescriptions": 0,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 0,
+        "tutorMoveLinks": 0,
+        "types": 19,
+        "namedTypes": 19,
+        "typesWithSemanticRoles": 19,
+        "typeMatchups": 0,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 0,
+        "movesWithCategories": 255,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "persistenceError": false,
+        "referenceErrorCount": 0,
+        "sqliteReopenEqualityVerified": true,
+        "catalogLogicalDigestVersion": 1,
+        "beforeCatalogSha256": "c529a5879df40a1e7b25eb0bededa3ed41ec28276edc1c5af28cfa7bc1f40a98",
+        "afterCatalogSha256": "c529a5879df40a1e7b25eb0bededa3ed41ec28276edc1c5af28cfa7bc1f40a98"
+      },
+      "comparison": {
+        "familyBefore": null,
+        "outcomeBefore": "NO_FAMILY_MATCH",
+        "coverageBefore": null
+      }
     },
     {
       "name": "Sors 2 (Tech Demo) (Evolution Fix).gba",
@@ -22074,6 +22828,16 @@
     },
     {
       "name": "Digimon Crystal (v11.02.24).gbc",
+      "evidence": "fresh-focused-gen2-core-scan",
+      "sourceCommit": "49bc83cd74e16ae1730d8c80e134c6e925ac9e4d",
+      "aliases": [
+        {
+          "archive": "Pokemon Digimon Crystal (v11.02.24).7z",
+          "name": "Digimon Crystal (v11.02.24).gbc",
+          "console": "Nintendo - Game Boy Color"
+        }
+      ],
+      "role": "related-control",
       "generation": 2,
       "family": "CRYSTAL",
       "languageCount": 1,
@@ -22081,112 +22845,157 @@
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "PARTIAL",
-          "confidence": 0.91
-        },
-        "SPECIES_NAMES": {
-          "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 0.9123505976095617
         },
         "SPECIES_TYPES": {
           "status": "PARTIAL",
-          "confidence": 0.91
+          "confidence": 0.9123505976095617
         },
         "TYPE_CHART": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.8852459016393442
         },
         "BASE_STATS": {
           "status": "PARTIAL",
-          "confidence": 0.91
+          "confidence": 0.9123505976095617
         },
         "SPRITES": {
           "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "POKEDEX_DESCRIPTIONS": {
-          "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "EVOLUTIONS": {
           "status": "PARTIAL",
-          "confidence": 0.9
+          "confidence": 0.9043824701195219
         },
         "MOVE_CATALOG": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "MOVE_DETAILS": {
           "status": "NOT_FOUND",
-          "confidence": 0
-        },
-        "MOVE_DESCRIPTIONS": {
-          "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 0.00398406374501992
         },
         "LEARNSETS": {
           "status": "PARTIAL",
-          "confidence": 0.9
+          "confidence": 0.9043824701195219
         },
         "EGG_MOVES": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "MACHINE_MOVES": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "TUTOR_MOVES": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "ABILITIES": {
           "status": "NOT_APPLICABLE",
-          "confidence": 0
-        },
-        "ABILITY_DESCRIPTIONS": {
-          "status": "NOT_APPLICABLE",
-          "confidence": 0
+          "confidence": 0.0
         },
         "ABILITY_MECHANICS": {
           "status": "NOT_APPLICABLE",
-          "confidence": 0
+          "confidence": 0.0
         },
         "AREA_ENCOUNTERS": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "TYPE_PRESENTATION": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "BALL_CATALOG": {
           "status": "NOT_APPLICABLE",
-          "confidence": 0
+          "confidence": 0.0
         },
         "WORLD_MAP": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "LOCAL_MAP": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "NATURES": {
           "status": "NOT_APPLICABLE",
-          "confidence": 0
+          "confidence": 0.0
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0
         }
       },
-      "evidence": "inherited-byte-identical",
-      "aliases": [
-        {
-          "archive": "Pokemon Digimon Crystal (v11.02.24).7z",
-          "name": "Digimon Crystal (v11.02.24).gbc",
-          "console": "Nintendo - Game Boy Color"
-        }
-      ]
+      "catalogCounters": {
+        "species": 251,
+        "namedSpecies": 251,
+        "speciesWithStats": 229,
+        "speciesWithSprites": 251,
+        "speciesWithDescriptions": 251,
+        "evolutionEdges": 175,
+        "learnsetEntries": 2072,
+        "learnsetRulesets": 1,
+        "moves": 251,
+        "movesWithDetails": 0,
+        "movesWithDescriptions": 251,
+        "eggMoveLinks": 478,
+        "machineMoveLinks": 6370,
+        "tutorMoveLinks": 58,
+        "types": 17,
+        "namedTypes": 17,
+        "typesWithSemanticRoles": 17,
+        "typeMatchups": 0,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 335,
+        "movesWithCategories": 0,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "persistenceError": false,
+        "referenceErrorCount": 0,
+        "sqliteReopenEqualityVerified": true,
+        "catalogLogicalDigestVersion": 1,
+        "beforeCatalogSha256": "8e97704f0eda501adeff207fe8f1635d3170997fee997197294c54cbfa7d4d33",
+        "afterCatalogSha256": "8e97704f0eda501adeff207fe8f1635d3170997fee997197294c54cbfa7d4d33"
+      },
+      "comparison": {
+        "familyBefore": "CRYSTAL",
+        "outcomeBefore": "SELECTED",
+        "coverageBefore": 87.08
+      }
     },
     {
       "name": "Crystal Kaizo (01.08.26).gbc",
+      "evidence": "fresh-focused-gen2-core-scan",
+      "sourceCommit": "49bc83cd74e16ae1730d8c80e134c6e925ac9e4d",
+      "aliases": [
+        {
+          "archive": "Pokemon Crystal Kaizo (01.08.26).7z",
+          "name": "Crystal Kaizo (01.08.26).gbc",
+          "console": "Nintendo - Game Boy Color"
+        }
+      ],
+      "role": "related-control",
       "generation": 2,
       "family": "CRYSTAL",
       "languageCount": 1,
@@ -22194,109 +23003,144 @@
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "SPECIES_NAMES": {
-          "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "SPECIES_TYPES": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "TYPE_CHART": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "BASE_STATS": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "SPRITES": {
           "status": "NOT_FOUND",
-          "confidence": 0
-        },
-        "POKEDEX_DESCRIPTIONS": {
-          "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "EVOLUTIONS": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "MOVE_CATALOG": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "MOVE_DETAILS": {
           "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "MOVE_DESCRIPTIONS": {
-          "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "LEARNSETS": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "EGG_MOVES": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "MACHINE_MOVES": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "TUTOR_MOVES": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "ABILITIES": {
           "status": "NOT_APPLICABLE",
-          "confidence": 0
-        },
-        "ABILITY_DESCRIPTIONS": {
-          "status": "NOT_APPLICABLE",
-          "confidence": 0
+          "confidence": 0.0
         },
         "ABILITY_MECHANICS": {
           "status": "NOT_APPLICABLE",
-          "confidence": 0
+          "confidence": 0.0
         },
         "AREA_ENCOUNTERS": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "TYPE_PRESENTATION": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "BALL_CATALOG": {
           "status": "NOT_APPLICABLE",
-          "confidence": 0
+          "confidence": 0.0
         },
         "WORLD_MAP": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "LOCAL_MAP": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "NATURES": {
           "status": "NOT_APPLICABLE",
-          "confidence": 0
+          "confidence": 0.0
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0
         }
       },
-      "evidence": "inherited-byte-identical",
-      "aliases": [
-        {
-          "archive": "Pokemon Crystal Kaizo (01.08.26).7z",
-          "name": "Crystal Kaizo (01.08.26).gbc",
-          "console": "Nintendo - Game Boy Color"
-        }
-      ]
+      "catalogCounters": {
+        "species": 251,
+        "namedSpecies": 251,
+        "speciesWithStats": 251,
+        "speciesWithSprites": 0,
+        "speciesWithDescriptions": 0,
+        "evolutionEdges": 0,
+        "learnsetEntries": 0,
+        "learnsetRulesets": 0,
+        "moves": 251,
+        "movesWithDetails": 251,
+        "movesWithDescriptions": 251,
+        "eggMoveLinks": 480,
+        "machineMoveLinks": 6372,
+        "tutorMoveLinks": 220,
+        "types": 18,
+        "namedTypes": 18,
+        "typesWithSemanticRoles": 18,
+        "typeMatchups": 108,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 335,
+        "movesWithCategories": 249,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "persistenceError": false,
+        "referenceErrorCount": 0,
+        "sqliteReopenEqualityVerified": true,
+        "catalogLogicalDigestVersion": 1,
+        "beforeCatalogSha256": "23260810feda3f87a9540c57a824952790fbf901c342ca6c4538d90bcf84eddc",
+        "afterCatalogSha256": "23260810feda3f87a9540c57a824952790fbf901c342ca6c4538d90bcf84eddc"
+      },
+      "comparison": {
+        "familyBefore": "CRYSTAL",
+        "outcomeBefore": "SELECTED",
+        "coverageBefore": 73.68
+      }
     },
     {
       "name": "Crystal Advance Redux (20-9-26).gba",
@@ -23053,16 +23897,161 @@
     },
     {
       "name": "Sour Crystal (v7.0a).gbc",
-      "platform": "GBC",
-      "outcome": "NO_FAMILY_MATCH",
-      "evidence": "fresh-delta-scan",
+      "evidence": "fresh-focused-gen2-core-scan",
+      "sourceCommit": "51ecbae00f3dda6403140ba85199ea597b01c9c6",
       "aliases": [
         {
           "archive": "Pokemon Sour Crystal (v7.0a).7z",
           "name": "Sour Crystal (v7.0a).gbc",
           "console": "Nintendo - Game Boy Color"
         }
-      ]
+      ],
+      "role": "target",
+      "generation": 2,
+      "family": "CRYSTAL",
+      "languageCount": 1,
+      "compatibilityPercent": 68.42,
+      "capabilities": {
+        "SPECIES_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "SPECIES_TYPES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "TYPE_CHART": {
+          "status": "NOT_FOUND",
+          "confidence": 0.1596244131455399
+        },
+        "BASE_STATS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "SPRITES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "EVOLUTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "MOVE_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "MOVE_DETAILS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "LEARNSETS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "EGG_MOVES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "MACHINE_MOVES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "TUTOR_MOVES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "ABILITIES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0
+        },
+        "ABILITY_MECHANICS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0
+        },
+        "AREA_ENCOUNTERS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "TYPE_PRESENTATION": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "BALL_CATALOG": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0
+        },
+        "WORLD_MAP": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "LOCAL_MAP": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "NATURES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0
+        }
+      },
+      "catalogCounters": {
+        "species": 251,
+        "namedSpecies": 251,
+        "speciesWithStats": 251,
+        "speciesWithSprites": 10,
+        "speciesWithDescriptions": 251,
+        "evolutionEdges": 0,
+        "learnsetEntries": 0,
+        "learnsetRulesets": 0,
+        "moves": 251,
+        "movesWithDetails": 251,
+        "movesWithDescriptions": 251,
+        "eggMoveLinks": 512,
+        "machineMoveLinks": 0,
+        "tutorMoveLinks": 0,
+        "types": 18,
+        "namedTypes": 0,
+        "typesWithSemanticRoles": 0,
+        "typeMatchups": 0,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 378,
+        "movesWithCategories": 248,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "persistenceError": false,
+        "referenceErrorCount": 0,
+        "sqliteReopenEqualityVerified": true,
+        "catalogLogicalDigestVersion": 1,
+        "beforeCatalogSha256": "77f6b7183763793006b443303648f8346c596356d1d229955a75d02db5b1f2c8",
+        "afterCatalogSha256": "77f6b7183763793006b443303648f8346c596356d1d229955a75d02db5b1f2c8"
+      },
+      "comparison": {
+        "familyBefore": null,
+        "outcomeBefore": "NO_FAMILY_MATCH",
+        "coverageBefore": null
+      }
     },
     {
       "name": "Celebrations Red.gb",
@@ -24601,16 +25590,18 @@
     },
     {
       "name": "Black & White 3 - Genesis (24.12.23).gbc",
-      "platform": "GBC",
-      "outcome": "NO_FAMILY_MATCH",
-      "evidence": "inherited-byte-identical",
+      "evidence": "fresh-focused-gen2-core-scan",
+      "sourceCommit": "49bc83cd74e16ae1730d8c80e134c6e925ac9e4d",
       "aliases": [
         {
           "archive": "Pokemon Black & White 3 - Genesis (24.12.23).7z",
           "name": "Black & White 3 - Genesis (24.12.23).gbc",
           "console": "Nintendo - Game Boy Color"
         }
-      ]
+      ],
+      "role": "related-control",
+      "platform": "GBC",
+      "outcome": "NO_FAMILY_MATCH"
     },
     {
       "name": "Static Yellow (Gen 1) (v1.6.4).gb",
@@ -27460,6 +28451,16 @@
     },
     {
       "name": "Crystal Clear (v2.6).gbc",
+      "evidence": "fresh-focused-gen2-core-scan",
+      "sourceCommit": "49bc83cd74e16ae1730d8c80e134c6e925ac9e4d",
+      "aliases": [
+        {
+          "archive": "Pokemon Crystal Clear (v2.6).7z",
+          "name": "Crystal Clear (v2.6).gbc",
+          "console": "Nintendo - Game Boy Color"
+        }
+      ],
+      "role": "related-control",
       "generation": 2,
       "family": "CRYSTAL",
       "languageCount": 1,
@@ -27467,109 +28468,144 @@
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "SPECIES_NAMES": {
-          "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "SPECIES_TYPES": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "TYPE_CHART": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.12
         },
         "BASE_STATS": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "SPRITES": {
           "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "POKEDEX_DESCRIPTIONS": {
-          "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 1.0
         },
         "EVOLUTIONS": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "MOVE_CATALOG": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "MOVE_DETAILS": {
           "status": "NOT_FOUND",
-          "confidence": 0
-        },
-        "MOVE_DESCRIPTIONS": {
-          "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 0.3466135458167331
         },
         "LEARNSETS": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "EGG_MOVES": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "MACHINE_MOVES": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "TUTOR_MOVES": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "ABILITIES": {
           "status": "NOT_APPLICABLE",
-          "confidence": 0
-        },
-        "ABILITY_DESCRIPTIONS": {
-          "status": "NOT_APPLICABLE",
-          "confidence": 0
+          "confidence": 0.0
         },
         "ABILITY_MECHANICS": {
           "status": "NOT_APPLICABLE",
-          "confidence": 0
+          "confidence": 0.0
         },
         "AREA_ENCOUNTERS": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "TYPE_PRESENTATION": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "BALL_CATALOG": {
           "status": "NOT_APPLICABLE",
-          "confidence": 0
+          "confidence": 0.0
         },
         "WORLD_MAP": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "LOCAL_MAP": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "NATURES": {
           "status": "NOT_APPLICABLE",
-          "confidence": 0
+          "confidence": 0.0
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0
         }
       },
-      "evidence": "inherited-byte-identical",
-      "aliases": [
-        {
-          "archive": "Pokemon Crystal Clear (v2.6).7z",
-          "name": "Crystal Clear (v2.6).gbc",
-          "console": "Nintendo - Game Boy Color"
-        }
-      ]
+      "catalogCounters": {
+        "species": 251,
+        "namedSpecies": 251,
+        "speciesWithStats": 251,
+        "speciesWithSprites": 251,
+        "speciesWithDescriptions": 0,
+        "evolutionEdges": 0,
+        "learnsetEntries": 0,
+        "learnsetRulesets": 0,
+        "moves": 170,
+        "movesWithDetails": 0,
+        "movesWithDescriptions": 170,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 6402,
+        "tutorMoveLinks": 220,
+        "types": 17,
+        "namedTypes": 17,
+        "typesWithSemanticRoles": 17,
+        "typeMatchups": 0,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 486,
+        "movesWithCategories": 0,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "persistenceError": false,
+        "referenceErrorCount": 0,
+        "sqliteReopenEqualityVerified": true,
+        "catalogLogicalDigestVersion": 1,
+        "beforeCatalogSha256": "3f3fdd6bf29bdab31ce0b4e85944064b16c6a38c4905ef095d5e7b5558b819ed",
+        "afterCatalogSha256": "3f3fdd6bf29bdab31ce0b4e85944064b16c6a38c4905ef095d5e7b5558b819ed"
+      },
+      "comparison": {
+        "familyBefore": "CRYSTAL",
+        "outcomeBefore": "SELECTED",
+        "coverageBefore": 57.89
+      }
     },
     {
       "name": "FireEmerald (v0.6.1).gba",
@@ -32486,14 +33522,14 @@
       ]
     },
     {
-      "name": "Let´s Go Pikachu (v6.0).gba",
+      "name": "Let\u00b4s Go Pikachu (v6.0).gba",
       "platform": "GB",
       "outcome": "NO_FAMILY_MATCH",
       "evidence": "inherited-byte-identical",
       "aliases": [
         {
-          "archive": "Pokemon Let´s Go Pikachu (v6.0).7z",
-          "name": "Let´s Go Pikachu (v6.0).gba",
+          "archive": "Pokemon Let\u00b4s Go Pikachu (v6.0).7z",
+          "name": "Let\u00b4s Go Pikachu (v6.0).gba",
           "console": "Nintendo - Game Boy Advance"
         }
       ]
@@ -36264,6 +37300,16 @@
     },
     {
       "name": "Crystal Legacy Timeless (v1.1.3).gbc",
+      "evidence": "fresh-focused-gen2-core-scan",
+      "sourceCommit": "49bc83cd74e16ae1730d8c80e134c6e925ac9e4d",
+      "aliases": [
+        {
+          "archive": "Pokemon Crystal Legacy Timeless (v1.1.3).7z",
+          "name": "Crystal Legacy Timeless (v1.1.3).gbc",
+          "console": "Nintendo - Game Boy Color"
+        }
+      ],
+      "role": "related-control",
       "generation": 2,
       "family": "CRYSTAL",
       "languageCount": 1,
@@ -36271,109 +37317,144 @@
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "SPECIES_NAMES": {
-          "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "SPECIES_TYPES": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "TYPE_CHART": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0892018779342723
         },
         "BASE_STATS": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "SPRITES": {
           "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "POKEDEX_DESCRIPTIONS": {
-          "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 1.0
         },
         "EVOLUTIONS": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "MOVE_CATALOG": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "MOVE_DETAILS": {
           "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "MOVE_DESCRIPTIONS": {
-          "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "LEARNSETS": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "EGG_MOVES": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "MACHINE_MOVES": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "TUTOR_MOVES": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "ABILITIES": {
           "status": "NOT_APPLICABLE",
-          "confidence": 0
-        },
-        "ABILITY_DESCRIPTIONS": {
-          "status": "NOT_APPLICABLE",
-          "confidence": 0
+          "confidence": 0.0
         },
         "ABILITY_MECHANICS": {
           "status": "NOT_APPLICABLE",
-          "confidence": 0
+          "confidence": 0.0
         },
         "AREA_ENCOUNTERS": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "TYPE_PRESENTATION": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "BALL_CATALOG": {
           "status": "NOT_APPLICABLE",
-          "confidence": 0
+          "confidence": 0.0
         },
         "WORLD_MAP": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "LOCAL_MAP": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "NATURES": {
           "status": "NOT_APPLICABLE",
-          "confidence": 0
+          "confidence": 0.0
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0.0
         }
       },
-      "evidence": "inherited-byte-identical",
-      "aliases": [
-        {
-          "archive": "Pokemon Crystal Legacy Timeless (v1.1.3).7z",
-          "name": "Crystal Legacy Timeless (v1.1.3).gbc",
-          "console": "Nintendo - Game Boy Color"
-        }
-      ]
+      "catalogCounters": {
+        "species": 251,
+        "namedSpecies": 251,
+        "speciesWithStats": 251,
+        "speciesWithSprites": 251,
+        "speciesWithDescriptions": 0,
+        "evolutionEdges": 0,
+        "learnsetEntries": 0,
+        "learnsetRulesets": 0,
+        "moves": 251,
+        "movesWithDetails": 251,
+        "movesWithDescriptions": 251,
+        "eggMoveLinks": 480,
+        "machineMoveLinks": 6485,
+        "tutorMoveLinks": 220,
+        "types": 18,
+        "namedTypes": 18,
+        "typesWithSemanticRoles": 18,
+        "typeMatchups": 0,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 335,
+        "movesWithCategories": 251,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "persistenceError": false,
+        "referenceErrorCount": 0,
+        "sqliteReopenEqualityVerified": true,
+        "catalogLogicalDigestVersion": 1,
+        "beforeCatalogSha256": "e0f31eae112ed80f94625ef5c982a48c80d057c38af76513ccc187626009849d",
+        "afterCatalogSha256": "e0f31eae112ed80f94625ef5c982a48c80d057c38af76513ccc187626009849d"
+      },
+      "comparison": {
+        "familyBefore": "CRYSTAL",
+        "outcomeBefore": "SELECTED",
+        "coverageBefore": 73.68
+      }
     }
   ],
   "deltaExecutionReceipt": {
@@ -36401,8 +37482,8 @@
       "multilingualCount": 0
     }
   },
-  "retainedInheritedIdentities": 277,
-  "retainedDeltaIdentities": 35,
+  "retainedInheritedIdentities": 263,
+  "retainedDeltaIdentities": 31,
   "focusedIdentities": 30,
   "focusedUpdate": {
     "acceptance": "2026-10-03-gen1-core-acceptance.json",
@@ -36415,6 +37496,19 @@
     "parserExecutions": 48,
     "newlySelectedIdentities": 10,
     "persistenceReopenValidation": "NOT_RUN",
+    "fullCorpusRerun": false
+  },
+  "focusedGen2Identities": 18,
+  "focusedGen2Update": {
+    "acceptance": "2026-10-03-gen2-core-acceptance.json",
+    "sourceRows": {
+      "51ecbae00f3dda6403140ba85199ea597b01c9c6": 4,
+      "49bc83cd74e16ae1730d8c80e134c6e925ac9e4d": 14
+    },
+    "distinctIdentities": 18,
+    "parserExecutions": 58,
+    "newlySelectedIdentities": 4,
+    "persistenceReopenValidation": "15_SELECTED_CATALOGS_VERIFIED",
     "fullCorpusRerun": false
   }
 }

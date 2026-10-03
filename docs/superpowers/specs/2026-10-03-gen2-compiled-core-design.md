@@ -1,5 +1,11 @@
 # Gen II compiled-core compatibility
 
+## Current acceptance — complete host/static
+
+`LIB26-G2-CORE` is accepted at its bounded host/static boundary. [The acceptance report](../../reports/corpus/2026-10-03-gen2-core-acceptance.md) verifies all four canonical name/stat joins, independently resolved named move details, native type/reference closure and SQLite equality/digests for all 15 selected cohort catalogs. The 18-identity cohort remains mixed-checkpoint evidence: 14 rows at `49bc83cd`, four classic rows at `51ecbae0`. Final affected tests: 116 passed, no failures/errors/skips. The matrix gains four catalogs (300/342 selected); no full-corpus, official-ROM, Android or release acceptance is implied.
+
+Modern optional/runtime geometry, Ambrosia categories/custom semantic presentation, Sour optional gaps, Gold/Silver 97 lineage/tutor applicability and the three unmatched siblings remain explicitly ledgered. The dated IN_PROGRESS statements below describe earlier implementation checkpoints, not current status. No pending implementation or live-device action remains within this four-target stage.
+
 ## Final classic move/type boundary checkpoint
 
 The corrected cohort closed modern navigation and selected all four targets, but did not yet satisfy classic core acceptance: Ambrosia and Sour had no move details, and Ambrosia's custom type 28 caused one stat record to be withheld. Independent source/binary investigation found a seven-byte masked-type printer in Ambrosia and a branch-around-copy printer in Sour. New contracts require complete multiply/copy/bank restoration, linked static type reads, full printer tails, bank-contained tables, and all requested sequential move records. The masked format exposes the proved low-six-bit native type without guessing packed category semantics; the category remains unavailable under `LIB26-G2-CLASSIC-OPTIONAL`. Sour records remain static move data, not the active Hidden Power type.

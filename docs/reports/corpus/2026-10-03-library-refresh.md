@@ -2,7 +2,7 @@
 
 ## Decision and scope
 
-The GB/GBC/GBA Pokémon hack library has changed enough to warrant a new corpus snapshot. The current snapshot contains **342 distinct in-scope ROM identities**. The old corpus and its release evidence remain preserved. The inventory refresh itself did not change the production parser; the subsequent [first Gen I compiled-core expansion](2026-10-03-gen1-core-acceptance.md) adds ten selected catalogs. Neither step publishes a new APK.
+The GB/GBC/GBA Pokémon hack library has changed enough to warrant a new corpus snapshot. The current snapshot contains **342 distinct in-scope ROM identities**. The old corpus and its release evidence remain preserved. The inventory refresh itself did not change the production parser; the [Gen I expansion](2026-10-03-gen1-core-acceptance.md) adds ten selected catalogs and the [Gen II expansion](2026-10-03-gen2-core-acceptance.md) adds four. Neither step publishes a new APK.
 
 - [Current 342-ROM compatibility matrix](2026-10-03-library-compatibility.md)
 - [Machine-readable rows, aliases, provenance, and delta receipt](2026-10-03-library-compatibility.json)
@@ -44,20 +44,22 @@ The original inventory refresh parsed only the **46 new or changed identities**.
 
 At that checkpoint, the other **296 identities** inherited the published September 14 rows after byte-identity verification, with no parser/catalog/coverage code changes. Identical old alias rows agreed before deduplication. Inherited confidence retains published integer rounding and coverage retains two decimal places.
 
-The subsequent [Gen I acceptance](2026-10-03-gen1-core-acceptance.md) supersedes **30 rows**, adding six PureRGB and four Yellow catalogs through generic compiled-consumer changes. Three bounded runs total 48 executions over 30 distinct identities; rejected initial PureRGB joins and sprite regressions are superseded by corrected checkpoints. The effective matrix is now **277 inherited historical rows + 35 retained delta rows + 30 focused Gen I rows**. Not every row was scanned against the latest source. The focused runs validate in-memory materialization/reference closure, not new persistence, SaveRAM, or live Android acceptance.
+The subsequent [Gen I acceptance](2026-10-03-gen1-core-acceptance.md) supersedes **30 rows**, adding six PureRGB and four Yellow catalogs through generic compiled-consumer changes. Three bounded runs total 48 executions over 30 distinct identities; rejected initial PureRGB joins and sprite regressions are superseded by corrected checkpoints. These rows validate in-memory materialization/reference closure, not new persistence, SaveRAM, or live Android acceptance.
+
+The [Gen II acceptance](2026-10-03-gen2-core-acceptance.md) supersedes **18 rows** and adds Polished, Inheritance, Ambrosia and Sour Crystal. Four bounded executions total 58 parser executions over 18 identities, with diagnostic/intermediate rows superseded explicitly. All 15 accepted selected catalogs close decoded references and pass complete SQLite write/reopen equality and matching logical digests. The effective matrix is **263 historical + 31 retained delta + 30 Gen I + 18 Gen II identities**. Not every row was scanned against the latest source; official standalone Gen II controls were unavailable and not run.
 
 | Current snapshot outcome | Count |
 |---|---:|
 | Inputs | 342 |
-| Selected family and materialized catalog | 296 |
+| Selected family and materialized catalog | 300 |
 | Ambiguous family | 2 |
-| No family match | 44 |
+| No family match | 40 |
 | Parser errors | 0 |
-| Resolved ROM-language manifests | 281 |
+| Resolved ROM-language manifests | 285 |
 | Unknown ROM-language manifests | 15 |
 | Proven multilingual manifests | 0 |
 
-The original inventory-only routing rate was 286/342, versus 276/333 in the historical release benchmark; that denominator/input change was not a parser gain. The subsequent **286 → 296 on the same 342 identities** is a verified ten-catalog parser gain. Routing still does not imply complete optional data or maps.
+The original inventory-only routing rate was 286/342, versus 276/333 in the historical release benchmark; that denominator/input change was not a parser gain. The subsequent **286 → 296 → 300 on the same 342 identities** is a verified ten-catalog Gen I gain plus four Gen II catalogs. Routing still does not imply complete optional data or maps.
 
 N/A capabilities remain outside coverage denominators. Capability confidence and record-based coverage are different measures; neither family recognition nor a high confidence cell proves complete runtime behavior.
 
@@ -69,7 +71,7 @@ N/A capabilities remain outside coverage denominators. Capability confidence and
 | PureRGB, 6 variants | All now select Red/Blue; 75.00%; 151 canonical names/stats, 165 detailed moves | Core/index authority accepted; sprites, Dex text, maps, and non-Dex form stats remain separate follow-ups. |
 | Yellow Kaizo, 2 variants | Both now select Yellow; 87.50%; 151 names/stats/sprites, 166 detailed moves | Independent restart-copy ABI accepted; Dex text and Local Map remain missing. |
 | Yellow Legacy / Legacy+, 2 variants | Both now select Yellow; 100.00%; 151 names/stats/sprites/descriptions, 165 detailed moves | Independently proven helper-bank ABI; no new live-state or persistence claim. |
-| Polished Crystal, Ambrosia, Crystal Inheritance, Sour Crystal | Four distinct identities, all unmatched | Investigate modern Gen II compiled-core changes; Faithful alias is not a fifth test. |
+| Polished Crystal, Ambrosia, Crystal Inheritance, Sour Crystal | All four select with complete named canonical stat joins and independently resolved move details | Modern catalogs remain essential-only; Ambrosia categories and Sour optional gaps are explicit. Faithful alias is not a fifth identity. |
 | Static Yellow, 2 variants | Both select; 87.50%; Dex text and Local Map not found | A focused optional-capability follow-up, not a family-routing problem. |
 | Battle Theater 2.6 | Selects; 89.78%; both maps available | Preserve as an expanded-engine regression control, not a first map target. |
 | Heart and Soul 2.0.6 / Soulgold 1.1.4 | 80.92% / 79.40%; World Map missing, Local Map partial | Useful source-backed map follow-ups with functioning base catalogs. |
@@ -93,17 +95,17 @@ PureRGB required verified bank-local name/base/move consumers plus the actual co
 
 Sources: [PureRGB](https://github.com/Vortyne/pureRGB), [Yellow Legacy](https://github.com/cRz-Shadows/Pokemon_Yellow_Legacy), and native compiled-layout fixtures for controls.
 
-**Accepted boundary:** correct navigable species/name/type/stat joins and decoded reference closure, with preserved related Gen I controls. Optional graphics/text/maps and PureRGB alternate-form stats remain ledgered below; this does not certify runtime or SQLite reopen behavior. The next core investigation priority remains modern Gen II, not another Gen I or full-corpus rerun.
+**Accepted boundary:** correct navigable species/name/type/stat joins and decoded reference closure, with preserved related Gen I controls. Optional graphics/text/maps and PureRGB alternate-form stats remain ledgered below; this does not certify runtime or SQLite reopen behavior. The subsequent Gen II stage is now accepted below; the next recommended investigation is Gen III, not another Gen I or full-corpus rerun.
 
-### 2. Modern Gen II base-data and index contracts
+### 2. Modern Gen II base-data and index contracts — accepted host/static
 
-Start with **Polished Crystal + Crystal Inheritance**, then Ambrosia and Sour Crystal. All four refreshed identities are currently unmatched. Their locally available sources make this preferable to blind binary-only fishing. Black & White 3 Genesis, Orange, and Peridot are three additional unchanged source-backed unmatched inputs to check for genuinely shared contracts.
+**Completed:** Polished Crystal + Crystal Inheritance, then Ambrosia and Sour Crystal independently. [Acceptance](2026-10-03-gen2-core-acceptance.md) records their complete canonical joins, independently resolved move details, 116 focused tests and SQLite/reference closure. Black & White 3 Genesis, Orange and Peridot remain unmatched under `LIB26-G2-SIBLINGS`; no shared identity/core contract was inferred from project names.
 
 The inspected Polished Crystal source has abilities, EV yields, a variable-width TM/HM/tutor bitset, and an extended species/form representation. These are not the vanilla Crystal base-data and reference contracts. Determine which compiled consumers establish stride, count, index width, and banked pointers; do not force every derivative into one inferred layout. Static catalog support must not silently claim compatible SaveRAM or live-WRAM structures.
 
 Sources: [Polished Crystal](https://github.com/rangi42/polishedcrystal), [Crystal Inheritance](https://github.com/dwg-and-dogs/PLC_Polished), [Ambrosia](https://github.com/AndrewC101/PokemonAmbrosia), [SourCrystal](https://github.com/SoupPotato/sourcrystal).
 
-**Acceptance:** restore independently validated base catalogs for matching ABI cohorts, close species/move references, and regression-check official Gold/Silver/Crystal plus already-supported Crystal-family hacks. Maps and live state remain separately gated.
+**Accepted boundary:** independently validated canonical species/name/stat/type and move joins, decoded reference closure and 15 complete SQLite reopen checks. Eleven selected related controls retain their data; three unmatched siblings are explicit. Official Gold/Silver/Crystal inputs were unavailable and not run. Maps, optional fields and live state remain separately ledgered/gated; the next investigation priority is Gen III, not an automatic new parser or Android run.
 
 ### 3. Gen III core ABI correctness, led by ROWE
 
@@ -127,7 +129,7 @@ After those consumers are understood, check Static Yellow's two missing Local Ma
 
 ### Lower-priority work and measurement cautions
 
-Across the 296 selected rows, the counts of PARTIAL/AMBIGUOUS/NOT_FOUND cells are: species 178, Dex text 163, Local Map 136, numeric ability mechanics 102, and World Map 67. These counts are **not missing-record totals** and exclude N/A. A nearly complete 151-species catalog and a severely deficient expanded catalog can both contribute one partial cell. Newly routed incomplete catalogs can increase these gap counts even though compatibility improved.
+Across the 300 selected rows, the counts of PARTIAL/AMBIGUOUS/NOT_FOUND cells are: species 179, Dex text 166, Local Map 140, numeric ability mechanics 104, and World Map 70. These counts are **not missing-record totals** and exclude N/A. A nearly complete 151-species catalog and a severely deficient expanded catalog can both contribute one partial cell. Newly routed incomplete catalogs can increase these gap counts even though compatibility improved.
 
 Therefore:
 
@@ -140,12 +142,16 @@ Therefore:
 
 ## Follow-up ledger
 
-`LIB26-G1-CORE` is accepted at the bounded host/static boundary documented above. `LIB26-G2-CORE` is in progress: modern direct core/move authority and synthetic family/catalog integration are verified; classic corrections and real cohort/persistence acceptance remain open. No matrix gain is claimed. Other entries remain recommended / not implemented; none is silently deferred or claimed complete.
+`LIB26-G1-CORE` and `LIB26-G2-CORE` are accepted at their bounded host/static boundaries. Gen II acceptance closes canonical/static joins and reference-safe SQLite persistence, not every optional feature. Remaining entries have named targets and explicit closure conditions; none is silently deferred or claimed complete.
 
 | ID | Status | Named target | Closure condition |
 |---|---|---|---|
 | LIB26-G1-CORE | Accepted host/static | Six PureRGB, two Yellow Legacy, two Yellow Kaizo | Compiled-consumer-backed routing, correct canonical base joins/reference closure, and related Gen I controls; [evidence](2026-10-03-gen1-core-acceptance.md). |
-| LIB26-G2-CORE | In progress | Polished Crystal / Inheritance first; Ambrosia / Sour Crystal separately | [Modern core/move authority and synthetic family/catalog integration verified](../../superpowers/specs/2026-10-03-gen2-compiled-core-design.md); classic corrections and real bounded cohort/reference-safe persistence remain open. |
+| LIB26-G2-CORE | Accepted host/static | Polished Crystal / Inheritance; Ambrosia / Sour Crystal independently | [Four canonical core catalogs, reference closure, 15 SQLite write/reopen checks and bounded controls verified](2026-10-03-gen2-core-acceptance.md). |
+| LIB26-G2-CLASSIC-OPTIONAL | Not implemented | Ambrosia / Sour | Prove packed categories/custom type presentation, missing type labels/charts, Sour sprite decoding and missing acquisition/Dex/maps; retain field-level failure isolation. |
+| LIB26-G2-LINEAGE | Not implemented | Gold 97 / Silver 97 | Independently prove lineage/tutor applicability; preserve all 253 canonical joins and 104 type-chart records without a title/profile override. |
+| LIB26-G2-SIBLINGS | Not implemented | Black & White 3 Genesis / current Orange / Peridot 2.3.0 | Separate complete identity/core/move/graphics contracts and exact-build reference-safe catalogs. |
+| LIB26-G2-OFFICIAL-CONTROLS | Not run | Official Gold / Silver / Crystal | Retained, separately authorized official inputs and bounded host/static regression; no download or Android authorization implied. |
 | LIB26-G2-OPTIONAL | Not implemented | Polished Crystal / Inheritance | Independently prove National Dex conversion, noncanonical forms, abilities, acquisition/text/graphics/maps, and save/live ABIs before exposing them; no inherited retail geometry or blanket modern ability N/A. |
 | LIB26-G3-CORE | Recommended | ROWE first; Voyager and Elite Redux separately | Usable expanded species/stat/type/acquisition catalogs without wrong-stride fallback. |
 | LIB26-MAPS | Recommended | Heart and Soul, Soulgold, Pokescape, Tourmaline | Map-consumer proof, valid assets/references, and related-cohort regression. |
