@@ -45,6 +45,12 @@ Modern authority replaces incompatible inherited roots as a coherent unit. Subse
 
 Each implementation checkpoint is smart-synced, committed, and pushed. Preserve compact private evidence before ticketed cleanup of registered disposable outputs. Public evidence contains counters, filenames, provenance, and limitations—not ROM bytes, bulk decoded tables, or private paths.
 
+## Verified plain-name checkpoint
+
+The versioned `gb-gen2-en-53-plain` codec decodes the remapped plain-name alphabet, including the source-ratified `'d` token needed by Farfetch'd and Sirfetch'd. It rejects retail termination and unratified prose/control bytes. Registration is identity-only: official candidate lists and unique English selectors are unchanged. This does not admit compressed text or any core table by itself.
+
+All six new codec cases failed against the inherited decoder before the fix. The affected codec/registry suite passes 39 tests with zero failures, errors, or skips, including Western and Korean guards. Modern index linkage, record semantics, moves/types, catalog integration, and persistence remain open.
+
 ## Verified helper checkpoint
 
 Complete 16-bit shift multiplication and both modern byte-copy bodies now have positive and instruction-mutation/boundary coverage. Far-copy proof independently follows the rewritten-stack and HRAM-dispatch bank restoration chains, derives bank registers, validates distinct HRAM scratch registers, follows inline/JP switch vectors, and retains the HRAM wrapper's seven-bit bank limit.

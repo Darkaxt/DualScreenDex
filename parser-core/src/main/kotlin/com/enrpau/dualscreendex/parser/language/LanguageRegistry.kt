@@ -3,6 +3,7 @@ package com.enrpau.dualscreendex.parser.language
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
+import com.enrpau.dualscreendex.parser.text.Gen2PlainNameCodec
 import com.enrpau.dualscreendex.parser.text.JapanesePokemonTextCodecs
 import com.enrpau.dualscreendex.parser.text.KoreanGen2PokemonTextCodec
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
@@ -33,6 +34,7 @@ object LanguageRegistry {
         officialCodecs + listOf(
             PokemonTextCodec.gbEnglish,
             PokemonTextCodec.gbaEnglish,
+            Gen2PlainNameCodec.english53,
         )
     ).associateBy { it.id to it.version }
 
