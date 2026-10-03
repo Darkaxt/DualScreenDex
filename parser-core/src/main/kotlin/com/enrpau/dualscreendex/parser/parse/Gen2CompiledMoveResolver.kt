@@ -12,7 +12,7 @@ internal object Gen2CompiledMoveResolver {
     private const val TYPE_FIELD_OFFSET = 3
     private const val CONSUMER_BYTES = 42
 
-    fun resolve(rom: RomImage, moveCount: Int): TableLayout? {
+    fun resolve(rom: RomImage, moveCount: Int, nativeTypeIds: Set<Int> = (0..27).toSet()): TableLayout? {
         if (moveCount !in 1..255) return null
         val prefix = byteArrayOf(
             PUSH_HL.toByte(),
@@ -27,19 +27,19 @@ internal object Gen2CompiledMoveResolver {
             parseConsumer(rom, offset, moveCount)
         }
         val extended = rom.findAll(byteArrayOf(PUSH_HL.toByte(), LOAD_A_B.toByte())).mapNotNull { offset ->
-            parseExtendedConsumer(rom, offset, moveCount)
+            parseExtendedConsumer(rom, offset, moveCount, nativeTypeIds)
         }
         return (candidates + extended).distinct().singleOrNull()
     }
 
-    fun maskedEvidence(rom: RomImage, table: TableLayout): ValidationEvidence? {
+    fun maskedEvidence(rom: RomImage, table: TableLayout, nativeTypeIds: Set<Int> = (0..27).toSet()): ValidationEvidence? {
         if (table.format != TableRecordFormat.GEN2_MASKED_MOVE_7 || table.recordSize != RECORD_SIZE ||
             table.count !in 1..255 || table.offset < 0 ||
             table.offset.toLong() + table.count * RECORD_SIZE > rom.size ||
             table.offset % BANK_BYTES + table.count * RECORD_SIZE > BANK_BYTES ||
             (0 until table.count).any { index ->
                 val row = table.offset + index * RECORD_SIZE
-                rom.u8(row) != index + 1 || (rom.u8(row + TYPE_FIELD_OFFSET) and 0x3F) !in 0..27 ||
+                rom.u8(row) != index + 1 || (rom.u8(row + TYPE_FIELD_OFFSET) and 0x3F) !in nativeTypeIds ||
                     rom.u8(row + 5) !in 1..64
             }
         ) return null
@@ -47,7 +47,7 @@ internal object Gen2CompiledMoveResolver {
             listOf("complete compiled seven-byte moves with masked native type field"), table.offset, RECORD_SIZE)
     }
 
-    private fun parseExtendedConsumer(rom: RomImage, site: Int, count: Int): TableLayout? {
+    private fun parseExtendedConsumer(rom: RomImage, site: Int, count: Int, nativeTypeIds: Set<Int>): TableLayout? {
         if (site < 0 || site.toLong() + 44 > rom.size || site % BANK_BYTES + 44 > BANK_BYTES) return null
         val masked = bytesAt(rom, site + 2, 0x3D, 0x01, RECORD_SIZE, 0, 0x21)
         val branched = bytesAt(rom, site + 2, 0xFE) && rom.u8(site + 3) in 1..count &&
@@ -86,7 +86,7 @@ internal object Gen2CompiledMoveResolver {
         val table = TableLayout(root, count, RECORD_SIZE,
             format = if (masked) TableRecordFormat.GEN2_MASKED_MOVE_7 else TableRecordFormat.STANDARD)
         // Full record validation also bounds the unmasked branch without trimming a requested name domain.
-        if (maskedEvidence(rom, table.copy(format = TableRecordFormat.GEN2_MASKED_MOVE_7)) == null ||
+        if (maskedEvidence(rom, table.copy(format = TableRecordFormat.GEN2_MASKED_MOVE_7), nativeTypeIds) == null ||
             !masked && (0 until count).any { rom.u8(root + it * RECORD_SIZE + TYPE_FIELD_OFFSET) !in 0..27 }
         ) return null
         return table

@@ -288,8 +288,13 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
             if (expansion != null) {
                 TableValidators.pokeemeraldExpansionMoveData(rom, it, inferredMoveCount ?: it.count)
             } else if (generation == 2 && it.format == TableRecordFormat.GEN2_MASKED_MOVE_7) {
+                val nativeTypeIds = com.enrpau.dualscreendex.parser.parse.CompiledTypeNameResolver
+                    .resolve(session, 2, probeCodec)
+                    ?.takeIf { names -> names.format == TableRecordFormat.GEN2_EXTENDED_TYPE_NAMES }
+                    ?.let { names -> com.enrpau.dualscreendex.parser.parse.CompiledTypeNameResolver.decode(rom, 2, names, probeCodec)?.keys }
+                    ?: (0..27).toSet()
                 com.enrpau.dualscreendex.parser.parse.Gen2CompiledMoveResolver.maskedEvidence(
-                    rom, it.copy(count = inferredMoveCount ?: it.count),
+                    rom, it.copy(count = inferredMoveCount ?: it.count), nativeTypeIds,
                 ) ?: missing("masked move domain is unsupported or incomplete")
             } else if (it.format == TableRecordFormat.CFRU_MOVE_16) {
                 TableValidators.cfruMoveData(rom, it.offset, inferredMoveCount ?: it.count)

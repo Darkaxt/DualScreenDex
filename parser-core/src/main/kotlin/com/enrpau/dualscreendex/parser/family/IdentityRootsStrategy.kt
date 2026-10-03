@@ -330,6 +330,10 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
         val compiledMoveData = if (generation == 2 && exact == null) {
             compiledCoreTableResolution.tables.moveData?.let { inherited ->
                 Gen2CompiledMoveResolver.resolve(session.rom, inherited.count)
+                    ?: com.enrpau.dualscreendex.parser.parse.CompiledTypeNameResolver.resolve(session, 2, probeCodec)
+                        ?.takeIf { it.format == com.enrpau.dualscreendex.parser.model.TableRecordFormat.GEN2_EXTENDED_TYPE_NAMES }
+                        ?.let { com.enrpau.dualscreendex.parser.parse.CompiledTypeNameResolver.decode(session.rom, 2, it, probeCodec) }
+                        ?.keys?.let { Gen2CompiledMoveResolver.resolve(session.rom, inherited.count, it) }
             }
         } else {
             null

@@ -35,6 +35,15 @@ class Gen2ClassicMoveContractTest {
         assertNull(moves[1]?.category?.value)
     }
 
+    @Test fun extendedMaskedTypeRequiresAnIndependentlyDecodedNativeDomain() {
+        val bytes = fixture(true)
+        bytes[0x5003] = 0x9C.toByte()
+        assertNull(resolve(bytes))
+        assertEquals(0x5000, requireNotNull(Gen2CompiledMoveResolver.resolve(
+            RomImage(bytes), 3, (0..28).toSet(),
+        )).offset)
+    }
+
     @Test fun rejectsMalformedCopyMultiplyMaskAndBranchLinkage() {
         for (masked in listOf(false, true)) {
             val original = fixture(masked)
