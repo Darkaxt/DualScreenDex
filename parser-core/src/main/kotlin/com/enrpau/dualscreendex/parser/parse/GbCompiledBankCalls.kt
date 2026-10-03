@@ -70,7 +70,9 @@ internal object GbCompiledBankCalls {
         val register = rom.u8(offset + 1)
         if (register !in 0x80..0xFE || !homeBytes(rom, offset + 2, 0xF5, 0x3E) ||
             rom.u8(offset + 5) != 0xCD || rom.u8(offset + 8) != 0xCD ||
-            !homeBytes(rom, offset + 11, 0xF1, 0xC3)
+            rom.u8(offset + 11) != 0xF1 ||
+            !(rom.u8(offset + 12) == 0xC3 ||
+                rom.u8(offset + 12) == 0xCD && homeBytes(rom, offset + 15, 0xC9))
         ) return null
         val setBank = rom.u16le(offset + 6)
         if (rom.u16le(offset + 13) != setBank || !bankStore(rom, setBank, register)) return null

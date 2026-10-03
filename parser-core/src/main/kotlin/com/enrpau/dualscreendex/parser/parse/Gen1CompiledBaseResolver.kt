@@ -5,17 +5,25 @@ import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.validate.TableValidators
 
+internal data class Gen1CompiledBaseResolution(val table: TableLayout, val bankLocal: Boolean)
+
 /** Resolves a Gen I base-stat table from its complete compiled copy consumer. */
 internal object Gen1CompiledBaseResolver {
     fun resolve(
         rom: RomImage,
         count: Int,
         cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
-    ): TableLayout? {
+    ): TableLayout? = resolveWithAuthority(rom, count, cancellation)?.table
+
+    fun resolveWithAuthority(
+        rom: RomImage,
+        count: Int,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
+    ): Gen1CompiledBaseResolution? {
         cancellation.throwIfCancellationRequested()
         if (count !in 1..MAX_BASE_COUNT) return null
         val scanEnd = minOf(BANK_BYTES, rom.size)
-        val candidates = buildList {
+        val bankLocalCandidates = buildList {
             GbCompiledBankCalls.discover(rom, cancellation).forEach { target ->
                 val end = minOf(rom.size, (target.offset / BANK_BYTES + 1) * BANK_BYTES, target.offset + MAX_PROLOGUE_DISTANCE)
                 for (offset in target.offset..end - BANK_LOCAL_CONSUMER_BYTES) {
@@ -23,6 +31,9 @@ internal object Gen1CompiledBaseResolver {
                     bankLocalConsumerAt(rom, offset, count)?.let(::add)
                 }
             }
+        }
+        val candidates = buildList {
+            addAll(bankLocalCandidates)
             var offset = 0
             while (offset + INDEX_CONSUMER_BYTES <= scanEnd) {
                 cancellation.throwIfCancellationRequested()
@@ -30,10 +41,11 @@ internal object Gen1CompiledBaseResolver {
                 offset++
             }
         }
-        return candidates.distinct().singleOrNull()
+        val table = candidates.distinct().singleOrNull() ?: return null
+        return Gen1CompiledBaseResolution(table, table in bankLocalCandidates)
     }
 
-    private fun bankLocalConsumerAt(rom: RomImage, offset: Int, count: Int): TableLayout? {
+    internal fun bankLocalConsumerAt(rom: RomImage, offset: Int, count: Int): TableLayout? {
         if (rom.u8(offset) != DEC_A || rom.u8(offset + 1) != LOAD_BC_IMMEDIATE ||
             rom.u8(offset + 4) != LOAD_HL_IMMEDIATE || rom.u8(offset + 7) != CALL ||
             !GbCompiledBankCalls.repeatedAdd(rom, rom.u16le(offset + 8)) ||

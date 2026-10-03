@@ -1,6 +1,12 @@
 package com.enrpau.dualscreendex.parser.parse
 
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
+import com.enrpau.dualscreendex.parser.catalog.RecordMaterializers
+import com.enrpau.dualscreendex.parser.catalog.SpeciesIndexResolution
+import com.enrpau.dualscreendex.parser.catalog.SpeciesIndexResolver
+import com.enrpau.dualscreendex.parser.language.resolvedEnglishLayout
+import com.enrpau.dualscreendex.parser.model.ProfileTables
+import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.family.EngineFamilyDefinitions
 import com.enrpau.dualscreendex.parser.family.FamilyProbeState
 import com.enrpau.dualscreendex.parser.family.IdentityRootsPhaseResult
@@ -12,6 +18,7 @@ import com.enrpau.dualscreendex.parser.model.RomHeader
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class Gen1BankLocalCoreResolverTest {
@@ -62,6 +69,36 @@ class Gen1BankLocalCoreResolverTest {
         assertEquals(35, tables.baseStats?.recordSize)
         assertEquals(0x9000, tables.speciesNames?.offset)
         assertNull(tables.sprites)
+    }
+
+    @Test
+    fun existingInlineBaseAuthorityPreservesItsValidatedSpriteMetadata() {
+        val bytes = fixture()
+        bytes.fill(0, 0x450, 0x450 + 15)
+        write(bytes, 0x500,
+            0xF0, 0xB8, 0xF5, 0x3E, 0x03, 0xE0, 0xB8,
+            0xEA, 0x00, 0x20, 0xC5, 0xD5, 0xE5)
+        write(bytes, 0x520,
+            0x3D, 0x01, 0x23, 0x00, 0x21, 0x00, 0x50,
+            0xCD, 0x00, 0x02, 0x11, 0x40, 0xD0,
+            0x01, 0x23, 0x00, 0xCD, 0x20, 0x02)
+        write(bytes, 0x540,
+            0xE1, 0xD1, 0xC1, 0xF1, 0xE0, 0xB8,
+            0xEA, 0x00, 0x20, 0xC9)
+        val session = RomAnalysisSession(
+            RomImage(bytes),
+            RomHeader(Platform.GBC, "POKEMON RED"),
+        )
+        val definition = EngineFamilyDefinitions.byFamily.getValue(EngineFamily.RED_BLUE)
+        val identity = IdentityRootsStrategy()
+            .execute(session, definition, FamilyProbeState.empty())
+            .identityRoots as IdentityRootsPhaseResult.Resolved
+        val tables = identity.tableResolution.tables
+
+        assertEquals(35, tables.baseStats?.recordSize)
+        assertNotNull(tables.sprites)
+        assertEquals(0xD000, tables.sprites?.offset)
+        assertEquals(35, tables.sprites?.recordSize)
     }
 
     @Test
@@ -157,6 +194,102 @@ class Gen1BankLocalCoreResolverTest {
         bytes.copyInto(bytes, 0x19000, 0x9000, 0x9000 + 1900)
 
         assertNull(Gen1CompiledNameResolver.resolve(RomImage(bytes), 190))
+    }
+
+    @Test
+    fun resolvesCompiledSpeciesIndexBeforeContentPermutationDecoys() {
+        val result = SpeciesIndexResolver.resolveWithEvidence(RomImage(indexFixture()), indexLayout())
+
+        assertTrue(result is SpeciesIndexResolution.Resolved)
+        assertEquals(112, result.values[1])
+        assertEquals(1, result.values[112])
+        assertEquals(0, result.values[181])
+        assertEquals(151, result.values.values.count { it > 0 })
+    }
+
+    @Test
+    fun compiledSpeciesIndexMaterializesCorrectStatsAndWithholdsAlternateForms() {
+        val records = RecordMaterializers.species(RomImage(indexFixture()), indexLayout())
+
+        assertEquals(112, records[1]?.dexNumber?.value)
+        assertEquals(105, records[1]?.baseStats?.value?.hp)
+        assertEquals(1, records[112]?.dexNumber?.value)
+        assertEquals(45, records[112]?.baseStats?.value?.hp)
+        assertNull(records[181]?.baseStats?.value)
+        assertNull(records[181]?.typeIds?.value)
+    }
+
+    @Test
+    fun rejectsCompiledSpeciesIndexWithoutBankRestoration() {
+        val bytes = indexFixture()
+        bytes[0x700 + 12] = 0
+        val result = SpeciesIndexResolver.resolveWithEvidence(RomImage(bytes), indexLayout())
+
+        assertTrue(result is SpeciesIndexResolution.Unavailable)
+        assertTrue(result.values.values.all { it == 0 })
+        assertTrue(RecordMaterializers.species(RomImage(bytes), indexLayout()).values.all { it.baseStats.value == null })
+    }
+
+    @Test
+    fun rejectsCompiledSpeciesIndexWithoutProvenAlternateExclusion() {
+        val bytes = indexFixture()
+        bytes[0x2A0 + 6] = 0
+        val result = SpeciesIndexResolver.resolveWithEvidence(RomImage(bytes), indexLayout())
+
+        assertTrue(result is SpeciesIndexResolution.Unavailable)
+        assertTrue(result.values.values.all { it == 0 })
+    }
+
+    @Test
+    fun rejectsCompiledSpeciesIndexCrossingItsSourceBank() {
+        val bytes = indexFixture()
+        putWord(bytes, 0x4100 + 7, 0x7FF0)
+        val result = SpeciesIndexResolver.resolveWithEvidence(RomImage(bytes), indexLayout())
+
+        assertTrue(result is SpeciesIndexResolution.Unavailable)
+        assertTrue(result.values.values.all { it == 0 })
+    }
+
+    private fun indexLayout() = resolvedEnglishLayout(
+        EngineFamily.RED_BLUE,
+        generation = 1,
+        platform = Platform.GBC,
+        speciesCount = 190,
+        moveCount = 100,
+        tables = ProfileTables(
+            speciesNames = TableLayout(0x9000, 190, 10),
+            baseStats = TableLayout(0xD000, 151, 35),
+        ),
+    )
+
+    private fun indexFixture(): ByteArray = fixture().also { bytes ->
+        putWord(bytes, 0x450 + 9, 0x40E0)
+        write(bytes, 0xC0E0,
+            0xC5, 0xD5, 0xE5, 0xFA, 0x10, 0xD0, 0xF5,
+            0xFA, 0x40, 0xD0, 0xEA, 0x10, 0xD0)
+        write(bytes, 0x700,
+            0xF0, 0xB8, 0xF5, 0x3E, 0x01, 0xCD, 0x40, 0x02,
+            0xCD, 0x00, 0x41, 0xF1, 0xCD, 0x40, 0x02, 0xC9)
+        write(bytes, 0x4100,
+            0xC5, 0xE5, 0xFA, 0x10, 0xD0, 0x3D, 0x21, 0x00, 0x50,
+            0x06, 0x00, 0x4F, 0x09, 0x7E, 0xEA, 0x10, 0xD0, 0xE1, 0xC1, 0xC9)
+        repeat(151) { bytes[0x5000 + it] = (it + 1).toByte() }
+        bytes[0x5000] = 112
+        bytes[0x5000 + 111] = 1
+        bytes[0x5000 + 180] = 112
+        write(bytes, 0xC0F3,
+            0xFA, 0x40, 0xD0, 0x21, 0x00, 0x67, 0xCD, 0xA0, 0x02,
+            0x30, 0x0C, 0x78, 0x21, 0x00, 0x68, 0x01, 0x23, 0x00,
+            0xCD, 0x00, 0x02, 0x18, 0x10)
+        write(bytes, 0xC10A, 0xCD, 0x00, 0x07, 0xFA, 0x10, 0xD0)
+        write(bytes, 0x2A0,
+            0x11, 0x01, 0x00, 0x06, 0x00, 0x4F, 0x7E, 0xFE, 0xFF,
+            0x28, 0x07, 0xB9, 0x28, 0x06, 0x04, 0x19, 0x18, 0xF4,
+            0xA7, 0xC9, 0x37, 0xC9)
+        write(bytes, 0xE700, 181, 0xFF)
+        write(bytes, 0xE800, 0, 200, 200, 200, 200, 200, 4, 4)
+        bytes[0xD000 + 1] = 45
+        bytes[0xD000 + 111 * 35 + 1] = 105
     }
 
     private fun fixture(): ByteArray = ByteArray(0x18000).also { bytes ->

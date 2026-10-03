@@ -46,7 +46,7 @@ object RecordMaterializers {
         }
         val dexNumbers = indexResolution.values
         val hasResolvedDexNumbers = dexNumbers.values.any { it > 0 }
-        val rows = if (names != null && (hasResolvedDexNumbers || names.count <= 1)) {
+        val rows = if (names != null && (layout.generation == 1 || hasResolvedDexNumbers || names.count <= 1)) {
             val expansion = layout.pokeemeraldExpansion
             val unified = layout.headerlessUnifiedSpecies
             val nameIndexes = when {
@@ -90,7 +90,7 @@ object RecordMaterializers {
         } else {
             emptySet()
         }
-        val detachedGen1 = if (layout.generation == 1 && stats != null) {
+        val detachedGen1 = if (layout.generation == 1 && stats != null && indexResolution is SpeciesIndexResolution.Resolved) {
             Gen1DetachedSpeciesResolver.resolve(rom, stats)
         } else {
             emptyMap()
@@ -184,6 +184,9 @@ object RecordMaterializers {
             id to SpeciesRecord(
                 id = id,
                 dexNumber = when {
+                    layout.generation == 1 && indexResolution is SpeciesIndexResolution.Unavailable -> {
+                        CatalogField.notFound(indexResolution.reason)
+                    }
                     id in nonPokedexSpeciesIds || layout.generation == 1 && dexNumber == 0 -> {
                         CatalogField.notApplicable(
                             "compiled species record is outside the ROM's complete Pokédex-entry domain",

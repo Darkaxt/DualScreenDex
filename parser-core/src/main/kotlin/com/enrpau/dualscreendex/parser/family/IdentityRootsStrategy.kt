@@ -189,7 +189,7 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
         }
         val compiledGen1Names = nativeNames?.species ?: if (generation == 1 && exact == null) {
             inheritedTableResolution.tables.speciesNames?.let { inherited ->
-                Gen1CompiledNameResolver.resolve(session.rom, inherited.count, probeCodec)
+                Gen1CompiledNameResolver.resolve(session.rom, inherited.count, probeCodec, session.cancellation)
             }
         } else {
             null
@@ -201,17 +201,20 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
         } ?: inheritedTableResolution
         val compiledGen1Base = if (generation == 1 && exact == null) {
             compiledGen1NameTableResolution.tables.baseStats?.let { inherited ->
-                Gen1CompiledBaseResolver.resolve(session.rom, inherited.count, session.cancellation)
+                Gen1CompiledBaseResolver.resolveWithAuthority(session.rom, inherited.count, session.cancellation)
             }
         } else {
             null
         }
-        val compiledGen1BaseTableResolution = compiledGen1Base?.let { baseStats ->
+        val compiledGen1BaseTableResolution = compiledGen1Base?.let { resolved ->
+            val baseStats = resolved.table
             val inheritedSprites = compiledGen1NameTableResolution.tables.sprites
             compiledGen1NameTableResolution.copy(
                 tables = compiledGen1NameTableResolution.tables.copy(
                     baseStats = baseStats,
-                    sprites = inheritedSprites?.takeIf { it.recordSize == baseStats.recordSize }?.copy(
+                    sprites = inheritedSprites?.takeIf {
+                        !resolved.bankLocal || it.recordSize == baseStats.recordSize
+                    }?.copy(
                         offset = baseStats.offset,
                         count = baseStats.count,
                         recordSize = baseStats.recordSize,

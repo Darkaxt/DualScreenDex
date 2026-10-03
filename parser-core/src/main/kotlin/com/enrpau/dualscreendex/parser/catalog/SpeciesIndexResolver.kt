@@ -73,26 +73,35 @@ object SpeciesIndexResolver {
     ): SpeciesIndexResolution {
         cancellation.throwIfCancellationRequested()
         return when (layout.generation) {
-            1 -> SpeciesIndexResolution.Resolved(resolveGen1(rom, layout))
+            1 -> resolveGen1(rom, layout, cancellation)
             2 -> SpeciesIndexResolution.Resolved((1..(layout.speciesCount ?: 0)).associateWith { it })
             3 -> resolveGen3(rom, layout, limits, cancellation)
             else -> SpeciesIndexResolution.Unavailable(emptyMap(), "unsupported species-index generation")
         }
     }
 
-    private fun resolveGen1(rom: RomImage, layout: ResolvedRomLayout): Map<Int, Int> {
-        val internalCount = layout.speciesCount ?: layout.tables.speciesNames?.count ?: return emptyMap()
-        val dexCount = layout.tables.baseStats?.count ?: return identity(1, internalCount)
+    private fun resolveGen1(
+        rom: RomImage,
+        layout: ResolvedRomLayout,
+        cancellation: ParserCancellationToken,
+    ): SpeciesIndexResolution {
+        val internalCount = layout.speciesCount ?: layout.tables.speciesNames?.count
+            ?: return SpeciesIndexResolution.Resolved(emptyMap())
+        val base = layout.tables.baseStats
+            ?: return SpeciesIndexResolution.Resolved(identity(1, internalCount))
+        Gen1CompiledSpeciesIndexResolver.resolve(rom, base, internalCount, cancellation)?.let { return it }
+        val dexCount = base.count
         for (offset in 0..rom.size - internalCount) {
+            if (offset and 0xFFF == 0) cancellation.throwIfCancellationRequested()
             val values = IntArray(internalCount) { index -> rom.u8(offset + index) }
             if (values.all { it in 0..dexCount } &&
                 values.count { it != 0 } == dexCount &&
                 values.filter { it != 0 }.toSet() == (1..dexCount).toSet()
             ) {
-                return (1..internalCount).associateWith { id -> values[id - 1] }
+                return SpeciesIndexResolution.Resolved((1..internalCount).associateWith { id -> values[id - 1] })
             }
         }
-        return identity(1, internalCount)
+        return SpeciesIndexResolution.Resolved(identity(1, internalCount))
     }
 
     private fun resolveGen3(
