@@ -29,12 +29,16 @@ internal object Gen2CompiledCoreResolver {
     private data class NameConsumer(
         val bank: Int,
         val root: Int,
+        val bankRegister: Int,
+        val completeCopy: Boolean,
     )
 
     private data class BaseConsumer(
         val bank: Int,
         val root: Int,
         val recordSize: Int,
+        val bankRegister: Int? = null,
+        val runtimePrefixOverwrite: Boolean = false,
     )
 
     fun resolve(
@@ -95,7 +99,12 @@ internal object Gen2CompiledCoreResolver {
         ) return@runCatching null
         val bank = rom.u8(offset + 5)
         val root = rom.gbBankAddress(bank, rom.u16le(offset + 22)) ?: return@runCatching null
-        NameConsumer(bank, root)
+        val register = rom.u8(offset + 1)
+        val destination = rom.u16le(offset + 26)
+        val completeCopy = destination in 0xC000..0xDFF5 &&
+            rom.u16le(offset + 8) in 0xC000..0xDFFF && rom.u16le(offset + 36) == destination + NAME_RECORD_SIZE &&
+            GbCompiledBankCalls.byteCopy(rom, rom.u16le(offset + 33)) && classicBankSwitch(rom, register)
+        NameConsumer(bank, root, register, completeCopy)
     }.getOrNull()
 
     private fun parseBaseConsumer(rom: RomImage, offset: Int): BaseConsumer? = runCatching {
@@ -133,13 +142,41 @@ internal object Gen2CompiledCoreResolver {
             rom.u8(offset + 69) != RETURN
         ) return@runCatching null
         val recordSize = rom.u8(offset + 18)
-        if (recordSize !in 28..64 || recordSize % 2 != 0 || rom.u16le(offset + 30) != recordSize) {
+        val complete = completeStandardCopy(rom, offset, recordSize)
+        if (recordSize !in 28..64 || rom.u16le(offset + 30) != recordSize || recordSize % 2 != 0 && !complete) {
             return@runCatching null
         }
         val bank = rom.u8(offset + 7)
         val root = rom.gbBankAddress(bank, rom.u16le(offset + 21)) ?: return@runCatching null
-        BaseConsumer(bank, root, recordSize)
+        BaseConsumer(bank, root, recordSize, rom.u8(offset + 4), complete)
     }.getOrNull()
+
+    private fun completeStandardCopy(rom: RomImage, offset: Int, recordSize: Int): Boolean {
+        val destination = rom.u16le(offset + 27)
+        if (destination !in 0xC000..0xDFFF || destination + recordSize > 0xE000 ||
+            rom.u16le(offset + 10) !in 0xC000..0xDFFF ||
+            !GbCompiledBankCalls.repeatedAdd(rom, rom.u16le(offset + 24)) ||
+            !GbCompiledBankCalls.byteCopy(rom, rom.u16le(offset + 33)) ||
+            !classicBankSwitch(rom, rom.u8(offset + 4)) ||
+            !bytesAt(rom, offset + 37, 0x11) || rom.u16le(offset + 38) !in 0x4000..0x7FFF ||
+            !bytesAt(rom, offset + 40, 0x06, 0x55, 0x21) ||
+            rom.u16le(offset + 43) != destination + 17 ||
+            !bytesAt(rom, offset + 45, 0x70, 0x21) || rom.u16le(offset + 47) != destination + 18 ||
+            !bytesAt(rom, offset + 49, 0x73, 0x23, 0x72, 0x23, 0x73, 0x23, 0x72, 0x18, 0x00)
+        ) return false
+        return true
+    }
+
+    private fun classicBankSwitch(rom: RomImage, register: Int): Boolean {
+        val vector = RST_BANKSWITCH and 0x38
+        if (register !in 0x80..0xFE || vector + 3 > minOf(HOME_BANK_BYTES, rom.size)) return false
+        val target = if (rom.u8(vector) == JUMP) rom.u16le(vector + 1) else vector
+        return GbCompiledBankCalls.bankStore(rom, target, register)
+    }
+
+    private fun bytesAt(rom: RomImage, offset: Int, vararg values: Int): Boolean =
+        offset >= 0 && offset.toLong() + values.size <= minOf(HOME_BANK_BYTES, rom.size) &&
+            values.indices.all { rom.u8(offset + it) == values[it] }
 
     private fun parseVariantBaseConsumer(
         rom: RomImage,
@@ -212,9 +249,14 @@ internal object Gen2CompiledCoreResolver {
         val speciesCount = adjacentCount?.takeIf { it in MINIMUM_SPECIES_COUNT..MAXIMUM_SPECIES_COUNT }
             ?: inferSequentialSpeciesCount(rom, base, names.root)
             ?: return null
-        if ((0 until speciesCount).any { index -> rom.u8(base.root + index * base.recordSize) != index + 1 }) {
-            return null
-        }
+        val completeCopy = base.runtimePrefixOverwrite && names.completeCopy && names.bankRegister == base.bankRegister
+        if (base.bankRegister != null && base.recordSize % 2 != 0 && !completeCopy) return null
+        val independentExtent = adjacentCount in MINIMUM_SPECIES_COUNT..MAXIMUM_SPECIES_COUNT
+        if ((!completeCopy || !independentExtent) &&
+            (0 until speciesCount).any { index -> rom.u8(base.root + index * base.recordSize) != index + 1 }
+        ) return null
+        val nameEnd = names.root.toLong() + speciesCount * NAME_RECORD_SIZE
+        if (nameEnd > rom.size || nameEnd > (names.bank + 1L) * HOME_BANK_BYTES) return null
         val nameLayout = TableLayout(names.root, speciesCount, NAME_RECORD_SIZE)
         val baseLayout = TableLayout(base.root, speciesCount, base.recordSize)
         if (!TableValidators.names(rom, nameLayout, speciesCount, codec, 0.85).compatible) {

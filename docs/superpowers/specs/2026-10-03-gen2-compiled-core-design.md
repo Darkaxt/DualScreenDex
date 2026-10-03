@@ -45,6 +45,14 @@ Modern authority replaces incompatible inherited roots as a coherent unit. Subse
 
 Each implementation checkpoint is smart-synced, committed, and pushed. Preserve compact private evidence before ticketed cleanup of registered disposable outputs. Public evidence contains counters, filenames, provenance, and limitations—not ROM bytes, bulk decoded tables, or private paths.
 
+## Verified classic contract corrections
+
+The standard classic consumer can now admit an odd record width only when its complete multiply/copy helpers, saved-bank switch/restoration, Egg branch, copied destination, and runtime prefix-overwrite epilogue are proved. Stored prefix equality is waived only under that authority and an independently adjacent name-table extent. Nonadjacent tables still use the sequential prefix to infer count; a later mismatch bounds that prefix rather than authorizing a guessed larger domain. The distinct existing variant-tail contracts retain their prior behavior.
+
+Same-count compiled results are retained during family probing. Larger classic domains still require the independently matching compiled sprite count; confidence thresholds and validators are unchanged. Three intended positives failed before implementation (odd stride, overwritten stored prefix, same-count phase admission). An initial nonadjacent negative test incorrectly expected no result where the existing contract correctly yielded the shorter 201-row sequential prefix; its assertion was corrected, not its production behavior. Eight classic cases plus eight compact integration and two classic name-pair controls pass **18 tests without failures, errors, or skips**.
+
+**Status: IN_PROGRESS.** Parser/catalog implementation is ready for the single bounded affected Gen II cohort with SQLite write/reopen and decoded reference checks. This synthetic checkpoint is not a real-ROM admission claim.
+
 ## Verified compact family/catalog integration
 
 Independent move-name registries now bind all 255 nonzero byte IDs to the separately proved eight-byte detail domain. The four-byte negative-index registry and three-byte reserved-string registry are separate contracts. Complete string iteration, 13-byte copying, input-buffer linkage, bank switching/restoration, all-name decoding, and competing-root rejection are required. The original three registry positives and a coherent input-alias regression failed before their fixes; the direct name/detail/exact-control suite passed 18 tests without failures, errors, or skips.

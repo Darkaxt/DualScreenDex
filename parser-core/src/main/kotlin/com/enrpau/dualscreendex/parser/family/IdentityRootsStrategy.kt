@@ -189,7 +189,7 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
                             session.cancellation,
                             session.limits,
                         ) != null
-                    else -> false
+                    else -> true
                 }
             }
         } else {
