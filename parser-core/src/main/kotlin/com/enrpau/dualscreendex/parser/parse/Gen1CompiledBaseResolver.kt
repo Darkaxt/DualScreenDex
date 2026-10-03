@@ -1,22 +1,58 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.validate.TableValidators
 
 /** Resolves a Gen I base-stat table from its complete compiled copy consumer. */
 internal object Gen1CompiledBaseResolver {
-    fun resolve(rom: RomImage, count: Int): TableLayout? {
+    fun resolve(
+        rom: RomImage,
+        count: Int,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
+    ): TableLayout? {
+        cancellation.throwIfCancellationRequested()
         if (count !in 1..MAX_BASE_COUNT) return null
         val scanEnd = minOf(BANK_BYTES, rom.size)
         val candidates = buildList {
+            GbCompiledBankCalls.discover(rom, cancellation).forEach { target ->
+                val end = minOf(rom.size, (target.offset / BANK_BYTES + 1) * BANK_BYTES, target.offset + MAX_PROLOGUE_DISTANCE)
+                for (offset in target.offset..end - BANK_LOCAL_CONSUMER_BYTES) {
+                    cancellation.throwIfCancellationRequested()
+                    bankLocalConsumerAt(rom, offset, count)?.let(::add)
+                }
+            }
             var offset = 0
             while (offset + INDEX_CONSUMER_BYTES <= scanEnd) {
+                cancellation.throwIfCancellationRequested()
                 parseConsumerAt(rom, offset, count)?.let(::add)
                 offset++
             }
         }
         return candidates.distinct().singleOrNull()
+    }
+
+    private fun bankLocalConsumerAt(rom: RomImage, offset: Int, count: Int): TableLayout? {
+        if (rom.u8(offset) != DEC_A || rom.u8(offset + 1) != LOAD_BC_IMMEDIATE ||
+            rom.u8(offset + 4) != LOAD_HL_IMMEDIATE || rom.u8(offset + 7) != CALL ||
+            !GbCompiledBankCalls.repeatedAdd(rom, rom.u16le(offset + 8)) ||
+            rom.u8(offset + 10) != LOAD_BC_IMMEDIATE || rom.u8(offset + 13) != LOAD_DE_IMMEDIATE ||
+            rom.u16le(offset + 14) !in 0xC000..0xDFFF ||
+            !GbCompiledBankCalls.restartCopy(rom, rom.u8(offset + 16))
+        ) return null
+        val stride = rom.u16le(offset + 2)
+        val address = rom.u16le(offset + 5)
+        if (stride !in MIN_BASE_BYTES..MAX_BASE_BYTES || rom.u16le(offset + 11) != stride ||
+            address !in 0x4000..0x7FFF || rom.u16le(offset + 14) + stride > 0xE000
+        ) return null
+        val bank = offset / BANK_BYTES
+        val root = rom.gbBankAddress(bank, address) ?: return null
+        if (root.toLong() + count.toLong() * stride > minOf(rom.size, (bank + 1) * BANK_BYTES) ||
+            (0 until count).any { rom.u8(root + it * stride) != it + 1 }
+        ) return null
+        val evidence = TableValidators.baseStats(rom, root, count, stride, generation = 1)
+        return TableLayout(root, count, stride).takeIf { evidence.compatible }
     }
 
     private fun parseConsumerAt(rom: RomImage, offset: Int, count: Int): TableLayout? = runCatching {
@@ -92,6 +128,7 @@ internal object Gen1CompiledBaseResolver {
     private val MBC_BANK_ADDRESS_RANGE = 0x2000..0x3fff
     private const val BANK_BYTES = 0x4000
     private const val INDEX_CONSUMER_BYTES = 19
+    private const val BANK_LOCAL_CONSUMER_BYTES = 17
     private const val PROLOGUE_BYTES = 13
     private const val RESTORE_BYTES = 10
     private const val MAX_PROLOGUE_DISTANCE = 128

@@ -19,26 +19,34 @@ internal object Gen1CompiledMoveResolver {
         cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
     ): Gen1CompiledMoveResolution? {
         cancellation.throwIfCancellationRequested()
-        val nameRoots = moveNameRoots(rom, cancellation)
+        val nameLayouts = buildSet {
+            moveNameRoots(rom, cancellation).forEach { root ->
+                consecutiveNameCount(rom, root, codec, cancellation)?.let { count ->
+                    add(TableLayout(root, count, 0, variableLength = true))
+                }
+            }
+            GbCompiledBankCalls.discover(rom, cancellation).forEach { target ->
+                pointerNameLayout(rom, target, codec, cancellation)?.let(::add)
+            }
+        }
         val dataRoots = moveDataRoots(rom, cancellation)
-        if (nameRoots.isEmpty() || dataRoots.isEmpty()) return null
+        if (nameLayouts.isEmpty() || dataRoots.isEmpty()) return null
 
         val candidates = buildSet {
-            nameRoots.forEach { nameRoot ->
-                val count = consecutiveNameCount(rom, nameRoot, codec, cancellation) ?: return@forEach
+            nameLayouts.forEach { names ->
                 dataRoots.forEach { dataRoot ->
                     val evidence = TableValidators.moveData(
                         rom = rom,
                         offset = dataRoot.offset,
-                        count = count,
+                        count = names.count,
                         recordSize = dataRoot.recordSize,
                         generation = 1,
                     )
                     if (evidence.compatible) {
                         add(
                             Gen1CompiledMoveResolution(
-                                moveNames = TableLayout(nameRoot, count, 0, variableLength = true),
-                                moveData = dataRoot.copy(count = count),
+                                moveNames = names,
+                                moveData = dataRoot.copy(count = names.count),
                             ),
                         )
                     }
@@ -47,6 +55,79 @@ internal object Gen1CompiledMoveResolver {
         }
         return candidates.singleOrNull()
     }
+
+    private fun pointerNameLayout(
+        rom: RomImage,
+        target: GbCompiledBankCalls.Target,
+        codec: PokemonTextCodec,
+        cancellation: ParserCancellationToken,
+    ): TableLayout? {
+        val offset = target.offset
+        val bank = offset / BANK_BYTES
+        val end = minOf(rom.size, (bank + 1) * BANK_BYTES)
+        if (offset + 24 > end || rom.u8(offset) != LOAD_A_ABSOLUTE ||
+            rom.u8(offset + 3) != STORE_A_ABSOLUTE || rom.u8(offset + 6) != DEC_A ||
+            rom.u8(offset + 7) != LOAD_HL_IMMEDIATE ||
+            !byteSequence(rom, offset + 10, 0x16, 0x00, 0x5F, 0x19, 0x19, 0x2A, 0x56, 0x5F, 0x21) ||
+            rom.u8(offset + 21) != 0xC3 ||
+            !GbCompiledBankCalls.stringCopy(rom, rom.u16le(offset + 22), codec.terminator) ||
+            !linkedMoveSelector(rom, target.callerOffset, rom.u16le(offset + 1),
+                rom.u16le(offset + 4), rom.u16le(offset + 19), cancellation)
+        ) return null
+        val tableAddress = rom.u16le(offset + 8)
+        if (tableAddress !in SWITCHABLE_ADDRESS_RANGE) return null
+        val table = rom.gbBankAddress(bank, tableAddress) ?: return null
+        if (table + POINTER_BYTES > end) return null
+        val firstAddress = rom.u16le(table)
+        if (firstAddress !in SWITCHABLE_ADDRESS_RANGE) return null
+        val first = rom.gbBankAddress(bank, firstAddress) ?: return null
+        val tableBytes = first - table
+        val count = tableBytes / POINTER_BYTES
+        if (tableBytes % POINTER_BYTES != 0 || count !in MIN_MOVE_COUNT..MAX_MOVE_COUNT) return null
+        var cursor = first
+        repeat(count) { index ->
+            cancellation.throwIfCancellationRequested()
+            val address = rom.u16le(table + index * POINTER_BYTES)
+            if (address !in SWITCHABLE_ADDRESS_RANGE || rom.gbBankAddress(bank, address) != cursor || cursor >= end) return null
+            val decoded = codec.decodeDetailed(rom, cursor, minOf(MAX_NAME_BYTES, end - cursor), cancellation)
+            if (!decoded.terminated || decoded.text.isBlank() || decoded.validRatio < MINIMUM_NAME_RATIO ||
+                decoded.controlUnits != 0 || decoded.substitutionUnits != 0
+            ) return null
+            cursor += decoded.consumedBytes
+        }
+        return TableLayout(first, count, 0, variableLength = true)
+    }
+
+    private fun linkedMoveSelector(
+        rom: RomImage,
+        caller: Int,
+        sourceIndex: Int,
+        namedObject: Int,
+        destination: Int,
+        cancellation: ParserCancellationToken,
+    ): Boolean {
+        val end = minOf(BANK_BYTES, rom.size)
+        if (sourceIndex !in 0xC000..0xDFFF || namedObject !in 0xC000..0xDFFF ||
+            sourceIndex == namedObject || destination !in 0xC000..0xDFFF ||
+            caller < 3 || caller + 10 > end ||
+            !byteSequence(rom, caller - 3, 0xE5, 0xC5, 0xD5) ||
+            !byteSequence(rom, caller + 6, 0xD1, 0xC1, 0xE1, 0xC9)
+        ) return false
+        for (offset in 0..end - 13) {
+            cancellation.throwIfCancellationRequested()
+            if (rom.u8(offset) == LOAD_A_ABSOLUTE && rom.u16le(offset + 1) == namedObject &&
+                rom.u8(offset + 3) == STORE_A_ABSOLUTE && rom.u16le(offset + 4) == sourceIndex &&
+                rom.u8(offset + 6) == CALL && rom.u16le(offset + 7) == caller - 3 &&
+                rom.u8(offset + 9) == LOAD_DE_IMMEDIATE && rom.u16le(offset + 10) == destination &&
+                rom.u8(offset + 12) == RETURN
+            ) return true
+        }
+        return false
+    }
+
+    private fun byteSequence(rom: RomImage, offset: Int, vararg values: Int): Boolean =
+        offset >= 0 && offset.toLong() + values.size <= rom.size &&
+            values.indices.all { rom.u8(offset + it) == values[it] }
 
     private fun moveNameRoots(rom: RomImage, cancellation: ParserCancellationToken): Set<Int> {
         val banks = moveNameBanks(rom, cancellation)

@@ -201,7 +201,7 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
         } ?: inheritedTableResolution
         val compiledGen1Base = if (generation == 1 && exact == null) {
             compiledGen1NameTableResolution.tables.baseStats?.let { inherited ->
-                Gen1CompiledBaseResolver.resolve(session.rom, inherited.count)
+                Gen1CompiledBaseResolver.resolve(session.rom, inherited.count, session.cancellation)
             }
         } else {
             null
@@ -211,7 +211,7 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
             compiledGen1NameTableResolution.copy(
                 tables = compiledGen1NameTableResolution.tables.copy(
                     baseStats = baseStats,
-                    sprites = inheritedSprites?.copy(
+                    sprites = inheritedSprites?.takeIf { it.recordSize == baseStats.recordSize }?.copy(
                         offset = baseStats.offset,
                         count = baseStats.count,
                         recordSize = baseStats.recordSize,

@@ -32,6 +32,9 @@ internal object Gen1CompiledNameResolver {
                     if (valid.toDouble() / count >= 0.85) add(TableLayout(root.offset, count, root.width))
                 }
             }
+            GbCompiledBankCalls.discover(rom, cancellation).forEach { target ->
+                bankLocalConsumerAt(rom, target.offset, count, codec)?.let(::add)
+            }
             var offset = 0
             while (offset + CONSUMER_BYTES <= scanEnd) {
                 cancellation.throwIfCancellationRequested()
@@ -40,6 +43,42 @@ internal object Gen1CompiledNameResolver {
             }
         }
         return candidates.distinct().singleOrNull()
+    }
+
+    private fun bankLocalConsumerAt(
+        rom: RomImage,
+        offset: Int,
+        count: Int,
+        codec: PokemonTextCodec,
+    ): TableLayout? {
+        val bank = offset / BANK_BYTES
+        val end = minOf(rom.size, (bank + 1) * BANK_BYTES)
+        if (offset + 26 > end || rom.u8(offset) != LOAD_HL_IMMEDIATE ||
+            rom.u8(offset + 3) != LOAD_BC_IMMEDIATE ||
+            rom.u8(offset + 6) != LOAD_A_ABSOLUTE || rom.u16le(offset + 7) !in 0xC000..0xDFFF ||
+            rom.u8(offset + 9) != DEC_A || rom.u8(offset + 10) != CALL ||
+            !GbCompiledBankCalls.repeatedAdd(rom, rom.u16le(offset + 11)) ||
+            rom.u8(offset + 13) != LOAD_DE_IMMEDIATE || rom.u8(offset + 16) != PUSH_DE ||
+            rom.u8(offset + 17) != LOAD_BC_IMMEDIATE ||
+            !GbCompiledBankCalls.restartCopy(rom, rom.u8(offset + 20)) ||
+            rom.u8(offset + 21) != LOAD_A_IMMEDIATE || rom.u8(offset + 22) != codec.terminator ||
+            rom.u8(offset + 23) != 0x12 || rom.u8(offset + 24) != POP_DE || rom.u8(offset + 25) != RETURN
+        ) return null
+        val width = rom.u16le(offset + 4)
+        val destination = rom.u16le(offset + 14)
+        if (width !in MIN_NAME_BYTES..MAX_NAME_BYTES || rom.u16le(offset + 18) != width ||
+            destination !in 0xC000..0xDFFF || destination + width > 0xDFFF
+        ) return null
+        val address = rom.u16le(offset + 1)
+        if (address !in 0x4000..0x7FFF) return null
+        val root = rom.gbBankAddress(bank, address) ?: return null
+        val maximumCount = minOf(MAX_NAME_COUNT, (end - root) / width)
+        if (maximumCount < count) return null
+        val resolvedCount = TableValidators.inferFixedNameCount(
+            rom, root, width, codec, minimumCount = count, maximumCount = maximumCount,
+        ) ?: return null
+        val evidence = TableValidators.fixedNames(rom, root, resolvedCount, width, codec)
+        return TableLayout(root, resolvedCount, width).takeIf { evidence.compatible && evidence.confidence >= 0.85 }
     }
 
     private fun parseConsumerAt(
