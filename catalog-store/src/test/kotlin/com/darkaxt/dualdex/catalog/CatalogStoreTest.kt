@@ -512,6 +512,30 @@ class CatalogStoreTest {
     }
 
     @Test
+    fun revision82CachesBeforeCompiledCoreExpansionAreRejectedAndCurrentReopens() {
+        val root = newRoot().toFile()
+        val cache = CatalogCache(root, JdbcCatalogDatabaseFactory)
+        val catalog = completeCatalog("8".repeat(64))
+        val source = CatalogSourceMetadata.direct("Synthetic.gbc", 32768, "SYNTHETIC")
+        cache.write(catalog, source, CatalogWriteProgress.complete())
+        JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
+            database.execute("UPDATE catalog_metadata SET parser_schema_version = 82 WHERE id = 1")
+            assertNull(CatalogReader(database).readComplete())
+        }
+        val reopened = CatalogCache(root, JdbcCatalogDatabaseFactory)
+        val lookup = reopened.lookupComplete(catalog.romSha256)
+        assertEquals(CatalogCacheDecision.MISS_INCOMPLETE_OR_INCOMPATIBLE, lookup.decision)
+        assertNull(lookup.stored)
+        reopened.write(catalog, source, CatalogWriteProgress.complete())
+        val current = CatalogCache(root, JdbcCatalogDatabaseFactory).lookupComplete(catalog.romSha256)
+        assertEquals(CatalogCacheDecision.HIT, current.decision)
+        assertEquals(catalog, requireNotNull(current.stored).catalog)
+        assertCurrentCatalogRevision(cache.fileFor(catalog.romSha256))
+        assertTrue(CatalogSchema.parserSchemaVersion > 82)
+        assertEquals(2, CatalogSchema.version)
+    }
+
+    @Test
     fun revision76CachesWithoutPairedRuntimeHeadlineSemanticsAreRejectedAndCurrentReopens() {
         val root = newRoot().toFile()
         val cache = CatalogCache(root, JdbcCatalogDatabaseFactory)
