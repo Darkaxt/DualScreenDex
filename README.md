@@ -7,7 +7,7 @@ The game remains on the primary display. DualDex detects the active GB, GBC, or 
 > [!IMPORTANT]
 > The pure-Kotlin ROM parser, materialized SQLite catalog, Gen I–III SaveRAM readers, validated live-WRAM paths, loopback web host, Thor-first UI, passive RetroArch activation, Docked/Overlay modes, and isolated read-only issue reports are implemented. Stable `v1.0.0` provides the complete v1 baseline. Candidate `v1.1.0-rc.86` completes the Thor lower-display pass with consistent active destinations, accessibility-gated Local Map player emphasis, truthful habitat-only Atlas shortcuts, clearer Party experience bars, and compact Pokédex card alignment. Unsupported features remain explicit instead of aborting otherwise valid catalogs.
 >
-> Current static compatibility evidence comes from the exact [331-ROM Gen I–III full-corpus review](docs/reports/2026-08-26-gen1-gen3-full-corpus-status.md) and its [machine-readable JSON](docs/reports/2026-08-26-gen1-gen3-full-corpus-status.json): 256 catalogs select and persist, overall applicable-table coverage is **73.80%**, and shared-table coverage improves from RC21's **67.13%** to **73.91%**.
+> Current static compatibility evidence is the [October 3 library snapshot](docs/reports/corpus/2026-10-03-library-compatibility.md): **342 deduplicated identities**, **286 selected catalogs**, 2 ambiguous and 54 unmatched. It combines 46 freshly scanned changed identities with 296 byte-identical inherited results. The [August corpus review](docs/reports/2026-08-26-gen1-gen3-full-corpus-status.md) remains historical evidence.
 
 ## Thor-first UI direction
 
@@ -285,7 +285,7 @@ The release candidate contains:
 - an in-app read-only compatibility report covering static capabilities, current map/runtime state, and map-render cache health, with copy and user-selected privacy-safe JSON export; and
 - human-readable and machine-readable compatibility reports.
 
-The current [Gen I–III full-corpus status](docs/reports/2026-08-26-gen1-gen3-full-corpus-status.md), with its [machine-readable evidence](docs/reports/2026-08-26-gen1-gen3-full-corpus-status.json), reruns both the current parser and RC21 against the same exact corpus:
+The historical [August 26 Gen I–III full-corpus status](docs/reports/2026-08-26-gen1-gen3-full-corpus-status.md), with its [machine-readable evidence](docs/reports/2026-08-26-gen1-gen3-full-corpus-status.json), reruns both its then-current parser and RC21 against the same exact corpus:
 
 - 333 input rows become **331** unique SHA-256 identities: Gen I 95, Gen II 27, and Gen III 209;
 - the current parser selects **256**, leaves 72 explicit no-family matches and two ambiguous, and rejects one oversized identity before parsing;
@@ -326,17 +326,17 @@ SaveRAM evidence is reported separately for [Generations I/II](docs/reports/gen1
 
 The current stable release is [**v1.2.0**](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.2.0). Its localization architecture keeps the companion interface language independent from parser-proven ROM-content language, supports manual language selection where the ROM exposes a validated projection, and fails closed when optional localized data cannot be established.
 
-The canonical benchmark contains **333 input builds / 331 unique ROM identities** across Generations I–III. The current parser selects and materializes **276** catalogs, reports **2** ambiguous family matches and **55** no-family matches, and completes with **0 parser errors**. Of the selected catalogs, **261** have a resolved ROM-language manifest and **15** remain unknown. No benchmark row currently proves more than one ROM-content projection; this is a statement about parser evidence, not a claim that the projects themselves are monolingual.
+The **October 3, 2026 current library snapshot** contains **342 deduplicated ROM identities** across Generations I–III: **286** select and materialize catalogs, **2** are ambiguous, **54** have no family match, and **0** produce parser errors. Of the selected catalogs, **271** have a resolved ROM-language manifest and **15** remain unknown; none proves multiple ROM-content projections. This is composite static evidence: **46** changed identities were freshly scanned and **296** byte-identical identities retain the September results. It is not a new full-corpus run or APK release.
 
-See the [per-ROM compatibility matrix](docs/rom-compatibility-matrix.md) for every benchmark input grouped by generation and detected engine family, including capability confidence, weighted coverage, and parser-proven language counts. Percentages represent bounded static structural confidence unless a separate live test is cited; they do not certify author intent or complete runtime behavior.
+See the [current per-ROM matrix](docs/reports/corpus/2026-10-03-library-compatibility.md) and [library refresh / expansion priorities](docs/reports/corpus/2026-10-03-library-refresh.md). The [333-input / 331-identity release matrix](docs/rom-compatibility-matrix.md) remains frozen historical evidence (276 selected, 2 ambiguous, 55 unmatched). Capability confidence and record-based coverage are different measures; neither certifies author intent or complete runtime behavior.
 
 | Area | Current status |
 | --- | --- |
-| Static GB/GBC/GBA ROM parser | 276/333 inputs select and materialize a catalog; 2 ambiguous, 55 unmatched, 0 errors. Optional capabilities fail closed independently. |
-| ROM and interface localization | Independent authority implemented in v1.2.0; 261 resolved and 15 unknown language manifests among selected catalogs; manual Settings selection is retained where validated projections exist. |
+| Static GB/GBC/GBA ROM parser | 286/342 current-library identities select and materialize a catalog; 2 ambiguous, 54 unmatched, 0 parser errors. Evidence is 46 fresh delta rows plus 296 byte-identical inherited rows. |
+| ROM and interface localization | Independent authority implemented in v1.2.0; 271 resolved and 15 unknown language manifests in the current snapshot; manual Settings selection is retained where validated projections exist. |
 | Direct and streamed ZIP input | Implemented with bounded read-only scanning and no temporary ROM extraction. |
 | Decoded catalog and cache | Progressive partial-catalog loading plus per-ROM SQLite persistence/reopen are implemented. |
-| Pokédex, moves, abilities, encounters, and maps | Capability-specific confidence and applicability are published in the [matrix](docs/rom-compatibility-matrix.md); absent or malformed optional modules do not invalidate the base catalog. |
+| Pokédex, moves, abilities, encounters, and maps | Capability-specific confidence and applicability are published in the [current matrix](docs/reports/corpus/2026-10-03-library-compatibility.md); absent or malformed optional modules do not invalidate the base catalog. |
 | Runtime and SaveRAM state | Shared read-only RetroArch transport, dynamic Gen I–III battle readers, and per-ROM discovery ledgers are implemented with independent degradation. |
 | Packaged companion | Thor-first WebView UI, loopback-only HTTP server, Docked/Overlay display modes, storage setup, and passive ROM activation are implemented. Controller input remains with the game. |
 | Release integrity | Stable production APKs are built and signed only through the protected GitHub workflow using the pinned public certificate identity. |
