@@ -2,7 +2,7 @@
 
 ## Decision and scope
 
-The GB/GBC/GBA Pokémon hack library has changed enough to warrant a new corpus snapshot. The current snapshot contains **342 distinct in-scope ROM identities**. The old corpus and its release evidence remain preserved; this refresh neither changes the production parser nor publishes a new APK.
+The GB/GBC/GBA Pokémon hack library has changed enough to warrant a new corpus snapshot. The current snapshot contains **342 distinct in-scope ROM identities**. The old corpus and its release evidence remain preserved. The inventory refresh itself did not change the production parser; the subsequent [first Gen I compiled-core expansion](2026-10-03-gen1-core-acceptance.md) adds ten selected catalogs. Neither step publishes a new APK.
 
 - [Current 342-ROM compatibility matrix](2026-10-03-library-compatibility.md)
 - [Machine-readable rows, aliases, provenance, and delta receipt](2026-10-03-library-compatibility.json)
@@ -40,22 +40,24 @@ Alias metadata matters:
 
 ## Compatibility evidence
 
-Only the **46 new or changed identities** were parsed. Their schema-16 report and execution receipt bind source commit `a306bffd64dfb50d81076a91657bb76c1f8e9617`, generator digest, report digest, and input count. Their exact normalized identity multiset was checked against the staged delta. The run returned **34 selected, 0 ambiguous, 12 unmatched, 0 parser errors**, with **0 catalog errors and 0 persistence errors**.
+The original inventory refresh parsed only the **46 new or changed identities**. Their schema-16 report and execution receipt bind source commit `a306bffd64dfb50d81076a91657bb76c1f8e9617`, generator digest, report digest, and input count. Their exact normalized identity multiset was checked against the staged delta. That run returned **34 selected, 0 ambiguous, 12 unmatched, 0 parser errors**, with **0 catalog errors and 0 persistence errors**.
 
-The other **296 identities** inherit the published September 14 rows after byte-identity verification. Parser, catalog, and coverage-calculation code remained unchanged. Identical old alias rows were checked for agreement before deduplication. Inherited capability confidence retains the old published integer rounding; inherited coverage retains two decimal places. This is deliberately a **composite snapshot**, not a fresh full-corpus run.
+At that checkpoint, the other **296 identities** inherited the published September 14 rows after byte-identity verification, with no parser/catalog/coverage code changes. Identical old alias rows agreed before deduplication. Inherited confidence retains published integer rounding and coverage retains two decimal places.
+
+The subsequent [Gen I acceptance](2026-10-03-gen1-core-acceptance.md) supersedes **30 rows**, adding six PureRGB and four Yellow catalogs through generic compiled-consumer changes. Three bounded runs total 48 executions over 30 distinct identities; rejected initial PureRGB joins and sprite regressions are superseded by corrected checkpoints. The effective matrix is now **277 inherited historical rows + 35 retained delta rows + 30 focused Gen I rows**. Not every row was scanned against the latest source. The focused runs validate in-memory materialization/reference closure, not new persistence, SaveRAM, or live Android acceptance.
 
 | Current snapshot outcome | Count |
 |---|---:|
 | Inputs | 342 |
-| Selected family and materialized catalog | 286 |
+| Selected family and materialized catalog | 296 |
 | Ambiguous family | 2 |
-| No family match | 54 |
+| No family match | 44 |
 | Parser errors | 0 |
-| Resolved ROM-language manifests | 271 |
+| Resolved ROM-language manifests | 281 |
 | Unknown ROM-language manifests | 15 |
 | Proven multilingual manifests | 0 |
 
-The routing rate is 286/342, not a claim that all 286 have complete Pokédex data or maps. The change from 276/333 in the historical release benchmark reflects changed inputs and deduplication, **not a parser compatibility gain**.
+The original inventory-only routing rate was 286/342, versus 276/333 in the historical release benchmark; that denominator/input change was not a parser gain. The subsequent **286 → 296 on the same 342 identities** is a verified ten-catalog parser gain. Routing still does not imply complete optional data or maps.
 
 N/A capabilities remain outside coverage denominators. Capability confidence and record-based coverage are different measures; neither family recognition nor a high confidence cell proves complete runtime behavior.
 
@@ -64,8 +66,9 @@ N/A capabilities remain outside coverage denominators. Capability confidence and
 | Changed group | Current evidence | Interpretation |
 |---|---|---|
 | Intense Indigo / IndigoLite, 16 variants | All select Red/Blue; 99.34–99.50% coverage | Broadly working; small stats/sprite gaps are lower priority than wholly unmatched families. |
-| PureRGB, 6 variants | All unmatched | Highest-count coherent newly unsupported source-backed project. |
-| Yellow Kaizo, 2 variants | Both unmatched | Include in the bounded Yellow routing investigation, without assuming the same cause as PureRGB. |
+| PureRGB, 6 variants | All now select Red/Blue; 75.00%; 151 canonical names/stats, 165 detailed moves | Core/index authority accepted; sprites, Dex text, maps, and non-Dex form stats remain separate follow-ups. |
+| Yellow Kaizo, 2 variants | Both now select Yellow; 87.50%; 151 names/stats/sprites, 166 detailed moves | Independent restart-copy ABI accepted; Dex text and Local Map remain missing. |
+| Yellow Legacy / Legacy+, 2 variants | Both now select Yellow; 100.00%; 151 names/stats/sprites/descriptions, 165 detailed moves | Independently proven helper-bank ABI; no new live-state or persistence claim. |
 | Polished Crystal, Ambrosia, Crystal Inheritance, Sour Crystal | Four distinct identities, all unmatched | Investigate modern Gen II compiled-core changes; Faithful alias is not a fifth test. |
 | Static Yellow, 2 variants | Both select; 87.50%; Dex text and Local Map not found | A focused optional-capability follow-up, not a family-routing problem. |
 | Battle Theater 2.6 | Selects; 89.78%; both maps available | Preserve as an expanded-engine regression control, not a first map target. |
@@ -82,15 +85,15 @@ N/A capabilities remain outside coverage denominators. Capability confidence and
 
 These are investigation priorities, not verified shared root causes or promised gains. Local source checkouts are structural oracles and may not match the current compiled build. Match the build before implementing an ABI; never add ROM names, hashes, fixed addresses, or project profiles to production resolution.
 
-### 1. Restore missing Gen I core routing
+### 1. Restore missing Gen I core routing — accepted host/static
 
-**First target: PureRGB's six distinct builds**, followed by the two already-unmatched Yellow Legacy builds and the two new Yellow Kaizo builds. This gives a bounded ten-input investigation set, not a claim that one change fixes all ten.
+**Completed:** PureRGB's six distinct builds, then two Yellow Legacy builds and two Yellow Kaizo builds independently. All ten now uniquely select with coherent canonical base catalogs. [Acceptance](2026-10-03-gen1-core-acceptance.md) records 69 focused tests, three bounded source-bound runs, 20 related controls, and the exact limitations; no full-corpus or official standalone-ROM rerun occurred.
 
-The local PureRGB source explicitly changes Pokédex indexing to include MissingNo at index zero. That is a concrete reason to inspect identity/index consumers and cross-table invariants rather than merely relaxing a header or name gate. It is not yet proof of the compiled ROM's failing gate. Yellow Legacy has an available source oracle; Yellow Kaizo requires its own compiled evidence and patch provenance.
+PureRGB required verified bank-local name/base/move consumers plus the actual compiled species-index and non-Dex exclusion chain. Yellow Legacy required helper-called bank authority; Yellow Kaizo required restart-copy geometry. Kaizo's extra TWISTER is independently proven compiled content, not a parser-count adjustment. Validators and family thresholds were not relaxed, and no project/name/hash profile was added.
 
-Sources: [PureRGB](https://github.com/Vortyne/pureRGB), [Yellow Legacy](https://github.com/cRz-Shadows/Pokemon_Yellow_Legacy), and official Yellow consumers for controls.
+Sources: [PureRGB](https://github.com/Vortyne/pureRGB), [Yellow Legacy](https://github.com/cRz-Shadows/Pokemon_Yellow_Legacy), and native compiled-layout fixtures for controls.
 
-**Acceptance:** uniquely route each supported ABI through compiled consumers; materialize consistent names, species IDs, types, stats, and references; preserve official Red/Blue/Yellow and the working Indigo variants; keep genuinely incompatible candidates unmatched.
+**Accepted boundary:** correct navigable species/name/type/stat joins and decoded reference closure, with preserved related Gen I controls. Optional graphics/text/maps and PureRGB alternate-form stats remain ledgered below; this does not certify runtime or SQLite reopen behavior. The next core investigation priority remains modern Gen II, not another Gen I or full-corpus rerun.
 
 ### 2. Modern Gen II base-data and index contracts
 
@@ -124,7 +127,7 @@ After those consumers are understood, check Static Yellow's two missing Local Ma
 
 ### Lower-priority work and measurement cautions
 
-Across the 286 selected rows, the counts of PARTIAL/AMBIGUOUS/NOT_FOUND cells are: species 178, Dex text 155, Local Map 128, numeric ability mechanics 102, and World Map 61. These counts are **not missing-record totals** and exclude N/A. A nearly complete 151-species catalog and a severely deficient expanded catalog can both contribute one partial cell.
+Across the 296 selected rows, the counts of PARTIAL/AMBIGUOUS/NOT_FOUND cells are: species 178, Dex text 163, Local Map 136, numeric ability mechanics 102, and World Map 67. These counts are **not missing-record totals** and exclude N/A. A nearly complete 151-species catalog and a severely deficient expanded catalog can both contribute one partial cell. Newly routed incomplete catalogs can increase these gap counts even though compatibility improved.
 
 Therefore:
 
@@ -137,15 +140,16 @@ Therefore:
 
 ## Follow-up ledger
 
-All entries are **recommended / not implemented**. Each closes only with the named target and acceptance condition above.
+`LIB26-G1-CORE` is accepted at the bounded host/static boundary documented above. Other entries remain recommended / not implemented; none is silently deferred or claimed complete.
 
-| ID | Named target | Closure condition |
-|---|---|---|
-| LIB26-G1-CORE | PureRGB first; Yellow Legacy and Yellow Kaizo independently | Compiled-consumer-backed routing and coherent base catalog, plus Gen I controls. |
-| LIB26-G2-CORE | Polished Crystal / Inheritance first; Ambrosia / Sour Crystal separately | Verified modern Gen II record/index contracts and reference-safe persistence. |
-| LIB26-G3-CORE | ROWE first; Voyager and Elite Redux separately | Usable expanded species/stat/type/acquisition catalogs without wrong-stride fallback. |
-| LIB26-MAPS | Heart and Soul, Soulgold, Pokescape, Tourmaline | Map-consumer proof, valid assets/references, and related-cohort regression. |
-| LIB26-G1-OPTIONAL | Static Yellow and Christmas Kaizo variants | Missing Dex/Local datasets resolved where compiled evidence supports them, with independent failure isolation. |
+| ID | Status | Named target | Closure condition |
+|---|---|---|---|
+| LIB26-G1-CORE | Accepted host/static | Six PureRGB, two Yellow Legacy, two Yellow Kaizo | Compiled-consumer-backed routing, correct canonical base joins/reference closure, and related Gen I controls; [evidence](2026-10-03-gen1-core-acceptance.md). |
+| LIB26-G2-CORE | Recommended | Polished Crystal / Inheritance first; Ambrosia / Sour Crystal separately | Verified modern Gen II record/index contracts and reference-safe persistence. |
+| LIB26-G3-CORE | Recommended | ROWE first; Voyager and Elite Redux separately | Usable expanded species/stat/type/acquisition catalogs without wrong-stride fallback. |
+| LIB26-MAPS | Recommended | Heart and Soul, Soulgold, Pokescape, Tourmaline | Map-consumer proof, valid assets/references, and related-cohort regression. |
+| LIB26-G1-OPTIONAL | Recommended | Six PureRGB builds; both Yellow Kaizo builds; Static Yellow and Christmas Kaizo variants | PureRGB sprites/Dex/World/Local datasets and Yellow/Christmas missing Dex/Local datasets resolved through independent compiled authority and failure isolation. |
+| LIB26-G1-FORMS | Recommended | Six PureRGB builds, 13 separately handled non-Dex form IDs | Proven alternate base/index/type semantics and reference-safe materialization; no positional canonical-stat fallback. |
 
 ## Retention and privacy
 

@@ -1,18 +1,16 @@
 {
   "schemaVersion": 1,
   "date": "2026-10-03",
-  "evidenceMode": "verified-unchanged-baseline-plus-fresh-delta",
+  "evidenceMode": "verified-baseline-and-delta-plus-focused-gen1-checkpoints",
   "baselineDocumentCommit": "a306bffd64dfb50d81076a91657bb76c1f8e9617",
   "deltaSourceCommit": "a306bffd64dfb50d81076a91657bb76c1f8e9617",
-  "baselineInheritedIdentities": 296,
-  "freshDeltaIdentities": 46,
   "summary": {
     "inputCount": 342,
-    "selectedCount": 286,
+    "selectedCount": 296,
     "ambiguousCount": 2,
-    "noFamilyMatchCount": 54,
+    "noFamilyMatchCount": 44,
     "errorCount": 0,
-    "resolvedLanguageManifests": 271,
+    "resolvedLanguageManifests": 281,
     "unknownLanguageManifests": 15,
     "multilingualCount": 0
   },
@@ -366,14 +364,55 @@
           "confidence": 0
         }
       },
-      "evidence": "inherited-byte-identical",
+      "role": "related-control",
+      "evidence": "fresh-focused-gen1-scan",
+      "sourceCommit": "d61fb188e52f9ef67016ca3e5c6bea581e7c5fa6",
       "aliases": [
         {
           "archive": "Pokemon Shin.7z",
           "name": "Shin Red (18.03.26).gb",
           "console": "Nintendo - Game Boy"
         }
-      ]
+      ],
+      "catalogCounters": {
+        "species": 151,
+        "namedSpecies": 151,
+        "speciesWithStats": 151,
+        "speciesWithSprites": 151,
+        "speciesWithDescriptions": 151,
+        "evolutionEdges": 76,
+        "learnsetEntries": 831,
+        "learnsetRulesets": 1,
+        "moves": 165,
+        "movesWithDetails": 165,
+        "movesWithDescriptions": 0,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 2444,
+        "tutorMoveLinks": 0,
+        "types": 16,
+        "namedTypes": 15,
+        "typesWithSemanticRoles": 15,
+        "typeMatchups": 82,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 58,
+        "movesWithCategories": 165,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "referenceErrorCount": 0
+      },
+      "comparison": {
+        "familyBefore": "RED_BLUE",
+        "outcomeBefore": "SELECTED",
+        "coverageBefore": 100,
+        "regressions": []
+      }
     },
     {
       "name": "Peach (Demo) (v1.4).gba",
@@ -1121,7 +1160,7 @@
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "PARTIAL",
-          "confidence": 0.95
+          "confidence": 0.9536423841059603
         },
         "SPECIES_NAMES": {
           "status": "AVAILABLE",
@@ -1129,7 +1168,7 @@
         },
         "SPECIES_TYPES": {
           "status": "PARTIAL",
-          "confidence": 0.95
+          "confidence": 0.9536423841059603
         },
         "TYPE_CHART": {
           "status": "AVAILABLE",
@@ -1137,7 +1176,7 @@
         },
         "BASE_STATS": {
           "status": "PARTIAL",
-          "confidence": 0.95
+          "confidence": 0.9536423841059603
         },
         "SPRITES": {
           "status": "AVAILABLE",
@@ -1145,11 +1184,11 @@
         },
         "POKEDEX_DESCRIPTIONS": {
           "status": "PARTIAL",
-          "confidence": 1
+          "confidence": 0.996031746031746
         },
         "EVOLUTIONS": {
           "status": "PARTIAL",
-          "confidence": 0.92
+          "confidence": 0.9246031746031746
         },
         "MOVE_CATALOG": {
           "status": "AVAILABLE",
@@ -1157,7 +1196,7 @@
         },
         "MOVE_DETAILS": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.3393939393939394
         },
         "MOVE_DESCRIPTIONS": {
           "status": "NOT_APPLICABLE",
@@ -1216,14 +1255,55 @@
           "confidence": 0
         }
       },
-      "evidence": "inherited-byte-identical",
+      "role": "related-control",
+      "evidence": "fresh-focused-gen1-scan",
+      "sourceCommit": "d61fb188e52f9ef67016ca3e5c6bea581e7c5fa6",
       "aliases": [
         {
           "archive": "Pokemon Grape.7z",
           "name": "Grape (Final 1.7).gb",
           "console": "Nintendo - Game Boy"
         }
-      ]
+      ],
+      "catalogCounters": {
+        "species": 252,
+        "namedSpecies": 252,
+        "speciesWithStats": 144,
+        "speciesWithSprites": 151,
+        "speciesWithDescriptions": 251,
+        "evolutionEdges": 119,
+        "learnsetEntries": 0,
+        "learnsetRulesets": 0,
+        "moves": 165,
+        "movesWithDetails": 0,
+        "movesWithDescriptions": 0,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 0,
+        "tutorMoveLinks": 0,
+        "types": 25,
+        "namedTypes": 15,
+        "typesWithSemanticRoles": 15,
+        "typeMatchups": 245,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 0,
+        "movesWithCategories": 0,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "referenceErrorCount": 0
+      },
+      "comparison": {
+        "familyBefore": "RED_BLUE",
+        "outcomeBefore": "SELECTED",
+        "coverageBefore": 61.13,
+        "regressions": []
+      }
     },
     {
       "name": "Amnesia (Save Fix).gba",
@@ -3935,7 +4015,7 @@
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "PARTIAL",
-          "confidence": 0.97
+          "confidence": 0.9735099337748344
         },
         "SPECIES_NAMES": {
           "status": "AVAILABLE",
@@ -3943,7 +4023,7 @@
         },
         "SPECIES_TYPES": {
           "status": "PARTIAL",
-          "confidence": 0.97
+          "confidence": 0.9735099337748344
         },
         "TYPE_CHART": {
           "status": "AVAILABLE",
@@ -3951,7 +4031,7 @@
         },
         "BASE_STATS": {
           "status": "PARTIAL",
-          "confidence": 0.97
+          "confidence": 0.9735099337748344
         },
         "SPRITES": {
           "status": "AVAILABLE",
@@ -4030,14 +4110,55 @@
           "confidence": 0
         }
       },
-      "evidence": "inherited-byte-identical",
+      "role": "related-control",
+      "evidence": "fresh-focused-gen1-scan",
+      "sourceCommit": "d61fb188e52f9ef67016ca3e5c6bea581e7c5fa6",
       "aliases": [
         {
           "archive": "Pokemon Intense Indigo.7z",
           "name": "Intense Indigo (Blue) (28.07.26).gb",
           "console": "Nintendo - Game Boy"
         }
-      ]
+      ],
+      "catalogCounters": {
+        "species": 151,
+        "namedSpecies": 151,
+        "speciesWithStats": 147,
+        "speciesWithSprites": 151,
+        "speciesWithDescriptions": 151,
+        "evolutionEdges": 72,
+        "learnsetEntries": 728,
+        "learnsetRulesets": 1,
+        "moves": 165,
+        "movesWithDetails": 165,
+        "movesWithDescriptions": 0,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 2394,
+        "tutorMoveLinks": 0,
+        "types": 15,
+        "namedTypes": 15,
+        "typesWithSemanticRoles": 15,
+        "typeMatchups": 82,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 58,
+        "movesWithCategories": 165,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "referenceErrorCount": 0
+      },
+      "comparison": {
+        "familyBefore": "RED_BLUE",
+        "outcomeBefore": "SELECTED",
+        "coverageBefore": 99.5,
+        "regressions": []
+      }
     },
     {
       "name": "Order & Chaos Remastered.gba",
@@ -4847,14 +4968,55 @@
           "confidence": 0
         }
       },
-      "evidence": "inherited-byte-identical",
+      "role": "related-control",
+      "evidence": "fresh-focused-gen1-scan",
+      "sourceCommit": "d61fb188e52f9ef67016ca3e5c6bea581e7c5fa6",
       "aliases": [
         {
           "archive": "Pokemon Shin.7z",
           "name": "Shin Blue (18.03.26).gb",
           "console": "Nintendo - Game Boy"
         }
-      ]
+      ],
+      "catalogCounters": {
+        "species": 151,
+        "namedSpecies": 151,
+        "speciesWithStats": 151,
+        "speciesWithSprites": 151,
+        "speciesWithDescriptions": 151,
+        "evolutionEdges": 76,
+        "learnsetEntries": 831,
+        "learnsetRulesets": 1,
+        "moves": 165,
+        "movesWithDetails": 165,
+        "movesWithDescriptions": 0,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 2444,
+        "tutorMoveLinks": 0,
+        "types": 16,
+        "namedTypes": 15,
+        "typesWithSemanticRoles": 15,
+        "typeMatchups": 82,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 58,
+        "movesWithCategories": 165,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "referenceErrorCount": 0
+      },
+      "comparison": {
+        "familyBefore": "RED_BLUE",
+        "outcomeBefore": "SELECTED",
+        "coverageBefore": 100,
+        "regressions": []
+      }
     },
     {
       "name": "Dragonstone (v1.63).gba",
@@ -4978,7 +5140,7 @@
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "PARTIAL",
-          "confidence": 0.97
+          "confidence": 0.9735099337748344
         },
         "SPECIES_NAMES": {
           "status": "AVAILABLE",
@@ -4986,7 +5148,7 @@
         },
         "SPECIES_TYPES": {
           "status": "PARTIAL",
-          "confidence": 0.97
+          "confidence": 0.9735099337748344
         },
         "TYPE_CHART": {
           "status": "AVAILABLE",
@@ -4994,7 +5156,7 @@
         },
         "BASE_STATS": {
           "status": "PARTIAL",
-          "confidence": 0.97
+          "confidence": 0.9735099337748344
         },
         "SPRITES": {
           "status": "AVAILABLE",
@@ -5073,14 +5235,55 @@
           "confidence": 0
         }
       },
-      "evidence": "inherited-byte-identical",
+      "role": "related-control",
+      "evidence": "fresh-focused-gen1-scan",
+      "sourceCommit": "d61fb188e52f9ef67016ca3e5c6bea581e7c5fa6",
       "aliases": [
         {
           "archive": "Pokemon Intense Indigo.7z",
           "name": "Intense IndigoLite (Blue QOL) (28.07.26).gb",
           "console": "Nintendo - Game Boy"
         }
-      ]
+      ],
+      "catalogCounters": {
+        "species": 151,
+        "namedSpecies": 151,
+        "speciesWithStats": 147,
+        "speciesWithSprites": 151,
+        "speciesWithDescriptions": 151,
+        "evolutionEdges": 72,
+        "learnsetEntries": 728,
+        "learnsetRulesets": 1,
+        "moves": 165,
+        "movesWithDetails": 165,
+        "movesWithDescriptions": 0,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 2394,
+        "tutorMoveLinks": 0,
+        "types": 15,
+        "namedTypes": 15,
+        "typesWithSemanticRoles": 15,
+        "typeMatchups": 82,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 58,
+        "movesWithCategories": 165,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "referenceErrorCount": 0
+      },
+      "comparison": {
+        "familyBefore": "RED_BLUE",
+        "outcomeBefore": "SELECTED",
+        "coverageBefore": 99.5,
+        "regressions": []
+      }
     },
     {
       "name": "Crown (v1.9).gba",
@@ -6252,7 +6455,7 @@
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "PARTIAL",
-          "confidence": 0.95
+          "confidence": 0.9470198675496688
         },
         "SPECIES_NAMES": {
           "status": "AVAILABLE",
@@ -6260,7 +6463,7 @@
         },
         "SPECIES_TYPES": {
           "status": "PARTIAL",
-          "confidence": 0.95
+          "confidence": 0.9470198675496688
         },
         "TYPE_CHART": {
           "status": "AVAILABLE",
@@ -6268,7 +6471,7 @@
         },
         "BASE_STATS": {
           "status": "PARTIAL",
-          "confidence": 0.95
+          "confidence": 0.9470198675496688
         },
         "SPRITES": {
           "status": "AVAILABLE",
@@ -6276,7 +6479,7 @@
         },
         "POKEDEX_DESCRIPTIONS": {
           "status": "PARTIAL",
-          "confidence": 0.99
+          "confidence": 0.9881889763779528
         },
         "EVOLUTIONS": {
           "status": "AVAILABLE",
@@ -6288,7 +6491,7 @@
         },
         "MOVE_DETAILS": {
           "status": "PARTIAL",
-          "confidence": 0.98
+          "confidence": 0.975
         },
         "MOVE_DESCRIPTIONS": {
           "status": "NOT_APPLICABLE",
@@ -6347,14 +6550,55 @@
           "confidence": 0
         }
       },
-      "evidence": "inherited-byte-identical",
+      "role": "related-control",
+      "evidence": "fresh-focused-gen1-correction-scan",
+      "sourceCommit": "f5e2a101a20968d5563a5b77e21df2b2132ab9b8",
       "aliases": [
         {
           "archive": "Pokemon Beyond.7z",
           "name": "Beyond Blue (v1.4.4).gb",
           "console": "Nintendo - Game Boy"
         }
-      ]
+      ],
+      "catalogCounters": {
+        "species": 254,
+        "namedSpecies": 254,
+        "speciesWithStats": 143,
+        "speciesWithSprites": 151,
+        "speciesWithDescriptions": 251,
+        "evolutionEdges": 144,
+        "learnsetEntries": 1420,
+        "learnsetRulesets": 1,
+        "moves": 200,
+        "movesWithDetails": 200,
+        "movesWithDescriptions": 0,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 3237,
+        "tutorMoveLinks": 0,
+        "types": 19,
+        "namedTypes": 15,
+        "typesWithSemanticRoles": 15,
+        "typeMatchups": 112,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 102,
+        "movesWithCategories": 197,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "referenceErrorCount": 0
+      },
+      "comparison": {
+        "familyBefore": "RED_BLUE",
+        "outcomeBefore": "SELECTED",
+        "coverageBefore": 92.53,
+        "regressions": []
+      }
     },
     {
       "name": "Celebrations Red (Gen 2 UI).gbc",
@@ -6591,7 +6835,7 @@
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "PARTIAL",
-          "confidence": 0.95
+          "confidence": 0.9470198675496688
         },
         "SPECIES_NAMES": {
           "status": "AVAILABLE",
@@ -6599,7 +6843,7 @@
         },
         "SPECIES_TYPES": {
           "status": "PARTIAL",
-          "confidence": 0.95
+          "confidence": 0.9470198675496688
         },
         "TYPE_CHART": {
           "status": "AVAILABLE",
@@ -6607,7 +6851,7 @@
         },
         "BASE_STATS": {
           "status": "PARTIAL",
-          "confidence": 0.95
+          "confidence": 0.9470198675496688
         },
         "SPRITES": {
           "status": "AVAILABLE",
@@ -6615,7 +6859,7 @@
         },
         "POKEDEX_DESCRIPTIONS": {
           "status": "PARTIAL",
-          "confidence": 0.99
+          "confidence": 0.9881889763779528
         },
         "EVOLUTIONS": {
           "status": "AVAILABLE",
@@ -6627,7 +6871,7 @@
         },
         "MOVE_DETAILS": {
           "status": "PARTIAL",
-          "confidence": 0.98
+          "confidence": 0.975
         },
         "MOVE_DESCRIPTIONS": {
           "status": "NOT_APPLICABLE",
@@ -6686,14 +6930,55 @@
           "confidence": 0
         }
       },
-      "evidence": "inherited-byte-identical",
+      "role": "related-control",
+      "evidence": "fresh-focused-yellow-scan",
+      "sourceCommit": "3f2b95e86d4fb84ebec75a06b404827ab819d974",
       "aliases": [
         {
           "archive": "Pokemon Beyond.7z",
           "name": "Beyond Red (v1.4.4).gb",
           "console": "Nintendo - Game Boy"
         }
-      ]
+      ],
+      "catalogCounters": {
+        "species": 254,
+        "namedSpecies": 254,
+        "speciesWithStats": 143,
+        "speciesWithSprites": 151,
+        "speciesWithDescriptions": 251,
+        "evolutionEdges": 144,
+        "learnsetEntries": 1420,
+        "learnsetRulesets": 1,
+        "moves": 200,
+        "movesWithDetails": 200,
+        "movesWithDescriptions": 0,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 3237,
+        "tutorMoveLinks": 0,
+        "types": 19,
+        "namedTypes": 15,
+        "typesWithSemanticRoles": 15,
+        "typeMatchups": 112,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 102,
+        "movesWithCategories": 197,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "referenceErrorCount": 0
+      },
+      "comparison": {
+        "familyBefore": "RED_BLUE",
+        "outcomeBefore": "SELECTED",
+        "coverageBefore": 92.53,
+        "regressions": []
+      }
     },
     {
       "name": "Scorched Silver (v1.3).gba",
@@ -7500,7 +7785,9 @@
           "confidence": 0
         }
       },
-      "evidence": "inherited-byte-identical",
+      "role": "related-control",
+      "evidence": "fresh-focused-gen1-scan",
+      "sourceCommit": "d61fb188e52f9ef67016ca3e5c6bea581e7c5fa6",
       "aliases": [
         {
           "archive": "Pokemon Blue (Yellow Backport).7z",
@@ -7512,7 +7799,46 @@
           "name": "Blue (Yellow Backport) (04.07.26).gbc",
           "console": "Nintendo - Game Boy"
         }
-      ]
+      ],
+      "catalogCounters": {
+        "species": 151,
+        "namedSpecies": 151,
+        "speciesWithStats": 151,
+        "speciesWithSprites": 151,
+        "speciesWithDescriptions": 151,
+        "evolutionEdges": 72,
+        "learnsetEntries": 728,
+        "learnsetRulesets": 1,
+        "moves": 165,
+        "movesWithDetails": 165,
+        "movesWithDescriptions": 0,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 2394,
+        "tutorMoveLinks": 0,
+        "types": 15,
+        "namedTypes": 15,
+        "typesWithSemanticRoles": 15,
+        "typeMatchups": 82,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 58,
+        "movesWithCategories": 165,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "referenceErrorCount": 0
+      },
+      "comparison": {
+        "familyBefore": "RED_BLUE",
+        "outcomeBefore": "SELECTED",
+        "coverageBefore": 100,
+        "regressions": []
+      }
     },
     {
       "name": "Intense Indigo (Blue QOL) (28.07.26).gb",
@@ -8813,16 +9139,158 @@
     },
     {
       "name": "PureRed (03.09.26).gbc",
-      "platform": "GBC",
-      "outcome": "NO_FAMILY_MATCH",
-      "evidence": "fresh-delta-scan",
+      "generation": 1,
+      "family": "RED_BLUE",
+      "languageCount": 1,
+      "compatibilityPercent": 75,
+      "capabilities": {
+        "SPECIES_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "SPECIES_TYPES": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "TYPE_CHART": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "BASE_STATS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "SPRITES": {
+          "status": "NOT_FOUND",
+          "confidence": 0
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0
+        },
+        "EVOLUTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "MOVE_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "MOVE_DETAILS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "LEARNSETS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "EGG_MOVES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "MACHINE_MOVES": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "TUTOR_MOVES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "ABILITIES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "ABILITY_MECHANICS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "AREA_ENCOUNTERS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "TYPE_PRESENTATION": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "BALL_CATALOG": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "WORLD_MAP": {
+          "status": "NOT_FOUND",
+          "confidence": 0
+        },
+        "LOCAL_MAP": {
+          "status": "NOT_FOUND",
+          "confidence": 0
+        },
+        "NATURES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        }
+      },
+      "role": "related-control",
+      "evidence": "fresh-focused-yellow-scan",
+      "sourceCommit": "3f2b95e86d4fb84ebec75a06b404827ab819d974",
       "aliases": [
         {
           "archive": "Pokemon PureRGB (v2.7.6).7z",
           "name": "PureRed (03.09.26).gbc",
           "console": "Nintendo - Game Boy Color"
         }
-      ]
+      ],
+      "catalogCounters": {
+        "species": 151,
+        "namedSpecies": 151,
+        "speciesWithStats": 151,
+        "speciesWithSprites": 0,
+        "speciesWithDescriptions": 0,
+        "evolutionEdges": 76,
+        "learnsetEntries": 1422,
+        "learnsetRulesets": 1,
+        "moves": 165,
+        "movesWithDetails": 165,
+        "movesWithDescriptions": 0,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 3138,
+        "tutorMoveLinks": 0,
+        "types": 21,
+        "namedTypes": 15,
+        "typesWithSemanticRoles": 15,
+        "typeMatchups": 107,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 90,
+        "movesWithCategories": 163,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "referenceErrorCount": 0
+      },
+      "dexJoinVerified": true,
+      "comparison": {
+        "familyBefore": "RED_BLUE",
+        "outcomeBefore": "SELECTED",
+        "coverageBefore": 75,
+        "regressions": []
+      }
     },
     {
       "name": "Liquid Crystal (v3.3.00512).gba",
@@ -9298,11 +9766,11 @@
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "PARTIAL",
-          "confidence": 0.75
+          "confidence": 0.7526315789473684
         },
         "SPECIES_NAMES": {
           "status": "PARTIAL",
-          "confidence": 0.75
+          "confidence": 0.7526315789473684
         },
         "SPECIES_TYPES": {
           "status": "AVAILABLE",
@@ -9393,7 +9861,9 @@
           "confidence": 0
         }
       },
-      "evidence": "inherited-byte-identical",
+      "role": "related-control",
+      "evidence": "fresh-focused-gen1-scan",
+      "sourceCommit": "d61fb188e52f9ef67016ca3e5c6bea581e7c5fa6",
       "aliases": [
         {
           "archive": "Pokemon Celebrations (CrysAudio).7z",
@@ -9405,7 +9875,46 @@
           "name": "Celebrations Green (Custom GFX & CrysAudio) (11.05.26).gb",
           "console": "Nintendo - Game Boy"
         }
-      ]
+      ],
+      "catalogCounters": {
+        "species": 151,
+        "namedSpecies": 111,
+        "speciesWithStats": 151,
+        "speciesWithSprites": 151,
+        "speciesWithDescriptions": 151,
+        "evolutionEdges": 76,
+        "learnsetEntries": 1164,
+        "learnsetRulesets": 1,
+        "moves": 165,
+        "movesWithDetails": 165,
+        "movesWithDescriptions": 0,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 2517,
+        "tutorMoveLinks": 0,
+        "types": 16,
+        "namedTypes": 15,
+        "typesWithSemanticRoles": 15,
+        "typeMatchups": 81,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 63,
+        "movesWithCategories": 165,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "referenceErrorCount": 0
+      },
+      "comparison": {
+        "familyBefore": "RED_BLUE",
+        "outcomeBefore": "SELECTED",
+        "coverageBefore": 98.12,
+        "regressions": []
+      }
     },
     {
       "name": "Pokémon Hearth (v0.1.27).gba",
@@ -9974,16 +10483,158 @@
     },
     {
       "name": "Yellow Kaizo (1.0.4 QOL).gb",
-      "platform": "GBC",
-      "outcome": "NO_FAMILY_MATCH",
-      "evidence": "fresh-delta-scan",
+      "generation": 1,
+      "family": "YELLOW",
+      "languageCount": 1,
+      "compatibilityPercent": 87.5,
+      "capabilities": {
+        "SPECIES_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "SPECIES_TYPES": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "TYPE_CHART": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "BASE_STATS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "SPRITES": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0
+        },
+        "EVOLUTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "MOVE_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "MOVE_DETAILS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "LEARNSETS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "EGG_MOVES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "MACHINE_MOVES": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "TUTOR_MOVES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "ABILITIES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "ABILITY_MECHANICS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "AREA_ENCOUNTERS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "TYPE_PRESENTATION": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "BALL_CATALOG": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "WORLD_MAP": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "LOCAL_MAP": {
+          "status": "NOT_FOUND",
+          "confidence": 0
+        },
+        "NATURES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        }
+      },
+      "role": "yellow-target",
+      "evidence": "fresh-focused-yellow-scan",
+      "sourceCommit": "3f2b95e86d4fb84ebec75a06b404827ab819d974",
       "aliases": [
         {
           "archive": "Pokemon Kaizo.7z",
           "name": "Yellow Kaizo (1.0.4 QOL).gb",
           "console": "Nintendo - Game Boy"
         }
-      ]
+      ],
+      "catalogCounters": {
+        "species": 151,
+        "namedSpecies": 151,
+        "speciesWithStats": 151,
+        "speciesWithSprites": 151,
+        "speciesWithDescriptions": 0,
+        "evolutionEdges": 72,
+        "learnsetEntries": 728,
+        "learnsetRulesets": 1,
+        "moves": 166,
+        "movesWithDetails": 166,
+        "movesWithDescriptions": 0,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 2516,
+        "tutorMoveLinks": 0,
+        "types": 15,
+        "namedTypes": 15,
+        "typesWithSemanticRoles": 15,
+        "typeMatchups": 82,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 66,
+        "movesWithCategories": 166,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "referenceErrorCount": 0
+      },
+      "dexJoinVerified": true,
+      "comparison": {
+        "familyBefore": null,
+        "outcomeBefore": "NO_FAMILY_MATCH",
+        "coverageBefore": null,
+        "regressions": []
+      }
     },
     {
       "name": "Topaz.gba",
@@ -10588,16 +11239,158 @@
     },
     {
       "name": "PureBlue (03.09.26).gbc",
-      "platform": "GBC",
-      "outcome": "NO_FAMILY_MATCH",
-      "evidence": "fresh-delta-scan",
+      "generation": 1,
+      "family": "RED_BLUE",
+      "languageCount": 1,
+      "compatibilityPercent": 75,
+      "capabilities": {
+        "SPECIES_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "SPECIES_TYPES": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "TYPE_CHART": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "BASE_STATS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "SPRITES": {
+          "status": "NOT_FOUND",
+          "confidence": 0
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0
+        },
+        "EVOLUTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "MOVE_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "MOVE_DETAILS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "LEARNSETS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "EGG_MOVES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "MACHINE_MOVES": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "TUTOR_MOVES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "ABILITIES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "ABILITY_MECHANICS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "AREA_ENCOUNTERS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "TYPE_PRESENTATION": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "BALL_CATALOG": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "WORLD_MAP": {
+          "status": "NOT_FOUND",
+          "confidence": 0
+        },
+        "LOCAL_MAP": {
+          "status": "NOT_FOUND",
+          "confidence": 0
+        },
+        "NATURES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        }
+      },
+      "role": "target",
+      "evidence": "fresh-focused-gen1-correction-scan",
+      "sourceCommit": "f5e2a101a20968d5563a5b77e21df2b2132ab9b8",
       "aliases": [
         {
           "archive": "Pokemon PureRGB (v2.7.6).7z",
           "name": "PureBlue (03.09.26).gbc",
           "console": "Nintendo - Game Boy Color"
         }
-      ]
+      ],
+      "catalogCounters": {
+        "species": 151,
+        "namedSpecies": 151,
+        "speciesWithStats": 151,
+        "speciesWithSprites": 0,
+        "speciesWithDescriptions": 0,
+        "evolutionEdges": 76,
+        "learnsetEntries": 1422,
+        "learnsetRulesets": 1,
+        "moves": 165,
+        "movesWithDetails": 165,
+        "movesWithDescriptions": 0,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 3138,
+        "tutorMoveLinks": 0,
+        "types": 21,
+        "namedTypes": 15,
+        "typesWithSemanticRoles": 15,
+        "typeMatchups": 107,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 90,
+        "movesWithCategories": 163,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "referenceErrorCount": 0
+      },
+      "compiledDexJoinVerified": true,
+      "comparison": {
+        "familyBefore": null,
+        "outcomeBefore": "NO_FAMILY_MATCH",
+        "coverageBefore": null,
+        "regressions": []
+      }
     },
     {
       "name": "Ambrosia (v2.9.0).gbc",
@@ -12173,16 +12966,158 @@
     },
     {
       "name": "PureBlue (22.08.26).gbc",
-      "platform": "GBC",
-      "outcome": "NO_FAMILY_MATCH",
-      "evidence": "fresh-delta-scan",
+      "generation": 1,
+      "family": "RED_BLUE",
+      "languageCount": 1,
+      "compatibilityPercent": 75,
+      "capabilities": {
+        "SPECIES_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "SPECIES_TYPES": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "TYPE_CHART": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "BASE_STATS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "SPRITES": {
+          "status": "NOT_FOUND",
+          "confidence": 0
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0
+        },
+        "EVOLUTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "MOVE_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "MOVE_DETAILS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "LEARNSETS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "EGG_MOVES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "MACHINE_MOVES": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "TUTOR_MOVES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "ABILITIES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "ABILITY_MECHANICS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "AREA_ENCOUNTERS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "TYPE_PRESENTATION": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "BALL_CATALOG": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "WORLD_MAP": {
+          "status": "NOT_FOUND",
+          "confidence": 0
+        },
+        "LOCAL_MAP": {
+          "status": "NOT_FOUND",
+          "confidence": 0
+        },
+        "NATURES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        }
+      },
+      "role": "target",
+      "evidence": "fresh-focused-gen1-correction-scan",
+      "sourceCommit": "f5e2a101a20968d5563a5b77e21df2b2132ab9b8",
       "aliases": [
         {
           "archive": "Pokemon PureRGB (22.08.26).7z",
           "name": "PureBlue (22.08.26).gbc",
           "console": "Nintendo - Game Boy"
         }
-      ]
+      ],
+      "catalogCounters": {
+        "species": 151,
+        "namedSpecies": 151,
+        "speciesWithStats": 151,
+        "speciesWithSprites": 0,
+        "speciesWithDescriptions": 0,
+        "evolutionEdges": 76,
+        "learnsetEntries": 1422,
+        "learnsetRulesets": 1,
+        "moves": 165,
+        "movesWithDetails": 165,
+        "movesWithDescriptions": 0,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 3138,
+        "tutorMoveLinks": 0,
+        "types": 21,
+        "namedTypes": 15,
+        "typesWithSemanticRoles": 15,
+        "typeMatchups": 107,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 90,
+        "movesWithCategories": 163,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "referenceErrorCount": 0
+      },
+      "compiledDexJoinVerified": true,
+      "comparison": {
+        "familyBefore": null,
+        "outcomeBefore": "NO_FAMILY_MATCH",
+        "coverageBefore": null,
+        "regressions": []
+      }
     },
     {
       "name": "Ultimate Fusion.gba",
@@ -12768,14 +13703,55 @@
           "confidence": 0
         }
       },
-      "evidence": "inherited-byte-identical",
+      "role": "related-control",
+      "evidence": "fresh-focused-gen1-scan",
+      "sourceCommit": "d61fb188e52f9ef67016ca3e5c6bea581e7c5fa6",
       "aliases": [
         {
           "archive": "Pokemon Kaizo.7z",
           "name": "Red Kaizo (19.06.26).gb",
           "console": "Nintendo - Game Boy"
         }
-      ]
+      ],
+      "catalogCounters": {
+        "species": 151,
+        "namedSpecies": 151,
+        "speciesWithStats": 151,
+        "speciesWithSprites": 151,
+        "speciesWithDescriptions": 151,
+        "evolutionEdges": 72,
+        "learnsetEntries": 728,
+        "learnsetRulesets": 1,
+        "moves": 165,
+        "movesWithDetails": 165,
+        "movesWithDescriptions": 0,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 2394,
+        "tutorMoveLinks": 0,
+        "types": 15,
+        "namedTypes": 15,
+        "typesWithSemanticRoles": 15,
+        "typeMatchups": 82,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 58,
+        "movesWithCategories": 165,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "referenceErrorCount": 0
+      },
+      "comparison": {
+        "familyBefore": "RED_BLUE",
+        "outcomeBefore": "SELECTED",
+        "coverageBefore": 100,
+        "regressions": []
+      }
     },
     {
       "name": "Silver 97 Reforged (v6.1f).gbc",
@@ -14309,16 +15285,158 @@
     },
     {
       "name": "PureGreen (03.09.26).gbc",
-      "platform": "GBC",
-      "outcome": "NO_FAMILY_MATCH",
-      "evidence": "fresh-delta-scan",
+      "generation": 1,
+      "family": "RED_BLUE",
+      "languageCount": 1,
+      "compatibilityPercent": 75,
+      "capabilities": {
+        "SPECIES_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "SPECIES_TYPES": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "TYPE_CHART": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "BASE_STATS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "SPRITES": {
+          "status": "NOT_FOUND",
+          "confidence": 0
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0
+        },
+        "EVOLUTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "MOVE_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "MOVE_DETAILS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "LEARNSETS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "EGG_MOVES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "MACHINE_MOVES": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "TUTOR_MOVES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "ABILITIES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "ABILITY_MECHANICS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "AREA_ENCOUNTERS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "TYPE_PRESENTATION": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "BALL_CATALOG": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "WORLD_MAP": {
+          "status": "NOT_FOUND",
+          "confidence": 0
+        },
+        "LOCAL_MAP": {
+          "status": "NOT_FOUND",
+          "confidence": 0
+        },
+        "NATURES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        }
+      },
+      "role": "target",
+      "evidence": "fresh-focused-gen1-correction-scan",
+      "sourceCommit": "f5e2a101a20968d5563a5b77e21df2b2132ab9b8",
       "aliases": [
         {
           "archive": "Pokemon PureRGB (v2.7.6).7z",
           "name": "PureGreen (03.09.26).gbc",
           "console": "Nintendo - Game Boy Color"
         }
-      ]
+      ],
+      "catalogCounters": {
+        "species": 151,
+        "namedSpecies": 151,
+        "speciesWithStats": 151,
+        "speciesWithSprites": 0,
+        "speciesWithDescriptions": 0,
+        "evolutionEdges": 76,
+        "learnsetEntries": 1422,
+        "learnsetRulesets": 1,
+        "moves": 165,
+        "movesWithDetails": 165,
+        "movesWithDescriptions": 0,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 3138,
+        "tutorMoveLinks": 0,
+        "types": 21,
+        "namedTypes": 15,
+        "typesWithSemanticRoles": 15,
+        "typeMatchups": 107,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 90,
+        "movesWithCategories": 163,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "referenceErrorCount": 0
+      },
+      "compiledDexJoinVerified": true,
+      "comparison": {
+        "familyBefore": null,
+        "outcomeBefore": "NO_FAMILY_MATCH",
+        "coverageBefore": null,
+        "regressions": []
+      }
     },
     {
       "name": "Crippling Medical Debt Edition (v1.1).gba",
@@ -14894,11 +16012,11 @@
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "PARTIAL",
-          "confidence": 0.75
+          "confidence": 0.7526315789473684
         },
         "SPECIES_NAMES": {
           "status": "PARTIAL",
-          "confidence": 0.75
+          "confidence": 0.7526315789473684
         },
         "SPECIES_TYPES": {
           "status": "AVAILABLE",
@@ -14989,14 +16107,55 @@
           "confidence": 0
         }
       },
-      "evidence": "inherited-byte-identical",
+      "role": "related-control",
+      "evidence": "fresh-focused-gen1-scan",
+      "sourceCommit": "d61fb188e52f9ef67016ca3e5c6bea581e7c5fa6",
       "aliases": [
         {
           "archive": "Pokemon Celebrations (25.07.26).7z",
           "name": "Celebrations Green (Gen 2 UI).gbc",
           "console": "Nintendo - Game Boy Color"
         }
-      ]
+      ],
+      "catalogCounters": {
+        "species": 151,
+        "namedSpecies": 111,
+        "speciesWithStats": 151,
+        "speciesWithSprites": 151,
+        "speciesWithDescriptions": 151,
+        "evolutionEdges": 76,
+        "learnsetEntries": 1164,
+        "learnsetRulesets": 1,
+        "moves": 165,
+        "movesWithDetails": 165,
+        "movesWithDescriptions": 0,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 2517,
+        "tutorMoveLinks": 0,
+        "types": 16,
+        "namedTypes": 15,
+        "typesWithSemanticRoles": 15,
+        "typeMatchups": 81,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 63,
+        "movesWithCategories": 165,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "referenceErrorCount": 0
+      },
+      "comparison": {
+        "familyBefore": "RED_BLUE",
+        "outcomeBefore": "SELECTED",
+        "coverageBefore": 91.87,
+        "regressions": []
+      }
     },
     {
       "name": "Too Many Types 2 (v1.5.2).gba",
@@ -16299,16 +17458,158 @@
     },
     {
       "name": "Yellow Kaizo (1.0.4).gb",
-      "platform": "GBC",
-      "outcome": "NO_FAMILY_MATCH",
-      "evidence": "fresh-delta-scan",
+      "generation": 1,
+      "family": "YELLOW",
+      "languageCount": 1,
+      "compatibilityPercent": 87.5,
+      "capabilities": {
+        "SPECIES_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "SPECIES_TYPES": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "TYPE_CHART": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "BASE_STATS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "SPRITES": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0
+        },
+        "EVOLUTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "MOVE_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "MOVE_DETAILS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "LEARNSETS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "EGG_MOVES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "MACHINE_MOVES": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "TUTOR_MOVES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "ABILITIES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "ABILITY_MECHANICS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "AREA_ENCOUNTERS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "TYPE_PRESENTATION": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "BALL_CATALOG": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "WORLD_MAP": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "LOCAL_MAP": {
+          "status": "NOT_FOUND",
+          "confidence": 0
+        },
+        "NATURES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        }
+      },
+      "role": "yellow-target",
+      "evidence": "fresh-focused-yellow-scan",
+      "sourceCommit": "3f2b95e86d4fb84ebec75a06b404827ab819d974",
       "aliases": [
         {
           "archive": "Pokemon Kaizo.7z",
           "name": "Yellow Kaizo (1.0.4).gb",
           "console": "Nintendo - Game Boy"
         }
-      ]
+      ],
+      "catalogCounters": {
+        "species": 151,
+        "namedSpecies": 151,
+        "speciesWithStats": 151,
+        "speciesWithSprites": 151,
+        "speciesWithDescriptions": 0,
+        "evolutionEdges": 72,
+        "learnsetEntries": 728,
+        "learnsetRulesets": 1,
+        "moves": 166,
+        "movesWithDetails": 166,
+        "movesWithDescriptions": 0,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 2516,
+        "tutorMoveLinks": 0,
+        "types": 15,
+        "namedTypes": 15,
+        "typesWithSemanticRoles": 15,
+        "typeMatchups": 82,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 66,
+        "movesWithCategories": 166,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "referenceErrorCount": 0
+      },
+      "dexJoinVerified": true,
+      "comparison": {
+        "familyBefore": null,
+        "outcomeBefore": "NO_FAMILY_MATCH",
+        "coverageBefore": null,
+        "regressions": []
+      }
     },
     {
       "name": "Celia's Stupid Romhack (1.1.4).gba",
@@ -18446,16 +19747,158 @@
     },
     {
       "name": "PureGreen (22.08.26).gbc",
-      "platform": "GBC",
-      "outcome": "NO_FAMILY_MATCH",
-      "evidence": "fresh-delta-scan",
+      "generation": 1,
+      "family": "RED_BLUE",
+      "languageCount": 1,
+      "compatibilityPercent": 75,
+      "capabilities": {
+        "SPECIES_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "SPECIES_TYPES": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "TYPE_CHART": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "BASE_STATS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "SPRITES": {
+          "status": "NOT_FOUND",
+          "confidence": 0
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0
+        },
+        "EVOLUTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "MOVE_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "MOVE_DETAILS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "LEARNSETS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "EGG_MOVES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "MACHINE_MOVES": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "TUTOR_MOVES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "ABILITIES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "ABILITY_MECHANICS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "AREA_ENCOUNTERS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "TYPE_PRESENTATION": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "BALL_CATALOG": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "WORLD_MAP": {
+          "status": "NOT_FOUND",
+          "confidence": 0
+        },
+        "LOCAL_MAP": {
+          "status": "NOT_FOUND",
+          "confidence": 0
+        },
+        "NATURES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        }
+      },
+      "role": "target",
+      "evidence": "fresh-focused-gen1-correction-scan",
+      "sourceCommit": "f5e2a101a20968d5563a5b77e21df2b2132ab9b8",
       "aliases": [
         {
           "archive": "Pokemon PureRGB (22.08.26).7z",
           "name": "PureGreen (22.08.26).gbc",
           "console": "Nintendo - Game Boy"
         }
-      ]
+      ],
+      "catalogCounters": {
+        "species": 151,
+        "namedSpecies": 151,
+        "speciesWithStats": 151,
+        "speciesWithSprites": 0,
+        "speciesWithDescriptions": 0,
+        "evolutionEdges": 76,
+        "learnsetEntries": 1422,
+        "learnsetRulesets": 1,
+        "moves": 165,
+        "movesWithDetails": 165,
+        "movesWithDescriptions": 0,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 3138,
+        "tutorMoveLinks": 0,
+        "types": 21,
+        "namedTypes": 15,
+        "typesWithSemanticRoles": 15,
+        "typeMatchups": 107,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 90,
+        "movesWithCategories": 163,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "referenceErrorCount": 0
+      },
+      "compiledDexJoinVerified": true,
+      "comparison": {
+        "familyBefore": null,
+        "outcomeBefore": "NO_FAMILY_MATCH",
+        "coverageBefore": null,
+        "regressions": []
+      }
     },
     {
       "name": "Scale x Fang (v1.0.2).gba",
@@ -20253,7 +21696,7 @@
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "PARTIAL",
-          "confidence": 0.93
+          "confidence": 0.9337748344370861
         },
         "SPECIES_NAMES": {
           "status": "AVAILABLE",
@@ -20261,7 +21704,7 @@
         },
         "SPECIES_TYPES": {
           "status": "PARTIAL",
-          "confidence": 0.93
+          "confidence": 0.9337748344370861
         },
         "TYPE_CHART": {
           "status": "AVAILABLE",
@@ -20269,7 +21712,7 @@
         },
         "BASE_STATS": {
           "status": "PARTIAL",
-          "confidence": 0.93
+          "confidence": 0.9337748344370861
         },
         "SPRITES": {
           "status": "AVAILABLE",
@@ -20277,7 +21720,7 @@
         },
         "POKEDEX_DESCRIPTIONS": {
           "status": "PARTIAL",
-          "confidence": 0.98
+          "confidence": 0.9844559585492227
         },
         "EVOLUTIONS": {
           "status": "AVAILABLE",
@@ -20289,7 +21732,7 @@
         },
         "MOVE_DETAILS": {
           "status": "PARTIAL",
-          "confidence": 0.97
+          "confidence": 0.9665271966527197
         },
         "MOVE_DESCRIPTIONS": {
           "status": "NOT_APPLICABLE",
@@ -20348,14 +21791,55 @@
           "confidence": 0
         }
       },
-      "evidence": "inherited-byte-identical",
+      "role": "related-control",
+      "evidence": "fresh-focused-yellow-scan",
+      "sourceCommit": "3f2b95e86d4fb84ebec75a06b404827ab819d974",
       "aliases": [
         {
           "archive": "Pokemon Nova.7z",
           "name": "Nova (v1.0.2).gb",
           "console": "Nintendo - Game Boy"
         }
-      ]
+      ],
+      "catalogCounters": {
+        "species": 193,
+        "namedSpecies": 193,
+        "speciesWithStats": 141,
+        "speciesWithSprites": 151,
+        "speciesWithDescriptions": 190,
+        "evolutionEdges": 110,
+        "learnsetEntries": 2134,
+        "learnsetRulesets": 1,
+        "moves": 239,
+        "movesWithDetails": 239,
+        "movesWithDescriptions": 0,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 3184,
+        "tutorMoveLinks": 0,
+        "types": 19,
+        "namedTypes": 15,
+        "typesWithSemanticRoles": 15,
+        "typeMatchups": 133,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 84,
+        "movesWithCategories": 232,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "referenceErrorCount": 0
+      },
+      "comparison": {
+        "familyBefore": "RED_BLUE",
+        "outcomeBefore": "SELECTED",
+        "coverageBefore": 98.45,
+        "regressions": []
+      }
     },
     {
       "name": "AshGray - Newerest Edition (v1.0).gba",
@@ -20957,16 +22441,158 @@
     },
     {
       "name": "Yellow Legacy+ (08.09.25).gb",
-      "platform": "GBC",
-      "outcome": "NO_FAMILY_MATCH",
-      "evidence": "inherited-byte-identical",
+      "generation": 1,
+      "family": "YELLOW",
+      "languageCount": 1,
+      "compatibilityPercent": 100,
+      "capabilities": {
+        "SPECIES_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "SPECIES_TYPES": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "TYPE_CHART": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "BASE_STATS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "SPRITES": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "EVOLUTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "MOVE_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "MOVE_DETAILS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "LEARNSETS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "EGG_MOVES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "MACHINE_MOVES": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "TUTOR_MOVES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "ABILITIES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "ABILITY_MECHANICS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "AREA_ENCOUNTERS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "TYPE_PRESENTATION": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "BALL_CATALOG": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "WORLD_MAP": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "LOCAL_MAP": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "NATURES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        }
+      },
+      "role": "yellow-target",
+      "evidence": "fresh-focused-yellow-scan",
+      "sourceCommit": "3f2b95e86d4fb84ebec75a06b404827ab819d974",
       "aliases": [
         {
           "archive": "Pokemon Yellow Legacy (17.03.26).7z",
           "name": "Yellow Legacy+ (08.09.25).gb",
           "console": "Nintendo - Game Boy"
         }
-      ]
+      ],
+      "catalogCounters": {
+        "species": 151,
+        "namedSpecies": 151,
+        "speciesWithStats": 151,
+        "speciesWithSprites": 151,
+        "speciesWithDescriptions": 151,
+        "evolutionEdges": 72,
+        "learnsetEntries": 1161,
+        "learnsetRulesets": 1,
+        "moves": 165,
+        "movesWithDetails": 165,
+        "movesWithDescriptions": 0,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 2501,
+        "tutorMoveLinks": 0,
+        "types": 16,
+        "namedTypes": 15,
+        "typesWithSemanticRoles": 15,
+        "typeMatchups": 81,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 63,
+        "movesWithCategories": 165,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "referenceErrorCount": 0
+      },
+      "dexJoinVerified": true,
+      "comparison": {
+        "familyBefore": null,
+        "outcomeBefore": "NO_FAMILY_MATCH",
+        "coverageBefore": null,
+        "regressions": []
+      }
     },
     {
       "name": "Grand Dad Version.gba",
@@ -23090,7 +24716,9 @@
           "confidence": 0
         }
       },
-      "evidence": "fresh-delta-scan",
+      "role": "related-control",
+      "evidence": "fresh-focused-yellow-scan",
+      "sourceCommit": "3f2b95e86d4fb84ebec75a06b404827ab819d974",
       "aliases": [
         {
           "archive": "Pokemon Static Yellow (11.08.26).7z",
@@ -23125,6 +24753,17 @@
         "movesWithCategories": 165,
         "abilitiesWithProvenTypedModifiers": 0,
         "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "referenceErrorCount": 0
+      },
+      "comparison": {
+        "familyBefore": "YELLOW",
+        "outcomeBefore": "SELECTED",
+        "coverageBefore": 87.5,
+        "regressions": []
       }
     },
     {
@@ -23255,16 +24894,158 @@
     },
     {
       "name": "Yellow Legacy (17.03.26).gb",
-      "platform": "GBC",
-      "outcome": "NO_FAMILY_MATCH",
-      "evidence": "inherited-byte-identical",
+      "generation": 1,
+      "family": "YELLOW",
+      "languageCount": 1,
+      "compatibilityPercent": 100,
+      "capabilities": {
+        "SPECIES_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "SPECIES_TYPES": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "TYPE_CHART": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "BASE_STATS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "SPRITES": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "EVOLUTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "MOVE_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "MOVE_DETAILS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "LEARNSETS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "EGG_MOVES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "MACHINE_MOVES": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "TUTOR_MOVES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "ABILITIES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "ABILITY_MECHANICS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "AREA_ENCOUNTERS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "TYPE_PRESENTATION": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "BALL_CATALOG": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "WORLD_MAP": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "LOCAL_MAP": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "NATURES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        }
+      },
+      "role": "yellow-target",
+      "evidence": "fresh-focused-yellow-scan",
+      "sourceCommit": "3f2b95e86d4fb84ebec75a06b404827ab819d974",
       "aliases": [
         {
           "archive": "Pokemon Yellow Legacy (17.03.26).7z",
           "name": "Yellow Legacy (17.03.26).gb",
           "console": "Nintendo - Game Boy"
         }
-      ]
+      ],
+      "catalogCounters": {
+        "species": 151,
+        "namedSpecies": 151,
+        "speciesWithStats": 151,
+        "speciesWithSprites": 151,
+        "speciesWithDescriptions": 151,
+        "evolutionEdges": 72,
+        "learnsetEntries": 1161,
+        "learnsetRulesets": 1,
+        "moves": 165,
+        "movesWithDetails": 165,
+        "movesWithDescriptions": 0,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 2501,
+        "tutorMoveLinks": 0,
+        "types": 16,
+        "namedTypes": 15,
+        "typesWithSemanticRoles": 15,
+        "typeMatchups": 81,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 63,
+        "movesWithCategories": 165,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "referenceErrorCount": 0
+      },
+      "dexJoinVerified": true,
+      "comparison": {
+        "familyBefore": null,
+        "outcomeBefore": "NO_FAMILY_MATCH",
+        "coverageBefore": null,
+        "regressions": []
+      }
     },
     {
       "name": "Fire Red Backwards Edition.gba",
@@ -24053,7 +25834,9 @@
           "confidence": 0
         }
       },
-      "evidence": "fresh-delta-scan",
+      "role": "related-control",
+      "evidence": "fresh-focused-gen1-scan",
+      "sourceCommit": "d61fb188e52f9ef67016ca3e5c6bea581e7c5fa6",
       "aliases": [
         {
           "archive": "Pokemon Intense Indigo (04.08.26).7z",
@@ -24088,6 +25871,17 @@
         "movesWithCategories": 165,
         "abilitiesWithProvenTypedModifiers": 0,
         "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "referenceErrorCount": 0
+      },
+      "comparison": {
+        "familyBefore": "RED_BLUE",
+        "outcomeBefore": "SELECTED",
+        "coverageBefore": 99.34,
+        "regressions": []
       }
     },
     {
@@ -24772,7 +26566,9 @@
           "confidence": 0
         }
       },
-      "evidence": "fresh-delta-scan",
+      "role": "related-control",
+      "evidence": "fresh-focused-gen1-scan",
+      "sourceCommit": "d61fb188e52f9ef67016ca3e5c6bea581e7c5fa6",
       "aliases": [
         {
           "archive": "Pokemon Intense Indigo (04.08.26).7z",
@@ -24807,6 +26603,17 @@
         "movesWithCategories": 165,
         "abilitiesWithProvenTypedModifiers": 0,
         "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "referenceErrorCount": 0
+      },
+      "comparison": {
+        "familyBefore": "RED_BLUE",
+        "outcomeBefore": "SELECTED",
+        "coverageBefore": 99.34,
+        "regressions": []
       }
     },
     {
@@ -26094,14 +27901,55 @@
           "confidence": 0
         }
       },
-      "evidence": "inherited-byte-identical",
+      "role": "related-control",
+      "evidence": "fresh-focused-yellow-scan",
+      "sourceCommit": "3f2b95e86d4fb84ebec75a06b404827ab819d974",
       "aliases": [
         {
           "archive": "Pokemon Pink.7z",
           "name": "Pink (v1.0.7).gb",
           "console": "Nintendo - Game Boy"
         }
-      ]
+      ],
+      "catalogCounters": {
+        "species": 151,
+        "namedSpecies": 151,
+        "speciesWithStats": 151,
+        "speciesWithSprites": 151,
+        "speciesWithDescriptions": 151,
+        "evolutionEdges": 76,
+        "learnsetEntries": 765,
+        "learnsetRulesets": 1,
+        "moves": 165,
+        "movesWithDetails": 165,
+        "movesWithDescriptions": 0,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 2444,
+        "tutorMoveLinks": 0,
+        "types": 15,
+        "namedTypes": 15,
+        "typesWithSemanticRoles": 15,
+        "typeMatchups": 82,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 63,
+        "movesWithCategories": 165,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "referenceErrorCount": 0
+      },
+      "comparison": {
+        "familyBefore": "YELLOW",
+        "outcomeBefore": "SELECTED",
+        "coverageBefore": 100,
+        "regressions": []
+      }
     },
     {
       "name": "Lugias Ocean.gba",
@@ -26572,14 +28420,55 @@
           "confidence": 0
         }
       },
-      "evidence": "inherited-byte-identical",
+      "role": "related-control",
+      "evidence": "fresh-focused-gen1-scan",
+      "sourceCommit": "d61fb188e52f9ef67016ca3e5c6bea581e7c5fa6",
       "aliases": [
         {
           "archive": "Pokemon Shin.7z",
           "name": "Shin Green (18.03.26).gb",
           "console": "Nintendo - Game Boy"
         }
-      ]
+      ],
+      "catalogCounters": {
+        "species": 151,
+        "namedSpecies": 151,
+        "speciesWithStats": 151,
+        "speciesWithSprites": 151,
+        "speciesWithDescriptions": 151,
+        "evolutionEdges": 76,
+        "learnsetEntries": 831,
+        "learnsetRulesets": 1,
+        "moves": 165,
+        "movesWithDetails": 165,
+        "movesWithDescriptions": 0,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 2444,
+        "tutorMoveLinks": 0,
+        "types": 16,
+        "namedTypes": 15,
+        "typesWithSemanticRoles": 15,
+        "typeMatchups": 82,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 58,
+        "movesWithCategories": 165,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "referenceErrorCount": 0
+      },
+      "comparison": {
+        "familyBefore": "RED_BLUE",
+        "outcomeBefore": "SELECTED",
+        "coverageBefore": 100,
+        "regressions": []
+      }
     },
     {
       "name": "Celebrations Green.gb",
@@ -26590,7 +28479,7 @@
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "PARTIAL",
-          "confidence": 0.75
+          "confidence": 0.7526315789473684
         },
         "SPECIES_NAMES": {
           "status": "NOT_FOUND",
@@ -26685,14 +28574,55 @@
           "confidence": 0
         }
       },
-      "evidence": "inherited-byte-identical",
+      "role": "related-control",
+      "evidence": "fresh-focused-gen1-scan",
+      "sourceCommit": "d61fb188e52f9ef67016ca3e5c6bea581e7c5fa6",
       "aliases": [
         {
           "archive": "Pokemon Celebrations.7z",
           "name": "Celebrations Green.gb",
           "console": "Nintendo - Game Boy"
         }
-      ]
+      ],
+      "catalogCounters": {
+        "species": 151,
+        "namedSpecies": 0,
+        "speciesWithStats": 151,
+        "speciesWithSprites": 151,
+        "speciesWithDescriptions": 0,
+        "evolutionEdges": 76,
+        "learnsetEntries": 1164,
+        "learnsetRulesets": 1,
+        "moves": 165,
+        "movesWithDetails": 165,
+        "movesWithDescriptions": 0,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 2517,
+        "tutorMoveLinks": 0,
+        "types": 16,
+        "namedTypes": 0,
+        "typesWithSemanticRoles": 0,
+        "typeMatchups": 81,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 63,
+        "movesWithCategories": 165,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "referenceErrorCount": 0
+      },
+      "comparison": {
+        "familyBefore": "RED_BLUE",
+        "outcomeBefore": "SELECTED",
+        "coverageBefore": 77.48,
+        "regressions": []
+      }
     },
     {
       "name": "Blue (Yellow Colors Backport & CrysAudio) (19.06.26).gb",
@@ -31561,16 +33491,158 @@
     },
     {
       "name": "PureRed (22.08.26).gbc",
-      "platform": "GBC",
-      "outcome": "NO_FAMILY_MATCH",
-      "evidence": "fresh-delta-scan",
+      "generation": 1,
+      "family": "RED_BLUE",
+      "languageCount": 1,
+      "compatibilityPercent": 75,
+      "capabilities": {
+        "SPECIES_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "SPECIES_TYPES": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "TYPE_CHART": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "BASE_STATS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "SPRITES": {
+          "status": "NOT_FOUND",
+          "confidence": 0
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0
+        },
+        "EVOLUTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "MOVE_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "MOVE_DETAILS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "LEARNSETS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "EGG_MOVES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "MACHINE_MOVES": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "TUTOR_MOVES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "ABILITIES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "ABILITY_MECHANICS": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "AREA_ENCOUNTERS": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "TYPE_PRESENTATION": {
+          "status": "AVAILABLE",
+          "confidence": 1
+        },
+        "BALL_CATALOG": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        },
+        "WORLD_MAP": {
+          "status": "NOT_FOUND",
+          "confidence": 0
+        },
+        "LOCAL_MAP": {
+          "status": "NOT_FOUND",
+          "confidence": 0
+        },
+        "NATURES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 0
+        }
+      },
+      "role": "target",
+      "evidence": "fresh-focused-gen1-correction-scan",
+      "sourceCommit": "f5e2a101a20968d5563a5b77e21df2b2132ab9b8",
       "aliases": [
         {
           "archive": "Pokemon PureRGB (22.08.26).7z",
           "name": "PureRed (22.08.26).gbc",
           "console": "Nintendo - Game Boy"
         }
-      ]
+      ],
+      "catalogCounters": {
+        "species": 151,
+        "namedSpecies": 151,
+        "speciesWithStats": 151,
+        "speciesWithSprites": 0,
+        "speciesWithDescriptions": 0,
+        "evolutionEdges": 76,
+        "learnsetEntries": 1422,
+        "learnsetRulesets": 1,
+        "moves": 165,
+        "movesWithDetails": 165,
+        "movesWithDescriptions": 0,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 3138,
+        "tutorMoveLinks": 0,
+        "types": 21,
+        "namedTypes": 15,
+        "typesWithSemanticRoles": 15,
+        "typeMatchups": 107,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 90,
+        "movesWithCategories": 163,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "referenceErrorCount": 0
+      },
+      "compiledDexJoinVerified": true,
+      "comparison": {
+        "familyBefore": null,
+        "outcomeBefore": "NO_FAMILY_MATCH",
+        "coverageBefore": null,
+        "regressions": []
+      }
     },
     {
       "name": "Red++ (Hard Mode) (v3.0).gb",
@@ -31581,7 +33653,7 @@
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "PARTIAL",
-          "confidence": 0.97
+          "confidence": 0.9668874172185431
         },
         "SPECIES_NAMES": {
           "status": "AVAILABLE",
@@ -31589,7 +33661,7 @@
         },
         "SPECIES_TYPES": {
           "status": "PARTIAL",
-          "confidence": 0.97
+          "confidence": 0.9668874172185431
         },
         "TYPE_CHART": {
           "status": "AVAILABLE",
@@ -31597,7 +33669,7 @@
         },
         "BASE_STATS": {
           "status": "PARTIAL",
-          "confidence": 0.97
+          "confidence": 0.9668874172185431
         },
         "SPRITES": {
           "status": "AVAILABLE",
@@ -31609,7 +33681,7 @@
         },
         "EVOLUTIONS": {
           "status": "PARTIAL",
-          "confidence": 0.94
+          "confidence": 0.9423076923076923
         },
         "MOVE_CATALOG": {
           "status": "AVAILABLE",
@@ -31617,7 +33689,7 @@
         },
         "MOVE_DETAILS": {
           "status": "PARTIAL",
-          "confidence": 0.98
+          "confidence": 0.9762845849802372
         },
         "MOVE_DESCRIPTIONS": {
           "status": "NOT_APPLICABLE",
@@ -31625,7 +33697,7 @@
         },
         "LEARNSETS": {
           "status": "PARTIAL",
-          "confidence": 0.94
+          "confidence": 0.9423076923076923
         },
         "EGG_MOVES": {
           "status": "NOT_APPLICABLE",
@@ -31676,14 +33748,55 @@
           "confidence": 0
         }
       },
-      "evidence": "inherited-byte-identical",
+      "role": "related-control",
+      "evidence": "fresh-focused-gen1-scan",
+      "sourceCommit": "d61fb188e52f9ef67016ca3e5c6bea581e7c5fa6",
       "aliases": [
         {
           "archive": "Pokemon Red++ (v3.0).7z",
           "name": "Red++ (Hard Mode) (v3.0).gb",
           "console": "Nintendo - Game Boy"
         }
-      ]
+      ],
+      "catalogCounters": {
+        "species": 208,
+        "namedSpecies": 208,
+        "speciesWithStats": 146,
+        "speciesWithSprites": 151,
+        "speciesWithDescriptions": 208,
+        "evolutionEdges": 97,
+        "learnsetEntries": 2968,
+        "learnsetRulesets": 1,
+        "moves": 253,
+        "movesWithDetails": 253,
+        "movesWithDescriptions": 0,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 3372,
+        "tutorMoveLinks": 0,
+        "types": 19,
+        "namedTypes": 15,
+        "typesWithSemanticRoles": 15,
+        "typeMatchups": 120,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 73,
+        "movesWithCategories": 248,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "referenceErrorCount": 0
+      },
+      "comparison": {
+        "familyBefore": "RED_BLUE",
+        "outcomeBefore": "SELECTED",
+        "coverageBefore": 92.26,
+        "regressions": []
+      }
     },
     {
       "name": "Chaos Black (Fixed) (v3.1).gba",
@@ -31807,7 +33920,7 @@
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "PARTIAL",
-          "confidence": 0.97
+          "confidence": 0.9668874172185431
         },
         "SPECIES_NAMES": {
           "status": "AVAILABLE",
@@ -31815,7 +33928,7 @@
         },
         "SPECIES_TYPES": {
           "status": "PARTIAL",
-          "confidence": 0.97
+          "confidence": 0.9668874172185431
         },
         "TYPE_CHART": {
           "status": "AVAILABLE",
@@ -31823,7 +33936,7 @@
         },
         "BASE_STATS": {
           "status": "PARTIAL",
-          "confidence": 0.97
+          "confidence": 0.9668874172185431
         },
         "SPRITES": {
           "status": "AVAILABLE",
@@ -31835,7 +33948,7 @@
         },
         "EVOLUTIONS": {
           "status": "PARTIAL",
-          "confidence": 0.94
+          "confidence": 0.9423076923076923
         },
         "MOVE_CATALOG": {
           "status": "AVAILABLE",
@@ -31843,7 +33956,7 @@
         },
         "MOVE_DETAILS": {
           "status": "PARTIAL",
-          "confidence": 0.98
+          "confidence": 0.9762845849802372
         },
         "MOVE_DESCRIPTIONS": {
           "status": "NOT_APPLICABLE",
@@ -31851,7 +33964,7 @@
         },
         "LEARNSETS": {
           "status": "PARTIAL",
-          "confidence": 0.94
+          "confidence": 0.9423076923076923
         },
         "EGG_MOVES": {
           "status": "NOT_APPLICABLE",
@@ -31902,14 +34015,55 @@
           "confidence": 0
         }
       },
-      "evidence": "inherited-byte-identical",
+      "role": "related-control",
+      "evidence": "fresh-focused-gen1-scan",
+      "sourceCommit": "d61fb188e52f9ef67016ca3e5c6bea581e7c5fa6",
       "aliases": [
         {
           "archive": "Pokemon Red++ (v3.0).7z",
           "name": "Red++ (v3.0).gb",
           "console": "Nintendo - Game Boy"
         }
-      ]
+      ],
+      "catalogCounters": {
+        "species": 208,
+        "namedSpecies": 208,
+        "speciesWithStats": 146,
+        "speciesWithSprites": 151,
+        "speciesWithDescriptions": 208,
+        "evolutionEdges": 97,
+        "learnsetEntries": 2968,
+        "learnsetRulesets": 1,
+        "moves": 253,
+        "movesWithDetails": 253,
+        "movesWithDescriptions": 0,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 3372,
+        "tutorMoveLinks": 0,
+        "types": 19,
+        "namedTypes": 15,
+        "typesWithSemanticRoles": 15,
+        "typeMatchups": 120,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 0,
+        "encounterAreas": 73,
+        "movesWithCategories": 248,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserError": false,
+        "catalogError": false,
+        "referenceErrorCount": 0
+      },
+      "comparison": {
+        "familyBefore": "RED_BLUE",
+        "outcomeBefore": "SELECTED",
+        "coverageBefore": 92.26,
+        "regressions": []
+      }
     },
     {
       "name": "Static Yellow (11.08.26).gb",
@@ -34232,5 +36386,35 @@
     },
     "rawReportSha256": "a8cf5fd22a56c9bbd9b0ed315b8741e248b41073bb9912901bdbe85c69aae160",
     "inputCount": 46
+  },
+  "originalInventoryEvidence": {
+    "baselineInheritedIdentities": 296,
+    "freshDeltaIdentities": 46,
+    "summary": {
+      "inputCount": 342,
+      "selectedCount": 286,
+      "ambiguousCount": 2,
+      "noFamilyMatchCount": 54,
+      "errorCount": 0,
+      "resolvedLanguageManifests": 271,
+      "unknownLanguageManifests": 15,
+      "multilingualCount": 0
+    }
+  },
+  "retainedInheritedIdentities": 277,
+  "retainedDeltaIdentities": 35,
+  "focusedIdentities": 30,
+  "focusedUpdate": {
+    "acceptance": "2026-10-03-gen1-core-acceptance.json",
+    "sourceRows": {
+      "f5e2a101a20968d5563a5b77e21df2b2132ab9b8": 6,
+      "3f2b95e86d4fb84ebec75a06b404827ab819d974": 9,
+      "d61fb188e52f9ef67016ca3e5c6bea581e7c5fa6": 15
+    },
+    "distinctIdentities": 30,
+    "parserExecutions": 48,
+    "newlySelectedIdentities": 10,
+    "persistenceReopenValidation": "NOT_RUN",
+    "fullCorpusRerun": false
   }
 }

@@ -2,15 +2,15 @@
 
 This document lists all 342 deduplicated ROM identities in the October 3, 2026 current library snapshot. Routed ROMs are grouped by generation and detected engine family; a row describes the scanned build named in the **ROM** column, not every release of that project.
 
-Capability percentages are parser confidence derived from bounded structural evidence. They are not a probability that every feature behaves exactly as the ROM author intended. Unless separately identified by a live test, these rows are static parser and persisted-catalog observations.
+Capability percentages are parser confidence derived from bounded structural evidence. They are not a probability that every feature behaves exactly as the ROM author intended. Unless separately identified by a live test, these rows are static catalog observations. The focused Gen I updates validate in-memory materialization, not persistence/reopen or live Android behavior.
 
 - Inputs: **342**
-- Detected family and catalog: **286**
-- Resolved ROM-language manifests: **271**
+- Detected family and catalog: **296**
+- Resolved ROM-language manifests: **281**
 - Resolved manifests reporting more than one language: **0**
 - Unknown ROM-language manifests: **15**
 - Ambiguous family: **2**
-- No family match: **54**
+- No family match: **44**
 - Parser errors: **0**
 
 The **Languages** column is the number of parser-proven ROM-content projections. `?` means the parser could not establish language authority. It does not assume that every resolved ROM supports English.
@@ -50,8 +50,8 @@ Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for 
 
 | Generation | Detected family | ROM inputs | Average coverage | Multilingual manifests |
 |---:|---|---:|---:|---:|
-| 1 | Red/Blue family | 89 | 95.01% | 0 |
-| 1 | Yellow family | 4 | 93.48% | 0 |
+| 1 | Red/Blue family | 95 | 93.74% | 0 |
+| 1 | Yellow family | 8 | 93.61% | 0 |
 | 2 | Gold/Silver family | 3 | 96.30% | 0 |
 | 2 | Crystal family | 12 | 70.99% | 0 |
 | 3 | Ruby/Sapphire family | 15 | 91.80% | 0 |
@@ -62,7 +62,7 @@ Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for 
 
 ### Red/Blue family
 
-<details><summary>89 ROM inputs</summary>
+<details><summary>95 ROM inputs</summary>
 
 | ROM | Languages | Coverage | Species | Names | Types | Chart | Stats | Sprites | Dex text | Evos | Moves | Move data | Move text | Learnsets | Egg | Machines | Tutors | Abilities | Ability text | Ability logic | Encounters | Type UI | Balls | World map | Local maps | Natures |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -139,6 +139,12 @@ Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for 
 | Intense IndigoLite (Red) (28.07.26).gb | 1 | 99.50% | P 97% | 100% | P 97% | 100% | P 97% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
 | Intense IndigoLite (Red).gbc | 1 | 99.50% | P 97% | 100% | P 97% | 100% | P 97% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
 | Nova (v1.0.2).gb | 1 | 98.45% | P 93% | 100% | P 93% | 100% | P 93% | 100% | P 98% | 100% | 100% | P 97% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| PureBlue (03.09.26).gbc | 1 | 75.00% | 100% | 100% | 100% | 100% | 100% | 0% | 0% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 0% | 0% | N/A |
+| PureBlue (22.08.26).gbc | 1 | 75.00% | 100% | 100% | 100% | 100% | 100% | 0% | 0% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 0% | 0% | N/A |
+| PureGreen (03.09.26).gbc | 1 | 75.00% | 100% | 100% | 100% | 100% | 100% | 0% | 0% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 0% | 0% | N/A |
+| PureGreen (22.08.26).gbc | 1 | 75.00% | 100% | 100% | 100% | 100% | 100% | 0% | 0% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 0% | 0% | N/A |
+| PureRed (03.09.26).gbc | 1 | 75.00% | 100% | 100% | 100% | 100% | 100% | 0% | 0% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 0% | 0% | N/A |
+| PureRed (22.08.26).gbc | 1 | 75.00% | 100% | 100% | 100% | 100% | 100% | 0% | 0% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 0% | 0% | N/A |
 | Red (Gen 2 & CrysAudio) (19.06.26).gb | 1 | 99.83% | P 99% | 100% | P 99% | 100% | P 99% | P 99% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
 | Red (Gen 2) (19.06.26).gb | 1 | 99.83% | P 99% | 100% | P 99% | 100% | P 99% | P 99% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
 | Red (Yellow Backport) (04.07.26).gbc | 1 | 100.00% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
@@ -160,7 +166,7 @@ Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for 
 
 ### Yellow family
 
-<details><summary>4 ROM inputs</summary>
+<details><summary>8 ROM inputs</summary>
 
 | ROM | Languages | Coverage | Species | Names | Types | Chart | Stats | Sprites | Dex text | Evos | Moves | Move data | Move text | Learnsets | Egg | Machines | Tutors | Abilities | Ability text | Ability logic | Encounters | Type UI | Balls | World map | Local maps | Natures |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -168,6 +174,10 @@ Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for 
 | Static Yellow (11.08.26).gb | 1 | 87.50% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
 | Static Yellow (Gen 1) (v1.6.4).gb | 1 | 87.50% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
 | Unova Red (18.03.25).gb | 1 | 98.91% | 100% | 100% | 100% | 100% | 100% | 100% | P 83% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Yellow Kaizo (1.0.4 QOL).gb | 1 | 87.50% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Yellow Kaizo (1.0.4).gb | 1 | 87.50% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Yellow Legacy (17.03.26).gb | 1 | 100.00% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Yellow Legacy+ (08.09.25).gb | 1 | 100.00% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
 
 </details>
 
@@ -460,24 +470,16 @@ These inputs remain in the 342-ROM denominator but do not have a selected family
 | Peridot Version (v2.3.0).gbc | GBC | No family match |
 | Polished Crystal (14.09.26).gbc | GBC | No family match |
 | Prism (v0.95.0254).gbc | GBC | No family match |
-| PureBlue (03.09.26).gbc | GBC | No family match |
-| PureBlue (22.08.26).gbc | GBC | No family match |
-| PureGreen (03.09.26).gbc | GBC | No family match |
-| PureGreen (22.08.26).gbc | GBC | No family match |
-| PureRed (03.09.26).gbc | GBC | No family match |
-| PureRed (22.08.26).gbc | GBC | No family match |
 | Sour Crystal (v7.0a).gbc | GBC | No family match |
 | TCG - Generations (1.7.2b).gbc | GBC | No family match |
 | TCG - Neo (Legacy) (v1.43).gbc | GBC | No family match |
 | TCG - Neo (v1.43).gbc | GBC | No family match |
-| Yellow Kaizo (1.0.4 QOL).gb | GBC | No family match |
-| Yellow Kaizo (1.0.4).gb | GBC | No family match |
-| Yellow Legacy (17.03.26).gb | GBC | No family match |
-| Yellow Legacy+ (08.09.25).gb | GBC | No family match |
 | Harvestcraft (v2.0).gba | UNKNOWN | No family match |
 
 ## Evidence and privacy
 
-This is a composite static report, not a new full-corpus run. **46** changed identities were freshly scanned with parser schema 16 at source commit `a306bffd64dfb50d81076a91657bb76c1f8e9617`. **296** unchanged identities inherit the September 14 capability cells and coverage after byte-identity verification. Parser, catalog, and report-calculation code did not change between the baseline and delta scan. Alias bundles are collapsed by identity and are listed in the [machine-readable evidence](2026-10-03-library-compatibility.json). Inherited confidence cells retain the original published integer rounding; coverage retains its original two-decimal score.
+This is a composite snapshot, not a new full-corpus run. The original library refresh parsed 46 changed identities and inherited 296 byte-identical historical rows. The [focused Gen I acceptance](2026-10-03-gen1-core-acceptance.md) supersedes 30 rows using three source-bound runs (48 executions, 30 distinct identities), adding ten selected catalogs. The effective evidence split is 277 inherited historical rows, 35 retained delta rows, and 30 focused Gen I rows.
 
-The current snapshot has its own [identity authority](../../../release/current-library-corpus.json). The [333-input release matrix](../../rom-compatibility-matrix.md) and the stable-release canonical identity remain frozen historical evidence. Counts in this document do not imply a new APK release or live validation. No ROM bytes, decoded bulk data, source paths, saves, or parser diagnostics are published.
+Focused row provenance is 15 unaffected controls at `d61fb188`, six corrected PureRGB/control rows at `f5e2a101`, and nine Yellow/latest-control rows at `3f2b95e8`. Initial incorrect PureRGB joins and sprite regressions are not accepted evidence. These rows were not all scanned against the final source checkpoint. [Machine-readable evidence](2026-10-03-library-compatibility.json) retains aliases, per-row sources, and the original delta receipt; [focused receipts and counters](2026-10-03-gen1-core-acceptance.json) bind the affected cohorts.
+
+The current snapshot has its own [identity authority](../../../release/current-library-corpus.json). The [333-input release matrix](../../rom-compatibility-matrix.md) and stable-release canonical identity remain frozen. No APK was built or released; no new persistence, SaveRAM, live-WRAM, or Android acceptance is claimed. No ROM bytes, decoded bulk data, private source paths, saves, or parser diagnostics are published.
