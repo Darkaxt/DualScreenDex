@@ -36,7 +36,7 @@ internal object Gen1CompiledNameResolver {
                 bankLocalConsumerAt(rom, target.offset, count, codec)?.let(::add)
             }
             var offset = 0
-            while (offset + CONSUMER_BYTES <= scanEnd) {
+            while (offset + MIN_CONSUMER_BYTES <= scanEnd) {
                 cancellation.throwIfCancellationRequested()
                 parseConsumerAt(rom, offset, count, codec)?.let(::add)
                 offset++
@@ -88,6 +88,10 @@ internal object Gen1CompiledNameResolver {
         codec: PokemonTextCodec,
     ): TableLayout? = runCatching {
         val recordSize = rom.u8(offset + 19)
+        val restartCopy = rom.u8(offset + 32) != CALL
+        val copyBytes = if (restartCopy) 1 else 3
+        val suffix = offset + 32 + copyBytes
+        if (suffix + 14 > minOf(BANK_BYTES, rom.size)) return@runCatching null
         if (
             rom.u8(offset) != PUSH_HL || rom.u8(offset + 1) != LOAD_A_HIGH ||
             rom.u8(offset + 3) != PUSH_AF || rom.u8(offset + 4) != LOAD_A_IMMEDIATE ||
@@ -99,26 +103,41 @@ internal object Gen1CompiledNameResolver {
             rom.u8(offset + 21) != 0 || rom.u8(offset + 22) != CALL ||
             rom.u8(offset + 25) != LOAD_DE_IMMEDIATE || rom.u8(offset + 28) != PUSH_DE ||
             rom.u8(offset + 29) != LOAD_BC_IMMEDIATE || rom.u16le(offset + 30) != recordSize ||
-            rom.u8(offset + 32) != CALL || rom.u8(offset + 35) != LOAD_HL_IMMEDIATE ||
-            rom.u16le(offset + 36) != ((rom.u16le(offset + 26) + recordSize) and 0xffff) ||
-            rom.u8(offset + 38) != STORE_IMMEDIATE_HL ||
-            rom.u8(offset + 39) != codec.terminator ||
-            rom.u8(offset + 40) != POP_DE || rom.u8(offset + 41) != POP_AF ||
-            rom.u8(offset + 42) != STORE_A_HIGH || rom.u8(offset + 43) != rom.u8(offset + 2) ||
-            rom.u8(offset + 44) != STORE_A_ABSOLUTE ||
-            rom.u16le(offset + 45) != rom.u16le(offset + 9) ||
-            rom.u8(offset + 47) != POP_HL || rom.u8(offset + 48) != RETURN
+            restartCopy && !GbCompiledBankCalls.restartCopy(rom, rom.u8(offset + 32)) ||
+            rom.u8(suffix) != LOAD_HL_IMMEDIATE ||
+            rom.u16le(suffix + 1) != ((rom.u16le(offset + 26) + recordSize) and 0xffff) ||
+            rom.u8(suffix + 3) != STORE_IMMEDIATE_HL ||
+            rom.u8(suffix + 4) != codec.terminator ||
+            rom.u8(suffix + 5) != POP_DE || rom.u8(suffix + 6) != POP_AF ||
+            rom.u8(suffix + 7) != STORE_A_HIGH || rom.u8(suffix + 8) != rom.u8(offset + 2) ||
+            rom.u8(suffix + 9) != STORE_A_ABSOLUTE ||
+            rom.u16le(suffix + 10) != rom.u16le(offset + 9) ||
+            rom.u8(suffix + 12) != POP_HL || rom.u8(suffix + 13) != RETURN
         ) return@runCatching null
 
         val bank = rom.u8(offset + 5)
-        val root = rom.gbBankAddress(bank, rom.u16le(offset + 16)) ?: return@runCatching null
+        val address = rom.u16le(offset + 16)
+        val destination = rom.u16le(offset + 26)
+        if (restartCopy && (
+            bank <= 0 || address !in 0x4000..0x7FFF || rom.u8(offset + 2) !in 0x80..0xFE ||
+            rom.u16le(offset + 9) !in 0x2000..0x3FFF || rom.u16le(offset + 12) !in 0xC000..0xDFFF ||
+            destination !in 0xC000..0xDFFF || destination + recordSize > 0xDFFF ||
+            !GbCompiledBankCalls.repeatedAdd(rom, rom.u16le(offset + 23))
+        )) return@runCatching null
+        val root = rom.gbBankAddress(bank, address) ?: return@runCatching null
+        val maximumCount = if (restartCopy) {
+            minOf(MAX_NAME_COUNT, (minOf(rom.size, (bank + 1) * BANK_BYTES) - root) / recordSize)
+        } else {
+            MAX_NAME_COUNT
+        }
+        if (maximumCount < count) return@runCatching null
         val resolvedCount = TableValidators.inferFixedNameCount(
             rom,
             root,
             recordSize,
             codec,
             minimumCount = count,
-            maximumCount = MAX_NAME_COUNT,
+            maximumCount = maximumCount,
         ) ?: count
         val evidence = TableValidators.fixedNames(
             rom,
@@ -132,7 +151,7 @@ internal object Gen1CompiledNameResolver {
     }.getOrNull()
 
     private const val BANK_BYTES = 0x4000
-    private const val CONSUMER_BYTES = 49
+    private const val MIN_CONSUMER_BYTES = 47
     private const val MIN_NAME_BYTES = 5
     private const val MAX_NAME_BYTES = 16
     private const val MAX_NAME_COUNT = 254

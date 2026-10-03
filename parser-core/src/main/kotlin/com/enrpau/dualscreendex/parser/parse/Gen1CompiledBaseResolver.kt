@@ -35,7 +35,7 @@ internal object Gen1CompiledBaseResolver {
         val candidates = buildList {
             addAll(bankLocalCandidates)
             var offset = 0
-            while (offset + INDEX_CONSUMER_BYTES <= scanEnd) {
+            while (offset + MIN_INDEX_CONSUMER_BYTES <= scanEnd) {
                 cancellation.throwIfCancellationRequested()
                 parseConsumerAt(rom, offset, count)?.let(::add)
                 offset++
@@ -69,18 +69,32 @@ internal object Gen1CompiledBaseResolver {
 
     private fun parseConsumerAt(rom: RomImage, offset: Int, count: Int): TableLayout? = runCatching {
         val recordSize = rom.u16le(offset + 2)
+        val restartCopy = rom.u8(offset + 16) != CALL
+        val copyBytes = if (restartCopy) 1 else 3
+        if (offset + 16 + copyBytes > minOf(BANK_BYTES, rom.size)) return@runCatching null
         if (
             rom.u8(offset) != DEC_A || rom.u8(offset + 1) != LOAD_BC_IMMEDIATE ||
             recordSize !in MIN_BASE_BYTES..MAX_BASE_BYTES ||
             rom.u8(offset + 4) != LOAD_HL_IMMEDIATE || rom.u8(offset + 7) != CALL ||
             rom.u8(offset + 10) != LOAD_DE_IMMEDIATE ||
             rom.u8(offset + 13) != LOAD_BC_IMMEDIATE ||
-            rom.u16le(offset + 14) != recordSize || rom.u8(offset + 16) != CALL
+            rom.u16le(offset + 14) != recordSize ||
+            restartCopy && !GbCompiledBankCalls.restartCopy(rom, rom.u8(offset + 16))
         ) return@runCatching null
 
         val authority = findBankAuthority(rom, offset) ?: return@runCatching null
-        if (!hasBankRestore(rom, offset + INDEX_CONSUMER_BYTES, authority)) return@runCatching null
+        if (!hasBankRestore(rom, offset + 16 + copyBytes, authority)) return@runCatching null
+        if ((restartCopy || authority.storeCall != null) && (
+            !GbCompiledBankCalls.repeatedAdd(rom, rom.u16le(offset + 8)) ||
+            !restartCopy && !GbCompiledBankCalls.byteCopy(rom, rom.u16le(offset + 17)) ||
+            rom.u16le(offset + 11) !in 0xC000..0xDFFF ||
+            rom.u16le(offset + 11) + recordSize > 0xE000 ||
+            rom.u16le(offset + 5) !in 0x4000..0x7FFF
+        )) return@runCatching null
         val root = rom.gbBankAddress(authority.bank, rom.u16le(offset + 5)) ?: return@runCatching null
+        if ((restartCopy || authority.storeCall != null) &&
+            root.toLong() + count.toLong() * recordSize > minOf(rom.size, (authority.bank + 1) * BANK_BYTES)
+        ) return@runCatching null
         val evidence = TableValidators.baseStats(rom, root, count, recordSize, generation = 1)
         if (!evidence.compatible) return@runCatching null
         TableLayout(root, count, recordSize)
@@ -90,15 +104,30 @@ internal object Gen1CompiledBaseResolver {
         val candidates = buildList {
             val start = maxOf(0, consumerOffset - MAX_PROLOGUE_DISTANCE)
             var offset = start
-            while (offset + PROLOGUE_BYTES <= consumerOffset) {
-                parseBankAuthorityAt(rom, offset)?.let(::add)
+            while (offset + HELPER_PROLOGUE_BYTES <= consumerOffset) {
+                parseBankAuthorityAt(rom, offset, consumerOffset)?.let(::add)
                 offset++
             }
         }
         return candidates.distinct().singleOrNull()
     }
 
-    private fun parseBankAuthorityAt(rom: RomImage, offset: Int): BankAuthority? {
+    private fun parseBankAuthorityAt(rom: RomImage, offset: Int, consumerOffset: Int): BankAuthority? {
+        if (rom.u8(offset) != LOAD_A_HIGH || rom.u8(offset + 2) != PUSH_AF ||
+            rom.u8(offset + 3) != LOAD_A_IMMEDIATE
+        ) return null
+        if (rom.u8(offset + 5) == CALL && rom.u8(offset + 8) == PUSH_BC &&
+            rom.u8(offset + 9) == PUSH_DE && rom.u8(offset + 10) == PUSH_HL
+        ) {
+            val bank = rom.u8(offset + 4)
+            val register = rom.u8(offset + 1)
+            val setBank = rom.u16le(offset + 6)
+            if (bank <= 0 || register !in 0x80..0xFE ||
+                !GbCompiledBankCalls.bankStore(rom, setBank, register)
+            ) return null
+            return BankAuthority(bank, register, rom.u16le(setBank + 3), setBank)
+        }
+        if (offset + PROLOGUE_BYTES > consumerOffset) return null
         if (
             rom.u8(offset) != LOAD_A_HIGH || rom.u8(offset + 2) != PUSH_AF ||
             rom.u8(offset + 3) != LOAD_A_IMMEDIATE || rom.u8(offset + 5) != STORE_A_HIGH ||
@@ -114,10 +143,17 @@ internal object Gen1CompiledBaseResolver {
     }
 
     private fun hasBankRestore(rom: RomImage, start: Int, authority: BankAuthority): Boolean {
-        val end = minOf(rom.size - RESTORE_BYTES + 1, start + MAX_RESTORE_DISTANCE)
+        val restoreBytes = if (authority.storeCall != null) HELPER_RESTORE_BYTES else RESTORE_BYTES
+        val end = minOf(minOf(BANK_BYTES, rom.size) - restoreBytes + 1, start + MAX_RESTORE_DISTANCE)
         var offset = start
         while (offset < end) {
-            if (
+            if (authority.storeCall != null &&
+                rom.u8(offset) == POP_HL && rom.u8(offset + 1) == POP_DE &&
+                rom.u8(offset + 2) == POP_BC && rom.u8(offset + 3) == POP_AF &&
+                rom.u8(offset + 4) == CALL && rom.u16le(offset + 5) == authority.storeCall &&
+                rom.u8(offset + 7) == RETURN
+            ) return true
+            if (authority.storeCall == null &&
                 rom.u8(offset) == POP_HL && rom.u8(offset + 1) == POP_DE &&
                 rom.u8(offset + 2) == POP_BC && rom.u8(offset + 3) == POP_AF &&
                 rom.u8(offset + 4) == STORE_A_HIGH &&
@@ -135,14 +171,17 @@ internal object Gen1CompiledBaseResolver {
         val bank: Int,
         val bankState: Int,
         val mbcAddress: Int,
+        val storeCall: Int? = null,
     )
 
     private val MBC_BANK_ADDRESS_RANGE = 0x2000..0x3fff
     private const val BANK_BYTES = 0x4000
-    private const val INDEX_CONSUMER_BYTES = 19
+    private const val MIN_INDEX_CONSUMER_BYTES = 17
     private const val BANK_LOCAL_CONSUMER_BYTES = 17
     private const val PROLOGUE_BYTES = 13
+    private const val HELPER_PROLOGUE_BYTES = 11
     private const val RESTORE_BYTES = 10
+    private const val HELPER_RESTORE_BYTES = 8
     private const val MAX_PROLOGUE_DISTANCE = 128
     private const val MAX_RESTORE_DISTANCE = 128
     private const val MIN_BASE_BYTES = 20

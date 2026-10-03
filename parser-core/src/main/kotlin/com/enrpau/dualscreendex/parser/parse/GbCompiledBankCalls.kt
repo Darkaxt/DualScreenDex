@@ -26,8 +26,14 @@ internal object GbCompiledBankCalls {
         homeBytes(rom, address, 0xA7, 0xC8, 0x09, 0x3D, 0x20, 0xFC, 0xC9)
 
     fun restartCopy(rom: RomImage, opcode: Int): Boolean = restartTarget(rom, opcode)?.let { address ->
-        homeBytes(rom, address, 0x2A, 0x12, 0x13, 0x0B, 0x79, 0xB0, 0x20, 0xF8, 0xC9)
+        byteCopy(rom, address)
     } == true
+
+    fun byteCopy(rom: RomImage, address: Int): Boolean =
+        homeBytes(rom, address, 0x2A, 0x12, 0x13, 0x0B, 0x79, 0xB0, 0x20, 0xF8, 0xC9) ||
+            homeBytes(rom, address, 0x78, 0xA7, 0x28, 0x0C, 0x79, 0xA7, 0x28, 0x01, 0x04, 0xCD) &&
+            homeBytes(rom, address + 12, 0x05, 0x20, 0xFA, 0xC9, 0x2A, 0x12, 0x13, 0x0D, 0x20, 0xFA, 0xC9) &&
+            rom.u16le(address + 10) == address + 16
 
     fun stringCopy(rom: RomImage, address: Int, terminator: Int): Boolean =
         homeBytes(rom, address, 0x1A, 0x13, 0x22, 0xFE, terminator, 0x20, 0xF9, 0xC9)
@@ -79,7 +85,7 @@ internal object GbCompiledBankCalls {
         return target(rom, offset, rom.u8(offset + 4), rom.u16le(offset + 9))
     }
 
-    private fun bankStore(rom: RomImage, address: Int, register: Int): Boolean =
+    internal fun bankStore(rom: RomImage, address: Int, register: Int): Boolean =
         address >= 0 && address + 6 <= minOf(BANK_BYTES, rom.size) &&
             homeBytes(rom, address, 0xE0, register, 0xEA) &&
             rom.u16le(address + 3) in 0x2000..0x3FFF && rom.u8(address + 5) == 0xC9
