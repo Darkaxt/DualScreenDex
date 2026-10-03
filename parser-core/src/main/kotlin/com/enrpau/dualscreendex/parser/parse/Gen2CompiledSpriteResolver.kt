@@ -69,8 +69,10 @@ internal object Gen2CompiledSpriteResolver {
     ): TableLayout? {
         cancellation.throwIfCancellationRequested()
         budget.recordWork()
+        val remapped = offset + NORMAL_CONSUMER_BYTES + 3 <= rom.size && rom.u8(offset + 33) == CALL
+        val tail = if (remapped) 3 else 0
         if (
-            offset + NORMAL_CONSUMER_BYTES > rom.size ||
+            offset + NORMAL_CONSUMER_BYTES + tail > rom.size ||
             rom.u8(offset + 3) != COMPARE_IMMEDIATE ||
             rom.u8(offset + 4) !in 1..speciesCount ||
             rom.u8(offset + 5) != JR_Z ||
@@ -89,18 +91,20 @@ internal object Gen2CompiledSpriteResolver {
             rom.u8(offset + 26) != CALL ||
             rom.u8(offset + 29) != LOAD_A_D ||
             rom.u8(offset + 30) != CALL ||
-            rom.u8(offset + 33) != PUSH_AF ||
-            rom.u8(offset + 34) != INC_HL ||
-            rom.u8(offset + 35) != LOAD_A_D ||
-            rom.u8(offset + 36) != CALL ||
-            rom.u8(offset + 39) != POP_BC ||
-            rom.u8(offset + 40) != RETURN
+            rom.u8(offset + 33 + tail) != PUSH_AF ||
+            rom.u8(offset + 34 + tail) != INC_HL ||
+            rom.u8(offset + 35 + tail) != LOAD_A_D ||
+            rom.u8(offset + 36 + tail) != CALL ||
+            rom.u8(offset + 39 + tail) != POP_BC ||
+            rom.u8(offset + 40 + tail) != RETURN
         ) return null
 
         val pointer = rom.u16le(offset + 20)
         val normalRoot = rom.gbBankAddress(rom.u8(offset + 11), pointer) ?: return null
         val unownRoot = rom.gbBankAddress(rom.u8(offset + 18), pointer) ?: return null
         if (normalRoot == unownRoot) return null
+        val remap = if (remapped) bankRemap(rom, offset, normalRoot, unownRoot, speciesCount, cancellation, budget)
+            ?: return null else emptyMap()
         budget.recordRoot(normalRoot)
         budget.recordRoot(unownRoot)
         budget.recordCandidate()
@@ -109,6 +113,7 @@ internal object Gen2CompiledSpriteResolver {
                 normalRoot,
                 speciesCount,
                 0,
+                bankRemap = remap,
                 cancellation = cancellation,
                 consumeWork = budget::recordWork,
             ).compatible
@@ -118,12 +123,69 @@ internal object Gen2CompiledSpriteResolver {
                 unownRoot,
                 UNOWN_FORM_COUNT,
                 0,
+                bankRemap = remap,
                 cancellation = cancellation,
                 consumeWork = budget::recordWork,
             ).compatible
         ) return null
-        return TableLayout(normalRoot, speciesCount, RECORD_SIZE)
+        return TableLayout(normalRoot, speciesCount, RECORD_SIZE, bankRemap = remap)
     }
+
+    private fun bankRemap(
+        rom: RomImage,
+        consumer: Int,
+        normalRoot: Int,
+        unownRoot: Int,
+        count: Int,
+        cancellation: ParserCancellationToken,
+        budget: CompiledSpriteBudget,
+    ): Map<Int, Int>? {
+        if (!GbCompiledBankCalls.repeatedAdd(rom, rom.u16le(consumer + 27))) return null
+        val byteRead = rom.u16le(consumer + 31)
+        val wordRead = rom.u16le(consumer + 40)
+        if (byteRead < 0 || byteRead + 16 > minOf(BANK_BYTES, rom.size) ||
+            wordRead < 0 || wordRead + 14 > minOf(BANK_BYTES, rom.size)
+        ) return null
+        val scratch = rom.u8(byteRead + 1)
+        val saved = rom.u8(byteRead + 3)
+        if (scratch !in 0x80..0xFE || saved !in 0x80..0xFE || scratch == saved ||
+            !bytesAt(rom, byteRead, 0xE0, scratch, 0xF0, saved, 0xF5, 0xF0, scratch, 0xD7,
+                0x7E, 0xE0, scratch, 0xF1, 0xD7, 0xF0, scratch, 0xC9) ||
+            !bytesAt(rom, wordRead, 0xE0, scratch, 0xF0, saved, 0xF5, 0xF0, scratch, 0xD7,
+                0x2A, 0x66, 0x6F, 0xF1, 0xD7, 0xC9)
+        ) return null
+        val switch = if (rom.u8(0x10) == 0xC3) rom.u16le(0x11) else 0x10
+        if (!GbCompiledBankCalls.bankStore(rom, switch, saved)) return null
+        val fix = rom.gbBankAddress(consumer / BANK_BYTES, rom.u16le(consumer + 34)) ?: return null
+        if (!bytesAt(rom, fix, 0xE5, 0xC5, 0xD6) || !bytesAt(rom, fix + 4, 0x4F, 0x06, 0x00, 0x21) ||
+            !bytesAt(rom, fix + 10, 0x09, 0x7E, 0xC1, 0xE1, 0xC9)
+        ) return null
+        val bias = rom.u8(fix + 3)
+        val table = rom.gbBankAddress(fix / BANK_BYTES, rom.u16le(fix + 8)) ?: return null
+        val remap = linkedMapOf<Int, Int>()
+        for ((root, rows) in listOf(normalRoot to count, unownRoot to UNOWN_FORM_COUNT)) {
+            if (root.toLong() + rows * RECORD_SIZE > rom.size || root % BANK_BYTES + rows * RECORD_SIZE > BANK_BYTES) return null
+            repeat(rows) { index ->
+                cancellation.throwIfCancellationRequested()
+                budget.recordWork()
+                val row = root + index * RECORD_SIZE
+                if ((0 until RECORD_SIZE).all { rom.u8(row + it) == END_MARKER }) return@repeat
+                for (field in listOf(0, 3)) {
+                    val raw = rom.u8(row + field)
+                    val cell = table + raw - bias
+                    if (raw < bias || cell >= rom.size || cell / BANK_BYTES != table / BANK_BYTES) return null
+                    val bank = rom.u8(cell)
+                    if (bank == 0 || bank.toLong() * BANK_BYTES >= rom.size) return null
+                    remap[raw] = bank
+                }
+            }
+        }
+        return remap.takeIf { it.isNotEmpty() }
+    }
+
+    private fun bytesAt(rom: RomImage, offset: Int, vararg values: Int): Boolean =
+        offset >= 0 && offset.toLong() + values.size <= rom.size && offset % BANK_BYTES + values.size <= BANK_BYTES &&
+            values.indices.all { rom.u8(offset + it) == values[it] }
 
     private fun parseVariantConsumer(
         rom: RomImage,

@@ -84,6 +84,7 @@ class Gen2CompactFamilyIntegrationTest {
             materializeTheme = { _, _ -> error("unproven theme assets must not run") })
         assertEquals(listOf(CatalogMaterializationPhase.ESSENTIAL, CatalogMaterializationPhase.COMPLETE), progress)
         assertEquals(289, catalog.speciesById.size)
+        assertEquals(289, catalog.navigableSpecies().size)
         assertEquals(255, catalog.movesById.size)
         assertEquals(TypeSemanticRole.FIRE, catalog.typesById[9]?.semanticRole?.value)
         assertEquals(0xFFF08030.toInt(), catalog.typesById[9]?.presentation?.value?.backgroundArgb)

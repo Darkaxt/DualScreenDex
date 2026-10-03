@@ -45,6 +45,14 @@ Modern authority replaces incompatible inherited roots as a coherent unit. Subse
 
 Each implementation checkpoint is smart-synced, committed, and pushed. Preserve compact private evidence before ticketed cleanup of registered disposable outputs. Public evidence contains counters, filenames, provenance, and limitations—not ROM bytes, bulk decoded tables, or private paths.
 
+## Cohort-discovered boundary corrections
+
+The first 18-input run at `8fe60ed7` was diagnostic, not accepted. It selected the modern pair but the default species navigation flag required a National Dex number, causing the report to hide their canonical records. Compact materialization now explicitly authorizes navigation from its proved native ID/name/stat join while leaving the Dex field unavailable; unrelated record defaults are unchanged. A new synthetic navigation assertion failed before the fix.
+
+Ambrosia's independent expanded-domain sprite guard remained unsatisfied. Its actual picture getter calls a bank-ID lookup before returning the far pointer. The added contract proves that complete getter, multiply helper, byte/word reads and bank restoration, full lookup body, every active lookup index/target, and both normal/Unown pointer domains. It derives `bankRemap` from compiled accesses, never a fixed adjustment or source table. Two synthetic remap positives failed before implementation. Existing untransformed and variant contracts retain their behavior.
+
+The affected navigation/classic/sprite/materializer suite passes **82 tests without failures, errors, or skips**. The first cohort receipt remains retained and explicitly superseded; a corrected bounded run is required because production parser/materialization code changed. No full-library or Android run is authorized.
+
 ## Verified classic contract corrections
 
 The standard classic consumer can now admit an odd record width only when its complete multiply/copy helpers, saved-bank switch/restoration, Egg branch, copied destination, and runtime prefix-overwrite epilogue are proved. Stored prefix equality is waived only under that authority and an independently adjacent name-table extent. Nonadjacent tables still use the sequential prefix to infer count; a later mismatch bounds that prefix rather than authorizing a guessed larger domain. The distinct existing variant-tail contracts retain their prior behavior.

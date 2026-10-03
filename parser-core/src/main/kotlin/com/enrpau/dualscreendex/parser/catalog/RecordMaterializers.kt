@@ -200,7 +200,7 @@ object RecordMaterializers {
             } else {
                 CatalogField.notApplicable("this save generation does not use Gen III growth-rate IDs")
             }
-            id to SpeciesRecord(
+            val record = SpeciesRecord(
                 id = id,
                 dexNumber = when {
                     layout.generation == 1 && indexResolution is SpeciesIndexResolution.Unavailable -> {
@@ -224,6 +224,9 @@ object RecordMaterializers {
                 abilityIds = abilities,
                 growthRate = growthRate,
             )
+            id to if (compact != null) record.copy(
+                navigable = id > 0 && baseStats != null && name?.any(Char::isLetterOrDigit) == true,
+            ) else record
         }
         return SpeciesMaterialization(records, indexResolution)
     }
