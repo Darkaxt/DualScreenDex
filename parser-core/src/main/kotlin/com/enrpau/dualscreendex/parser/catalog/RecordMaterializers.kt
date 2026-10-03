@@ -31,6 +31,15 @@ object RecordMaterializers {
     ): SpeciesMaterialization {
         val names = layout.tables.speciesNames
         val stats = layout.tables.baseStats
+        val compact = layout.gen2CompactCore
+        if (compact != null || stats?.format == TableRecordFormat.GEN2_COMPACT_BASE_STATS) {
+            if (layout.generation != 2 || compact == null || names == null ||
+                stats?.format != TableRecordFormat.GEN2_COMPACT_BASE_STATS ||
+                compact.slots.any { it.nameIndex >= names.count || it.baseIndex >= stats.count }
+            ) return SpeciesMaterialization(emptyMap(), SpeciesIndexResolution.Unavailable(
+                emptyMap(), "compact species require coherent name/base/index authority",
+            ))
+        }
         if (names == null && stats == null) {
             return SpeciesMaterialization(
                 emptyMap(),
@@ -39,14 +48,19 @@ object RecordMaterializers {
         }
         val codec = layout.defaultTextCodec()
         val firstId = if (layout.generation == 3) 0 else 1
-        val indexResolution = if (names != null) {
+        val indexResolution = if (compact != null) {
+            SpeciesIndexResolution.Unavailable(emptyMap(),
+                "compact species retain ROM-native IDs; National Dex conversion is unproven")
+        } else if (names != null) {
             SpeciesIndexResolver.resolveWithEvidence(rom, layout, cancellation = cancellation)
         } else {
             SpeciesIndexResolution.Unavailable(emptyMap(), "species-name table is unavailable")
         }
         val dexNumbers = indexResolution.values
         val hasResolvedDexNumbers = dexNumbers.values.any { it > 0 }
-        val rows = if (names != null && (layout.generation == 1 || hasResolvedDexNumbers || names.count <= 1)) {
+        val rows = if (compact != null) {
+            compact.slots.map { SpeciesRow(it.id, it.nameIndex, it.baseIndex, null) }
+        } else if (names != null && (layout.generation == 1 || hasResolvedDexNumbers || names.count <= 1)) {
             val expansion = layout.pokeemeraldExpansion
             val unified = layout.headerlessUnifiedSpecies
             val nameIndexes = when {
@@ -109,18 +123,23 @@ object RecordMaterializers {
             val ordinaryStatsOffset = stats?.let {
                 validatedRecordOffset(rom, it, statsIndex, baseStatBytes(layout.generation))
             }
-            val ordinaryBaseStats = ordinaryStatsOffset?.let { readBaseStats(rom, it, layout.generation) }
+            val ordinaryBaseStats = ordinaryStatsOffset?.let {
+                readBaseStats(rom, it, layout.generation, stats?.format ?: TableRecordFormat.STANDARD)
+            }
             val statsOffset = if (ordinaryBaseStats != null) {
                 ordinaryStatsOffset
             } else {
                 dexNumber?.let(detachedGen1::get)?.offset
             }
-            val baseStats = statsOffset?.let { readBaseStats(rom, it, layout.generation) }
+            val baseStats = statsOffset?.let {
+                readBaseStats(rom, it, layout.generation, stats?.format ?: TableRecordFormat.STANDARD)
+            }
             val typeIds = baseStats?.second
             val validRetailEcologyTail = layout.generation == 3 && expansion == null && unified == null &&
                 stats != null && statsOffset != null &&
                 validGen3RetailEcologyTail(rom, statsOffset, stats.recordSize)
             val abilities = when {
+                compact != null -> CatalogField.notFound("compact ability fields lack independent compiled authority")
                 layout.generation != 3 -> CatalogField.notApplicable("abilities are not part of this engine")
                 stats == null || statsIndex !in 0 until stats.count -> {
                     CatalogField.notFound("base-stat ability layout is unsupported or malformed")
@@ -612,8 +631,14 @@ object RecordMaterializers {
         }
     }
 
-    private fun readBaseStats(rom: RomImage, offset: Int, generation: Int): Pair<BaseStats, List<Int>>? {
-        val start = if (generation <= 2) 1 else 0
+    private fun readBaseStats(
+        rom: RomImage,
+        offset: Int,
+        generation: Int,
+        format: TableRecordFormat = TableRecordFormat.STANDARD,
+    ): Pair<BaseStats, List<Int>>? {
+        val compact = generation == 2 && format == TableRecordFormat.GEN2_COMPACT_BASE_STATS
+        val start = if (generation <= 2 && !compact) 1 else 0
         val hp = rom.u8(offset + start)
         val attack = rom.u8(offset + start + 1)
         val defense = rom.u8(offset + start + 2)
@@ -622,7 +647,7 @@ object RecordMaterializers {
         val specialDefense = if (generation == 1) specialAttack else rom.u8(offset + start + 5)
         val typeOffset = when (generation) {
             1 -> 6
-            2 -> 7
+            2 -> if (compact) 6 else 7
             else -> 6
         }
         val types = listOf(rom.u8(offset + typeOffset), rom.u8(offset + typeOffset + 1))

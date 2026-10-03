@@ -117,6 +117,7 @@ enum class TableRecordFormat {
     GEN3_LEVEL_U8_MOVE_U16,
     GEN2_COMPACT_TYPE_NAMES,
     GEN2_SPLIT_MOVE_8,
+    GEN2_COMPACT_BASE_STATS,
 }
 
 data class ProfileTables(
@@ -217,6 +218,7 @@ data class ResolvedRomLayout(
     val languageManifest: RomLanguageManifest = RomLanguageManifest.UNKNOWN,
     val itemRootNomination: GbaItemRootNomination = GbaItemRootNomination.Absent,
     val itemNameAuthority: GbaItemNameAuthority = GbaItemNameAuthority.Unavailable(),
+    val gen2CompactCore: Gen2CompactCoreMetadata? = null,
 )
 
 /** Compiled-authorized expanded capture-ball tables and their ROM-native item relationship. */

@@ -45,6 +45,16 @@ Modern authority replaces incompatible inherited roots as a coherent unit. Subse
 
 Each implementation checkpoint is smart-synced, committed, and pushed. Preserve compact private evidence before ticketed cleanup of registered disposable outputs. Public evidence contains counters, filenames, provenance, and limitations—not ROM bytes, bulk decoded tables, or private paths.
 
+## Verified compact species/index checkpoint
+
+The zero-based extended-page and one-based independent-table contracts are now proved separately. Complete linked index helpers establish variant scanning, comparison, canonical boundaries, inverse-root arithmetic, and returns. The compiled species-validity predicate excludes zero and Egg bytes; alternate name forms are not promoted to canonical species. Canonical rows retain independently derived name and base indices in immutable metadata, so neither `id - 1` nor positional table joins may replace that authority.
+
+Complete fixed-name and base-copy consumers bind the index contracts to bank-contained tables, equivalent multiply/copy helpers, saved-bank restoration, and the shared form input. A complete six-stat loop and its linked indexed field read establish the stats-first prefix; both exact retained binaries retain HP/Attack/Defense/Speed/Sp. Attack/Sp. Defense order. Every canonical name, six-stat prefix, and native type reference validates. A dedicated compact base format cannot be decoded without the matching index metadata. Unproven National Dex conversion and ability fields remain unavailable, not retail guesses or blanket ability N/A.
+
+Five index positives and four core/materialization positives were observed failing before implementation. The final affected suite passes **81 tests with zero failures, errors, or skips**. Direct exact-build checks produce **289 canonical species from 292 name slots for Polished** and **254 from 256 name slots for Inheritance**, with correct representative first-species joins and complete name/stat/type references. Polished's highest native canonical ID is 291; Inheritance's is 254. These are direct resolver/materializer checks—not production family admission, a parser cohort, SQLite reopen, SaveRAM, or live acceptance.
+
+**Status: IN_PROGRESS.** Next bind independently compiled move-name/count authority and wire the coherent compact result into the family/language/catalog phases without inherited/fuzzy optional overlays. Then implement the separate Ambrosia/Sour corrections and execute the final bounded cohort/persistence gate. The current published matrix remains unchanged; all four targets are still unmatched.
+
 ## Verified modern move checkpoint
 
 Both retained modern builds independently prove eight-byte move copying, complete restart multiplication, bank switch/restoration, and the linked category getter. The getter reads category at byte 7 and type at byte 3, preserves the table pointer, and has an option-controlled type-based alternative. The static catalog records the stored physical/special/status category; it does not claim the active runtime option. Far-byte reads now reuse the complete bank-wrapper proofs without admitting byte-read bodies as copy routines.
@@ -55,7 +65,7 @@ Three new positives failed before implementation: two structural resolutions and
 
 ### Safe restart checkpoint — October 3, 2026
 
-Work is paused at the user's request for a proxy restart after this verified checkpoint is committed and pushed. No background job, collector, parser cohort, Android test, or cleanup apply is active. The composite library matrix remains unchanged: all four Gen II targets are still unmatched. Resume with the modern compact species/name/base/form-index authority and integration; do not repeat completed helper/type/move tests merely to reconstruct context. Then address Ambrosia/Sour independently and run the final bounded cohort/persistence gate only after stage code is final. The registered private scratch root and open cleanup transaction remain retained until stage completion.
+The user requested a proxy-restart pause at the verified move checkpoint and subsequently explicitly resumed the task. That pause is historical, not the current status. Work is IN_PROGRESS under the original host-only four-target authorization. No background job, collector, parser cohort, Android test, or cleanup apply is active. The registered private scratch root and open cleanup transaction remain retained until stage completion.
 
 ## Verified type-label and static n-gram checkpoint
 
