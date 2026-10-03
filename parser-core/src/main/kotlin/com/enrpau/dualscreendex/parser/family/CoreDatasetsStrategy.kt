@@ -287,6 +287,10 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
         val moveData = headerlessUnifiedMoves?.moveDataEvidence ?: publishedDataEvidence ?: dynamicMoveDataEvidence ?: tables.moveData?.let {
             if (expansion != null) {
                 TableValidators.pokeemeraldExpansionMoveData(rom, it, inferredMoveCount ?: it.count)
+            } else if (generation == 2 && it.format == TableRecordFormat.GEN2_MASKED_MOVE_7) {
+                com.enrpau.dualscreendex.parser.parse.Gen2CompiledMoveResolver.maskedEvidence(
+                    rom, it.copy(count = inferredMoveCount ?: it.count),
+                ) ?: missing("masked move domain is unsupported or incomplete")
             } else if (it.format == TableRecordFormat.CFRU_MOVE_16) {
                 TableValidators.cfruMoveData(rom, it.offset, inferredMoveCount ?: it.count)
             } else if (it.format == TableRecordFormat.WIDENED_RETAIL_MOVE_16) {

@@ -47,6 +47,11 @@ object RecordMaterializers {
             )
         }
         val codec = layout.defaultTextCodec()
+        val extendedTypeIds = if (layout.generation == 2 && codec != null) {
+            layout.languageManifest.defaultProjection()?.localizedTables?.typeNames
+                ?.takeIf { it.format == TableRecordFormat.GEN2_EXTENDED_TYPE_NAMES }
+                ?.let { CompiledTypeNameResolver.decode(rom, 2, it, codec, cancellation)?.keys }
+        } else null
         val firstId = if (layout.generation == 3) 0 else 1
         val indexResolution = if (compact != null) {
             SpeciesIndexResolution.Unavailable(emptyMap(),
@@ -124,7 +129,7 @@ object RecordMaterializers {
                 validatedRecordOffset(rom, it, statsIndex, baseStatBytes(layout.generation))
             }
             val ordinaryBaseStats = ordinaryStatsOffset?.let {
-                readBaseStats(rom, it, layout.generation, stats?.format ?: TableRecordFormat.STANDARD)
+                readBaseStats(rom, it, layout.generation, stats?.format ?: TableRecordFormat.STANDARD, extendedTypeIds)
             }
             val statsOffset = if (ordinaryBaseStats != null) {
                 ordinaryStatsOffset
@@ -132,7 +137,7 @@ object RecordMaterializers {
                 dexNumber?.let(detachedGen1::get)?.offset
             }
             val baseStats = statsOffset?.let {
-                readBaseStats(rom, it, layout.generation, stats?.format ?: TableRecordFormat.STANDARD)
+                readBaseStats(rom, it, layout.generation, stats?.format ?: TableRecordFormat.STANDARD, extendedTypeIds)
             }
             val typeIds = baseStats?.second
             val validRetailEcologyTail = layout.generation == 3 && expansion == null && unified == null &&
@@ -493,7 +498,8 @@ object RecordMaterializers {
             val accuracyOffset = if (gen3) 3 else 4
             val ppOffset = if (gen3) 4 else 5
             val power = rom.u8(base + powerOffset)
-            val typeId = rom.u8(base + typeOffset)
+            val maskedGen2 = layout.generation == 2 && data.format == TableRecordFormat.GEN2_MASKED_MOVE_7
+            val typeId = rom.u8(base + typeOffset).let { if (maskedGen2) it and 0x3F else it }
             val moveCategory = if (layout.generation == 2 && data.format == TableRecordFormat.GEN2_SPLIT_MOVE_8) {
                 when (rom.u8(base + 7)) {
                     0 -> MoveCategory.PHYSICAL
@@ -508,7 +514,9 @@ object RecordMaterializers {
                 id = id,
                 name = nameField(rom, names, index, codec, cancellation),
                 typeId = CatalogField.available(typeId),
-                category = CatalogField.available(moveCategory),
+                category = if (maskedGen2) CatalogField.notFound(
+                    "masked type consumer does not prove packed category semantics",
+                ) else CatalogField.available(moveCategory),
                 power = CatalogField.available(power),
                 accuracy = CatalogField.available(rom.u8(base + accuracyOffset)),
                 pp = CatalogField.available(rom.u8(base + ppOffset)),
@@ -639,6 +647,7 @@ object RecordMaterializers {
         offset: Int,
         generation: Int,
         format: TableRecordFormat = TableRecordFormat.STANDARD,
+        nativeTypeIds: Set<Int>? = null,
     ): Pair<BaseStats, List<Int>>? {
         val compact = generation == 2 && format == TableRecordFormat.GEN2_COMPACT_BASE_STATS
         val start = if (generation <= 2 && !compact) 1 else 0
@@ -656,7 +665,7 @@ object RecordMaterializers {
         val types = listOf(rom.u8(offset + typeOffset), rom.u8(offset + typeOffset + 1))
         if (listOf(hp, attack, defense, speed, specialAttack, specialDefense).any { it !in 1..255 }) return null
         val maximumType = if (generation == 3) 31 else 27
-        if (types.any { it !in 0..maximumType }) return null
+        if (types.any { if (nativeTypeIds != null) it !in nativeTypeIds else it !in 0..maximumType }) return null
         return BaseStats(hp, attack, defense, speed, specialAttack, specialDefense) to types
     }
 

@@ -1,5 +1,13 @@
 # Gen II compiled-core compatibility
 
+## Final classic move/type boundary checkpoint
+
+The corrected cohort closed modern navigation and selected all four targets, but did not yet satisfy classic core acceptance: Ambrosia and Sour had no move details, and Ambrosia's custom type 28 caused one stat record to be withheld. Independent source/binary investigation found a seven-byte masked-type printer in Ambrosia and a branch-around-copy printer in Sour. New contracts require complete multiply/copy/bank restoration, linked static type reads, full printer tails, bank-contained tables, and all requested sequential move records. The masked format exposes the proved low-six-bit native type without guessing packed category semantics; the category remains unavailable under `LIB26-G2-CLASSIC-OPTIONAL`. Sour records remain static move data, not the active Hidden Power type.
+
+A complete classic type-name copy consumer now derives an extended pointer-table extent from its independently adjacent first string. It requires the full known semantic domain including Fairy, complete copy linkage, bank-contained pointers/strings and bounded decoded labels. Native custom labels are retained without inventing a semantic role. Species materialization accepts an extended type only through that decoded authority, not a raised numeric limit or lowered validator threshold. Ordinary, compact and localized type contracts retain their prior behavior.
+
+Three move positives, one extended-type positive and one extended-stat materialization positive failed before their fixes. A mutation test initially changed a relocatable helper address rather than an instruction; its expectation was corrected without tightening production to a fixed address. The final affected suite passes **115 tests, zero failures/errors/skips**. **Status: IN_PROGRESS** pending final source-bound affected-cohort/persistence acceptance and publication. Earlier dated checkpoints below are superseded where noted; none claims current real acceptance.
+
 ## Scope and acceptance
 
 `LIB26-G2-CORE` covers the retained Polished Crystal and Crystal Inheritance builds first, then Ambrosia and Sour Crystal independently. Implement generic compiled-consumer authority, not project names, hashes, fixed roots, or new ROM profiles. Complete acceptance requires coherent species/name/stat/type joins, independently resolved move geometry, decoded reference closure, reference-safe persistence/reopen, and bounded related Gen II regression. Maps, SaveRAM, live WRAM, Android, APKs, and releases are outside this stage.

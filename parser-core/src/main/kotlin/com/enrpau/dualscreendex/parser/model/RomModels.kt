@@ -118,6 +118,8 @@ enum class TableRecordFormat {
     GEN2_COMPACT_TYPE_NAMES,
     GEN2_SPLIT_MOVE_8,
     GEN2_COMPACT_BASE_STATS,
+    GEN2_MASKED_MOVE_7,
+    GEN2_EXTENDED_TYPE_NAMES,
 }
 
 data class ProfileTables(
