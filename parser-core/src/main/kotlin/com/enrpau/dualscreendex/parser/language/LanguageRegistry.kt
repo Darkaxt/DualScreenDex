@@ -35,6 +35,7 @@ object LanguageRegistry {
             PokemonTextCodec.gbEnglish,
             PokemonTextCodec.gbaEnglish,
             Gen2PlainNameCodec.english53,
+            Gen2PlainNameCodec.english53Ngrams,
         )
     ).associateBy { it.id to it.version }
 

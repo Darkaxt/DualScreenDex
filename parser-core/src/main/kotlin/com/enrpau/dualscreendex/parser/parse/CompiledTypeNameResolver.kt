@@ -7,6 +7,7 @@ import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.language.LanguageTag
 import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.TableLayout
+import com.enrpau.dualscreendex.parser.model.TableRecordFormat
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 
 internal data class DecodedTypeName(
@@ -37,9 +38,21 @@ internal object CompiledTypeNameResolver {
         codec: PokemonTextCodec,
         cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
     ): Map<Int, DecodedTypeName>? {
-        val requiredIds = requiredTypeIds(generation) ?: return null
-        val expectedRoles = expectedRoles(generation) ?: return null
-        if (layout.count != typeCount(generation) || layout.offset < 0) return null
+        val compactGen2 = layout.format == TableRecordFormat.GEN2_COMPACT_TYPE_NAMES
+        if (compactGen2 && generation != 2) return null
+        val requiredIds = if (compactGen2) (0 until COMPACT_GEN2_TYPE_COUNT).toSet() else requiredTypeIds(generation) ?: return null
+        val expectedRoles = if (compactGen2) STANDARD_ROLES else expectedRoles(generation) ?: return null
+        val expectedCount = if (compactGen2) COMPACT_GEN2_TYPE_COUNT else typeCount(generation)
+        if (layout.count != expectedCount || layout.offset < 0) return null
+        if (compactGen2) {
+            val bank = layout.bank ?: return null
+            val width = if (layout.valuesArePointers) 2 else 1
+            val end = layout.offset.toLong() + layout.count.toLong() * width
+            if (layout.variableLength || bank <= 0 || layout.offset / GB_BANK_SIZE != bank || layout.recordSize != width ||
+                layout.stride != null && layout.stride != width ||
+                end > minOf((bank + 1L) * GB_BANK_SIZE, rom.size.toLong())
+            ) return null
+        }
         val decoded = requiredIds.mapNotNull { id ->
             cancellation.throwIfCancellationRequested()
             val name = decodeName(rom, layout, id, codec, cancellation) ?: return null
@@ -64,6 +77,14 @@ internal object CompiledTypeNameResolver {
             if (site % RomImage.DEFAULT_SCAN_CHECK_INTERVAL_BYTES == 0) {
                 session.cancellation.throwIfCancellationRequested()
             }
+            if (generation == 2 && codec.terminator == 0x53) {
+                compactGen2Consumer(rom, site)?.let { layout ->
+                    if (decode(rom, generation, layout, codec, session.cancellation) != null) {
+                        candidates += layout
+                    }
+                }
+                if (candidates.size > 1) return candidates.toList()
+            }
             if (!isGbTypeNameConsumer(rom, site)) continue
             val bank = site / GB_BANK_SIZE
             val table = rom.gbBankAddress(bank, rom.u16le(site + 2)) ?: continue
@@ -81,6 +102,50 @@ internal object CompiledTypeNameResolver {
         }
         return candidates.toList()
     }
+
+    private fun compactGen2Consumer(rom: RomImage, site: Int): TableLayout? {
+        val bank = site / GB_BANK_SIZE
+        val bankEnd = minOf((bank + 1L) * GB_BANK_SIZE, rom.size.toLong())
+        if (bank <= 0 || site.toLong() + 20 > bankEnd || rom.u8(site) != 0xFA ||
+            rom.u8(site + 3) != 0x21 ||
+            !bytesAt(rom, site + 6, 0x5F, 0x16, 0, 0x19) ||
+            rom.u16le(site + 1) !in 0xC000..0xDFFF
+        ) return null
+        val address = rom.u16le(site + 4).takeIf { it in 0x4000..0x7FFF } ?: return null
+        val root = rom.gbBankAddress(bank, address) ?: return null
+        val pointers: Boolean
+        val destination: Int
+        val copyOpcode: Int
+        when {
+            rom.u8(site + 10) == 0x5E && rom.u8(site + 11) == 0x19 &&
+                rom.u8(site + 12) == 0x11 && rom.u8(site + 15) == 0x01 &&
+                rom.u16le(site + 16) == 13 && rom.u8(site + 19) == 0xC9 -> {
+                pointers = false
+                destination = rom.u16le(site + 13)
+                copyOpcode = rom.u8(site + 18)
+            }
+            site.toLong() + 22 <= bankEnd &&
+                bytesAt(rom, site + 10, 0x19, 0x2A, 0x66, 0x6F, 0x11) &&
+                rom.u8(site + 17) == 0x01 && rom.u16le(site + 18) == 13 &&
+                rom.u8(site + 21) == 0xC9 -> {
+                pointers = true
+                destination = rom.u16le(site + 15)
+                copyOpcode = rom.u8(site + 20)
+            }
+            else -> return null
+        }
+        if (destination !in 0xC000..0xDFFF - 12 || !GbCompiledBankCalls.restartCopy(rom, copyOpcode)) {
+            return null
+        }
+        return TableLayout(
+            root, COMPACT_GEN2_TYPE_COUNT, if (pointers) 2 else 1,
+            bank = bank, valuesArePointers = pointers, format = TableRecordFormat.GEN2_COMPACT_TYPE_NAMES,
+        )
+    }
+
+    private fun bytesAt(rom: RomImage, offset: Int, vararg values: Int): Boolean =
+        offset >= 0 && offset.toLong() + values.size <= rom.size &&
+            values.indices.all { rom.u8(offset + it) == values[it] }
 
     private fun gbaCandidates(
         session: RomAnalysisSession,
@@ -145,12 +210,30 @@ internal object CompiledTypeNameResolver {
         if (id !in 0 until layout.count) return null
         val offset: Int
         val maximumBytes: Int
-        if (layout.valuesArePointers) {
+        val gbNameLimit = if (layout.format == TableRecordFormat.GEN2_COMPACT_TYPE_NAMES) {
+            COMPACT_GEN2_TYPE_NAME_BYTES
+        } else {
+            MAX_GB_TYPE_NAME_BYTES
+        }
+        if (layout.format == TableRecordFormat.GEN2_COMPACT_TYPE_NAMES && !layout.valuesArePointers) {
+            val bank = layout.bank ?: return null
+            val cell = layout.offset.toLong() + id
+            val tableEnd = layout.offset.toLong() + layout.count
+            val bankEnd = minOf((bank + 1L) * GB_BANK_SIZE, rom.size.toLong())
+            if (cell !in 0 until tableEnd || cell >= bankEnd) return null
+            val value = cell + rom.u8(cell.toInt())
+            if (value !in tableEnd until bankEnd) return null
+            offset = value.toInt()
+            maximumBytes = minOf(gbNameLimit.toLong(), bankEnd - value).toInt()
+        } else if (layout.valuesArePointers) {
             val bank = layout.bank ?: return null
             val pointerCell = layout.offset.toLong() + id.toLong() * layout.recordSize
             if (layout.recordSize != 2 || pointerCell !in 0..(rom.size - 2).toLong()) return null
             offset = rom.gbBankAddress(bank, rom.u16le(pointerCell.toInt())) ?: return null
-            maximumBytes = minOf(MAX_GB_TYPE_NAME_BYTES, (bank + 1) * GB_BANK_SIZE - offset, rom.size - offset)
+            if (layout.format == TableRecordFormat.GEN2_COMPACT_TYPE_NAMES &&
+                (offset / GB_BANK_SIZE != bank || offset.toLong() < layout.offset.toLong() + layout.count * 2L)
+            ) return null
+            maximumBytes = minOf(gbNameLimit, (bank + 1) * GB_BANK_SIZE - offset, rom.size - offset)
         } else {
             val stride = layout.stride ?: layout.recordSize
             val row = layout.offset.toLong() + id.toLong() * stride
@@ -205,6 +288,8 @@ internal object CompiledTypeNameResolver {
     }
 
     private val STANDARD_ROLES = TypeSemanticRole.entries.toSet()
+    private const val COMPACT_GEN2_TYPE_COUNT = 19
+    private const val COMPACT_GEN2_TYPE_NAME_BYTES = 13
     private const val GB_BANK_SIZE = 0x4000
     private const val GB_CONSUMER_SIZE = 11
     private const val MAX_GB_TYPE_NAME_BYTES = 16
@@ -277,6 +362,7 @@ private object LocalizedTypeNameLexicon {
             TypeSemanticRole.ICE to listOf("ICE"),
             TypeSemanticRole.DRAGON to listOf("DRAGON"),
             TypeSemanticRole.DARK to listOf("DARK"),
+            TypeSemanticRole.FAIRY to listOf("FAIRY"),
         ),
         LanguageTag.FRENCH to roles(
             TypeSemanticRole.NORMAL to listOf("NORMAL"),

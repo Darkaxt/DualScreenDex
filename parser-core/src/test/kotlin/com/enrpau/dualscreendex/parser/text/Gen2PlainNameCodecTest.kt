@@ -57,6 +57,7 @@ class Gen2PlainNameCodecTest {
 
     @Test fun registersByIdentityWithoutChangingOfficialEnglishCandidates() {
         assertSame(codec, LanguageRegistry.codec("gb-gen2-en-53-plain", 1))
+        assertSame(Gen2PlainNameCodec.english53Ngrams, LanguageRegistry.codec("gb-gen2-en-53-ngram", 1))
         assertSame(
             WesternPokemonTextCodecs.gen2English,
             LanguageRegistry.candidateCodec(LanguageTag.ENGLISH, 2, Platform.GBC, EngineFamily.CRYSTAL),

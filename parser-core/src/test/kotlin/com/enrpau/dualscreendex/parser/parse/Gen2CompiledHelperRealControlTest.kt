@@ -1,6 +1,10 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
+import com.enrpau.dualscreendex.parser.catalog.TypeSemanticRole
+import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.RomImage
+import com.enrpau.dualscreendex.parser.text.Gen2PlainNameCodec
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.Assert.assertEquals
@@ -47,5 +51,17 @@ class Gen2CompiledHelperRealControlTest {
             multiplyVector
         }
         assertTrue(GbCompiledBankCalls.repeatedAdd(rom, multiplyAddress))
+        val codec = if (maximumBank == 255) Gen2PlainNameCodec.english53 else Gen2PlainNameCodec.english53Ngrams
+        val typeNames = requireNotNull(CompiledTypeNameResolver.resolve(
+            RomAnalysisSession(rom, RomHeaderReader.read(rom)), 2, codec,
+        ))
+        assertEquals(if (maximumBank == 255) 1 else 2, typeNames.recordSize)
+        val types = requireNotNull(CompiledTypeNameResolver.decode(rom, 2, typeNames, codec))
+        assertEquals(19, types.size)
+        assertEquals(TypeSemanticRole.entries.toSet(), types.values.map { it.semanticRole }.toSet())
+        assertEquals(TypeSemanticRole.FIRE, types[9]?.semanticRole)
+        assertEquals(TypeSemanticRole.GRASS, types[11]?.semanticRole)
+        assertEquals(TypeSemanticRole.FAIRY, types[17]?.semanticRole)
+        assertEquals(TypeSemanticRole.MYSTERY, types[18]?.semanticRole)
     }
 }

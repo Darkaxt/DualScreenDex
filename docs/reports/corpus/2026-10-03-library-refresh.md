@@ -140,12 +140,12 @@ Therefore:
 
 ## Follow-up ledger
 
-`LIB26-G1-CORE` is accepted at the bounded host/static boundary documented above. `LIB26-G2-CORE` is in progress: complete modern copy/multiply helper authority is verified, but no new catalog is admitted yet. Other entries remain recommended / not implemented; none is silently deferred or claimed complete.
+`LIB26-G1-CORE` is accepted at the bounded host/static boundary documented above. `LIB26-G2-CORE` is in progress: complete modern helper and type-label authority is verified, but no new catalog is admitted yet. Other entries remain recommended / not implemented; none is silently deferred or claimed complete.
 
 | ID | Status | Named target | Closure condition |
 |---|---|---|---|
 | LIB26-G1-CORE | Accepted host/static | Six PureRGB, two Yellow Legacy, two Yellow Kaizo | Compiled-consumer-backed routing, correct canonical base joins/reference closure, and related Gen I controls; [evidence](2026-10-03-gen1-core-acceptance.md). |
-| LIB26-G2-CORE | In progress | Polished Crystal / Inheritance first; Ambrosia / Sour Crystal separately | [Complete helper authority verified](../../superpowers/specs/2026-10-03-gen2-compiled-core-design.md); modern record/index contracts and reference-safe persistence remain open. |
+| LIB26-G2-CORE | In progress | Polished Crystal / Inheritance first; Ambrosia / Sour Crystal separately | [Complete helper/type-label authority verified](../../superpowers/specs/2026-10-03-gen2-compiled-core-design.md); modern record/index contracts and reference-safe persistence remain open. |
 | LIB26-G3-CORE | Recommended | ROWE first; Voyager and Elite Redux separately | Usable expanded species/stat/type/acquisition catalogs without wrong-stride fallback. |
 | LIB26-MAPS | Recommended | Heart and Soul, Soulgold, Pokescape, Tourmaline | Map-consumer proof, valid assets/references, and related-cohort regression. |
 | LIB26-G1-OPTIONAL | Recommended | Six PureRGB builds; both Yellow Kaizo builds; Static Yellow and Christmas Kaizo variants | PureRGB sprites/Dex/World/Local datasets and Yellow/Christmas missing Dex/Local datasets resolved through independent compiled authority and failure isolation. |

@@ -45,6 +45,14 @@ Modern authority replaces incompatible inherited roots as a coherent unit. Subse
 
 Each implementation checkpoint is smart-synced, committed, and pushed. Preserve compact private evidence before ticketed cleanup of registered disposable outputs. Public evidence contains counters, filenames, provenance, and limitations—not ROM bytes, bulk decoded tables, or private paths.
 
+## Verified type-label and static n-gram checkpoint
+
+The modern type-label ABIs are independent: Polished uses byte offsets relative to each table cell; Inheritance uses bank-local word pointers. Both expose a complete 19-role domain, including Fairy and Mystery. The compiled getters, restart-copy routine, bank-contained tables/strings, unique semantic domain, and competing-root rejection authorize interpretation. Native type IDs are retained; neither build's Fire is retail type 20.
+
+Inheritance's real type-label check initially failed because several labels contain n-grams rather than ordinary font bytes. The separate `gb-gen2-en-53-ngram` codec reads its 71 static fragments from the complete compiled text dispatch and pointer table—not a source-derived string dictionary. Printer range checks, recursive call/return linkage, termination, ROM bounds, and three WRAM-name exclusions are proven. Dynamic names, text commands, nested fragments, and Huffman bitstreams remain unsupported. Weak ROM-instance caching avoids repeatedly rediscovering the immutable dictionary and does not share dictionaries between ROMs.
+
+Four new type-consumer positives and three dictionary positives were observed failing before their implementations. A separate failing boundary case also caught labels terminating beyond the compiled 13-byte copy width; both pointer and relative decoders now enforce that limit. The final affected suite passes **87 tests with zero failures, errors, or skips**. Both exact real builds resolve all 19 type labels and semantic roles through their respective contracts. This remains helper/type authority, not catalog admission, core-field joins, persistence, or a parser cohort.
+
 ## Verified plain-name checkpoint
 
 The versioned `gb-gen2-en-53-plain` codec decodes the remapped plain-name alphabet, including the source-ratified `'d` token needed by Farfetch'd and Sirfetch'd. It rejects retail termination and unratified prose/control bytes. Registration is identity-only: official candidate lists and unique English selectors are unchanged. This does not admit compressed text or any core table by itself.

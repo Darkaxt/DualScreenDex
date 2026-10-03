@@ -115,6 +115,7 @@ enum class TableRecordFormat {
     GEN3_MOVE_U16_LEVEL_U8,
     GEN3_MOVE_U16_LEVEL_U16,
     GEN3_LEVEL_U8_MOVE_U16,
+    GEN2_COMPACT_TYPE_NAMES,
 }
 
 data class ProfileTables(

@@ -2,6 +2,7 @@ package com.enrpau.dualscreendex.parser.text
 
 import com.enrpau.dualscreendex.parser.language.LanguageTag
 import com.enrpau.dualscreendex.parser.model.Platform
+import com.enrpau.dualscreendex.parser.parse.GbCompiledNgramResolver
 
 /** Explicit plain-name dialect; it is not a Huffman prose decoder. */
 internal object Gen2PlainNameCodec {
@@ -20,6 +21,23 @@ internal object Gen2PlainNameCodec {
             in 0xA0..0xB9 -> PokemonTextToken.Glyph(('a' + value - 0xA0).toString())
             in 0xE0..0xE9 -> PokemonTextToken.Glyph(('0' + value - 0xE0).toString())
             else -> glyphs[value]?.let { PokemonTextToken.Glyph(it) } ?: PokemonTextToken.Invalid()
+        }
+    }
+
+    val english53Ngrams = PokemonTextCodec(
+        id = "gb-gen2-en-53-ngram",
+        version = 1,
+        language = LanguageTag.ENGLISH,
+        applicableGenerations = setOf(2),
+        applicablePlatforms = setOf(Platform.GB, Platform.GBC),
+        terminator = 0x53,
+    ) { rom, offset, end ->
+        val value = rom.u8(offset)
+        if (value in 0x09..0x4F) {
+            GbCompiledNgramResolver.resolve(rom)?.get(value)?.let { PokemonTextToken.Glyph(it) }
+                ?: PokemonTextToken.Invalid()
+        } else {
+            english53.decodeToken(rom, offset, end)
         }
     }
 
