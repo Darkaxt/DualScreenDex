@@ -102,6 +102,17 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
         definition: EngineFamilyDefinition,
         identity: IdentityRootsPhaseResult.Resolved,
     ): CoreDatasetsPhaseResult.Resolved {
+        identity.gen2Compact?.let { compact ->
+            return CoreDatasetsPhaseResult.Resolved(
+                candidateTables = compact.tables, speciesCount = compact.core.metadata.slots.size,
+                inferredMoveCount = compact.tables.moveNames?.count, moveCount = compact.tables.moveNames?.count,
+                speciesNames = compact.core.namesEvidence, baseStats = compact.core.statsEvidence,
+                moveNames = compact.moveNamesEvidence, moveData = compact.moveDataEvidence,
+                speciesNamesLayout = compact.tables.speciesNames, baseStatsLayout = compact.tables.baseStats,
+                moveNamesLayout = compact.tables.moveNames, moveDataLayout = compact.tables.moveData,
+                languageManifest = compact.manifest,
+            )
+        }
         val rom = session.rom
         val generation = definition.formatGeneration
         val exact = identity.exactProfile

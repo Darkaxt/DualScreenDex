@@ -41,6 +41,24 @@ internal object Gen2CompactCoreResolver {
         val copy: GbCompiledFarCopyAuthority,
     )
 
+    /** Negative fallback gate only; these landmarks never authorize table decoding. */
+    fun hasCompactConsumers(session: RomAnalysisSession): Boolean {
+        val rom = session.rom
+        var names = false
+        var bases = false
+        for (offset in 0..minOf(0x4000, rom.size) - 45) {
+            if (offset and 0x3FF == 0) session.cancellation.throwIfCancellationRequested()
+            names = names || (homeBytes(rom, offset, 0xE5, 0x21) &&
+                homeBytes(rom, offset + 33, 0x62, 0x6B, 0x36, 0x53, 0xD1, 0xE1, 0xC9)) ||
+                (homeBytes(rom, offset, 0xE5, 0xC5, 0xFA) &&
+                    homeBytes(rom, offset + 38, 0x62, 0x6B, 0x36, 0x53, 0xD1, 0xE1, 0xC9))
+            bases = bases || (homeBytes(rom, offset, 0xE5, 0xD5, 0xC5, 0xFA) &&
+                homeBytes(rom, offset + 6, 0x4F, 0xFA) && homeBytes(rom, offset + 10, 0x47, 0xCD))
+            if (names && bases) return true
+        }
+        return false
+    }
+
     fun resolve(session: RomAnalysisSession): Gen2CompactCoreResolution? {
         val rom = session.rom
         val names = mutableListOf<Names>()

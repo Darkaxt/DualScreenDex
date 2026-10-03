@@ -135,6 +135,7 @@ internal class CapabilityAggregationStrategy : FamilyProbePhaseStrategy {
                         abilityNames = semantic.resolvedAbilityNames,
                         abilityMechanics = abilityMechanics.layout,
                     ),
+                    gen2CompactCore = identity.gen2Compact?.core?.metadata,
                     languageManifest = core.languageManifest.withDefaultLocalizedTables(
                         LocalizedTableLayout(
                             speciesNames = resolvedTables.speciesNames,
@@ -188,7 +189,11 @@ internal class CapabilityAggregationStrategy : FamilyProbePhaseStrategy {
             ),
             abilityMechanics,
         )
-        return applyCapabilityApplicability(definition, discovered)
+        return applyCapabilityApplicability(definition, discovered,
+            additionalApplicable = if (identity.gen2Compact != null) setOf(
+                RomCapability.ABILITIES, RomCapability.ABILITY_DESCRIPTIONS,
+                RomCapability.ABILITY_MECHANICS, RomCapability.NATURES,
+            ) else emptySet())
     }
 
     private fun authoritativeTextEvidence(
@@ -214,6 +219,9 @@ internal class CapabilityAggregationStrategy : FamilyProbePhaseStrategy {
         core: CoreDatasetsPhaseResult.Resolved,
         semantic: SemanticDomainPhaseResult.Resolved,
     ): AbilityMechanicsPhaseResult {
+        if (identity.gen2Compact != null) {
+            return AbilityMechanicsPhaseResult(null, unavailableMechanics("compact ability-mechanics authority is unavailable"))
+        }
         if (definition.formatGeneration < 3) {
             return AbilityMechanicsPhaseResult(
                 null,
@@ -454,10 +462,11 @@ internal fun abilityMechanicsCoverage(
 internal fun applyCapabilityApplicability(
     definition: EngineFamilyDefinition,
     discovered: List<CapabilityEvidence>,
+    additionalApplicable: Set<RomCapability> = emptySet(),
 ): List<CapabilityEvidence> {
     val byCapability = discovered.associateBy(CapabilityEvidence::capability)
     return RomCapability.entries.map { capability ->
-        if (capability !in definition.applicableCapabilities) {
+        if (capability !in definition.applicableCapabilities && capability !in additionalApplicable) {
             CapabilityEvidence(
                 capability = capability,
                 compatible = false,

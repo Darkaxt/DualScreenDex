@@ -112,7 +112,11 @@ class Gen2CompiledHelperRealControlTest {
         assertEquals(TypeSemanticRole.FAIRY, types[17]?.semanticRole)
         assertEquals(TypeSemanticRole.MYSTERY, types[18]?.semanticRole)
         val core = requireNotNull(Gen2CompactCoreResolver.resolve(RomAnalysisSession(rom, RomHeaderReader.read(rom))))
-        val localized = LocalizedTableLayout(speciesNames = core.tables.speciesNames, typeNames = core.typeNames)
+        val compiledMoves = requireNotNull(Gen2CompactMoveNamesResolver.resolve(
+            RomAnalysisSession(rom, RomHeaderReader.read(rom)), core.codec, types.keys,
+        ))
+        val localized = LocalizedTableLayout(speciesNames = core.tables.speciesNames,
+            moveNames = compiledMoves.moveNames, typeNames = core.typeNames)
         val manifest = RomLanguageManifest(LanguageTag.ENGLISH, listOf(RomLanguageProjection(
             LanguageTag.ENGLISH, core.codec.id, core.codec.version, localized, emptyList(), LanguageResolutionStatus.RESOLVED,
         )), LanguageResolutionStatus.RESOLVED)
@@ -128,13 +132,15 @@ class Gen2CompiledHelperRealControlTest {
         assertTrue(species.values.all { it.name.value?.isNotBlank() == true && it.baseStats.value != null })
         assertTrue(species.values.all { it.typeIds.value?.all(types::containsKey) == true })
         assertTrue(species.values.all { it.dexNumber.value == null })
-        val moveData = requireNotNull(Gen2CompactMoveResolver.resolve(rom, 255, types.keys))
+        val moveData = compiledMoves.moveData
         assertEquals(8, moveData.recordSize)
         assertEquals(TableRecordFormat.GEN2_SPLIT_MOVE_8, moveData.format)
         val moves = RecordMaterializers.moves(rom, ResolvedRomLayout(
-            EngineFamily.CRYSTAL, 2, Platform.GBC, null, 255, ProfileTables(moveData = moveData),
+            EngineFamily.CRYSTAL, 2, Platform.GBC, null, 255,
+            ProfileTables(moveNames = compiledMoves.moveNames, moveData = moveData), languageManifest = manifest,
         ))
         assertEquals((1..255).toSet(), moves.keys)
+        assertTrue(moves.values.all { it.name.value?.isNotBlank() == true })
         assertTrue(moves.values.all { it.typeId.value in types.keys })
         assertEquals(setOf(MoveCategory.PHYSICAL, MoveCategory.SPECIAL, MoveCategory.STATUS),
             moves.values.map { it.category.value }.toSet())

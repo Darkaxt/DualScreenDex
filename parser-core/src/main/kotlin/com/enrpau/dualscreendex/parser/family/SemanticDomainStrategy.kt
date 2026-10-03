@@ -85,6 +85,15 @@ internal class SemanticDomainStrategy : FamilyProbePhaseStrategy {
     ): FamilyProbeState {
         val identity = requireNotNull(state.identityRoots) as IdentityRootsPhaseResult.Resolved
         val rawCore = requireNotNull(state.coreDatasets) as CoreDatasetsPhaseResult.Resolved
+        identity.gen2Compact?.let { compact ->
+            return state.withSemanticDomain(SemanticDomainPhaseResult.Resolved(
+                coreDatasets = rawCore,
+                descriptions = missingEvidence("compact prose authority is unavailable"), descriptionsLayout = null,
+                typeChart = missingEvidence("compact type-chart authority is unavailable"), typeChartLayout = null,
+                abilities = missingEvidence("compact ability authority is unavailable"), abilitiesLayout = null,
+                typeNamesLayout = compact.core.typeNames,
+            ))
+        }
         val textCodec = rawCore.languageManifest.defaultTextCodec(
             generation = definition.formatGeneration,
             platform = session.header.platform,

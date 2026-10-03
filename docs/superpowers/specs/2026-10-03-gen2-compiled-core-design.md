@@ -45,6 +45,16 @@ Modern authority replaces incompatible inherited roots as a coherent unit. Subse
 
 Each implementation checkpoint is smart-synced, committed, and pushed. Preserve compact private evidence before ticketed cleanup of registered disposable outputs. Public evidence contains counters, filenames, provenance, and limitations—not ROM bytes, bulk decoded tables, or private paths.
 
+## Verified compact family/catalog integration
+
+Independent move-name registries now bind all 255 nonzero byte IDs to the separately proved eight-byte detail domain. The four-byte negative-index registry and three-byte reserved-string registry are separate contracts. Complete string iteration, 13-byte copying, input-buffer linkage, bank switching/restoration, all-name decoding, and competing-root rejection are required. The original three registry positives and a coherent input-alias regression failed before their fixes; the direct name/detail/exact-control suite passed 18 tests without failures, errors, or skips.
+
+Modern family admission now carries canonical indices, names/stats, named moves, native type labels, and compatible English text as one unit. Recognized incomplete compact consumers reject legacy fallback; nonmatching family identity is not promoted. Native-name overlays, fuzzy scans, inherited roots, and classic optional resolvers cannot replace the unit. Catalog materialization emits essential localized records and COMPLETE progress without optional graphics/prose/acquisition/map/theme/runtime callbacks. Unproven ability/Nature data is unavailable, not a generation-based N/A claim. National Dex conversion remains unavailable.
+
+Six integration cases failed against the inherited family/catalog path before implementation. The final focused suite reports **54 tests, zero failures/errors, one skip**: 53 passed, including eight synthetic integration tests and a complete synthetic parser entrypoint. The skipped existing Cloud White 2 real control lacked its configured input; it is not a Gen II acceptance claim. No real parser cohort or SQLite reopen has run yet. The two exact modern controls remain direct resolver/materializer evidence from the preceding name checkpoint, not production catalog acceptance. The published matrix remains unchanged.
+
+**Status: IN_PROGRESS.** Next implement independent Ambrosia/Sour classic corrections, then run the final bounded affected cohort and persistence/reopen gate. `LIB26-G2-OPTIONAL` retains all unproven modules and live/save semantics.
+
 ## Verified compact species/index checkpoint
 
 The zero-based extended-page and one-based independent-table contracts are now proved separately. Complete linked index helpers establish variant scanning, comparison, canonical boundaries, inverse-root arithmetic, and returns. The compiled species-validity predicate excludes zero and Egg bytes; alternate name forms are not promoted to canonical species. Canonical rows retain independently derived name and base indices in immutable metadata, so neither `id - 1` nor positional table joins may replace that authority.
@@ -53,7 +63,7 @@ Complete fixed-name and base-copy consumers bind the index contracts to bank-con
 
 Five index positives and four core/materialization positives were observed failing before implementation. The final affected suite passes **81 tests with zero failures, errors, or skips**. Direct exact-build checks produce **289 canonical species from 292 name slots for Polished** and **254 from 256 name slots for Inheritance**, with correct representative first-species joins and complete name/stat/type references. Polished's highest native canonical ID is 291; Inheritance's is 254. These are direct resolver/materializer checks—not production family admission, a parser cohort, SQLite reopen, SaveRAM, or live acceptance.
 
-**Status: IN_PROGRESS.** Next bind independently compiled move-name/count authority and wire the coherent compact result into the family/language/catalog phases without inherited/fuzzy optional overlays. Then implement the separate Ambrosia/Sour corrections and execute the final bounded cohort/persistence gate. The current published matrix remains unchanged; all four targets are still unmatched.
+At this direct-core checkpoint, move-name/count authority and production integration were still pending; the subsequent integration checkpoint above supersedes that implementation status. Classic Ambrosia/Sour corrections and the final bounded cohort/persistence gate remain open. The current published matrix is unchanged; all four targets are still unmatched in its retained evidence.
 
 ## Verified modern move checkpoint
 

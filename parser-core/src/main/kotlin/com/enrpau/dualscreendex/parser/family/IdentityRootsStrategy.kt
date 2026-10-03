@@ -32,6 +32,7 @@ import com.enrpau.dualscreendex.parser.parse.Gen1CompiledNameResolver
 import com.enrpau.dualscreendex.parser.parse.Gen1CompiledRelationshipResolver
 import com.enrpau.dualscreendex.parser.parse.Gen1CompiledTypeChartResolver
 import com.enrpau.dualscreendex.parser.parse.Gen2CompiledCoreResolver
+import com.enrpau.dualscreendex.parser.parse.Gen2CompactCoreResolver
 import com.enrpau.dualscreendex.parser.parse.Gen2CompiledMoveResolver
 import com.enrpau.dualscreendex.parser.parse.Gen2CompiledSpriteResolver
 import com.enrpau.dualscreendex.parser.parse.ExpandedSplitCaptureBallResolver
@@ -61,6 +62,7 @@ internal sealed interface IdentityRootsPhaseResult {
         tableResolution: ProfileTableResolution,
         val probeCodec: PokemonTextCodec,
         nativeNameCandidates: List<NativeNameCandidate> = emptyList(),
+        val gen2Compact: Gen2CompactFamilyAuthority? = null,
     ) : IdentityRootsPhaseResult {
         val nativeNameCandidates = Collections.unmodifiableList(nativeNameCandidates.toList())
         val exactProfile = exactProfile
@@ -131,6 +133,21 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
         val generation = definition.formatGeneration
         if (generation == 1) session.freezeGen1ItemNameAuthority()
         if (generation == 2) session.freezeGen2ItemNameAuthority()
+        if (generation == 2 && Gen2CompactCoreResolver.hasCompactConsumers(session)) {
+            val compact = if (identityMatched) Gen2CompactFamilyAuthority.resolve(session) else null
+            if (compact == null) {
+                return IdentityRootsPhaseResult.Rejected(ParserProbe(
+                    definition.family, score.sumOf { it.points }, false, 0, score, emptyList(),
+                    diagnostics = listOf("compact Gen II consumers require complete coherent core/move authority and family identity"),
+                ))
+            }
+            return IdentityRootsPhaseResult.Resolved(
+                exactProfile = null, baseProfile = baseProfile, identityMatched = true, scoreEvidence = score,
+                expansion = null, compiledGbaReferences = null,
+                tableResolution = ProfileTableResolution(compact.tables), probeCodec = compact.core.codec,
+                gen2Compact = compact,
+            )
+        }
         val nativeNameCandidates = NativeNameCandidateResolver.resolve(session, definition, baseProfile)
         val nativeNames = nativeNameCandidates.singleOrNull()
         val probeCodec = nativeNames?.codec ?: OfficialLanguageResolver.preferredProbeCodec(

@@ -147,7 +147,7 @@ class Gen2CompactCoreResolverTest {
         RomAnalysisSession(RomImage(bytes), RomHeader(Platform.GBC, "CRYSTAL")),
     )
 
-    private fun fixture(oneBased: Boolean): ByteArray = ByteArray(0x10000).also { bytes ->
+    internal fun fixture(oneBased: Boolean): ByteArray = ByteArray(0x10000).also { bytes ->
         bytes.put(0x08, "e0 87 ea 00 20 c9")
         bytes.put(0x18, "c3 00 06")
         bytes.put(0x20, "c3 00 07")

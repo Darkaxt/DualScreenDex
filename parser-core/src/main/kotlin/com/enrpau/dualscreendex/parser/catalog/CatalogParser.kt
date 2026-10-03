@@ -317,7 +317,11 @@ object CatalogMaterializer {
                 "family type colors with explicit accessible fallback for custom IDs",
                 "no materialized types were available for presentation",
             )
-            capabilities[RomCapability.NATURES] = natureCapabilityEvidence(
+            capabilities[RomCapability.NATURES] = if (layout.gen2CompactCore != null) CapabilityEvidence(
+                capability = RomCapability.NATURES, compatible = false, confidence = 0.0,
+                reasons = listOf("compact Nature applicability and table authority are unproven"),
+                status = CapabilityStatus.NOT_FOUND,
+            ) else natureCapabilityEvidence(
                 natureResolution,
                 layout.generation,
             )
@@ -346,6 +350,11 @@ object CatalogMaterializer {
             localization = essentialText.localization,
         )
         publishProgress(CatalogMaterializationProgress(CatalogMaterializationPhase.ESSENTIAL, 1, 5, essentialCatalog))
+        if (layout.gen2CompactCore != null) {
+            // Canonical static authority does not authorize any classic optional or runtime ABI.
+            publishProgress(CatalogMaterializationProgress(CatalogMaterializationPhase.COMPLETE, 5, 5, essentialCatalog))
+            return essentialCatalog
+        }
 
         beginWork(CatalogWorkModule.SPECIES_MEDIA)
         val descriptionMaterialization = runCatching {
