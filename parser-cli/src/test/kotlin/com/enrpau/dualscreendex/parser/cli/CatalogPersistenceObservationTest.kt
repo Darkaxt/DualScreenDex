@@ -44,7 +44,10 @@ class CatalogPersistenceObservationTest {
     }
 
     @Test fun preWriteDigestLimitFailureDoesNotOpenDatabase() = withRoot { root ->
-        val catalog = catalog(listOf("x".repeat(CatalogLogicalDigest.maximumSectionBytes + 1)))
+        // Reuse a small string while still streaming beyond the real production section ceiling.
+        val chunk = "x".repeat(64 * 1024)
+        val diagnostics = java.util.Collections.nCopies(CatalogLogicalDigest.maximumSectionBytes / chunk.length + 1, chunk)
+        val catalog = catalog(diagnostics)
         var opens = 0
         val cache = CatalogCache(root, object : CatalogDatabaseFactory {
             override fun open(file: File): CatalogDatabase {
@@ -54,6 +57,8 @@ class CatalogPersistenceObservationTest {
         })
         val failure = runCatching { persist(cache, catalog) }.exceptionOrNull()
         assertNotNull("oversized section must fail closed", failure)
+        assertTrue("must reject the section limit rather than exhaust the test heap", failure is IllegalArgumentException)
+        assertEquals("catalog section inflate limit exceeded: diagnostics", failure!!.message)
         assertEquals("logical digest must fail before any database open", 0, opens)
         assertFalse(cache.fileFor(catalog.romSha256).exists())
     }

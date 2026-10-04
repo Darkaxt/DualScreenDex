@@ -13,7 +13,7 @@
   },
   "scopeDecision": {
     "type": "NONPARSER_REUSE",
-    "attestation": "Fresh full342 source-bound corpus evidence was generated at the named frozen parser/catalog executable commit. Later changes are release-policy tooling, workflow handoff and evidence/readiness documentation only; parser, catalog, build-wrapper and corpus-execution production source remain unchanged."
+    "attestation": "Fresh full342 source-bound corpus evidence was generated at the named frozen parser/catalog executable commit. Later changes are release-policy tooling, workflow handoff, evidence/readiness documentation and a bounded synthetic persistence test fixture only; parser, catalog, build-wrapper and corpus-execution production source remain unchanged."
   },
   "cacheDecision": {
     "type": "BUMP_REQUIRED",
