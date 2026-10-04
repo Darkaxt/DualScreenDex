@@ -282,7 +282,7 @@ test("runs every included JVM and app unit suite in CI", () => {
 
   assert.match(
     unitTestStep,
-    /gradlew\.bat verifySecureBuildDependencies test :app:testDebugUnitTest --stacktrace/,
+    /gradlew\.bat verifyJvmToolchains verifySecureBuildDependencies test :app:testDebugUnitTest --stacktrace/,
   );
   assert.doesNotMatch(unitTestStep, /:parser-core:test/);
 });

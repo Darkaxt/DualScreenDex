@@ -3,10 +3,6 @@ plugins {
     id("org.jetbrains.kotlin.jvm")
 }
 
-kotlin {
-    jvmToolchain(17)
-}
-
 val dualDexSourceCommit = providers.gradleProperty("dualdexSourceCommit")
     .orElse(providers.environmentVariable("GITHUB_SHA"))
     .orElse(providers.provider {

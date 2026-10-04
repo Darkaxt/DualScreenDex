@@ -345,7 +345,7 @@ See the [current per-ROM matrix](docs/reports/corpus/2026-10-03-library-compatib
 
 Requirements:
 
-- JDK 17
+- JDK 21 (compiler and test runtime; Java/Kotlin bytecode and API baseline remain 17 for Android)
 - the included Gradle wrapper
 
 Run the parser tests and install the CLI distribution on Windows:
@@ -370,7 +370,7 @@ The scanner accepts `.gb`, `.gbc`, and `.gba` files plus matching entries inside
 
 Requirements:
 
-- JDK 17
+- JDK 21 (compiler and test runtime; Java/Kotlin bytecode and API baseline remain 17 for Android)
 - Node.js 20 or newer
 
 Build the web client and install the local server distribution:

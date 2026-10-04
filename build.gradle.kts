@@ -26,6 +26,24 @@ plugins {
     id("org.jetbrains.kotlin.jvm") version "2.4.20-Beta2" apply false
 }
 
+subprojects {
+    plugins.withId("org.jetbrains.kotlin.jvm") {
+        // Use the host/CI JDK without raising the bytecode/API baseline consumed by Android.
+        extensions.configure<org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension> {
+            jvmToolchain(21)
+            compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+            compilerOptions.freeCompilerArgs.add("-Xjdk-release=17")
+        }
+        extensions.configure<JavaPluginExtension> {
+            sourceCompatibility = JavaVersion.VERSION_17
+            targetCompatibility = JavaVersion.VERSION_17
+        }
+        tasks.withType<JavaCompile>().configureEach {
+            options.release.set(17)
+        }
+    }
+}
+
 allprojects {
     configurations.configureEach {
         resolutionStrategy.eachDependency {
@@ -46,6 +64,26 @@ allprojects {
                 useVersion(secureVersion)
                 because("Keep build and test tooling above published security floors")
             }
+        }
+    }
+}
+
+tasks.register("verifyJvmToolchains") {
+    group = "verification"
+    description = "Verifies JDK 21 compilation/testing with the Android-compatible Java 17 baseline."
+    doLast {
+        subprojects.filter { it.plugins.hasPlugin("org.jetbrains.kotlin.jvm") }.forEach { project ->
+            val kotlin = project.extensions.getByType<org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension>()
+            check(kotlin.compilerOptions.jvmTarget.get() == org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+            check("-Xjdk-release=17" in kotlin.compilerOptions.freeCompilerArgs.get())
+            project.tasks.withType<JavaCompile>().forEach { task ->
+                check(task.javaCompiler.get().metadata.languageVersion.asInt() == 21)
+                check(task.options.release.get() == 17)
+            }
+            project.tasks.withType<Test>().forEach { task ->
+                check(task.javaLauncher.get().metadata.languageVersion.asInt() == 21)
+            }
+            logger.lifecycle("${project.path}: JDK 21 compiler/test launcher, Java/Kotlin release 17")
         }
     }
 }

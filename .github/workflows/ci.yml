@@ -48,7 +48,7 @@ jobs:
         run: pwsh -File tools/android/Test-DualDexAndroidTools.ps1
 
       - name: Run Kotlin tests
-        run: .\gradlew.bat verifySecureBuildDependencies test :app:testDebugUnitTest --stacktrace
+        run: .\gradlew.bat verifyJvmToolchains verifySecureBuildDependencies test :app:testDebugUnitTest --stacktrace
 
       - name: Test web UI
         working-directory: companion-web
