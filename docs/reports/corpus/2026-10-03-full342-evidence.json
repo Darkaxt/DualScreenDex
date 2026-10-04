@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 3,
+  "status": "COMPLETE",
+  "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
+  "generator": {
+    "name": "parser-cli",
+    "schemaVersion": 16,
+    "sha256": "443fbe6bc6804a12480e66e6c318a2dcd500c574663c84e210c09fcf03ba2b97"
+  },
+  "rawReportSha256": "c2c7d04dc5c5fb688ee268492d34d897b0fd734562e1881941cae900ac6c9de9",
+  "corpusInputDigestSha256": "733e36785fa9a5b71bc4121343a6b6d2cbd27e43e08b3fddc2e2870bac1a0561",
+  "inputCount": 342,
+  "uniqueRomIdentities": 342,
+  "outcomes": {
+    "selected": 300,
+    "ambiguous": 2,
+    "noFamilyMatch": 40,
+    "total": 342,
+    "errors": 0
+  },
+  "languageManifests": {
+    "resolved": 285,
+    "unknown": 15
+  },
+  "catalogs": {
+    "materialized": 300,
+    "persisted": 300,
+    "catalogErrors": 0,
+    "persistenceErrors": 0
+  },
+  "recoveries": [],
+  "packagedAcceptance": {
+    "tests": 8,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "resultSha256": "cc6d9617ccfa58c0829f99c846a7c76697a3712cfc65d0749ebf5dc004abd88a",
+    "sourceCommit": "5397f6e3b131cf0e15e16fff4f13b4e09761e46d"
+  },
+  "openBlockers": 0,
+  "privacy": {
+    "containsRomIdentity": false,
+    "containsRomName": false,
+    "containsSourcePath": false,
+    "containsRomBytes": false
+  }
+}

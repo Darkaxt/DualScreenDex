@@ -1,37 +1,37 @@
 {
   "schemaVersion": 2,
-  "sourceCommit": "5397f6e3b131cf0e15e16fff4f13b4e09761e46d",
+  "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
   "qaBaselineSourceCommit": "66bd216d9c370735666d5eb7438e83796a87eec7",
   "generator": {
     "name": "parser-cli",
     "schemaVersion": 16,
-    "sha256": "8de5fada53efdd248b02f36cc9a6e86c40cfaf0da1d9e8e90795704b80bb3017"
+    "sha256": "443fbe6bc6804a12480e66e6c318a2dcd500c574663c84e210c09fcf03ba2b97"
   },
   "corpus": {
-    "inputDigestSha256": "974500a1b568bab72954e253c0a1efae25ea4208657804ed5f81ff3409e79d57",
-    "inputCount": 333
+    "inputDigestSha256": "733e36785fa9a5b71bc4121343a6b6d2cbd27e43e08b3fddc2e2870bac1a0561",
+    "inputCount": 342
   },
   "scopeDecision": {
     "type": "NONPARSER_REUSE",
-    "attestation": "Fresh source-bound localization corpus evidence was generated at the named executable commit. Subsequent changes contain only reviewed localization documentation and packaged-acceptance test corrections; parser, catalog, build, wrapper, and corpus-execution source remain unchanged."
+    "attestation": "Fresh full342 source-bound corpus evidence was generated at the named frozen parser/catalog executable commit. Later changes are release-policy tooling, workflow handoff and evidence/readiness documentation only; parser, catalog, build-wrapper and corpus-execution production source remain unchanged."
   },
   "cacheDecision": {
     "type": "BUMP_REQUIRED",
-    "previousRevision": 46,
-    "revision": 82,
-    "rationale": "The localization stages changed persisted parser projections and advanced the production parser schema from the v1.1.0 release revision 46 to revision 82, so every older catalog must rebuild before activation.",
+    "previousRevision": 82,
+    "revision": 83,
+    "rationale": "Compiled Gen I and Gen II core expansion changes persisted catalog output relative to stable v1.2.0 revision 82. Revision 83 forces every earlier cache to rebuild; a seeded revision-82 rejection, rebuild and exact reopen regression preserves SQL schema 2.",
     "seededRegressionTest": "catalog-store/src/test/kotlin/com/darkaxt/dualdex/catalog/CatalogStoreTest.kt"
   },
   "artifacts": [
     {
       "role": "CORPUS_SUMMARY",
-      "path": "docs/reports/localization/stage-06-corpus-evidence.json",
-      "sha256": "4a3d4c9c2394719f9a95a4a7a4d241f0ad1396307df73f8f5ff3e3bca03d014c"
+      "path": "docs/reports/corpus/2026-10-03-full342-evidence.json",
+      "sha256": "4ca371369c9390bffb6deebc6c495b9e2b1eddc7376661b83f32f0f8151fc90e"
     },
     {
       "role": "CORPUS_EXECUTION_RECEIPT",
-      "path": "docs/reports/localization/stage-06-corpus-execution.json",
-      "sha256": "ac383a2a7f8be41b5876eb4b55dccda6f39f7d32f26762aabecf87a4af4c94e3"
+      "path": "docs/reports/corpus/2026-10-03-full342-execution.json",
+      "sha256": "8d27df5a06f1e1310adfd1ba6d08b6b599c5061ee6b71843f528ea60a966b7cd"
     },
     {
       "role": "STAGE_7_CLOSURE",

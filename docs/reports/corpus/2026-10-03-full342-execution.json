@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
+  "generator": {
+    "name": "parser-cli",
+    "schemaVersion": 16,
+    "sha256": "443fbe6bc6804a12480e66e6c318a2dcd500c574663c84e210c09fcf03ba2b97"
+  },
+  "rawReportSha256": "c2c7d04dc5c5fb688ee268492d34d897b0fd734562e1881941cae900ac6c9de9",
+  "inputCount": 342
+}

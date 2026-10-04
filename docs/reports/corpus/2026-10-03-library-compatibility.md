@@ -1,56 +1,58 @@
 # ROM compatibility matrix
 
-This document lists all 342 deduplicated ROM identities in the October 3, 2026 current library snapshot. Routed ROMs are grouped by generation and detected engine family; a row describes the scanned build named in the **ROM** column, not every release of that project.
+This document lists all **342 distinct ROM identities** in the October 3, 2026 current library snapshot. Every row now comes from the same full source-bound evaluation, completed October 4. A row describes the public build named in the **ROM** column, not every release of that project.
 
-Capability percentages are parser confidence derived from bounded structural evidence. They are not a probability that every feature behaves exactly as the ROM author intended. Unless separately identified by a live test, these rows are static catalog observations. The focused Gen I updates validate in-memory materialization. The focused Gen II update additionally verifies SQLite write/reopen equality for all 15 selected affected catalogs; neither update validates live Android behavior.
+Capability percentages are confidence from bounded compiled structural evidence, not a promise that every optional feature is supported. These are static catalog observations, not live gameplay or physical-device acceptance.
 
+- Parser/catalog source: `f7214d1f644aa97f3bdfacddd3de8dcefdede9f5`
 - Inputs: **342**
-- Detected family and catalog: **300**
+- Detected family and materialized catalog: **300**
+- Persisted and exactly reopened SQLite catalogs: **300**
 - Resolved ROM-language manifests: **285**
-- Resolved manifests reporting more than one language: **0**
 - Unknown ROM-language manifests: **15**
+- Resolved multilingual manifests: **0**
 - Ambiguous family: **2**
 - No family match: **40**
-- Parser errors: **0**
+- Parser, catalog, persistence and decoded-reference errors: **0**
 
-The **Languages** column is the number of parser-proven ROM-content projections. `?` means the parser could not establish language authority. It does not assume that every resolved ROM supports English.
+The **Languages** column counts proven ROM-content projections. `?` means language authority remains unknown; it does not assume English. Text columns use the selected native-language projection. Structurally non-applicable ability domains remain `N/A`, including when text authority is unknown.
 
-Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for not found, and `N/A` where a capability does not apply to that generation. **Coverage** is the existing weighted applicable-capability score; capability cells are evidence confidence.
+Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for not found, and `N/A` for non-applicable capabilities. **Coverage** is the existing weighted applicable-capability score. Failed optional modules remain explicitly unavailable.
 
 ## Capability legend
 
 | Column | Capability |
 |---|---|
-| Species | Species records |
-| Names | ROM-native species names |
-| Types | Species type assignments |
-| Chart | Type matchup chart |
-| Stats | Species base stats |
-| Sprites | Species sprites |
-| Dex text | ROM-native Pokédex descriptions |
-| Evos | Evolution relationships |
-| Moves | Move records and names |
-| Move data | Move power, accuracy, PP, type, and category |
-| Move text | ROM-native move descriptions |
-| Learnsets | Level-up learnsets |
-| Egg | Egg moves |
-| Machines | TM/HM compatibility |
-| Tutors | Tutor moves |
-| Abilities | Ability records and names |
-| Ability text | ROM-native ability descriptions |
-| Ability logic | Structurally proven ability mechanics |
-| Encounters | Area encounter data |
-| Type UI | ROM-derived type presentation |
-| Balls | Capture-ball catalog |
-| World map | World-map data |
-| Local maps | Local-map data |
-| Natures | Nature data |
+| Species | `SPECIES_CATALOG` |
+| Names | `SPECIES_NAMES` |
+| Types | `SPECIES_TYPES` |
+| Chart | `TYPE_CHART` |
+| Stats | `BASE_STATS` |
+| Sprites | `SPRITES` |
+| Dex text | `POKEDEX_DESCRIPTIONS` |
+| Evos | `EVOLUTIONS` |
+| Moves | `MOVE_CATALOG` |
+| Move data | `MOVE_DETAILS` |
+| Move text | `MOVE_DESCRIPTIONS` |
+| Learnsets | `LEARNSETS` |
+| Egg | `EGG_MOVES` |
+| Machines | `MACHINE_MOVES` |
+| Tutors | `TUTOR_MOVES` |
+| Abilities | `ABILITIES` |
+| Ability text | `ABILITY_DESCRIPTIONS` |
+| Ability logic | `ABILITY_MECHANICS` |
+| Encounters | `AREA_ENCOUNTERS` |
+| Type UI | `TYPE_PRESENTATION` |
+| Balls | `BALL_CATALOG` |
+| World map | `WORLD_MAP` |
+| Local maps | `LOCAL_MAP` |
+| Natures | `NATURES` |
 
 ## Family summary
 
 | Generation | Detected family | ROM inputs | Average coverage | Multilingual manifests |
 |---:|---|---:|---:|---:|
-| 1 | Red/Blue family | 95 | 93.74% | 0 |
+| 1 | Red/Blue family | 95 | 94.36% | 0 |
 | 1 | Yellow family | 8 | 93.61% | 0 |
 | 2 | Gold/Silver family | 5 | 86.67% | 0 |
 | 2 | Crystal family | 14 | 65.39% | 0 |
@@ -58,7 +60,7 @@ Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for 
 | 3 | Emerald family | 74 | 81.58% | 0 |
 | 3 | FireRed/LeafGreen family | 89 | 89.81% | 0 |
 
-## Generation I
+## Generation 1
 
 ### Red/Blue family
 
@@ -77,42 +79,42 @@ Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for 
 | Blue Kaizo (19.06.26).gbc | 1 | 99.83% | P 99% | 100% | P 99% | 100% | P 99% | P 99% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
 | Blue Kaizo (Christmas) (19.06.26).gbc | 1 | 93.58% | P 99% | 100% | P 99% | 100% | P 99% | P 99% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
 | Blue Kaizo (Yellow Colors) (19.06.26).gbc | 1 | 100.00% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Celebrations Blue (CrysAudio Gen 2 UI).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Blue (CrysAudio Snowy Gen 2 UI).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Blue (CrysAudio Snowy).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Blue (CrysAudio) (11.05.26).gb | 1 | 98.12% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Celebrations Blue (CrysAudio).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Blue (Custom GFX & CrysAudio) (11.05.26).gb | 1 | 98.12% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Celebrations Blue (Gen 2 UI).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Blue (New Sprites).gb | ? | 77.48% | P 75% | 0% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Celebrations Blue (Snowy Gen 2 UI).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Blue (Snowy).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Blue.gb | ? | 77.48% | P 75% | 0% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Celebrations Blue.gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Green (CrysAudio Gen 2 UI).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Green (CrysAudio Snowy Gen 2 UI).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Green (CrysAudio Snowy).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Green (CrysAudio) (11.05.26).gb | 1 | 98.12% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Celebrations Green (CrysAudio).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Green (Custom GFX & CrysAudio) (11.05.26).gb | 1 | 98.12% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Celebrations Green (Gen 2 UI).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Green (New Sprites).gbc | ? | 77.48% | P 75% | 0% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Celebrations Green (Snowy Gen 2 UI).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Green (Snowy).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Green.gb | ? | 77.48% | P 75% | 0% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Celebrations Green.gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Red (CrysAudio Gen 2 UI).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Red (CrysAudio Snowy Gen 2 UI).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Red (CrysAudio Snowy).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Red (CrysAudio) (11.05.26).gb | 1 | 98.12% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Celebrations Red (CrysAudio).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Red (Custom GFX & CrysAudio) (11.05.26).gb | 1 | 98.12% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Celebrations Red (Gen 2 UI).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Red (New Sprites).gb | ? | 77.48% | P 75% | 0% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Celebrations Red (Snowy Gen 2 UI).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Red (Snowy).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Red.gb | ? | 77.48% | P 75% | 0% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Celebrations Red.gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Blue (CrysAudio Gen 2 UI).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Blue (CrysAudio Snowy Gen 2 UI).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Blue (CrysAudio Snowy).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Blue (CrysAudio) (11.05.26).gb | 1 | 100.00% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Celebrations Blue (CrysAudio).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Blue (Custom GFX & CrysAudio) (11.05.26).gb | 1 | 100.00% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Celebrations Blue (Gen 2 UI).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Blue (New Sprites).gb | ? | 77.78% | 100% | 0% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Celebrations Blue (Snowy Gen 2 UI).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Blue (Snowy).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Blue.gb | ? | 77.78% | 100% | 0% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Celebrations Blue.gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Green (CrysAudio Gen 2 UI).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Green (CrysAudio Snowy Gen 2 UI).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Green (CrysAudio Snowy).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Green (CrysAudio) (11.05.26).gb | 1 | 100.00% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Celebrations Green (CrysAudio).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Green (Custom GFX & CrysAudio) (11.05.26).gb | 1 | 100.00% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Celebrations Green (Gen 2 UI).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Green (New Sprites).gbc | ? | 77.78% | 100% | 0% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Celebrations Green (Snowy Gen 2 UI).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Green (Snowy).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Green.gb | ? | 77.78% | 100% | 0% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Celebrations Green.gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Red (CrysAudio Gen 2 UI).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Red (CrysAudio Snowy Gen 2 UI).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Red (CrysAudio Snowy).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Red (CrysAudio) (11.05.26).gb | 1 | 100.00% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Celebrations Red (CrysAudio).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Red (Custom GFX & CrysAudio) (11.05.26).gb | 1 | 100.00% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Celebrations Red (Gen 2 UI).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Red (New Sprites).gb | ? | 77.78% | 100% | 0% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Celebrations Red (Snowy Gen 2 UI).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Red (Snowy).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Red.gb | ? | 77.78% | 100% | 0% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Celebrations Red.gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
 | Grape (Final 1.7).gb | 1 | 61.13% | P 95% | 100% | P 95% | 100% | P 95% | 100% | P 100% | P 92% | 100% | 0% | N/A | 0% | N/A | 0% | N/A | N/A | N/A | N/A | 0% | 100% | N/A | 0% | 0% | N/A |
 | Intense Indigo (Blue Full Color QOL Gen2UI).gbc | 1 | 99.34% | P 97% | 100% | P 97% | 100% | P 97% | P 99% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
 | Intense Indigo (Blue Full Color QOL).gbc | 1 | 99.34% | P 97% | 100% | P 97% | 100% | P 97% | P 99% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
@@ -182,7 +184,7 @@ Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for 
 </details>
 
 
-## Generation II
+## Generation 2
 
 ### Gold/Silver family
 
@@ -222,7 +224,7 @@ Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for 
 </details>
 
 
-## Generation III
+## Generation 3
 
 ### Ruby/Sapphire family
 
@@ -429,57 +431,60 @@ Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for 
 
 </details>
 
-## Unmatched and ambiguous inputs
+## Unresolved family routing
+
+No catalog or optional feature support is claimed for these inputs.
 
 | ROM | Platform | Outcome |
 |---|---|---|
-| Brown (v6.1.2).gb | GB | No family match |
-| Let´s Go Pikachu (v6.0).gba | GB | No family match |
-| Order & Chaos Remastered.gba | GB | No family match |
-| Septo Conquest (v3.1).gba | GB | No family match |
-| Sors (v1.3).gba | GB | No family match |
-| Elite Redux (2.65.3b).gba | GBA | No family match |
-| Elysium (Part B) (v2.5.0).gba | GBA | No family match |
-| Gaia (v3.2).gba | GBA | No family match |
-| Lazarus (v2.0).gba | GBA | No family match |
-| Light and Shadow (V2.0.4).gba | GBA | No family match |
-| Lugias Ocean.gba | GBA | Ambiguous family |
-| Moon Galaxy.gba | GBA | No family match |
-| Noon (Completed).gba | GBA | No family match |
-| Palimpsest (v1.2.0).gba | GBA | No family match |
-| Parallel Emerald (v1.2).gba | GBA | No family match |
-| Pisces (v1.5.4).gba | GBA | No family match |
-| R.O.W.E. (2.1.1).gba | GBA | No family match |
-| Recharged Emerald (v2.2.8).gba | GBA | No family match |
-| Recharged Yellow (v1.9.7).gba | GBA | No family match |
-| Recordkeepers (v1.2.1).gba | GBA | No family match |
-| Scale x Fang (v1.0.2).gba | GBA | No family match |
-| Scorched Silver (v1.3).gba | GBA | No family match |
-| Sovereign of the Skies (v2.1.2).gba | GBA | No family match |
-| Sun Sky.gba | GBA | No family match |
-| Team Rocket Edition (v2.1).gba | GBA | No family match |
-| The Nuzlomizer (3.0.1).gba | GBA | No family match |
-| Too Many Types (v1.6).gba | GBA | No family match |
-| Too Many Types 2 (v1.5.2).gba | GBA | No family match |
-| Ultra Violet (v1.22).gba | GBA | Ambiguous family |
-| Unova Emerald (2.0.3).gba | GBA | No family match |
-| Voyager (Battle Frontier Demo) (v1.1).gba | GBA | No family match |
-| Voyager (v0.3.6).gba | GBA | No family match |
-| WaveBlue (v1.9.4).gba | GBA | No family match |
-| Black & White 3 - Genesis (24.12.23).gbc | GBC | No family match |
-| Fools Gold (v1.3.2).gbc | GBC | No family match |
-| Orange (Suloku Patch 2026.0.2 PSS).gbc | GBC | No family match |
-| Peridot Version (v2.3.0).gbc | GBC | No family match |
-| Prism (v0.95.0254).gbc | GBC | No family match |
-| TCG - Generations (1.7.2b).gbc | GBC | No family match |
-| TCG - Neo (Legacy) (v1.43).gbc | GBC | No family match |
-| TCG - Neo (v1.43).gbc | GBC | No family match |
-| Harvestcraft (v2.0).gba | UNKNOWN | No family match |
+| Black & White 3 - Genesis (24.12.23).gbc | GBC | NO_FAMILY_MATCH |
+| Brown (v6.1.2).gb | GB | NO_FAMILY_MATCH |
+| Elite Redux (2.65.3b).gba | GBA | NO_FAMILY_MATCH |
+| Elysium (Part B) (v2.5.0).gba | GBA | NO_FAMILY_MATCH |
+| Fools Gold (v1.3.2).gbc | GBC | NO_FAMILY_MATCH |
+| Gaia (v3.2).gba | GBA | NO_FAMILY_MATCH |
+| Harvestcraft (v2.0).gba | UNKNOWN | NO_FAMILY_MATCH |
+| Lazarus (v2.0).gba | GBA | NO_FAMILY_MATCH |
+| Let´s Go Pikachu (v6.0).gba | GB | NO_FAMILY_MATCH |
+| Light and Shadow (V2.0.4).gba | GBA | NO_FAMILY_MATCH |
+| Lugias Ocean.gba | GBA | AMBIGUOUS |
+| Moon Galaxy.gba | GBA | NO_FAMILY_MATCH |
+| Noon (Completed).gba | GBA | NO_FAMILY_MATCH |
+| Orange (Suloku Patch 2026.0.2 PSS).gbc | GBC | NO_FAMILY_MATCH |
+| Order & Chaos Remastered.gba | GB | NO_FAMILY_MATCH |
+| Palimpsest (v1.2.0).gba | GBA | NO_FAMILY_MATCH |
+| Parallel Emerald (v1.2).gba | GBA | NO_FAMILY_MATCH |
+| Peridot Version (v2.3.0).gbc | GBC | NO_FAMILY_MATCH |
+| Pisces (v1.5.4).gba | GBA | NO_FAMILY_MATCH |
+| Prism (v0.95.0254).gbc | GBC | NO_FAMILY_MATCH |
+| R.O.W.E. (2.1.1).gba | GBA | NO_FAMILY_MATCH |
+| Recharged Emerald (v2.2.8).gba | GBA | NO_FAMILY_MATCH |
+| Recharged Yellow (v1.9.7).gba | GBA | NO_FAMILY_MATCH |
+| Recordkeepers (v1.2.1).gba | GBA | NO_FAMILY_MATCH |
+| Scale x Fang (v1.0.2).gba | GBA | NO_FAMILY_MATCH |
+| Scorched Silver (v1.3).gba | GBA | NO_FAMILY_MATCH |
+| Septo Conquest (v3.1).gba | GB | NO_FAMILY_MATCH |
+| Sors (v1.3).gba | GB | NO_FAMILY_MATCH |
+| Sovereign of the Skies (v2.1.2).gba | GBA | NO_FAMILY_MATCH |
+| Sun Sky.gba | GBA | NO_FAMILY_MATCH |
+| TCG - Generations (1.7.2b).gbc | GBC | NO_FAMILY_MATCH |
+| TCG - Neo (Legacy) (v1.43).gbc | GBC | NO_FAMILY_MATCH |
+| TCG - Neo (v1.43).gbc | GBC | NO_FAMILY_MATCH |
+| Team Rocket Edition (v2.1).gba | GBA | NO_FAMILY_MATCH |
+| The Nuzlomizer (3.0.1).gba | GBA | NO_FAMILY_MATCH |
+| Too Many Types (v1.6).gba | GBA | NO_FAMILY_MATCH |
+| Too Many Types 2 (v1.5.2).gba | GBA | NO_FAMILY_MATCH |
+| Ultra Violet (v1.22).gba | GBA | AMBIGUOUS |
+| Unova Emerald (2.0.3).gba | GBA | NO_FAMILY_MATCH |
+| Voyager (Battle Frontier Demo) (v1.1).gba | GBA | NO_FAMILY_MATCH |
+| Voyager (v0.3.6).gba | GBA | NO_FAMILY_MATCH |
+| WaveBlue (v1.9.4).gba | GBA | NO_FAMILY_MATCH |
 
-## Evidence and privacy
+## Evidence and scope
 
-This is a composite snapshot, not a full-corpus run: **263 historical + 31 retained delta + 30 focused Gen I + 18 focused Gen II rows**. The [Gen I acceptance](2026-10-03-gen1-core-acceptance.md) retains its three checkpoints. The [Gen II acceptance](2026-10-03-gen2-core-acceptance.md) binds 14 accepted rows to `49bc83cd` and four classic rows to `51ecbae0`, with 15 selected catalogs verified through SQLite write/reopen and decoded reference closure.
+- [Full-corpus verification](2026-10-03-full342-verification.md)
+- [Source-bound release summary](2026-10-03-full342-evidence.json)
+- [Execution receipt](2026-10-03-full342-execution.json)
+- [Current corpus contract](../../../release/current-library-corpus.json)
 
-Ambrosia move categories and its custom type semantic role remain unavailable, not retail guesses. Gold/Silver 97 use the existing complete-type-chart score-tie breaker, not independently proved lineage; tutor applicability remains a follow-up. Per-field counters and caveats are authoritative over broad capability labels.
-
-The [machine-readable evidence](2026-10-03-library-compatibility.json) retains aliases and per-row checkpoints. The [current identity authority](../../../release/current-library-corpus.json), [333-input release matrix](../../rom-compatibility-matrix.md), and release canonical identity remain unchanged. No APK, SaveRAM, live-WRAM, Android or new official-ROM acceptance is claimed. No ROM bytes, decoded bulk data, private paths or saves are published.
+The historical 333-input contract and its localization evidence remain unchanged. No ROM, decoded bulk catalog, source path, private memory capture, or signing material is distributed with this matrix.
