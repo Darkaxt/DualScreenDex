@@ -1,6 +1,6 @@
 # Gen II compiled relationship recovery
 
-**Status: IN_PROGRESS.** Authorized target: evolution and level-up learnset recovery, starting with Sour Crystal v7.0a. Work is serial, host-only, and excludes maps, live/save state, Android, other optional modules and release publication.
+**Status: ACCEPTED_HOST_STATIC.** Authorized target: evolution and level-up learnset recovery, starting with Sour Crystal v7.0a. [One source-bound 19-input acceptance](../../reports/corpus/2026-10-04-gen2-relationships-acceptance.md) verifies seven gains, four unchanged healthy controls, eight explicit remaining relationship gaps and complete reference/SQLite closure without regressions. Work is serial, host-only, and excludes maps, live/save state, Android, other optional modules and release publication.
 
 ## Diagnosis
 

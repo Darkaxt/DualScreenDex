@@ -6,6 +6,8 @@
 - [Design and dated implementation checkpoints](../../superpowers/specs/2026-10-03-gen2-compiled-core-design.md)
 - [Updated composite library matrix](2026-10-03-library-compatibility.md)
 
+**Subsequent field-level checkpoint:** [October 4 compiled relationship acceptance](2026-10-04-gen2-relationships-acceptance.md) closes Sour's evolution/level-up fields and six related builds, with all 19 selected Gen II catalogs checked. This report's core counts, dates and receipts remain historical; other optional fields are not relabelled as closed.
+
 ## Accepted target catalogs
 
 | Exact retained build | Canonical species / named / stats | Named detailed moves | Types | Coverage | Important limits |

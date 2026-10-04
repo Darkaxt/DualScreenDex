@@ -1,10 +1,11 @@
 # ROM compatibility matrix
 
-This document lists all **342 distinct ROM identities** in the October 3, 2026 current library snapshot. Every row now comes from the same full source-bound evaluation, completed October 4. A row describes the public build named in the **ROM** column, not every release of that project.
+This document lists all **342 distinct ROM identities** in the October 3, 2026 current library snapshot. The 19 selected Gen II rows now come from a focused source-bound relationship evaluation; the other 323 row objects retain the completed October 4 full-corpus baseline unchanged. This is composite evidence, not a new full-corpus run. A row describes the public build named in the **ROM** column, not every release of that project.
 
 Capability percentages are confidence from bounded compiled structural evidence, not a promise that every optional feature is supported. These are static catalog observations, not live gameplay or physical-device acceptance.
 
-- Parser/catalog source: `f7214d1f644aa97f3bdfacddd3de8dcefdede9f5`
+- Full342 baseline source: `f7214d1f644aa97f3bdfacddd3de8dcefdede9f5`
+- Focused 19-input Gen II source: `6272147fa7ae4dce6d1a70d146667c15b1d1f5e1` ([acceptance](2026-10-04-gen2-relationships-acceptance.md))
 - Inputs: **342**
 - Detected family and materialized catalog: **300**
 - Persisted and exactly reopened SQLite catalogs: **300**
@@ -55,7 +56,7 @@ Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for 
 | 1 | Red/Blue family | 95 | 94.36% | 0 |
 | 1 | Yellow family | 8 | 93.61% | 0 |
 | 2 | Gold/Silver family | 5 | 86.67% | 0 |
-| 2 | Crystal family | 14 | 65.39% | 0 |
+| 2 | Crystal family | 14 | 69.97% | 0 |
 | 3 | Ruby/Sapphire family | 15 | 91.80% | 0 |
 | 3 | Emerald family | 74 | 81.58% | 0 |
 | 3 | FireRed/LeafGreen family | 89 | 89.81% | 0 |
@@ -209,17 +210,17 @@ Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for 
 | Ambrosia (v2.9.0).gbc | 1 | 63.10% | P 100% | 100% | P 100% | 0% | P 100% | 100% | 0% | 0% | 100% | 100% | 100% | 0% | 0% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 0% | 0% | N/A |
 | Anniversary Crystal (v1.2.3).gbc | 1 | 51.81% | P 95% | 100% | P 95% | 0% | P 95% | 100% | 0% | 0% | 100% | 0% | 100% | 0% | 0% | 0% | 0% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
 | Bronze 2 (v1.05).gbc | 1 | 100.00% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Crystal Clear (Color Filter) (v2.6).gbc | 1 | 57.89% | 100% | 100% | 100% | 0% | 100% | 100% | 0% | 0% | 100% | 0% | 100% | 0% | 0% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 0% | 0% | N/A |
-| Crystal Clear (v2.6).gbc | 1 | 57.89% | 100% | 100% | 100% | 0% | 100% | 100% | 0% | 0% | 100% | 0% | 100% | 0% | 0% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 0% | 0% | N/A |
+| Crystal Clear (Color Filter) (v2.6).gbc | 1 | 68.42% | 100% | 100% | 100% | 0% | 100% | 100% | 0% | 100% | 100% | 0% | 100% | 100% | 0% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 0% | 0% | N/A |
+| Crystal Clear (v2.6).gbc | 1 | 68.42% | 100% | 100% | 100% | 0% | 100% | 100% | 0% | 100% | 100% | 0% | 100% | 100% | 0% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 0% | 0% | N/A |
 | Crystal Inheritance (v1.1).gbc | 1 | 29.17% | 100% | 100% | 100% | 0% | 100% | 0% | 0% | 0% | 100% | 100% | 0% | 0% | 0% | 0% | 0% | 0% | 0% | 0% | 0% | 100% | 0% | 0% | 0% | 0% |
 | Crystal Kaizo (01.08.26).gbc | 1 | 73.68% | 100% | 100% | 100% | 100% | 100% | 0% | 0% | 0% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Crystal Legacy (06.01.25).gbc | 1 | 73.68% | 100% | 100% | 100% | 0% | 100% | 100% | 0% | 0% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Crystal Legacy Timeless (v1.1.3).gbc | 1 | 73.68% | 100% | 100% | 100% | 0% | 100% | 100% | 0% | 0% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Digimon Crystal (v11.02.24).gbc | 1 | 87.08% | P 91% | 100% | P 91% | 0% | P 91% | 100% | 100% | P 90% | 100% | 0% | 100% | P 90% | 100% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Kalos Crystal (v1.0).gbc | 1 | 77.31% | P 93% | 100% | P 93% | 0% | P 93% | P 91% | 100% | 0% | 100% | P 97% | 100% | 0% | 0% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Crystal Legacy (06.01.25).gbc | 1 | 84.21% | 100% | 100% | 100% | 0% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Crystal Legacy Timeless (v1.1.3).gbc | 1 | 84.21% | 100% | 100% | 100% | 0% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Digimon Crystal (v11.02.24).gbc | 1 | 88.09% | P 91% | 100% | P 91% | 0% | P 91% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Kalos Crystal (v1.0).gbc | 1 | 87.83% | P 93% | 100% | P 93% | 0% | P 93% | P 91% | 100% | 100% | 100% | P 97% | 100% | 100% | 0% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
 | Mystic Crystal (v1.0).gbc | 1 | 72.55% | P 93% | 100% | P 93% | 0% | P 93% | 100% | 100% | 0% | 100% | 0% | 100% | 0% | 100% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
 | Polished Crystal (14.09.26).gbc | 1 | 29.17% | 100% | 100% | 100% | 0% | 100% | 0% | 0% | 0% | 100% | 100% | 0% | 0% | 0% | 0% | 0% | 0% | 0% | 0% | 0% | 100% | 0% | 0% | 0% | 0% |
-| Sour Crystal (v7.0a).gbc | 1 | 68.42% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 100% | 0% | 0% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Sour Crystal (v7.0a).gbc | 1 | 78.95% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 0% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
 
 </details>
 

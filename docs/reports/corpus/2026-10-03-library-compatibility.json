@@ -2,14 +2,7 @@
   "schemaVersion": 1,
   "date": "2026-10-03",
   "verifiedDate": "2026-10-04",
-  "evidenceMode": "fresh-full342-source-bound",
-  "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
-  "generator": {
-    "name": "parser-cli",
-    "schemaVersion": 16,
-    "sha256": "443fbe6bc6804a12480e66e6c318a2dcd500c574663c84e210c09fcf03ba2b97"
-  },
-  "rawReportSha256": "c2c7d04dc5c5fb688ee268492d34d897b0fd734562e1881941cae900ac6c9de9",
+  "evidenceMode": "full342-baseline-with-focused-gen2-relationships",
   "corpusInputDigestSha256": "733e36785fa9a5b71bc4121343a6b6d2cbd27e43e08b3fddc2e2870bac1a0561",
   "summary": {
     "inputCount": 342,
@@ -3772,8 +3765,8 @@
     },
     {
       "name": "Crystal Legacy (06.01.25).gbc",
-      "evidence": "fresh-full342-source-bound",
-      "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
+      "evidence": "focused-gen2-relationships-source-bound",
+      "sourceCommit": "6272147fa7ae4dce6d1a70d146667c15b1d1f5e1",
       "aliases": [
         {
           "archive": "Pokemon Crystal Legacy (06.01.25).7z",
@@ -3784,7 +3777,7 @@
       "generation": 2,
       "family": "CRYSTAL",
       "languageCount": 1,
-      "compatibilityPercent": 73.68,
+      "compatibilityPercent": 84.21,
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "AVAILABLE",
@@ -3815,8 +3808,8 @@
           "confidence": 0
         },
         "EVOLUTIONS": {
-          "status": "NOT_FOUND",
-          "confidence": 0
+          "status": "AVAILABLE",
+          "confidence": 1
         },
         "MOVE_CATALOG": {
           "status": "AVAILABLE",
@@ -3831,8 +3824,8 @@
           "confidence": 1
         },
         "LEARNSETS": {
-          "status": "NOT_FOUND",
-          "confidence": 0
+          "status": "AVAILABLE",
+          "confidence": 1
         },
         "EGG_MOVES": {
           "status": "AVAILABLE",
@@ -3889,9 +3882,9 @@
         "speciesWithStats": 251,
         "speciesWithSprites": 251,
         "speciesWithDescriptions": 0,
-        "evolutionEdges": 0,
-        "learnsetEntries": 0,
-        "learnsetRulesets": 0,
+        "evolutionEdges": 122,
+        "learnsetEntries": 2591,
+        "learnsetRulesets": 1,
         "moves": 251,
         "movesWithDetails": 251,
         "movesWithDescriptions": 251,
@@ -3918,8 +3911,15 @@
         "referenceErrors": 0,
         "sqliteReopenEqualityVerified": true,
         "logicalDigestVersion": 1,
-        "beforeCatalogSha256": "319ba562205fb8d087f148daf8b9e218e10dfab8196135b728bd7e500d49f62e",
-        "afterCatalogSha256": "319ba562205fb8d087f148daf8b9e218e10dfab8196135b728bd7e500d49f62e"
+        "beforeCatalogSha256": "422ede30a742f6e007c05e0a8720869f23e9370ae5de00c7f4797cdaafdce151",
+        "afterCatalogSha256": "422ede30a742f6e007c05e0a8720869f23e9370ae5de00c7f4797cdaafdce151"
+      },
+      "baseline": {
+        "compatibilityPercent": 73.68,
+        "evolutionEdges": 0,
+        "learnsetEntries": 0,
+        "evolutions": "NOT_FOUND",
+        "learnsets": "NOT_FOUND"
       }
     },
     {
@@ -9970,8 +9970,8 @@
     },
     {
       "name": "Bronze (v1.23).gbc",
-      "evidence": "fresh-full342-source-bound",
-      "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
+      "evidence": "focused-gen2-relationships-source-bound",
+      "sourceCommit": "6272147fa7ae4dce6d1a70d146667c15b1d1f5e1",
       "aliases": [
         {
           "archive": "Pokemon Bronze (v1.23).7z",
@@ -9982,7 +9982,7 @@
       "generation": 2,
       "family": "GOLD_SILVER",
       "languageCount": 1,
-      "compatibilityPercent": 100.0,
+      "compatibilityPercent": 100,
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "AVAILABLE",
@@ -10116,8 +10116,15 @@
         "referenceErrors": 0,
         "sqliteReopenEqualityVerified": true,
         "logicalDigestVersion": 1,
-        "beforeCatalogSha256": "3fce2e8a6527b3c18de94cf1fc4d56779b59e6a8bb38a5a212e143758623aca0",
-        "afterCatalogSha256": "3fce2e8a6527b3c18de94cf1fc4d56779b59e6a8bb38a5a212e143758623aca0"
+        "beforeCatalogSha256": "17cc2b6ee9c1a5b9123462260bf31aa66c39d9952b2158b983560de717f797f7",
+        "afterCatalogSha256": "17cc2b6ee9c1a5b9123462260bf31aa66c39d9952b2158b983560de717f797f7"
+      },
+      "baseline": {
+        "compatibilityPercent": 100,
+        "evolutionEdges": 122,
+        "learnsetEntries": 2217,
+        "evolutions": "AVAILABLE",
+        "learnsets": "AVAILABLE"
       }
     },
     {
@@ -11528,8 +11535,8 @@
     },
     {
       "name": "Polished Crystal (14.09.26).gbc",
-      "evidence": "fresh-full342-source-bound",
-      "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
+      "evidence": "focused-gen2-relationships-source-bound",
+      "sourceCommit": "6272147fa7ae4dce6d1a70d146667c15b1d1f5e1",
       "aliases": [
         {
           "archive": "Pokemon Polished Crystal (14.09.26).7z",
@@ -11679,8 +11686,15 @@
         "referenceErrors": 0,
         "sqliteReopenEqualityVerified": true,
         "logicalDigestVersion": 1,
-        "beforeCatalogSha256": "f562a1a10d7c73364457ab661d259eda5f8b0f38a6232d6a920f45d75f2f0254",
-        "afterCatalogSha256": "f562a1a10d7c73364457ab661d259eda5f8b0f38a6232d6a920f45d75f2f0254"
+        "beforeCatalogSha256": "e0458cd29637cc6ca20a607e81047279c105f480bec875a0f1357e631720a50c",
+        "afterCatalogSha256": "e0458cd29637cc6ca20a607e81047279c105f480bec875a0f1357e631720a50c"
+      },
+      "baseline": {
+        "compatibilityPercent": 29.17,
+        "evolutionEdges": 0,
+        "learnsetEntries": 0,
+        "evolutions": "NOT_FOUND",
+        "learnsets": "NOT_FOUND"
       }
     },
     {
@@ -12140,13 +12154,13 @@
       }
     },
     {
-      "name": "Regis’ Origin (v1.0).gba",
+      "name": "Regis\u00e2\u20ac\u2122 Origin (v1.0).gba",
       "evidence": "fresh-full342-source-bound",
       "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
       "aliases": [
         {
-          "archive": "Pokemon Regis’ Origin (v1.0).7z",
-          "name": "Regis’ Origin (v1.0).gba",
+          "archive": "Pokemon Regis\u00e2\u20ac\u2122 Origin (v1.0).7z",
+          "name": "Regis\u00e2\u20ac\u2122 Origin (v1.0).gba",
           "console": "Nintendo - Game Boy Advance"
         }
       ],
@@ -12615,13 +12629,13 @@
       }
     },
     {
-      "name": "Pokémon Hearth (v0.1.27).gba",
+      "name": "Pok\u00c3\u00a9mon Hearth (v0.1.27).gba",
       "evidence": "fresh-full342-source-bound",
       "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
       "aliases": [
         {
           "archive": "Pokemon Hearth (v0.1.27).7z",
-          "name": "Pokémon Hearth (v0.1.27).gba",
+          "name": "Pok\u00c3\u00a9mon Hearth (v0.1.27).gba",
           "console": "Nintendo - Game Boy Advance"
         }
       ],
@@ -14478,8 +14492,8 @@
     },
     {
       "name": "Ambrosia (v2.9.0).gbc",
-      "evidence": "fresh-full342-source-bound",
-      "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
+      "evidence": "focused-gen2-relationships-source-bound",
+      "sourceCommit": "6272147fa7ae4dce6d1a70d146667c15b1d1f5e1",
       "aliases": [
         {
           "archive": "Pokemon Ambrosia (v2.9.0).7z",
@@ -14624,8 +14638,15 @@
         "referenceErrors": 0,
         "sqliteReopenEqualityVerified": true,
         "logicalDigestVersion": 1,
-        "beforeCatalogSha256": "2ccfd6750f0e46259686dc96aa99895d4ef0fbe683e29010a1667e66b66e7d9e",
-        "afterCatalogSha256": "2ccfd6750f0e46259686dc96aa99895d4ef0fbe683e29010a1667e66b66e7d9e"
+        "beforeCatalogSha256": "9291f2a84e3524baebc72935be294bfaa66e6b2e21b90058b69d410c314ca463",
+        "afterCatalogSha256": "9291f2a84e3524baebc72935be294bfaa66e6b2e21b90058b69d410c314ca463"
+      },
+      "baseline": {
+        "compatibilityPercent": 63.1,
+        "evolutionEdges": 0,
+        "learnsetEntries": 0,
+        "evolutions": "NOT_FOUND",
+        "learnsets": "NOT_FOUND"
       }
     },
     {
@@ -15114,8 +15135,8 @@
     },
     {
       "name": "Gold 97 Reforged (v6.1f).gbc",
-      "evidence": "fresh-full342-source-bound",
-      "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
+      "evidence": "focused-gen2-relationships-source-bound",
+      "sourceCommit": "6272147fa7ae4dce6d1a70d146667c15b1d1f5e1",
       "aliases": [
         {
           "archive": "Pokemon Gold & Silver 97 Reforged (v6.1f).7z",
@@ -15265,8 +15286,15 @@
         "referenceErrors": 0,
         "sqliteReopenEqualityVerified": true,
         "logicalDigestVersion": 1,
-        "beforeCatalogSha256": "2f55bc31cb3f331cb50c8eb8b470bc2be13425c569ee0917995087fc22f1ac80",
-        "afterCatalogSha256": "2f55bc31cb3f331cb50c8eb8b470bc2be13425c569ee0917995087fc22f1ac80"
+        "beforeCatalogSha256": "6f20eee92c6c86021057cbc1255022d52b364fdd31831549157dcf7d321b0de9",
+        "afterCatalogSha256": "6f20eee92c6c86021057cbc1255022d52b364fdd31831549157dcf7d321b0de9"
+      },
+      "baseline": {
+        "compatibilityPercent": 72.22,
+        "evolutionEdges": 0,
+        "learnsetEntries": 0,
+        "evolutions": "NOT_FOUND",
+        "learnsets": "NOT_FOUND"
       }
     },
     {
@@ -15741,8 +15769,8 @@
     },
     {
       "name": "Anniversary Crystal (v1.2.3).gbc",
-      "evidence": "fresh-full342-source-bound",
-      "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
+      "evidence": "focused-gen2-relationships-source-bound",
+      "sourceCommit": "6272147fa7ae4dce6d1a70d146667c15b1d1f5e1",
       "aliases": [
         {
           "archive": "Pokemon Anniversary Crystal (v1.2.3).7z",
@@ -15887,8 +15915,15 @@
         "referenceErrors": 0,
         "sqliteReopenEqualityVerified": true,
         "logicalDigestVersion": 1,
-        "beforeCatalogSha256": "bd0062c51256fd422777d8a359fa0114ca83fcbe1c9df5f2969cd05fba4f94c8",
-        "afterCatalogSha256": "bd0062c51256fd422777d8a359fa0114ca83fcbe1c9df5f2969cd05fba4f94c8"
+        "beforeCatalogSha256": "f50ceb20f9412f63f3daf74c328b08bff3a20b0d0d6081c53270c47dcd20e3e2",
+        "afterCatalogSha256": "f50ceb20f9412f63f3daf74c328b08bff3a20b0d0d6081c53270c47dcd20e3e2"
+      },
+      "baseline": {
+        "compatibilityPercent": 51.81,
+        "evolutionEdges": 0,
+        "learnsetEntries": 0,
+        "evolutions": "NOT_FOUND",
+        "learnsets": "NOT_FOUND"
       }
     },
     {
@@ -17584,8 +17619,8 @@
     },
     {
       "name": "Silver 97 Reforged (v6.1f).gbc",
-      "evidence": "fresh-full342-source-bound",
-      "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
+      "evidence": "focused-gen2-relationships-source-bound",
+      "sourceCommit": "6272147fa7ae4dce6d1a70d146667c15b1d1f5e1",
       "aliases": [
         {
           "archive": "Pokemon Gold & Silver 97 Reforged (v6.1f).7z",
@@ -17735,8 +17770,15 @@
         "referenceErrors": 0,
         "sqliteReopenEqualityVerified": true,
         "logicalDigestVersion": 1,
-        "beforeCatalogSha256": "7df81ee82e9846aec43ce9ee087fa2fcfa3336634c0413c0f8d54f78945155dc",
-        "afterCatalogSha256": "7df81ee82e9846aec43ce9ee087fa2fcfa3336634c0413c0f8d54f78945155dc"
+        "beforeCatalogSha256": "0b07ca82588dbbab06a117b05d467700b7beb1a57224ba1f04f4ec706b2d4cf4",
+        "afterCatalogSha256": "0b07ca82588dbbab06a117b05d467700b7beb1a57224ba1f04f4ec706b2d4cf4"
+      },
+      "baseline": {
+        "compatibilityPercent": 72.22,
+        "evolutionEdges": 0,
+        "learnsetEntries": 0,
+        "evolutions": "NOT_FOUND",
+        "learnsets": "NOT_FOUND"
       }
     },
     {
@@ -17893,8 +17935,8 @@
     },
     {
       "name": "Dark Energy (v5.01).gbc",
-      "evidence": "fresh-full342-source-bound",
-      "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
+      "evidence": "focused-gen2-relationships-source-bound",
+      "sourceCommit": "6272147fa7ae4dce6d1a70d146667c15b1d1f5e1",
       "aliases": [
         {
           "archive": "Pokemon Dark Energy (v5.01).7z",
@@ -18039,8 +18081,15 @@
         "referenceErrors": 0,
         "sqliteReopenEqualityVerified": true,
         "logicalDigestVersion": 1,
-        "beforeCatalogSha256": "5cac781f815d15ebd703bf7f17f4301e6350bbd9f98746a59bf33774399ecf00",
-        "afterCatalogSha256": "5cac781f815d15ebd703bf7f17f4301e6350bbd9f98746a59bf33774399ecf00"
+        "beforeCatalogSha256": "6e82a2fa76fe12f0b9a5515e20e43178517e8220aab260351f2131f651d2515d",
+        "afterCatalogSha256": "6e82a2fa76fe12f0b9a5515e20e43178517e8220aab260351f2131f651d2515d"
+      },
+      "baseline": {
+        "compatibilityPercent": 88.89,
+        "evolutionEdges": 127,
+        "learnsetEntries": 2249,
+        "evolutions": "AVAILABLE",
+        "learnsets": "AVAILABLE"
       }
     },
     {
@@ -18962,8 +19011,8 @@
     },
     {
       "name": "Crystal Clear (Color Filter) (v2.6).gbc",
-      "evidence": "fresh-full342-source-bound",
-      "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
+      "evidence": "focused-gen2-relationships-source-bound",
+      "sourceCommit": "6272147fa7ae4dce6d1a70d146667c15b1d1f5e1",
       "aliases": [
         {
           "archive": "Pokemon Crystal Clear (Color Filter) (v2.6).7z",
@@ -18979,7 +19028,7 @@
       "generation": 2,
       "family": "CRYSTAL",
       "languageCount": 1,
-      "compatibilityPercent": 57.89,
+      "compatibilityPercent": 68.42,
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "AVAILABLE",
@@ -19010,8 +19059,8 @@
           "confidence": 0
         },
         "EVOLUTIONS": {
-          "status": "NOT_FOUND",
-          "confidence": 0
+          "status": "AVAILABLE",
+          "confidence": 1
         },
         "MOVE_CATALOG": {
           "status": "AVAILABLE",
@@ -19026,8 +19075,8 @@
           "confidence": 1
         },
         "LEARNSETS": {
-          "status": "NOT_FOUND",
-          "confidence": 0
+          "status": "AVAILABLE",
+          "confidence": 1
         },
         "EGG_MOVES": {
           "status": "NOT_FOUND",
@@ -19084,12 +19133,12 @@
         "speciesWithStats": 251,
         "speciesWithSprites": 251,
         "speciesWithDescriptions": 0,
-        "evolutionEdges": 0,
-        "learnsetEntries": 0,
-        "learnsetRulesets": 0,
-        "moves": 170,
+        "evolutionEdges": 122,
+        "learnsetEntries": 2215,
+        "learnsetRulesets": 1,
+        "moves": 250,
         "movesWithDetails": 0,
-        "movesWithDescriptions": 170,
+        "movesWithDescriptions": 250,
         "eggMoveLinks": 0,
         "machineMoveLinks": 6402,
         "tutorMoveLinks": 220,
@@ -19113,8 +19162,15 @@
         "referenceErrors": 0,
         "sqliteReopenEqualityVerified": true,
         "logicalDigestVersion": 1,
-        "beforeCatalogSha256": "2eedca81b5cdb72fafe8d34e9c6e4c0d3e05eba3fe83d1aafea531cc06f0feb6",
-        "afterCatalogSha256": "2eedca81b5cdb72fafe8d34e9c6e4c0d3e05eba3fe83d1aafea531cc06f0feb6"
+        "beforeCatalogSha256": "f4698cafaa2e397fead12af069b4dd34eed0502118975dc81d63e867a185ae5c",
+        "afterCatalogSha256": "f4698cafaa2e397fead12af069b4dd34eed0502118975dc81d63e867a185ae5c"
+      },
+      "baseline": {
+        "compatibilityPercent": 57.89,
+        "evolutionEdges": 0,
+        "learnsetEntries": 0,
+        "evolutions": "NOT_FOUND",
+        "learnsets": "NOT_FOUND"
       }
     },
     {
@@ -21285,8 +21341,8 @@
     },
     {
       "name": "Kalos Crystal (v1.0).gbc",
-      "evidence": "fresh-full342-source-bound",
-      "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
+      "evidence": "focused-gen2-relationships-source-bound",
+      "sourceCommit": "6272147fa7ae4dce6d1a70d146667c15b1d1f5e1",
       "aliases": [
         {
           "archive": "Pokemon Kalos Crystal (v1.0).7z",
@@ -21297,7 +21353,7 @@
       "generation": 2,
       "family": "CRYSTAL",
       "languageCount": 1,
-      "compatibilityPercent": 77.31,
+      "compatibilityPercent": 87.83,
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "PARTIAL",
@@ -21328,8 +21384,8 @@
           "confidence": 1
         },
         "EVOLUTIONS": {
-          "status": "NOT_FOUND",
-          "confidence": 0
+          "status": "AVAILABLE",
+          "confidence": 1
         },
         "MOVE_CATALOG": {
           "status": "AVAILABLE",
@@ -21344,8 +21400,8 @@
           "confidence": 1
         },
         "LEARNSETS": {
-          "status": "NOT_FOUND",
-          "confidence": 0
+          "status": "AVAILABLE",
+          "confidence": 1
         },
         "EGG_MOVES": {
           "status": "NOT_FOUND",
@@ -21402,9 +21458,9 @@
         "speciesWithStats": 214,
         "speciesWithSprites": 208,
         "speciesWithDescriptions": 229,
-        "evolutionEdges": 0,
-        "learnsetEntries": 0,
-        "learnsetRulesets": 0,
+        "evolutionEdges": 109,
+        "learnsetEntries": 2653,
+        "learnsetRulesets": 1,
         "moves": 251,
         "movesWithDetails": 251,
         "movesWithDescriptions": 251,
@@ -21431,8 +21487,15 @@
         "referenceErrors": 0,
         "sqliteReopenEqualityVerified": true,
         "logicalDigestVersion": 1,
-        "beforeCatalogSha256": "4e200fefde2aa3761f64caf9c5c48f4f5bc3fa19f560114b2eb9157bcfffe454",
-        "afterCatalogSha256": "4e200fefde2aa3761f64caf9c5c48f4f5bc3fa19f560114b2eb9157bcfffe454"
+        "beforeCatalogSha256": "5badff03eac877513dca0ca7cc2039501a42125dfdb97db0bdffa174032fc64f",
+        "afterCatalogSha256": "5badff03eac877513dca0ca7cc2039501a42125dfdb97db0bdffa174032fc64f"
+      },
+      "baseline": {
+        "compatibilityPercent": 77.31,
+        "evolutionEdges": 0,
+        "learnsetEntries": 0,
+        "evolutions": "NOT_FOUND",
+        "learnsets": "NOT_FOUND"
       }
     },
     {
@@ -22815,8 +22878,8 @@
     },
     {
       "name": "Mystic Crystal (v1.0).gbc",
-      "evidence": "fresh-full342-source-bound",
-      "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
+      "evidence": "focused-gen2-relationships-source-bound",
+      "sourceCommit": "6272147fa7ae4dce6d1a70d146667c15b1d1f5e1",
       "aliases": [
         {
           "archive": "Pokemon Mystic Crystal (v1.0).7z",
@@ -22961,8 +23024,15 @@
         "referenceErrors": 0,
         "sqliteReopenEqualityVerified": true,
         "logicalDigestVersion": 1,
-        "beforeCatalogSha256": "3cdbef4734a57ba8601661d27f37fe308438e60b2418ba147a58cea3d34dcc69",
-        "afterCatalogSha256": "3cdbef4734a57ba8601661d27f37fe308438e60b2418ba147a58cea3d34dcc69"
+        "beforeCatalogSha256": "2e4ea4d305934d6480db06386d970bbef6764dbe45e899e32666d682879f8558",
+        "afterCatalogSha256": "2e4ea4d305934d6480db06386d970bbef6764dbe45e899e32666d682879f8558"
+      },
+      "baseline": {
+        "compatibilityPercent": 72.55,
+        "evolutionEdges": 0,
+        "learnsetEntries": 0,
+        "evolutions": "NOT_FOUND",
+        "learnsets": "NOT_FOUND"
       }
     },
     {
@@ -23898,8 +23968,8 @@
     },
     {
       "name": "Bronze 2 (v1.05).gbc",
-      "evidence": "fresh-full342-source-bound",
-      "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
+      "evidence": "focused-gen2-relationships-source-bound",
+      "sourceCommit": "6272147fa7ae4dce6d1a70d146667c15b1d1f5e1",
       "aliases": [
         {
           "archive": "Pokemon Bronze 2 (v1.05).7z",
@@ -23910,7 +23980,7 @@
       "generation": 2,
       "family": "CRYSTAL",
       "languageCount": 1,
-      "compatibilityPercent": 100.0,
+      "compatibilityPercent": 100,
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "AVAILABLE",
@@ -24044,8 +24114,15 @@
         "referenceErrors": 0,
         "sqliteReopenEqualityVerified": true,
         "logicalDigestVersion": 1,
-        "beforeCatalogSha256": "e3429c31cb25d5e2b92834ab5129734cf7dce7d2436ecf96992227fb972e8593",
-        "afterCatalogSha256": "e3429c31cb25d5e2b92834ab5129734cf7dce7d2436ecf96992227fb972e8593"
+        "beforeCatalogSha256": "d0e3f08c6e99ae2da68b004000ccc876a4e7d1379253e9c777d1c16a57fd84f7",
+        "afterCatalogSha256": "d0e3f08c6e99ae2da68b004000ccc876a4e7d1379253e9c777d1c16a57fd84f7"
+      },
+      "baseline": {
+        "compatibilityPercent": 100,
+        "evolutionEdges": 122,
+        "learnsetEntries": 2215,
+        "evolutions": "AVAILABLE",
+        "learnsets": "AVAILABLE"
       }
     },
     {
@@ -24520,8 +24597,8 @@
     },
     {
       "name": "Crystal Inheritance (v1.1).gbc",
-      "evidence": "fresh-full342-source-bound",
-      "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
+      "evidence": "focused-gen2-relationships-source-bound",
+      "sourceCommit": "6272147fa7ae4dce6d1a70d146667c15b1d1f5e1",
       "aliases": [
         {
           "archive": "Pokemon Crystal Inheritance (v1.1).7z",
@@ -24666,8 +24743,15 @@
         "referenceErrors": 0,
         "sqliteReopenEqualityVerified": true,
         "logicalDigestVersion": 1,
-        "beforeCatalogSha256": "7614455777bfc2418c13ef945b2b3c20b899ca1fc40cda3bc5ada4d34adeb6e8",
-        "afterCatalogSha256": "7614455777bfc2418c13ef945b2b3c20b899ca1fc40cda3bc5ada4d34adeb6e8"
+        "beforeCatalogSha256": "f2a947d6900998deba9819a414d24cb1942e9a1d74718b387ff8e26314034800",
+        "afterCatalogSha256": "f2a947d6900998deba9819a414d24cb1942e9a1d74718b387ff8e26314034800"
+      },
+      "baseline": {
+        "compatibilityPercent": 29.17,
+        "evolutionEdges": 0,
+        "learnsetEntries": 0,
+        "evolutions": "NOT_FOUND",
+        "learnsets": "NOT_FOUND"
       }
     },
     {
@@ -27132,8 +27216,8 @@
     },
     {
       "name": "Bronze (Girl Patch) (v1.23).gbc",
-      "evidence": "fresh-full342-source-bound",
-      "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
+      "evidence": "focused-gen2-relationships-source-bound",
+      "sourceCommit": "6272147fa7ae4dce6d1a70d146667c15b1d1f5e1",
       "aliases": [
         {
           "archive": "Pokemon Bronze (Girl Patch) (v1.23).7z",
@@ -27144,7 +27228,7 @@
       "generation": 2,
       "family": "GOLD_SILVER",
       "languageCount": 1,
-      "compatibilityPercent": 100.0,
+      "compatibilityPercent": 100,
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "AVAILABLE",
@@ -27278,8 +27362,15 @@
         "referenceErrors": 0,
         "sqliteReopenEqualityVerified": true,
         "logicalDigestVersion": 1,
-        "beforeCatalogSha256": "4f1e3be2066bc31486e427603f99dbb17aa90a66a19a903008c1e096e06d90a8",
-        "afterCatalogSha256": "4f1e3be2066bc31486e427603f99dbb17aa90a66a19a903008c1e096e06d90a8"
+        "beforeCatalogSha256": "4d179c984c8c85b5a1d1e6d6b82961fcc285ed46e4e9bd8822cf573a5c3aed1b",
+        "afterCatalogSha256": "4d179c984c8c85b5a1d1e6d6b82961fcc285ed46e4e9bd8822cf573a5c3aed1b"
+      },
+      "baseline": {
+        "compatibilityPercent": 100,
+        "evolutionEdges": 122,
+        "learnsetEntries": 2217,
+        "evolutions": "AVAILABLE",
+        "learnsets": "AVAILABLE"
       }
     },
     {
@@ -28363,8 +28454,8 @@
     },
     {
       "name": "Digimon Crystal (v11.02.24).gbc",
-      "evidence": "fresh-full342-source-bound",
-      "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
+      "evidence": "focused-gen2-relationships-source-bound",
+      "sourceCommit": "6272147fa7ae4dce6d1a70d146667c15b1d1f5e1",
       "aliases": [
         {
           "archive": "Pokemon Digimon Crystal (v11.02.24).7z",
@@ -28375,7 +28466,7 @@
       "generation": 2,
       "family": "CRYSTAL",
       "languageCount": 1,
-      "compatibilityPercent": 87.08,
+      "compatibilityPercent": 88.09,
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "PARTIAL",
@@ -28406,8 +28497,8 @@
           "confidence": 1
         },
         "EVOLUTIONS": {
-          "status": "PARTIAL",
-          "confidence": 0.9043824701195219
+          "status": "AVAILABLE",
+          "confidence": 1
         },
         "MOVE_CATALOG": {
           "status": "AVAILABLE",
@@ -28422,8 +28513,8 @@
           "confidence": 1
         },
         "LEARNSETS": {
-          "status": "PARTIAL",
-          "confidence": 0.9043824701195219
+          "status": "AVAILABLE",
+          "confidence": 1
         },
         "EGG_MOVES": {
           "status": "AVAILABLE",
@@ -28480,8 +28571,8 @@
         "speciesWithStats": 229,
         "speciesWithSprites": 251,
         "speciesWithDescriptions": 251,
-        "evolutionEdges": 175,
-        "learnsetEntries": 2072,
+        "evolutionEdges": 186,
+        "learnsetEntries": 2304,
         "learnsetRulesets": 1,
         "moves": 251,
         "movesWithDetails": 0,
@@ -28509,14 +28600,21 @@
         "referenceErrors": 0,
         "sqliteReopenEqualityVerified": true,
         "logicalDigestVersion": 1,
-        "beforeCatalogSha256": "503f26baad8fb0e65994501ec664bccdcf12b5695d9e67af8f79fd937d37f777",
-        "afterCatalogSha256": "503f26baad8fb0e65994501ec664bccdcf12b5695d9e67af8f79fd937d37f777"
+        "beforeCatalogSha256": "b85861a046a02dbd5f3907578803b5a9a8f760d3b49cfd8a1e4b82c0a3d8e7e0",
+        "afterCatalogSha256": "b85861a046a02dbd5f3907578803b5a9a8f760d3b49cfd8a1e4b82c0a3d8e7e0"
+      },
+      "baseline": {
+        "compatibilityPercent": 87.08,
+        "evolutionEdges": 175,
+        "learnsetEntries": 2072,
+        "evolutions": "PARTIAL",
+        "learnsets": "PARTIAL"
       }
     },
     {
       "name": "Crystal Kaizo (01.08.26).gbc",
-      "evidence": "fresh-full342-source-bound",
-      "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
+      "evidence": "focused-gen2-relationships-source-bound",
+      "sourceCommit": "6272147fa7ae4dce6d1a70d146667c15b1d1f5e1",
       "aliases": [
         {
           "archive": "Pokemon Crystal Kaizo (01.08.26).7z",
@@ -28661,8 +28759,15 @@
         "referenceErrors": 0,
         "sqliteReopenEqualityVerified": true,
         "logicalDigestVersion": 1,
-        "beforeCatalogSha256": "ca1d6d19f8ebea58ff1c2eeda7a9a445f058dac49591fc398ace0de17d0c1988",
-        "afterCatalogSha256": "ca1d6d19f8ebea58ff1c2eeda7a9a445f058dac49591fc398ace0de17d0c1988"
+        "beforeCatalogSha256": "9f771174006b121c6a6df3b0e00d157a65a2032e72118feaab4752b6ca4e3d41",
+        "afterCatalogSha256": "9f771174006b121c6a6df3b0e00d157a65a2032e72118feaab4752b6ca4e3d41"
+      },
+      "baseline": {
+        "compatibilityPercent": 73.68,
+        "evolutionEdges": 0,
+        "learnsetEntries": 0,
+        "evolutions": "NOT_FOUND",
+        "learnsets": "NOT_FOUND"
       }
     },
     {
@@ -29584,8 +29689,8 @@
     },
     {
       "name": "Sour Crystal (v7.0a).gbc",
-      "evidence": "fresh-full342-source-bound",
-      "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
+      "evidence": "focused-gen2-relationships-source-bound",
+      "sourceCommit": "6272147fa7ae4dce6d1a70d146667c15b1d1f5e1",
       "aliases": [
         {
           "archive": "Pokemon Sour Crystal (v7.0a).7z",
@@ -29596,7 +29701,7 @@
       "generation": 2,
       "family": "CRYSTAL",
       "languageCount": 1,
-      "compatibilityPercent": 68.42,
+      "compatibilityPercent": 78.95,
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "AVAILABLE",
@@ -29627,8 +29732,8 @@
           "confidence": 1
         },
         "EVOLUTIONS": {
-          "status": "NOT_FOUND",
-          "confidence": 0
+          "status": "AVAILABLE",
+          "confidence": 1
         },
         "MOVE_CATALOG": {
           "status": "AVAILABLE",
@@ -29643,8 +29748,8 @@
           "confidence": 1
         },
         "LEARNSETS": {
-          "status": "NOT_FOUND",
-          "confidence": 0
+          "status": "AVAILABLE",
+          "confidence": 1
         },
         "EGG_MOVES": {
           "status": "AVAILABLE",
@@ -29701,9 +29806,9 @@
         "speciesWithStats": 251,
         "speciesWithSprites": 10,
         "speciesWithDescriptions": 251,
-        "evolutionEdges": 0,
-        "learnsetEntries": 0,
-        "learnsetRulesets": 0,
+        "evolutionEdges": 132,
+        "learnsetEntries": 2679,
+        "learnsetRulesets": 1,
         "moves": 251,
         "movesWithDetails": 251,
         "movesWithDescriptions": 251,
@@ -29730,8 +29835,15 @@
         "referenceErrors": 0,
         "sqliteReopenEqualityVerified": true,
         "logicalDigestVersion": 1,
-        "beforeCatalogSha256": "e38197466bf3808846b4883f7d39ee4ae5cd822efe3bab43f198c6248020cd05",
-        "afterCatalogSha256": "e38197466bf3808846b4883f7d39ee4ae5cd822efe3bab43f198c6248020cd05"
+        "beforeCatalogSha256": "7058f08cd9bc836550d54529711b7a520d9a485496466cfe945f1ff756819f35",
+        "afterCatalogSha256": "7058f08cd9bc836550d54529711b7a520d9a485496466cfe945f1ff756819f35"
+      },
+      "baseline": {
+        "compatibilityPercent": 68.42,
+        "evolutionEdges": 0,
+        "learnsetEntries": 0,
+        "evolutions": "NOT_FOUND",
+        "learnsets": "NOT_FOUND"
       }
     },
     {
@@ -35289,8 +35401,8 @@
     },
     {
       "name": "Crystal Clear (v2.6).gbc",
-      "evidence": "fresh-full342-source-bound",
-      "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
+      "evidence": "focused-gen2-relationships-source-bound",
+      "sourceCommit": "6272147fa7ae4dce6d1a70d146667c15b1d1f5e1",
       "aliases": [
         {
           "archive": "Pokemon Crystal Clear (v2.6).7z",
@@ -35301,7 +35413,7 @@
       "generation": 2,
       "family": "CRYSTAL",
       "languageCount": 1,
-      "compatibilityPercent": 57.89,
+      "compatibilityPercent": 68.42,
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "AVAILABLE",
@@ -35332,8 +35444,8 @@
           "confidence": 0
         },
         "EVOLUTIONS": {
-          "status": "NOT_FOUND",
-          "confidence": 0
+          "status": "AVAILABLE",
+          "confidence": 1
         },
         "MOVE_CATALOG": {
           "status": "AVAILABLE",
@@ -35348,8 +35460,8 @@
           "confidence": 1
         },
         "LEARNSETS": {
-          "status": "NOT_FOUND",
-          "confidence": 0
+          "status": "AVAILABLE",
+          "confidence": 1
         },
         "EGG_MOVES": {
           "status": "NOT_FOUND",
@@ -35406,12 +35518,12 @@
         "speciesWithStats": 251,
         "speciesWithSprites": 251,
         "speciesWithDescriptions": 0,
-        "evolutionEdges": 0,
-        "learnsetEntries": 0,
-        "learnsetRulesets": 0,
-        "moves": 170,
+        "evolutionEdges": 122,
+        "learnsetEntries": 2215,
+        "learnsetRulesets": 1,
+        "moves": 250,
         "movesWithDetails": 0,
-        "movesWithDescriptions": 170,
+        "movesWithDescriptions": 250,
         "eggMoveLinks": 0,
         "machineMoveLinks": 6402,
         "tutorMoveLinks": 220,
@@ -35435,8 +35547,15 @@
         "referenceErrors": 0,
         "sqliteReopenEqualityVerified": true,
         "logicalDigestVersion": 1,
-        "beforeCatalogSha256": "662e73c527469d9dfab0b5f4c87d7f6adadab61b78d611eca25a389a2ea37fe4",
-        "afterCatalogSha256": "662e73c527469d9dfab0b5f4c87d7f6adadab61b78d611eca25a389a2ea37fe4"
+        "beforeCatalogSha256": "b1726c07c91bd2a4eec336e475317965ddba90c9ace95119bd9d3ee0d6e346e0",
+        "afterCatalogSha256": "b1726c07c91bd2a4eec336e475317965ddba90c9ace95119bd9d3ee0d6e346e0"
+      },
+      "baseline": {
+        "compatibilityPercent": 57.89,
+        "evolutionEdges": 0,
+        "learnsetEntries": 0,
+        "evolutions": "NOT_FOUND",
+        "learnsets": "NOT_FOUND"
       }
     },
     {
@@ -41629,13 +41748,13 @@
       }
     },
     {
-      "name": "Let´s Go Pikachu (v6.0).gba",
+      "name": "Let\u00c2\u00b4s Go Pikachu (v6.0).gba",
       "evidence": "fresh-full342-source-bound",
       "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
       "aliases": [
         {
-          "archive": "Pokemon Let´s Go Pikachu (v6.0).7z",
-          "name": "Let´s Go Pikachu (v6.0).gba",
+          "archive": "Pokemon Let\u00c2\u00b4s Go Pikachu (v6.0).7z",
+          "name": "Let\u00c2\u00b4s Go Pikachu (v6.0).gba",
           "console": "Nintendo - Game Boy Advance"
         }
       ],
@@ -46261,8 +46380,8 @@
     },
     {
       "name": "Crystal Legacy Timeless (v1.1.3).gbc",
-      "evidence": "fresh-full342-source-bound",
-      "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
+      "evidence": "focused-gen2-relationships-source-bound",
+      "sourceCommit": "6272147fa7ae4dce6d1a70d146667c15b1d1f5e1",
       "aliases": [
         {
           "archive": "Pokemon Crystal Legacy Timeless (v1.1.3).7z",
@@ -46273,7 +46392,7 @@
       "generation": 2,
       "family": "CRYSTAL",
       "languageCount": 1,
-      "compatibilityPercent": 73.68,
+      "compatibilityPercent": 84.21,
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "AVAILABLE",
@@ -46304,8 +46423,8 @@
           "confidence": 0
         },
         "EVOLUTIONS": {
-          "status": "NOT_FOUND",
-          "confidence": 0
+          "status": "AVAILABLE",
+          "confidence": 1
         },
         "MOVE_CATALOG": {
           "status": "AVAILABLE",
@@ -46320,8 +46439,8 @@
           "confidence": 1
         },
         "LEARNSETS": {
-          "status": "NOT_FOUND",
-          "confidence": 0
+          "status": "AVAILABLE",
+          "confidence": 1
         },
         "EGG_MOVES": {
           "status": "AVAILABLE",
@@ -46378,9 +46497,9 @@
         "speciesWithStats": 251,
         "speciesWithSprites": 251,
         "speciesWithDescriptions": 0,
-        "evolutionEdges": 0,
-        "learnsetEntries": 0,
-        "learnsetRulesets": 0,
+        "evolutionEdges": 122,
+        "learnsetEntries": 2591,
+        "learnsetRulesets": 1,
         "moves": 251,
         "movesWithDetails": 251,
         "movesWithDescriptions": 251,
@@ -46407,9 +46526,49 @@
         "referenceErrors": 0,
         "sqliteReopenEqualityVerified": true,
         "logicalDigestVersion": 1,
-        "beforeCatalogSha256": "a177f747ebdf80eb81803e419e1ab318335b1c2dbf1e0c50539eaf7fcb9ac9b7",
-        "afterCatalogSha256": "a177f747ebdf80eb81803e419e1ab318335b1c2dbf1e0c50539eaf7fcb9ac9b7"
+        "beforeCatalogSha256": "899442f3e132706b38d0ae55ca1c176e31855fbfa934c80e35c15113b0c0c0f7",
+        "afterCatalogSha256": "899442f3e132706b38d0ae55ca1c176e31855fbfa934c80e35c15113b0c0c0f7"
+      },
+      "baseline": {
+        "compatibilityPercent": 73.68,
+        "evolutionEdges": 0,
+        "learnsetEntries": 0,
+        "evolutions": "NOT_FOUND",
+        "learnsets": "NOT_FOUND"
       }
     }
-  ]
+  ],
+  "baselineExecution": {
+    "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
+    "generator": {
+      "name": "parser-cli",
+      "schemaVersion": 16,
+      "sha256": "443fbe6bc6804a12480e66e6c318a2dcd500c574663c84e210c09fcf03ba2b97"
+    },
+    "rawReportSha256": "c2c7d04dc5c5fb688ee268492d34d897b0fd734562e1881941cae900ac6c9de9"
+  },
+  "sourceCommits": [
+    "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
+    "6272147fa7ae4dce6d1a70d146667c15b1d1f5e1"
+  ],
+  "focusedGen2Relationships": {
+    "inputCount": 19,
+    "gainCount": 7,
+    "sourceCommit": "6272147fa7ae4dce6d1a70d146667c15b1d1f5e1",
+    "parserSchemaVersion": 84,
+    "executionReceiptSummary": {
+      "schemaVersion": 1,
+      "sourceCommit": "6272147fa7ae4dce6d1a70d146667c15b1d1f5e1",
+      "inputCount": 19,
+      "rawReportSha256": "2b446d3f560a3210b30972dedd644015dbce1aedc13b9971bebd78e2dd900c93",
+      "generator": {
+        "name": "parser-cli",
+        "schemaVersion": 16,
+        "sha256": "c980d112403aea61988c60d37670bdd9b43a14113aadd26d9bdeb84c2da7059d"
+      }
+    },
+    "acceptance": "2026-10-04-gen2-relationships-acceptance.json",
+    "unaffectedRowsRetained": 323,
+    "fullCorpusRerun": false
+  }
 }

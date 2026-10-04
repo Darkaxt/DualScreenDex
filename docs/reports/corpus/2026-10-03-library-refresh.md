@@ -5,6 +5,7 @@
 The GB/GBC/GBA Pokémon hack library has changed enough to warrant a new corpus snapshot. The current snapshot contains **342 distinct in-scope ROM identities**. The old corpus and its release evidence remain preserved. The inventory refresh itself did not change the production parser; the [Gen I expansion](2026-10-03-gen1-core-acceptance.md) adds ten selected catalogs and the [Gen II expansion](2026-10-03-gen2-core-acceptance.md) adds four. Neither step publishes a new APK.
 
 - [Current 342-ROM compatibility matrix](2026-10-03-library-compatibility.md)
+- [October 4 Gen II relationship acceptance: seven gains, 19 checked catalogs](2026-10-04-gen2-relationships-acceptance.md)
 - [Machine-readable rows, aliases, provenance, and delta receipt](2026-10-03-library-compatibility.json)
 - [Current library identity](../../../release/current-library-corpus.json)
 - [Frozen 333-input release matrix](../../rom-compatibility-matrix.md)
@@ -142,13 +143,15 @@ Therefore:
 
 ## Follow-up ledger
 
-`LIB26-G1-CORE` and `LIB26-G2-CORE` are accepted at their bounded host/static boundaries. Gen II acceptance closes canonical/static joins and reference-safe SQLite persistence, not every optional feature. Remaining entries have named targets and explicit closure conditions; none is silently deferred or claimed complete.
+`LIB26-G1-CORE` and `LIB26-G2-CORE` are accepted at their bounded host/static boundaries. The subsequent [October 4 relationship checkpoint](2026-10-04-gen2-relationships-acceptance.md) accepts seven Gen II evolution/level-up gains and validates all 19 selected Gen II catalogs, without a new full342 run. The current matrix is composite: these 19 rows supersede the full342 baseline, while the other 323 row objects and their provenance remain unchanged. Gen II acceptance closes canonical/static joins and reference-safe SQLite persistence, not every optional feature. Remaining entries have named targets and explicit closure conditions; none is silently deferred or claimed complete.
 
 | ID | Status | Named target | Closure condition |
 |---|---|---|---|
 | LIB26-G1-CORE | Accepted host/static | Six PureRGB, two Yellow Legacy, two Yellow Kaizo | Compiled-consumer-backed routing, correct canonical base joins/reference closure, and related Gen I controls; [evidence](2026-10-03-gen1-core-acceptance.md). |
 | LIB26-G2-CORE | Accepted host/static | Polished Crystal / Inheritance; Ambrosia / Sour Crystal independently | [Four canonical core catalogs, reference closure, 15 SQLite write/reopen checks and bounded controls verified](2026-10-03-gen2-core-acceptance.md). |
-| LIB26-G2-CLASSIC-OPTIONAL | Not implemented | Ambrosia / Sour | Prove packed categories/custom type presentation, missing type labels/charts, Sour sprite decoding and missing acquisition/Dex/maps; retain field-level failure isolation. |
+| LIB26-G2-RELATIONSHIPS | Accepted host/static | Sour, both Crystal Clear builds, Crystal Legacy, Timeless, Kalos and Digimon; 19 selected Gen II controls | [Seven complete evolution/level-up gains, no regressions, reference closure and 19 exact SQLite reopen checks](2026-10-04-gen2-relationships-acceptance.md). |
+| LIB26-G2-RELATIONSHIPS-REMAINING | Open | Ambrosia, Anniversary, Crystal Kaizo, Mystic, Gold 97, Silver 97, Polished and Inheritance | Independently prove compiled pointer/index/record contracts and canonical references; preserve the related cohort and verify SQLite reopening. Both datasets remain NOT_FOUND with zero records. |
+| LIB26-G2-CLASSIC-OPTIONAL | Field-level closure only | Ambrosia / Sour | Sour evolution/level-up fields are accepted; Ambrosia relationships and separately missing packed categories/custom type presentation, type labels/charts, Sour sprite decoding and acquisition/Dex/maps remain open as applicable. |
 | LIB26-G2-LINEAGE | Not implemented | Gold 97 / Silver 97 | Independently prove lineage/tutor applicability; preserve all 253 canonical joins and 104 type-chart records without a title/profile override. |
 | LIB26-G2-SIBLINGS | Not implemented | Black & White 3 Genesis / current Orange / Peridot 2.3.0 | Separate complete identity/core/move/graphics contracts and exact-build reference-safe catalogs. |
 | LIB26-G2-OFFICIAL-CONTROLS | Not run | Official Gold / Silver / Crystal | Retained, separately authorized official inputs and bounded host/static regression; no download or Android authorization implied. |
