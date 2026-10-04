@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "candidateTag": "v1.2.1-rc.2",
+  "apkSha256": "00D4F1D516F7E9A2DCA72C7A38B81CF1852D46BEE049476FE97D29E6ACA697C7",
+  "sourceCommit": "d2fedab79b01ed11e80dbc2363d7e31cf5ed417b",
+  "validationMode": "automated-passive-catalog",
+  "automatedValidationWorkflowRunUrl": "https://github.com/Darkaxt/DualScreenDex/actions/runs/37169527972",
+  "userAuthorizedAutomatedPromotion": true,
+  "gameplayRuntimeChanged": false,
+  "catalogPersistenceValidated": true,
+  "runtimeApiValidated": true,
+  "webPresentationValidated": true,
+  "releaseCiValidated": true,
+  "controls": [
+    {
+      "romSha256": "46f98da1861e0db3c79702c20c0330836ab13fc739a857df94e9a5d9f6def37b",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "469d08907d0ef474d174d87d84d25e108b86ca481131b41fa291bd8aae97c29b",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "8a7f102ec2f04572bb0bcf95e44279ea5f3e113f73ce217f499c514c14dbd4a4",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "568e0d2ea2fa7291f3ba4cedb9a6a92da68ebf6304c5a704abdcbab507b4f44f",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    },
+    {
+      "romSha256": "aa37a347d7b97c69f5e2d9e1112aa21b441d4d3faffd807596e4b4cda1d2086a",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true
+    }
+  ]
+}

@@ -19,4 +19,6 @@ Family detection does not promise that every optional feature is supported. Cons
 
 ## Release acceptance
 
-The signed artifact must pass the exact-source GitHub release pipeline, including the reusable hosted packaged-Android acceptance gate, production package/version checks, pinned signing certificate and immutable public-asset validation. Passive-catalog promotion additionally requires five real-ROM cache-reopen, runtime/API and browser controls. No physical-device or local-emulator validation is claimed.
+The release is based on validated candidate `v1.2.1-rc.2`: exact-source CI and protected signing passed, all 68 immutable candidate assets matched their GitHub/checksum digests, and the signed APK matched the production package/version and pinned certificate. Five real-ROM cache-reopen, runtime/API and browser controls passed without reparsing the corpus.
+
+The final signed artifact must independently pass the exact-source GitHub release pipeline, including the reusable hosted packaged-Android acceptance gate, production package/version checks, pinned signing certificate and public-asset validation. Hosted candidate tests passed eight cases in each run; their screenshots contained a System UI nonresponse dialog and are not claimed as clean visual proof. This is an authorized passive-catalog release; no physical-device or local-emulator validation is claimed.
