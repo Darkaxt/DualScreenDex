@@ -45,6 +45,7 @@ internal sealed interface CoreDatasetsPhaseResult {
         moveDetailsTypedRejectionReason: String? = null,
         publishedPartialBaseStatsCandidate: PublishedPartialBaseStatsCandidate? = null,
         val languageManifest: RomLanguageManifest = RomLanguageManifest.UNKNOWN,
+        val gen2RelationshipRejection: String? = null,
     ) : CoreDatasetsPhaseResult {
         val candidateTables = candidateTables.immutableCopy()
         val speciesNames = speciesNames.immutableCopy()
@@ -79,6 +80,7 @@ internal sealed interface CoreDatasetsPhaseResult {
             moveDetailsTypedRejectionReason = moveDetailsTypedRejectionReason,
             publishedPartialBaseStatsCandidate = publishedPartialBaseStatsCandidate,
             languageManifest = languageManifest,
+            gen2RelationshipRejection = gen2RelationshipRejection,
         )
     }
 }
@@ -327,6 +329,14 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
                 effectiveMoveCount = inferredMoveCount
             }
         }
+        val compiledRelationships = if (generation == 2 && exact == null && speciesCount != null && effectiveMoveCount != null) {
+            com.enrpau.dualscreendex.parser.parse.Gen2CompiledRelationshipResolver.resolve(
+                session, speciesCount, effectiveMoveCount,
+            )
+        } else null
+        compiledRelationships?.let { relationships ->
+            tables = tables.copy(evolutions = relationships.table, learnsets = relationships.table)
+        }
         val moveDetailsResolution = if (
             headerlessUnifiedMoves == null && generation == 3 && expansion == null && moveData.compatible
         ) {
@@ -409,6 +419,7 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
             moveDetailsTypedRejectionReason = moveDetailsTypedRejectionReason,
             publishedPartialBaseStatsCandidate = publishedPartialBaseStatsCandidate,
             languageManifest = languageManifest,
+            gen2RelationshipRejection = compiledRelationships?.rejection,
         )
     }
 

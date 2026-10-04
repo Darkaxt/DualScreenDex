@@ -142,7 +142,7 @@ internal class DependentDatasetsStrategy : FamilyProbePhaseStrategy {
                 core.speciesCount ?: profile?.internalSpeciesCount ?: 412,
                 tables.evolutions,
             )
-            else -> missingEvidence("combined evolution/learnset table not resolved")
+            else -> missingEvidence(core.gen2RelationshipRejection ?: "combined evolution/learnset table not resolved")
         }
         val evolutionResolution = embeddedEvolutions?.let {
             ResolvedEvolutionEvidence(it.evidence, it.resolved)
@@ -172,7 +172,7 @@ internal class DependentDatasetsStrategy : FamilyProbePhaseStrategy {
                 }.evidence
             }
         } else {
-            missingEvidence("combined evolution/learnset table not resolved")
+            missingEvidence(core.gen2RelationshipRejection ?: "combined evolution/learnset table not resolved")
         }
         if (embeddedLearnsets == null && generation == 3 && expansion == null && learnsetTables.isNotEmpty()) {
             val typed = resolveLearnsets(

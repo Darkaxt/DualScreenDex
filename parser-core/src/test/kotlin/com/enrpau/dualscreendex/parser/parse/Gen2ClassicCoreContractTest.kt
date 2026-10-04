@@ -15,6 +15,32 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class Gen2ClassicCoreContractTest {
+    @Test fun compiledRelationshipsReplaceStaleRootsAfterIndependentCoreCounts() {
+        val bytes = fixture(35).copyOf(0x10000)
+        val relationships = Gen2CompiledRelationshipResolverTest().fixture(bank = 2)
+        relationships.copyInto(bytes, 0x8000, 0x8000, 0xC000)
+        val session = RomAnalysisSession(RomImage(bytes), RomHeader(Platform.GBC, "CRYSTAL"))
+        val definition = EngineFamilyDefinitions.byFamily.getValue(EngineFamily.CRYSTAL)
+        val identity = IdentityRootsStrategy().execute(session, definition, FamilyProbeState.empty())
+        val state = com.enrpau.dualscreendex.parser.family.CoreDatasetsStrategy().execute(session, definition, identity)
+        val core = state.coreDatasets as com.enrpau.dualscreendex.parser.family.CoreDatasetsPhaseResult.Resolved
+        assertEquals(0x9000, core.candidateTables.evolutions?.offset)
+        assertEquals(core.candidateTables.evolutions, core.candidateTables.learnsets)
+        val layout = com.enrpau.dualscreendex.parser.model.ResolvedRomLayout(
+            EngineFamily.CRYSTAL, 2, Platform.GBC, 251, 251, core.candidateTables,
+        )
+        val edges = com.enrpau.dualscreendex.parser.catalog.RelationshipMaterializers.evolutions(session.rom, layout)
+        val learnsets = com.enrpau.dualscreendex.parser.catalog.RelationshipMaterializers.learnsets(session.rom, layout)
+        assertEquals(251, edges.size)
+        assertEquals(2, edges.getValue(1).single().targetSpeciesId)
+        assertEquals(5, edges.getValue(1).single().methodId)
+        assertEquals(20, edges.getValue(1).single().parameter)
+        assertEquals(4, edges.getValue(1).single().raw.size)
+        assertEquals(251, learnsets.size)
+        assertEquals(1, learnsets.getValue(251).single().moveId)
+        assertEquals(1, learnsets.getValue(251).single().level)
+    }
+
     @Test fun acceptsOddStrideOnlyThroughCompleteClassicCopyAndEpilogue() {
         val result = requireNotNull(resolve(fixture(35)))
         assertEquals(251, result.speciesCount)
