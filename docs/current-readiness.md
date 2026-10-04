@@ -4,8 +4,8 @@ This is the canonical reviewer entry point for DualDex release readiness.
 
 ## Active marker
 
-- **Stable release:** `v1.2.0`
-- **Next release:** `v1.2.1`; RC2 has passed exact-source CI, protected signing and immutable-asset verification. Final signing/publication is authorized under the passive-catalog route and remains pending.
+- **Stable release:** [`v1.2.1`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.2.1)
+- **Current release:** production-signed, publicly published and independently verified on October 4, 2026. The requested scan/release batch is complete; further compatibility work awaits a separate decision.
 - **Release notes:** [`release/RELEASE_NOTES_1.2.1.md`](../release/RELEASE_NOTES_1.2.1.md)
 - **Machine-readable readiness marker:** [`release/v1-ready.json`](../release/v1-ready.json)
 - **Current state:** project-wide QA Stages 7–8 remain closed with zero blockers and zero referrals; the six-stage localization system retains its closed baseline. The current compiled Gen I/II catalog batch has passed one full source-bound evaluation of all 342 distinct current-library identities, with zero parser, catalog, persistence or decoded-reference errors and no regressions against retained evidence.
@@ -26,6 +26,12 @@ The October 3 library snapshot contains **342 inputs and 342 distinct parser ide
 Parser cache revision **83** forces revision-82 catalogs to rebuild; SQL schema remains 2. The seeded prior-revision rejection/rebuild test passed. Optional capabilities remain bounded and fail closed; family selection does not mean every optional module is complete.
 
 The release workflow binds source lineage, exact generator/report/input digests, current corpus totals, catalog accounting, cache revision, protected tags and the signing environment. It still requires the exact-source hosted packaged-Android acceptance gate before signing. No physical-device or local-emulator validation is claimed.
+
+## Verified public 1.2.1 release
+
+[Protected final signing/publication](https://github.com/Darkaxt/DualScreenDex/actions/runs/37171000662) passed at `f7b75f830269523e430482bc617aa090a4a88ed5`. The public release is neither a draft nor a prerelease. All 68 downloaded assets matched their GitHub digests and complete checksum manifest; 62 evidence assets are byte-identical to validated RC2. Public-asset privacy validation passed.
+
+Static APK inspection confirmed `com.darkaxt.dualdex`, version `1.2.1`, code `1020199`. Cryptographic verification matched the pinned production signer `C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA`. The final APK SHA-256 is `7A0DDBB27562E083F3BF10CE229FEDC899B7B3686B6C1F7046E89CC40BB601F2`. [Published provenance](https://github.com/Darkaxt/DualScreenDex/releases/download/v1.2.1/provenance.json) and [checksums](https://github.com/Darkaxt/DualScreenDex/releases/download/v1.2.1/SHA256SUMS.txt) bind the actual artifact. Exact-source ordinary CI and the final workflow's hosted packaged gate passed. No local emulator or physical-device acceptance is claimed.
 
 ## Validated 1.2.1 candidate
 
