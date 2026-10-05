@@ -114,7 +114,7 @@ internal object Gen3CompiledWideCoreResolver {
             val forms = literalRoot(rom, at + 14) ?: return rejected("form-pointer root literal is invalid")
             val root = literalRoot(rom, at + 26) ?: return rejected("forward map literal is invalid")
             ForwardContract(root, forms)
-        }.distinct()
+        }.distinct().filter { candidate -> inverseContracts.any { it.root == candidate.root } }
         if (nameContracts.size != 1 || inverseContracts.size != 1 || forwardContracts.size != 1) {
             return rejected("compiled wide-core name/index roots or bounds are ambiguous")
         }
