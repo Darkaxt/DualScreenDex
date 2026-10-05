@@ -74,6 +74,26 @@ class Gen3CompiledWideCoreResolverTest {
     }
 
     @Test
+    fun unrelatedCompleteInverseConversionDoesNotCompeteWithThePairedForwardRoot() {
+        val fixture = Gen3CompiledWideCoreFixture()
+        fixture.bytes.copyInto(fixture.bytes, 0x800, fixture.inverseConsumer, fixture.inverseConsumer + 76)
+        fixture.putU32(0x800 + 56, 0x08002700)
+        val result = resolve(fixture)
+        assertTrue(result is Gen3CompiledWideCoreOutcome.Resolved)
+        assertEquals(mapOf(1 to 44, 2 to 7, 4 to 9), (result as Gen3CompiledWideCoreOutcome.Resolved).nativeToDex)
+    }
+
+    @Test
+    fun twoCompletePairedConversionsRemainAmbiguous() {
+        val fixture = Gen3CompiledWideCoreFixture()
+        fixture.bytes.copyInto(fixture.bytes, 0x800, fixture.inverseConsumer, fixture.inverseConsumer + 76)
+        fixture.putU32(0x800 + 56, 0x08002700)
+        fixture.bytes.copyInto(fixture.bytes, 0x700, fixture.forwardConsumer, fixture.forwardConsumer + 54)
+        fixture.putU32(0x700 + 44, 0x08002700)
+        assertRejected(fixture)
+    }
+
+    @Test
     fun competingFormRootsOnTheSamePairedConversionRemainAmbiguous() {
         val fixture = Gen3CompiledWideCoreFixture()
         fixture.bytes.copyInto(fixture.bytes, 0x700, fixture.forwardConsumer, fixture.forwardConsumer + 54)

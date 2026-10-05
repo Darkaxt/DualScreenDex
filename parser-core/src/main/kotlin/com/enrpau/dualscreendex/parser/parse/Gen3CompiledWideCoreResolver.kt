@@ -115,11 +115,13 @@ internal object Gen3CompiledWideCoreResolver {
             val root = literalRoot(rom, at + 26) ?: return rejected("forward map literal is invalid")
             ForwardContract(root, forms)
         }.distinct().filter { candidate -> inverseContracts.any { it.root == candidate.root } }
-        if (nameContracts.size != 1 || inverseContracts.size != 1 || forwardContracts.size != 1) {
-            return rejected("compiled wide-core name/index roots or bounds are ambiguous")
+        val pairedInverseContracts = inverseContracts.filter { candidate -> forwardContracts.any { it.root == candidate.root } }
+        if (nameContracts.size != 1 || pairedInverseContracts.size != 1 || forwardContracts.size != 1) {
+            return rejected("compiled wide-core name/index roots or bounds are ambiguous " +
+                "(names=${nameContracts.size}, inverse pairs=${pairedInverseContracts.size}, forward pairs=${forwardContracts.size})")
         }
         val name = nameContracts.single()
-        val map = inverseContracts.single()
+        val map = pairedInverseContracts.single()
         val lookup = forwardContracts.single()
         if (lookup.root != map.root || name.maximumIndex != map.rows + 1L) {
             return rejected("name reserved-slot bound and paired map consumers disagree")
