@@ -1,6 +1,6 @@
 # Gen III widened compiled-core recovery
 
-**Status: IN_PROGRESS — final affected parser/catalog guards passed (276 passed, one optional original-ROM test skipped); committed-source real-input acceptance pending.**
+**Status: IN_PROGRESS — both originals resolve 1,025 canonical names/stats and reference-safe level-up catalogs with exact SQLite reopening at `1364e9b2`; canonical sprite/category corrections passed 313 affected parser/catalog tests (one optional original-ROM test skipped). Fresh corrected-source acceptance is pending.**
 
 ## Scope and authority
 
@@ -43,7 +43,7 @@ The remaining engine-specific fields are not interpreted as mechanics. Exact zer
 
 A focused compiled-core resolver owns consumer recognition and root/count coupling. It must distinguish absent contracts from recognized incomplete, conflicting, malformed or budget-limited contracts. A recognized rejection must not fall back to inherited wrong-stride roots.
 
-The inverse map supplies canonical native rows by its first-match semantics; the forward map/form path must agree on every canonical join. Do not infer National Dex numbers from row order or name spelling. Native-index and Dex identity are separate test cases. The domain is independent of stat plausibility and name-prefix length. Alternate/form rows and runtime variants are not promoted into canonical records; any remaining form capability needs its own ledger closure.
+The inverse map supplies canonical native rows by its first-match semantics; the forward map/form path must agree on every canonical join. Require same-root bidirectional pairing before determining role cardinality: an otherwise complete unpaired conversion does not compete with the canonical role, while multiple complete pairs or differing form roots on the same pair remain ambiguous. Do not infer National Dex numbers from row order or name spelling. Native-index and Dex identity are separate test cases. The domain is independent of stat plausibility and name-prefix length. Alternate/form rows and runtime variants are not promoted into canonical records; any remaining form capability needs its own ledger closure.
 
 Names are decoded only under the proven copier geometry and canonical row authority. Stat proposals carry their ABI and independently proven domain into the typed codec/resolver. Complete active coverage, references and unambiguous roots are required. Integrate authority consistently across family probing, semantic-domain evaluation and materialization; no later legacy path may overwrite the proven stride or index map.
 
@@ -53,10 +53,18 @@ Reuse the existing typed u16-move/u16-level decoder only after admitting the com
 
 Recover the compiled 17-byte move-name root and each independently compiled move-detail stride. Retained ordinary acquisition consumers index 20-byte records in 2.1.1 and 56-byte records in Experimental; both independently expose effect u16 at 0, byte fields at 2–7, signed priority at 8, flags u32 at 12, split at 16 and argument at 17. The newer public oracle declares the common aligned prefix but does not explain Experimental's full stride. Neither matches the existing hybrid decoder's widened target at 8 and priority at 10. Require the actual field consumers and distinct typed ABIs; never promote the remaining 56-byte extension as mechanics. Typed codecs remain the sole byte interpreters. A domain established by complete canonical acquisition references is a proven ordinary minimum, not proof of every possible game move; report this distinction if no independent full move bound is available. Do not publish dangling links, guessed counts or a guessed category/flag ABI. If a prerequisite remains unproven, preserve fail-closed status and explicitly ledger the named gap rather than counting relationship recovery.
 
+## Dependent coverage boundaries
+
+Independently nominated ordinary Gen III sprite tables retain the full physical native namespace. Validate their full pointer span, but score and render only canonical native slots; aliases, reserved slots and inactive holes cannot fill canonical coverage. Preserve the existing 90% pointer/stream threshold, native palette indexing, cancellation and fail-closed behavior for missing or mismatched canonical authority. Do not compact the table or promote a guessed palette or alternate sprite as a canonical record. Final acceptance must check actual decoded catalog sprites, not merely plausible pointers.
+
+Nonordinary move split bytes remain uninterpreted: all scalar rows can decode while category coverage is partial. Transport covered/expected/incomplete evidence into the public MOVE_DETAILS capability rather than forcing AVAILABLE after typed resolution. Do not invent a fourth static category.
+
+Experimental's previously published tutor links are not carried forward under the new physical namespace and move minimum without a validated tutor-list/compatibility join. Its exact unresolved optional contract must be ledgered with a named closure condition; recovering canonical core/ordinary level-up data does not certify all tutor moves or the full move domain.
+
 ## Verification and publication gates
 
 1. Observed RED/GREEN synthetic codec and compiled-consumer tests: widened values, all four ability slots, relocation, unsigned inputs, nonidentity/reordered indices, zero/dummy/form slots, default/variant inversion, conflicting roots/counts, truncated pointers, malformed rows, EOS, list bounds, cancellation and deterministic budgets.
-2. Focused family/materializer/reference tests and cache invalidation when production parser behavior changes. Parser cache revision advances from 84 to 85; SQLite's SQL version remains 2 for this parser-only revision.
+2. Focused family/materializer/reference tests and cache invalidation when production parser behavior changes. Parser cache revision advances from 84 to 85 for the core implementation, then 86 for canonical sprite/category corrections; SQLite's SQL version remains 2 for these parser-only revisions.
 3. Smart-sync with fork/master immediately before each coherent source/acceptance commit. Never overwrite unrelated changes or force-push.
 4. Rebuild the packaged CLI with the exact committed source stamp. Review a fresh MAIN admission for both targets and justified Gen III controls; no full-library rerun or reuse of diagnostic admissions.
 5. Verify exact inputs, runtime/report receipts, complete catalog references, full SQLite write/reopen structural equality and matching logical digests. Host tests alone are not real-input acceptance.

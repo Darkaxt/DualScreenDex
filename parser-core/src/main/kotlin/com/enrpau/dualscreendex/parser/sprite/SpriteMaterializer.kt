@@ -5,6 +5,7 @@ import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
 import com.enrpau.dualscreendex.parser.catalog.Gen1DetachedSpeciesResolver
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
+import com.enrpau.dualscreendex.parser.model.requiresCompiledCanonicalSpecies
 import kotlin.math.sqrt
 
 object SpriteMaterializer {
@@ -16,7 +17,7 @@ object SpriteMaterializer {
     ): Map<Int, RgbaSprite> = when (layout.generation) {
         1 -> gen1(rom, layout, cancellation)
         2 -> gen2(rom, layout)
-        3 -> gen3(rom, layout, gbaPaletteTableOffset)
+        3 -> gen3(rom, layout, gbaPaletteTableOffset, cancellation)
         else -> emptyMap()
     }
 
@@ -24,8 +25,18 @@ object SpriteMaterializer {
         rom: RomImage,
         layout: ResolvedRomLayout,
         requestedPaletteTable: Int?,
+        cancellation: ParserCancellationToken,
     ): Map<Int, RgbaSprite> {
+        cancellation.throwIfCancellationRequested()
         val table = layout.tables.sprites ?: return emptyMap()
+        val canonical = layout.compiledCanonicalSpecies
+        if (layout.requiresCompiledCanonicalSpecies && (
+                canonical?.coherentBaseStats(layout) == null || table.count.toLong() != canonical.baseStatsTable.count ||
+                    table.recordSize != 8 || table.variableLength || table.valuesArePointers ||
+                    (table.stride != null && table.stride != 8) || table.offset < 0 ||
+                    table.offset.toLong() + table.count.toLong() * 8 > rom.size
+            )
+        ) return emptyMap()
         val embeddedLayout = layout.pokeemeraldExpansion?.let { expansion ->
             expansion.speciesRecordSize to
                 (expansion.normalPalettePointerOffset - expansion.frontSpritePointerOffset)
@@ -60,8 +71,10 @@ object SpriteMaterializer {
         val paletteTable = requestedPaletteTable
             ?: headerPaletteTable(rom)
             ?: locateGbaPaletteTable(rom, table.count, table.offset)
+        val indices = canonical?.nativeToDex?.keys ?: (0 until table.count)
         return buildMap {
-            repeat(table.count) { id ->
+            for (id in indices) {
+                cancellation.throwIfCancellationRequested()
                 val sprite = runCatching {
                     val entry = table.offset + id * table.recordSize
                     val pointer = rom.gbaPointer(entry) ?: error("invalid GBA sprite pointer")

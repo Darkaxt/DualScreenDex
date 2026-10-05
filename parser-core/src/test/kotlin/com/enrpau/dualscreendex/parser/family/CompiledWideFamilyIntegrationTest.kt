@@ -50,7 +50,34 @@ class CompiledWideFamilyIntegrationTest {
             assertEquals(listOf(260, 65, 34), rows.getValue(1).abilityIds.value)
             assertEquals(CapabilityStatus.AVAILABLE, probe.capabilities.single { it.capability == RomCapability.BASE_STATS }.status)
             assertEquals(3, probe.capabilities.single { it.capability == RomCapability.BASE_STATS }.coveredRecords)
+            val details = probe.capabilities.single { it.capability == RomCapability.MOVE_DETAILS }
+            assertEquals(CapabilityStatus.PARTIAL, details.status)
+            assertEquals(8, details.totalRecords)
+            assertEquals(6, details.coveredRecords)
+            assertEquals(7, details.expectedRecords)
+            assertEquals(1, details.incompleteRecords)
         }
+    }
+
+    @Test
+    fun nominatedSpritesUseCanonicalCoverageAndRetainTheirPhysicalNamespace() {
+        val f = Gen3CompiledWideMoveFixture(56, 0x800)
+        f.core.putU32(0x128, 0x08005800)
+        for (id in listOf(1, 2, 4)) {
+            f.core.putU32(0x5800 + id * 8, 0x08006200)
+            f.core.putU16(0x5800 + id * 8 + 4, 32)
+        }
+        val stream = byteArrayOf(0x10, 32, 0, 0) + ByteArray(36)
+        stream.copyInto(f.bytes, 0x6200)
+        val probe = probe(f)
+        val sprites = probe.capabilities.single { it.capability == RomCapability.SPRITES }
+        assertEquals(CapabilityStatus.AVAILABLE, sprites.status)
+        assertEquals(6, sprites.totalRecords)
+        assertEquals(3, sprites.coveredRecords)
+        assertEquals(3, sprites.expectedRecords)
+        val table = requireNotNull(probe.resolvedLayout?.tables?.sprites)
+        assertEquals(0x5800, table.offset)
+        assertEquals(6, table.count)
     }
 
     @Test

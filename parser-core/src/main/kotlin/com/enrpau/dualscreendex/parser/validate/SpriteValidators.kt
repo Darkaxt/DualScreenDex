@@ -92,37 +92,57 @@ object SpriteValidators {
         pointerTableOffset: Int,
         speciesCount: Int,
         recordSize: Int,
+        activeRowIndices: Set<Int>? = null,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
     ): ValidationEvidence = safely(pointerTableOffset, recordSize, speciesCount) {
+        cancellation.throwIfCancellationRequested()
+        val expected = activeRowIndices?.size ?: speciesCount
+        if (pointerTableOffset < 0 || speciesCount <= 0 || recordSize < 6 ||
+            pointerTableOffset.toLong() + speciesCount.toLong() * recordSize > rom.size ||
+            activeRowIndices?.let { it.isEmpty() || it.any { id -> id !in 0 until speciesCount } } == true
+        ) {
+            return@safely ValidationEvidence(
+                compatible = false, validRecords = 0, totalRecords = speciesCount, confidence = 0.0,
+                reasons = listOf("Gen 3 sprite physical extent or active native domain is invalid"),
+                offset = pointerTableOffset, recordSize = recordSize,
+                coveredRecords = 0, expectedRecords = expected, incompleteRecords = expected,
+            )
+        }
         var validPointers = 0
         var validStreams = 0
-        repeat(speciesCount) { index ->
+        val indices = activeRowIndices?.sorted() ?: (0 until speciesCount)
+        for (index in indices) {
+            cancellation.throwIfCancellationRequested()
             val base = pointerTableOffset + index * recordSize
             val pointer = rom.gbaPointer(base)
             val size = rom.u16le(base + 4)
             if (pointer != null && size in 1..MAX_SPRITE_OUTPUT) {
                 validPointers++
-                if (validGbaLz77Stream(rom, pointer, size)) validStreams++
+                if (validGbaLz77Stream(rom, pointer, size, cancellation)) validStreams++
             }
         }
-        val pointerConfidence = validPointers.toDouble() / speciesCount.coerceAtLeast(1)
-        val streamConfidence = validStreams.toDouble() / speciesCount.coerceAtLeast(1)
-        val compatible = speciesCount > 0 &&
-            pointerConfidence >= MINIMUM_POINTER_RATIO && streamConfidence >= MINIMUM_POINTER_RATIO
+        val pointerConfidence = validPointers.toDouble() / expected
+        val streamConfidence = validStreams.toDouble() / expected
+        val compatible = pointerConfidence >= MINIMUM_POINTER_RATIO && streamConfidence >= MINIMUM_POINTER_RATIO
         ValidationEvidence(
             compatible = compatible,
             validRecords = validStreams,
             totalRecords = speciesCount,
             confidence = streamConfidence,
             reasons = buildList {
+                if (activeRowIndices != null) add("validated only the independently selected canonical native sprite slots")
                 if (pointerConfidence < MINIMUM_POINTER_RATIO) {
-                    add("valid Gen 3 sprite pointers $validPointers/$speciesCount below $MINIMUM_POINTER_RATIO")
+                    add("valid Gen 3 sprite pointers $validPointers/$expected below $MINIMUM_POINTER_RATIO")
                 }
                 if (streamConfidence < MINIMUM_POINTER_RATIO) {
-                    add("decoded Gen 3 sprite streams $validStreams/$speciesCount below $MINIMUM_POINTER_RATIO")
+                    add("decoded Gen 3 sprite streams $validStreams/$expected below $MINIMUM_POINTER_RATIO")
                 }
             },
             offset = pointerTableOffset,
             recordSize = recordSize,
+            coveredRecords = validStreams.takeIf { activeRowIndices != null },
+            expectedRecords = expected.takeIf { activeRowIndices != null },
+            incompleteRecords = (expected - validStreams).takeIf { activeRowIndices != null },
         )
     }
 
@@ -313,13 +333,20 @@ object SpriteValidators {
         consumeWork()
     }
 
-    private fun validGbaLz77Stream(rom: RomImage, offset: Int, expectedSize: Int): Boolean = try {
+    private fun validGbaLz77Stream(
+        rom: RomImage,
+        offset: Int,
+        expectedSize: Int,
+        cancellation: ParserCancellationToken,
+    ): Boolean = try {
+        cancellation.throwIfCancellationRequested()
         if (rom.u8(offset) != GBA_LZ77_HEADER) return false
         val declaredSize = rom.u24le(offset + 1)
         if (declaredSize !in 1..MAX_SPRITE_OUTPUT || declaredSize < expectedSize || declaredSize % expectedSize != 0) return false
         var cursor = offset + 4
         var output = 0
         while (output < declaredSize) {
+            cancellation.throwIfCancellationRequested()
             val flags = rom.u8(cursor++)
             for (bit in 7 downTo 0) {
                 if (output == declaredSize) break

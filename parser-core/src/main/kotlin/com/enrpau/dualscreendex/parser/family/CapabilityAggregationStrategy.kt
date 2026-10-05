@@ -388,6 +388,11 @@ internal class CapabilityAggregationStrategy : FamilyProbePhaseStrategy {
                 status = CapabilityStatus.NOT_FOUND,
             )
         }
+        if (core.compiledCanonicalSpecies != null) {
+            return capabilityEvidence(RomCapability.MOVE_DETAILS, core.moveData.copy(
+                reasons = core.moveData.reasons + "validated the selected move-details layout through the typed codec",
+            ))
+        }
         return CapabilityEvidence(
             capability = RomCapability.MOVE_DETAILS,
             compatible = true,

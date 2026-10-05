@@ -295,6 +295,73 @@ class SpriteValidatorsTest {
         assertTrue(result.validRecords == 1)
     }
 
+    @Test
+    fun validatesCanonicalGbaSlotsWithoutShrinkingThePhysicalTable() {
+        val bytes = canonicalGbaSprites()
+        val result = SpriteValidators.gen3(
+            RomImage(bytes), 0, 6, 8, activeRowIndices = setOf(1, 2, 4),
+        )
+        assertTrue(result.compatible)
+        assertEquals(6, result.totalRecords)
+        assertEquals(3, result.validRecords)
+        assertEquals(3, result.coveredRecords)
+        assertEquals(3, result.expectedRecords)
+        assertEquals(0, result.incompleteRecords)
+        assertEquals(1.0, result.confidence, 0.0)
+        assertFalse(SpriteValidators.gen3(RomImage(bytes), 0, 6, 8).compatible)
+    }
+
+    @Test
+    fun canonicalGbaCoverageCannotBeFilledByValidAliases() {
+        val bytes = canonicalGbaSprites()
+        putU32(bytes, 4 * 8, 0)
+        for (id in listOf(0, 3, 5)) {
+            putU32(bytes, id * 8, 0x08000100)
+            putU16(bytes, id * 8 + 4, 4)
+        }
+        val result = SpriteValidators.gen3(RomImage(bytes), 0, 6, 8, activeRowIndices = setOf(1, 2, 4))
+        assertFalse(result.compatible)
+        assertEquals(2, result.coveredRecords)
+        assertEquals(3, result.expectedRecords)
+        assertEquals(1, result.incompleteRecords)
+    }
+
+    @Test
+    fun canonicalGbaValidationRejectsEmptyOutOfRangeOrTruncatedDomains() {
+        val bytes = canonicalGbaSprites()
+        for (id in listOf(0, 3, 5)) {
+            putU32(bytes, id * 8, 0x08000100)
+            putU16(bytes, id * 8 + 4, 4)
+        }
+        for (active in listOf(emptySet(), setOf(-1), setOf(6))) {
+            assertFalse(SpriteValidators.gen3(RomImage(bytes), 0, 6, 8, activeRowIndices = active).compatible)
+        }
+        // Active slots fit; the independently declared physical pointer span does not.
+        assertFalse(SpriteValidators.gen3(RomImage(bytes), 0, 100, 8, activeRowIndices = setOf(1, 2, 4)).compatible)
+    }
+
+    @Test
+    fun cancellationInsideCanonicalGbaStreamsIsNotConvertedToMissingEvidence() {
+        var checks = 0
+        assertThrows(ParserCancellationException::class.java) {
+            SpriteValidators.gen3(
+                RomImage(canonicalGbaSprites()), 0, 6, 8, activeRowIndices = setOf(1, 2, 4),
+                cancellation = ParserCancellationToken {
+                    if (++checks == 3) throw ParserCancellationException()
+                },
+            )
+        }
+        assertEquals(3, checks)
+    }
+
+    private fun canonicalGbaSprites(): ByteArray = ByteArray(0x200).also { bytes ->
+        for (id in listOf(1, 2, 4)) {
+            putU32(bytes, id * 8, 0x08000100)
+            putU16(bytes, id * 8 + 4, 4)
+        }
+        byteArrayOf(0x10, 4, 0, 0, 0, 1, 2, 3, 4).copyInto(bytes, 0x100)
+    }
+
     private fun gen1ZeroSprite(width: Int): ByteArray {
         val bits = mutableListOf<Int>()
         bits += 0
