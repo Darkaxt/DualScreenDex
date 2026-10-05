@@ -1,0 +1,2562 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-05",
+  "status": "ACCEPTED_HOST_STATIC_CORE",
+  "sourceCommit": "4b62be1dc8e7a19b19ccdc3ac50c451a844fc07c",
+  "parserSchemaVersion": 86,
+  "scope": "Compiled canonical species/name/stat/type and reference-safe ordinary level-up minimum; canonical sprite rendering and honest field-level category coverage. No full move-domain, runtime mode, device or release claim.",
+  "corpusInputDigestSha256": "733e36785fa9a5b71bc4121343a6b6d2cbd27e43e08b3fddc2e2870bac1a0561",
+  "inputCount": 13,
+  "targetCount": 2,
+  "controlCount": 11,
+  "gainCount": 1,
+  "selectedCount": 10,
+  "noFamilyMatchCount": 3,
+  "parserExecutionsAcrossBoundedRuns": 41,
+  "originalReadsAcrossAdmittedDiagnosticsAndAcceptance": 98,
+  "executionReceiptSummary": {
+    "schemaVersion": 1,
+    "sourceCommit": "4b62be1dc8e7a19b19ccdc3ac50c451a844fc07c",
+    "inputCount": 13,
+    "rawReportSha256": "49c4adf4daecb3ddb90a99d117eded1e6b4a458252f4418ba3667fbee4e138be",
+    "generator": {
+      "name": "parser-cli",
+      "schemaVersion": 16,
+      "sha256": "72f997b48b0cf7e1e91a6cb6c25eafa2de2f69ea4cdcbdcb3ad909b095ca1110"
+    }
+  },
+  "fullCorpusRerun": false,
+  "verification": {
+    "parserCatalogPersistenceReferenceErrors": 0,
+    "sqliteExactReopens": 10,
+    "completeCatalogStructuralEquality": true,
+    "matchingLogicalDigests": true,
+    "affectedTests": {
+      "tests": 314,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    "cliTests": {
+      "tests": 40,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "gradleGateAcquired": true,
+    "maxWorkers": 2,
+    "parallelProjects": false,
+    "gradleMaximumHeap": "3g",
+    "kotlinDaemonMaximumHeapRequested": "3g",
+    "testForksConfigured": 1,
+    "testMaximumHeapConfigured": "512m",
+    "memoryFailures": [],
+    "profileLimits": [
+      "Native/task-specific Kotlin/test overrides require project-specific verification; test markers are configuration-time evidence"
+    ]
+  },
+  "supersededRuns": [
+    {
+      "admission": "ROWE-CORE-08",
+      "sourceCommit": "fa18565d837552adb73af51a21d38d4b777b4166",
+      "inputCount": 13,
+      "targetOutcome": "NO_FAMILY_MATCH: unpaired conversions competed before role coupling"
+    },
+    {
+      "admission": "ROWE-CORE-09",
+      "sourceCommit": "26c50547ce96a7317499d18338ae53f3ba67cee7",
+      "inputCount": 13,
+      "targetOutcome": "NO_FAMILY_MATCH: forward-only pairing was insufficient"
+    },
+    {
+      "admission": "ROWE-CORE-11",
+      "sourceCommit": "1364e9b23c63fb1fd51cb9f01530666c74fe7a54",
+      "inputCount": 2,
+      "targetOutcome": "Core/reference/SQLite closure; physical-denominator sprite rejection and category status superseded"
+    }
+  ],
+  "officialControls": "Not retained/admitted/run in this bounded cohort; no download authority.",
+  "limitations": [
+    "Ordinary acquisition minimum is not an independently proven full game move bound.",
+    "Three Experimental and one older move split rows have no static category authority; MOVE_DETAILS is PARTIAL.",
+    "The 56-byte extension and runtime-selected stat variant are uninterpreted.",
+    "Noncanonical aliases/forms, evolution and Dex-text contracts, encounters/maps and numeric ability mechanics are not recovered by this round.",
+    "Experimental tutor joins remain NOT_FOUND (old partial/wrong-core catalog had 528 links); exact list/compatibility/full-domain authority remains open.",
+    "No new live-memory, Android, official standalone controls, APK, signing or release acceptance."
+  ],
+  "rows": [
+    {
+      "name": "R.O.W.E. (2.1.9.1 Experimental).gba",
+      "outcome": "SELECTED",
+      "family": "EMERALD",
+      "compatibilityPercent": 70.82,
+      "catalogCounters": {
+        "species": 1025,
+        "namedSpecies": 1025,
+        "speciesWithStats": 1025,
+        "speciesWithSprites": 1025,
+        "speciesWithDescriptions": 0,
+        "evolutionEdges": 0,
+        "learnsetEntries": 20286,
+        "learnsetRulesets": 1,
+        "moves": 851,
+        "movesWithDetails": 851,
+        "movesWithDescriptions": 851,
+        "eggMoveLinks": 4201,
+        "machineMoveLinks": 12980,
+        "tutorMoveLinks": 0,
+        "types": 18,
+        "namedTypes": 0,
+        "typesWithSemanticRoles": 0,
+        "typeMatchups": 120,
+        "abilities": 372,
+        "abilitiesWithDescriptions": 372,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 12,
+        "encounterAreas": 0,
+        "movesWithCategories": 848,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "languageCount": 1,
+      "canonicalCount": 1025,
+      "speciesPhysicalCount": 2301,
+      "moveMinimumCount": 852,
+      "sqliteEqualityVerified": true,
+      "capabilities": {
+        "SPECIES_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1025,
+          "expectedRecords": 1025,
+          "incompleteRecords": 0
+        },
+        "SPECIES_TYPES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1025,
+          "expectedRecords": 1025,
+          "incompleteRecords": 0
+        },
+        "TYPE_CHART": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 361,
+          "expectedRecords": 361
+        },
+        "BASE_STATS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1025,
+          "expectedRecords": 1025,
+          "incompleteRecords": 0
+        },
+        "SPRITES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1025,
+          "expectedRecords": 1025,
+          "incompleteRecords": 0
+        },
+        "EVOLUTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 1025,
+          "incompleteRecords": 1025
+        },
+        "MOVE_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 851,
+          "expectedRecords": 851,
+          "incompleteRecords": 0
+        },
+        "MOVE_DETAILS": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 848,
+          "expectedRecords": 851,
+          "incompleteRecords": 3
+        },
+        "LEARNSETS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1025,
+          "expectedRecords": 1025,
+          "incompleteRecords": 0
+        },
+        "EGG_MOVES": {
+          "status": "AVAILABLE",
+          "confidence": 0.7304347826086957,
+          "coveredRecords": 420,
+          "expectedRecords": 420,
+          "incompleteRecords": 0
+        },
+        "MACHINE_MOVES": {
+          "status": "AVAILABLE",
+          "confidence": 0.7406019122120817,
+          "coveredRecords": 2301,
+          "expectedRecords": 2301,
+          "incompleteRecords": 0
+        },
+        "TUTOR_MOVES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "ABILITIES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 372,
+          "expectedRecords": 372,
+          "incompleteRecords": 0
+        },
+        "ABILITY_MECHANICS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 372,
+          "incompleteRecords": 372
+        },
+        "AREA_ENCOUNTERS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "TYPE_PRESENTATION": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "BALL_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "WORLD_MAP": {
+          "status": "AMBIGUOUS",
+          "confidence": 0.0
+        },
+        "LOCAL_MAP": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "NATURES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 25,
+          "expectedRecords": 25,
+          "incompleteRecords": 0
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1025,
+          "expectedRecords": 1025
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 1025
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 851,
+          "expectedRecords": 851
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 372,
+          "expectedRecords": 372
+        }
+      },
+      "baselineChanges": [
+        {
+          "counter": "species",
+          "before": 204,
+          "after": 1025
+        },
+        {
+          "counter": "namedSpecies",
+          "before": 186,
+          "after": 1025
+        },
+        {
+          "counter": "speciesWithStats",
+          "before": 0,
+          "after": 1025
+        },
+        {
+          "counter": "speciesWithSprites",
+          "before": 204,
+          "after": 1025
+        },
+        {
+          "counter": "learnsetEntries",
+          "before": 0,
+          "after": 20286
+        },
+        {
+          "counter": "learnsetRulesets",
+          "before": 0,
+          "after": 1
+        },
+        {
+          "counter": "moves",
+          "before": 339,
+          "after": 851
+        },
+        {
+          "counter": "movesWithDetails",
+          "before": 339,
+          "after": 851
+        },
+        {
+          "counter": "movesWithDescriptions",
+          "before": 0,
+          "after": 851
+        },
+        {
+          "counter": "eggMoveLinks",
+          "before": 0,
+          "after": 4201
+        },
+        {
+          "counter": "machineMoveLinks",
+          "before": 0,
+          "after": 12980
+        },
+        {
+          "counter": "tutorMoveLinks",
+          "before": 528,
+          "after": 0
+        },
+        {
+          "counter": "types",
+          "before": 1,
+          "after": 18
+        },
+        {
+          "counter": "typeMatchups",
+          "before": 0,
+          "after": 120
+        },
+        {
+          "counter": "movesWithCategories",
+          "before": 339,
+          "after": 848
+        },
+        {
+          "capability": "SPECIES_CATALOG",
+          "before": "NOT_FOUND",
+          "after": "AVAILABLE"
+        },
+        {
+          "capability": "SPECIES_NAMES",
+          "before": "PARTIAL",
+          "after": "AVAILABLE"
+        },
+        {
+          "capability": "SPECIES_TYPES",
+          "before": "NOT_FOUND",
+          "after": "AVAILABLE"
+        },
+        {
+          "capability": "TYPE_CHART",
+          "before": "NOT_FOUND",
+          "after": "AVAILABLE"
+        },
+        {
+          "capability": "BASE_STATS",
+          "before": "NOT_FOUND",
+          "after": "AVAILABLE"
+        },
+        {
+          "capability": "MOVE_DETAILS",
+          "before": "AVAILABLE",
+          "after": "PARTIAL"
+        },
+        {
+          "capability": "MOVE_DESCRIPTIONS",
+          "before": "NOT_FOUND",
+          "after": "AVAILABLE"
+        },
+        {
+          "capability": "LEARNSETS",
+          "before": "NOT_FOUND",
+          "after": "AVAILABLE"
+        },
+        {
+          "capability": "EGG_MOVES",
+          "before": "NOT_FOUND",
+          "after": "AVAILABLE"
+        },
+        {
+          "capability": "MACHINE_MOVES",
+          "before": "NOT_FOUND",
+          "after": "AVAILABLE"
+        },
+        {
+          "capability": "TUTOR_MOVES",
+          "before": "AVAILABLE",
+          "after": "NOT_FOUND"
+        }
+      ],
+      "persistence": {
+        "bytes": 1347584,
+        "writeMillis": 4292,
+        "reopenMillis": 1597,
+        "sections": 18,
+        "logicalDigestVersion": 1,
+        "beforeCatalogSha256": "6ec131c149b15f203be32294a81e608e7e4394b0bf49fa4ed37290fa3b98d577",
+        "afterCatalogSha256": "6ec131c149b15f203be32294a81e608e7e4394b0bf49fa4ed37290fa3b98d577"
+      }
+    },
+    {
+      "name": "R.O.W.E. (2.1.1).gba",
+      "outcome": "SELECTED",
+      "family": "EMERALD",
+      "compatibilityPercent": 70.83,
+      "catalogCounters": {
+        "species": 1025,
+        "namedSpecies": 1025,
+        "speciesWithStats": 1025,
+        "speciesWithSprites": 1025,
+        "speciesWithDescriptions": 0,
+        "evolutionEdges": 0,
+        "learnsetEntries": 20253,
+        "learnsetRulesets": 1,
+        "moves": 832,
+        "movesWithDetails": 832,
+        "movesWithDescriptions": 832,
+        "eggMoveLinks": 4346,
+        "machineMoveLinks": 0,
+        "tutorMoveLinks": 3039,
+        "types": 18,
+        "namedTypes": 0,
+        "typesWithSemanticRoles": 0,
+        "typeMatchups": 120,
+        "abilities": 369,
+        "abilitiesWithDescriptions": 369,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 12,
+        "encounterAreas": 0,
+        "movesWithCategories": 831,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "languageCount": 1,
+      "canonicalCount": 1025,
+      "speciesPhysicalCount": 2301,
+      "moveMinimumCount": 833,
+      "sqliteEqualityVerified": true,
+      "capabilities": {
+        "SPECIES_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1025,
+          "expectedRecords": 1025,
+          "incompleteRecords": 0
+        },
+        "SPECIES_TYPES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1025,
+          "expectedRecords": 1025,
+          "incompleteRecords": 0
+        },
+        "TYPE_CHART": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 361,
+          "expectedRecords": 361
+        },
+        "BASE_STATS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1025,
+          "expectedRecords": 1025,
+          "incompleteRecords": 0
+        },
+        "SPRITES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1025,
+          "expectedRecords": 1025,
+          "incompleteRecords": 0
+        },
+        "EVOLUTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 1025,
+          "incompleteRecords": 1025
+        },
+        "MOVE_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 832,
+          "expectedRecords": 832,
+          "incompleteRecords": 0
+        },
+        "MOVE_DETAILS": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 831,
+          "expectedRecords": 832,
+          "incompleteRecords": 1
+        },
+        "LEARNSETS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1025,
+          "expectedRecords": 1025,
+          "incompleteRecords": 0
+        },
+        "EGG_MOVES": {
+          "status": "AVAILABLE",
+          "confidence": 0.7373913043478261,
+          "coveredRecords": 424,
+          "expectedRecords": 424,
+          "incompleteRecords": 0
+        },
+        "MACHINE_MOVES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "TUTOR_MOVES": {
+          "status": "AVAILABLE",
+          "confidence": 0.8897696653628858,
+          "coveredRecords": 2301,
+          "expectedRecords": 2301,
+          "incompleteRecords": 0
+        },
+        "ABILITIES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 369,
+          "expectedRecords": 369,
+          "incompleteRecords": 0
+        },
+        "ABILITY_MECHANICS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 369,
+          "incompleteRecords": 369
+        },
+        "AREA_ENCOUNTERS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "TYPE_PRESENTATION": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "BALL_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "WORLD_MAP": {
+          "status": "AMBIGUOUS",
+          "confidence": 0.0
+        },
+        "LOCAL_MAP": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "NATURES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 25,
+          "expectedRecords": 25,
+          "incompleteRecords": 0
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1025,
+          "expectedRecords": 1025
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 1025
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 832,
+          "expectedRecords": 832
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 369,
+          "expectedRecords": 369
+        }
+      },
+      "baselineChanges": [],
+      "persistence": {
+        "bytes": 1298432,
+        "writeMillis": 3753,
+        "reopenMillis": 1203,
+        "sections": 18,
+        "logicalDigestVersion": 1,
+        "beforeCatalogSha256": "0f4f6441a2d745cd7a024258e42df1a5d35cd26c46e0b3c5caf55ddc420e17d5",
+        "afterCatalogSha256": "0f4f6441a2d745cd7a024258e42df1a5d35cd26c46e0b3c5caf55ddc420e17d5"
+      }
+    },
+    {
+      "name": "Battle Theater (V2.6.0).gba",
+      "outcome": "SELECTED",
+      "family": "EMERALD",
+      "compatibilityPercent": 89.78,
+      "catalogCounters": {
+        "species": 1571,
+        "namedSpecies": 1571,
+        "speciesWithStats": 1571,
+        "speciesWithSprites": 1571,
+        "speciesWithDescriptions": 1571,
+        "evolutionEdges": 632,
+        "learnsetEntries": 22955,
+        "learnsetRulesets": 1,
+        "moves": 865,
+        "movesWithDetails": 865,
+        "movesWithDescriptions": 860,
+        "eggMoveLinks": 4385,
+        "machineMoveLinks": 15443,
+        "tutorMoveLinks": 0,
+        "types": 19,
+        "namedTypes": 0,
+        "typesWithSemanticRoles": 0,
+        "typeMatchups": 120,
+        "abilities": 310,
+        "abilitiesWithDescriptions": 310,
+        "abilitiesWithMechanics": 310,
+        "captureBalls": 28,
+        "encounterAreas": 201,
+        "movesWithCategories": 865,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "languageCount": 1,
+      "canonicalCount": 0,
+      "speciesPhysicalCount": 1573,
+      "moveMinimumCount": 866,
+      "sqliteEqualityVerified": true,
+      "capabilities": {
+        "SPECIES_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1571,
+          "expectedRecords": 1571,
+          "incompleteRecords": 0
+        },
+        "SPECIES_TYPES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1571,
+          "expectedRecords": 1571,
+          "incompleteRecords": 0
+        },
+        "TYPE_CHART": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 441,
+          "expectedRecords": 441
+        },
+        "BASE_STATS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1571,
+          "expectedRecords": 1571,
+          "incompleteRecords": 0
+        },
+        "SPRITES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1571,
+          "expectedRecords": 1571,
+          "incompleteRecords": 0
+        },
+        "EVOLUTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.33991088478676,
+          "coveredRecords": 534,
+          "expectedRecords": 1571,
+          "incompleteRecords": 1037
+        },
+        "MOVE_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 866,
+          "expectedRecords": 866,
+          "incompleteRecords": 0
+        },
+        "MOVE_DETAILS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 866,
+          "expectedRecords": 866
+        },
+        "LEARNSETS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1571,
+          "expectedRecords": 1571,
+          "incompleteRecords": 0
+        },
+        "EGG_MOVES": {
+          "status": "PARTIAL",
+          "confidence": 0.31615776081424934,
+          "coveredRecords": 497,
+          "expectedRecords": 1572,
+          "incompleteRecords": 1075
+        },
+        "MACHINE_MOVES": {
+          "status": "PARTIAL",
+          "confidence": 0.9993638676844784,
+          "coveredRecords": 1571,
+          "expectedRecords": 1572,
+          "incompleteRecords": 1
+        },
+        "TUTOR_MOVES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 1.0
+        },
+        "ABILITIES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 311,
+          "expectedRecords": 311,
+          "incompleteRecords": 0
+        },
+        "ABILITY_MECHANICS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 311,
+          "expectedRecords": 311,
+          "incompleteRecords": 0
+        },
+        "AREA_ENCOUNTERS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "TYPE_PRESENTATION": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "BALL_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "WORLD_MAP": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "LOCAL_MAP": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 518,
+          "expectedRecords": 518,
+          "incompleteRecords": 0
+        },
+        "NATURES": {
+          "status": "PARTIAL",
+          "confidence": 0.5,
+          "coveredRecords": 0,
+          "expectedRecords": 25,
+          "incompleteRecords": 25
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1571,
+          "expectedRecords": 1571
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1571,
+          "expectedRecords": 1571
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9942196531791907,
+          "coveredRecords": 860,
+          "expectedRecords": 865
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 310,
+          "expectedRecords": 310
+        }
+      },
+      "baselineChanges": [],
+      "persistence": {
+        "bytes": 12832768,
+        "writeMillis": 25702,
+        "reopenMillis": 4336,
+        "sections": 18,
+        "logicalDigestVersion": 1,
+        "beforeCatalogSha256": "f7318cc66ad40244ecb44d58734e82a7e7cf22e9818d5546a7298ecaede19267",
+        "afterCatalogSha256": "f7318cc66ad40244ecb44d58734e82a7e7cf22e9818d5546a7298ecaede19267"
+      }
+    },
+    {
+      "name": "Heart and Soul (v2.0.6).gba",
+      "outcome": "SELECTED",
+      "family": "EMERALD",
+      "compatibilityPercent": 80.92,
+      "catalogCounters": {
+        "species": 1427,
+        "namedSpecies": 1427,
+        "speciesWithStats": 1427,
+        "speciesWithSprites": 1427,
+        "speciesWithDescriptions": 1427,
+        "evolutionEdges": 653,
+        "learnsetEntries": 22103,
+        "learnsetRulesets": 1,
+        "moves": 847,
+        "movesWithDetails": 847,
+        "movesWithDescriptions": 842,
+        "eggMoveLinks": 4200,
+        "machineMoveLinks": 19643,
+        "tutorMoveLinks": 0,
+        "types": 18,
+        "namedTypes": 0,
+        "typesWithSemanticRoles": 0,
+        "typeMatchups": 120,
+        "abilities": 310,
+        "abilitiesWithDescriptions": 310,
+        "abilitiesWithMechanics": 310,
+        "captureBalls": 29,
+        "encounterAreas": 690,
+        "movesWithCategories": 847,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "languageCount": 1,
+      "canonicalCount": 0,
+      "speciesPhysicalCount": 1573,
+      "moveMinimumCount": 848,
+      "sqliteEqualityVerified": true,
+      "capabilities": {
+        "SPECIES_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1427,
+          "expectedRecords": 1427,
+          "incompleteRecords": 0
+        },
+        "SPECIES_TYPES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1427,
+          "expectedRecords": 1427,
+          "incompleteRecords": 0
+        },
+        "TYPE_CHART": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 441,
+          "expectedRecords": 441
+        },
+        "BASE_STATS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1427,
+          "expectedRecords": 1427,
+          "incompleteRecords": 0
+        },
+        "SPRITES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1427,
+          "expectedRecords": 1427,
+          "incompleteRecords": 0
+        },
+        "EVOLUTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.37421163279607567,
+          "coveredRecords": 534,
+          "expectedRecords": 1427,
+          "incompleteRecords": 893
+        },
+        "MOVE_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 848,
+          "expectedRecords": 848,
+          "incompleteRecords": 0
+        },
+        "MOVE_DETAILS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 848,
+          "expectedRecords": 848
+        },
+        "LEARNSETS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1427,
+          "expectedRecords": 1427,
+          "incompleteRecords": 0
+        },
+        "EGG_MOVES": {
+          "status": "PARTIAL",
+          "confidence": 0.30470737913486007,
+          "coveredRecords": 479,
+          "expectedRecords": 1572,
+          "incompleteRecords": 1093
+        },
+        "MACHINE_MOVES": {
+          "status": "PARTIAL",
+          "confidence": 0.9077608142493638,
+          "coveredRecords": 1427,
+          "expectedRecords": 1572,
+          "incompleteRecords": 145
+        },
+        "TUTOR_MOVES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 1.0
+        },
+        "ABILITIES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 311,
+          "expectedRecords": 311,
+          "incompleteRecords": 0
+        },
+        "ABILITY_MECHANICS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 311,
+          "expectedRecords": 311,
+          "incompleteRecords": 0
+        },
+        "AREA_ENCOUNTERS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "TYPE_PRESENTATION": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "BALL_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "WORLD_MAP": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "LOCAL_MAP": {
+          "status": "PARTIAL",
+          "confidence": 0.030303030303030304,
+          "coveredRecords": 5,
+          "expectedRecords": 165,
+          "incompleteRecords": 160
+        },
+        "NATURES": {
+          "status": "PARTIAL",
+          "confidence": 0.5,
+          "coveredRecords": 0,
+          "expectedRecords": 25,
+          "incompleteRecords": 25
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1427,
+          "expectedRecords": 1427
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1427,
+          "expectedRecords": 1427
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9940968122786304,
+          "coveredRecords": 842,
+          "expectedRecords": 847
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 310,
+          "expectedRecords": 310
+        }
+      },
+      "baselineChanges": [],
+      "persistence": {
+        "bytes": 2138112,
+        "writeMillis": 6000,
+        "reopenMillis": 2498,
+        "sections": 18,
+        "logicalDigestVersion": 1,
+        "beforeCatalogSha256": "5f51f669fe71fffac064b9a80e24f29d453efbd3bfb6a2b9b72b5af4c5df4fde",
+        "afterCatalogSha256": "5f51f669fe71fffac064b9a80e24f29d453efbd3bfb6a2b9b72b5af4c5df4fde"
+      }
+    },
+    {
+      "name": "Soulgold (v1.1.4).gba",
+      "outcome": "SELECTED",
+      "family": "EMERALD",
+      "compatibilityPercent": 79.4,
+      "catalogCounters": {
+        "species": 1038,
+        "namedSpecies": 1038,
+        "speciesWithStats": 1038,
+        "speciesWithSprites": 1038,
+        "speciesWithDescriptions": 1038,
+        "evolutionEdges": 427,
+        "learnsetEntries": 18144,
+        "learnsetRulesets": 1,
+        "moves": 848,
+        "movesWithDetails": 848,
+        "movesWithDescriptions": 843,
+        "eggMoveLinks": 2933,
+        "machineMoveLinks": 16016,
+        "tutorMoveLinks": 0,
+        "types": 18,
+        "namedTypes": 0,
+        "typesWithSemanticRoles": 0,
+        "typeMatchups": 120,
+        "abilities": 531,
+        "abilitiesWithDescriptions": 531,
+        "abilitiesWithMechanics": 531,
+        "captureBalls": 28,
+        "encounterAreas": 65,
+        "movesWithCategories": 848,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "languageCount": 1,
+      "canonicalCount": 0,
+      "speciesPhysicalCount": 1578,
+      "moveMinimumCount": 849,
+      "sqliteEqualityVerified": true,
+      "capabilities": {
+        "SPECIES_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1038,
+          "expectedRecords": 1038,
+          "incompleteRecords": 0
+        },
+        "SPECIES_TYPES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1038,
+          "expectedRecords": 1038,
+          "incompleteRecords": 0
+        },
+        "TYPE_CHART": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 441,
+          "expectedRecords": 441
+        },
+        "BASE_STATS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1038,
+          "expectedRecords": 1038,
+          "incompleteRecords": 0
+        },
+        "SPRITES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1038,
+          "expectedRecords": 1038,
+          "incompleteRecords": 0
+        },
+        "EVOLUTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.3400770712909441,
+          "coveredRecords": 353,
+          "expectedRecords": 1038,
+          "incompleteRecords": 685
+        },
+        "MOVE_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 849,
+          "expectedRecords": 849,
+          "incompleteRecords": 0
+        },
+        "MOVE_DETAILS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 849,
+          "expectedRecords": 849
+        },
+        "LEARNSETS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1038,
+          "expectedRecords": 1038,
+          "incompleteRecords": 0
+        },
+        "EGG_MOVES": {
+          "status": "PARTIAL",
+          "confidence": 0.19150285351934052,
+          "coveredRecords": 302,
+          "expectedRecords": 1577,
+          "incompleteRecords": 1275
+        },
+        "MACHINE_MOVES": {
+          "status": "PARTIAL",
+          "confidence": 0.6582117945466075,
+          "coveredRecords": 1038,
+          "expectedRecords": 1577,
+          "incompleteRecords": 539
+        },
+        "TUTOR_MOVES": {
+          "status": "NOT_APPLICABLE",
+          "confidence": 1.0
+        },
+        "ABILITIES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 532,
+          "expectedRecords": 532,
+          "incompleteRecords": 0
+        },
+        "ABILITY_MECHANICS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 532,
+          "expectedRecords": 532,
+          "incompleteRecords": 0
+        },
+        "AREA_ENCOUNTERS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "TYPE_PRESENTATION": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "BALL_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "WORLD_MAP": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "LOCAL_MAP": {
+          "status": "PARTIAL",
+          "confidence": 0.07738095238095238,
+          "coveredRecords": 13,
+          "expectedRecords": 168,
+          "incompleteRecords": 155
+        },
+        "NATURES": {
+          "status": "PARTIAL",
+          "confidence": 0.5,
+          "coveredRecords": 0,
+          "expectedRecords": 25,
+          "incompleteRecords": 25
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1038,
+          "expectedRecords": 1038
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1038,
+          "expectedRecords": 1038
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9941037735849056,
+          "coveredRecords": 843,
+          "expectedRecords": 848
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 531,
+          "expectedRecords": 531
+        }
+      },
+      "baselineChanges": [],
+      "persistence": {
+        "bytes": 1851392,
+        "writeMillis": 4837,
+        "reopenMillis": 1607,
+        "sections": 18,
+        "logicalDigestVersion": 1,
+        "beforeCatalogSha256": "8fe069e9794f140dfca5d68290d2fae5cd1944582a58bc9241fa753caaca3b84",
+        "afterCatalogSha256": "8fe069e9794f140dfca5d68290d2fae5cd1944582a58bc9241fa753caaca3b84"
+      }
+    },
+    {
+      "name": "Modern Emerald (v3.5).gba",
+      "outcome": "SELECTED",
+      "family": "EMERALD",
+      "compatibilityPercent": 99.77,
+      "catalogCounters": {
+        "species": 428,
+        "namedSpecies": 428,
+        "speciesWithStats": 428,
+        "speciesWithSprites": 428,
+        "speciesWithDescriptions": 428,
+        "evolutionEdges": 217,
+        "learnsetEntries": 4559,
+        "learnsetRulesets": 2,
+        "moves": 368,
+        "movesWithDetails": 368,
+        "movesWithDescriptions": 368,
+        "eggMoveLinks": 1382,
+        "machineMoveLinks": 10084,
+        "tutorMoveLinks": 6177,
+        "types": 19,
+        "namedTypes": 18,
+        "typesWithSemanticRoles": 18,
+        "typeMatchups": 116,
+        "abilities": 81,
+        "abilitiesWithDescriptions": 81,
+        "abilitiesWithMechanics": 81,
+        "captureBalls": 12,
+        "encounterAreas": 231,
+        "movesWithCategories": 365,
+        "abilitiesWithProvenTypedModifiers": 4,
+        "provenTypedAbilityModifiers": 5
+      },
+      "languageCount": 1,
+      "canonicalCount": 0,
+      "speciesPhysicalCount": 462,
+      "moveMinimumCount": 369,
+      "sqliteEqualityVerified": true,
+      "capabilities": {
+        "SPECIES_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 0.9978354978354979,
+          "coveredRecords": 428,
+          "expectedRecords": 428,
+          "incompleteRecords": 0
+        },
+        "SPECIES_TYPES": {
+          "status": "AVAILABLE",
+          "confidence": 0.9978354978354979,
+          "coveredRecords": 428,
+          "expectedRecords": 428,
+          "incompleteRecords": 0
+        },
+        "TYPE_CHART": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 116,
+          "expectedRecords": 116
+        },
+        "BASE_STATS": {
+          "status": "AVAILABLE",
+          "confidence": 0.9978354978354979,
+          "coveredRecords": 428,
+          "expectedRecords": 428,
+          "incompleteRecords": 0
+        },
+        "SPRITES": {
+          "status": "AVAILABLE",
+          "confidence": 0.9891774891774892,
+          "coveredRecords": 428,
+          "expectedRecords": 428,
+          "incompleteRecords": 0
+        },
+        "EVOLUTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 462,
+          "expectedRecords": 462,
+          "incompleteRecords": 0
+        },
+        "MOVE_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 368,
+          "expectedRecords": 368,
+          "incompleteRecords": 0
+        },
+        "MOVE_DETAILS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "LEARNSETS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 462,
+          "expectedRecords": 462,
+          "incompleteRecords": 0
+        },
+        "EGG_MOVES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 172,
+          "expectedRecords": 172,
+          "incompleteRecords": 0
+        },
+        "MACHINE_MOVES": {
+          "status": "AVAILABLE",
+          "confidence": 0.8132034632034632,
+          "coveredRecords": 462,
+          "expectedRecords": 462,
+          "incompleteRecords": 0
+        },
+        "TUTOR_MOVES": {
+          "status": "AVAILABLE",
+          "confidence": 0.9724025974025974,
+          "coveredRecords": 459,
+          "expectedRecords": 459,
+          "incompleteRecords": 0
+        },
+        "ABILITIES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 81,
+          "expectedRecords": 81,
+          "incompleteRecords": 0
+        },
+        "ABILITY_MECHANICS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 81,
+          "expectedRecords": 81,
+          "incompleteRecords": 0
+        },
+        "AREA_ENCOUNTERS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "TYPE_PRESENTATION": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "BALL_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "WORLD_MAP": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "LOCAL_MAP": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 557,
+          "expectedRecords": 557,
+          "incompleteRecords": 0
+        },
+        "NATURES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 25,
+          "expectedRecords": 25,
+          "incompleteRecords": 0
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 462,
+          "expectedRecords": 462
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9457700650759219,
+          "coveredRecords": 436,
+          "expectedRecords": 461
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 368,
+          "expectedRecords": 368
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 81,
+          "expectedRecords": 81
+        }
+      },
+      "baselineChanges": [],
+      "persistence": {
+        "bytes": 8822784,
+        "writeMillis": 16342,
+        "reopenMillis": 2829,
+        "sections": 18,
+        "logicalDigestVersion": 1,
+        "beforeCatalogSha256": "1fcdb54e807fb8a3c6964aa6d1d73ea42d40d718e0aecb1ece87fc396e82b37e",
+        "afterCatalogSha256": "1fcdb54e807fb8a3c6964aa6d1d73ea42d40d718e0aecb1ece87fc396e82b37e"
+      }
+    },
+    {
+      "name": "Inclement Emerald (v1.1.3).gba",
+      "outcome": "SELECTED",
+      "family": "EMERALD",
+      "compatibilityPercent": 87.5,
+      "catalogCounters": {
+        "species": 1213,
+        "namedSpecies": 1213,
+        "speciesWithStats": 1213,
+        "speciesWithSprites": 1213,
+        "speciesWithDescriptions": 0,
+        "evolutionEdges": 566,
+        "learnsetEntries": 19719,
+        "learnsetRulesets": 1,
+        "moves": 754,
+        "movesWithDetails": 754,
+        "movesWithDescriptions": 754,
+        "eggMoveLinks": 3292,
+        "machineMoveLinks": 0,
+        "tutorMoveLinks": 3538,
+        "types": 18,
+        "namedTypes": 17,
+        "typesWithSemanticRoles": 17,
+        "typeMatchups": 120,
+        "abilities": 277,
+        "abilitiesWithDescriptions": 277,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 12,
+        "encounterAreas": 7,
+        "movesWithCategories": 754,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "languageCount": 1,
+      "canonicalCount": 0,
+      "speciesPhysicalCount": 1214,
+      "moveMinimumCount": 755,
+      "sqliteEqualityVerified": true,
+      "capabilities": {
+        "SPECIES_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 0.999176276771005,
+          "coveredRecords": 1213,
+          "expectedRecords": 1213,
+          "incompleteRecords": 0
+        },
+        "SPECIES_TYPES": {
+          "status": "AVAILABLE",
+          "confidence": 0.999176276771005,
+          "coveredRecords": 1213,
+          "expectedRecords": 1213,
+          "incompleteRecords": 0
+        },
+        "TYPE_CHART": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 361,
+          "expectedRecords": 361
+        },
+        "BASE_STATS": {
+          "status": "AVAILABLE",
+          "confidence": 0.999176276771005,
+          "coveredRecords": 1213,
+          "expectedRecords": 1213,
+          "incompleteRecords": 0
+        },
+        "SPRITES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1213,
+          "expectedRecords": 1213,
+          "incompleteRecords": 0
+        },
+        "EVOLUTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1214,
+          "expectedRecords": 1214,
+          "incompleteRecords": 0
+        },
+        "MOVE_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 754,
+          "expectedRecords": 754,
+          "incompleteRecords": 0
+        },
+        "MOVE_DETAILS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "LEARNSETS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1214,
+          "expectedRecords": 1214,
+          "incompleteRecords": 0
+        },
+        "EGG_MOVES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 370,
+          "expectedRecords": 370,
+          "incompleteRecords": 0
+        },
+        "MACHINE_MOVES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "TUTOR_MOVES": {
+          "status": "AVAILABLE",
+          "confidence": 0.8997034596375618,
+          "coveredRecords": 1214,
+          "expectedRecords": 1214,
+          "incompleteRecords": 0
+        },
+        "ABILITIES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 277,
+          "expectedRecords": 277,
+          "incompleteRecords": 0
+        },
+        "ABILITY_MECHANICS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 277,
+          "incompleteRecords": 277
+        },
+        "AREA_ENCOUNTERS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "TYPE_PRESENTATION": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "BALL_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "WORLD_MAP": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "LOCAL_MAP": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 540,
+          "expectedRecords": 540,
+          "incompleteRecords": 0
+        },
+        "NATURES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 25,
+          "expectedRecords": 25,
+          "incompleteRecords": 0
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1214,
+          "expectedRecords": 1214
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 1213
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 754,
+          "expectedRecords": 754
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 277,
+          "expectedRecords": 277
+        }
+      },
+      "baselineChanges": [],
+      "persistence": {
+        "bytes": 13209600,
+        "writeMillis": 25509,
+        "reopenMillis": 3760,
+        "sections": 18,
+        "logicalDigestVersion": 1,
+        "beforeCatalogSha256": "07e293f7526f9c2ef0b65d91ca35f6863330495689e38a07c2ca5f20645272ec",
+        "afterCatalogSha256": "07e293f7526f9c2ef0b65d91ca35f6863330495689e38a07c2ca5f20645272ec"
+      }
+    },
+    {
+      "name": "Inclement Emerald [Custom UI Update 1.5] (v1.1.3).gba",
+      "outcome": "SELECTED",
+      "family": "EMERALD",
+      "compatibilityPercent": 87.5,
+      "catalogCounters": {
+        "species": 1213,
+        "namedSpecies": 1213,
+        "speciesWithStats": 1213,
+        "speciesWithSprites": 1213,
+        "speciesWithDescriptions": 0,
+        "evolutionEdges": 565,
+        "learnsetEntries": 19719,
+        "learnsetRulesets": 1,
+        "moves": 754,
+        "movesWithDetails": 754,
+        "movesWithDescriptions": 754,
+        "eggMoveLinks": 3292,
+        "machineMoveLinks": 0,
+        "tutorMoveLinks": 3538,
+        "types": 18,
+        "namedTypes": 17,
+        "typesWithSemanticRoles": 17,
+        "typeMatchups": 120,
+        "abilities": 277,
+        "abilitiesWithDescriptions": 277,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 12,
+        "encounterAreas": 7,
+        "movesWithCategories": 754,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "languageCount": 1,
+      "canonicalCount": 0,
+      "speciesPhysicalCount": 1214,
+      "moveMinimumCount": 755,
+      "sqliteEqualityVerified": true,
+      "capabilities": {
+        "SPECIES_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1213,
+          "expectedRecords": 1213,
+          "incompleteRecords": 0
+        },
+        "SPECIES_TYPES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1213,
+          "expectedRecords": 1213,
+          "incompleteRecords": 0
+        },
+        "TYPE_CHART": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 361,
+          "expectedRecords": 361
+        },
+        "BASE_STATS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1213,
+          "expectedRecords": 1213,
+          "incompleteRecords": 0
+        },
+        "SPRITES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1213,
+          "expectedRecords": 1213,
+          "incompleteRecords": 0
+        },
+        "EVOLUTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1214,
+          "expectedRecords": 1214,
+          "incompleteRecords": 0
+        },
+        "MOVE_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 754,
+          "expectedRecords": 754,
+          "incompleteRecords": 0
+        },
+        "MOVE_DETAILS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "LEARNSETS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1214,
+          "expectedRecords": 1214,
+          "incompleteRecords": 0
+        },
+        "EGG_MOVES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 370,
+          "expectedRecords": 370,
+          "incompleteRecords": 0
+        },
+        "MACHINE_MOVES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "TUTOR_MOVES": {
+          "status": "AVAILABLE",
+          "confidence": 0.8997034596375618,
+          "coveredRecords": 1214,
+          "expectedRecords": 1214,
+          "incompleteRecords": 0
+        },
+        "ABILITIES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 277,
+          "expectedRecords": 277,
+          "incompleteRecords": 0
+        },
+        "ABILITY_MECHANICS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 277,
+          "incompleteRecords": 277
+        },
+        "AREA_ENCOUNTERS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "TYPE_PRESENTATION": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "BALL_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "WORLD_MAP": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "LOCAL_MAP": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 540,
+          "expectedRecords": 540,
+          "incompleteRecords": 0
+        },
+        "NATURES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 25,
+          "expectedRecords": 25,
+          "incompleteRecords": 0
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1214,
+          "expectedRecords": 1214
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 1213
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 754,
+          "expectedRecords": 754
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 277,
+          "expectedRecords": 277
+        }
+      },
+      "baselineChanges": [],
+      "persistence": {
+        "bytes": 13238272,
+        "writeMillis": 25696,
+        "reopenMillis": 4283,
+        "sections": 18,
+        "logicalDigestVersion": 1,
+        "beforeCatalogSha256": "5e8c6ea0b9c6b046ac0ab66221907633ab4d080d4bcea05c41227a8182d01c41",
+        "afterCatalogSha256": "5e8c6ea0b9c6b046ac0ab66221907633ab4d080d4bcea05c41227a8182d01c41"
+      }
+    },
+    {
+      "name": "Voyager (Battle Frontier Demo) (v1.1).gba",
+      "outcome": "NO_FAMILY_MATCH",
+      "family": null,
+      "compatibilityPercent": 8.05,
+      "catalogCounters": {},
+      "languageCount": 0,
+      "canonicalCount": 0,
+      "speciesPhysicalCount": null,
+      "moveMinimumCount": null,
+      "sqliteEqualityVerified": false,
+      "capabilities": {
+        "SPECIES_CATALOG": {
+          "status": "NOT_FOUND",
+          "confidence": 0.014598540145985401,
+          "coveredRecords": 6,
+          "expectedRecords": 410
+        },
+        "SPECIES_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 411,
+          "incompleteRecords": 411
+        },
+        "SPECIES_TYPES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.014598540145985401,
+          "coveredRecords": 6,
+          "expectedRecords": 410
+        },
+        "TYPE_CHART": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 361,
+          "expectedRecords": 361
+        },
+        "BASE_STATS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.014598540145985401,
+          "coveredRecords": 6,
+          "expectedRecords": 410
+        },
+        "SPRITES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 411
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "incompleteRecords": 0
+        },
+        "EVOLUTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9318734793187348,
+          "coveredRecords": 383,
+          "expectedRecords": 411
+        },
+        "MOVE_CATALOG": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "MOVE_DETAILS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.5549295774647888,
+          "coveredRecords": 197,
+          "expectedRecords": 355
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "LEARNSETS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "EGG_MOVES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "MACHINE_MOVES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "TUTOR_MOVES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "ABILITIES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "incompleteRecords": 0
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "ABILITY_MECHANICS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "AREA_ENCOUNTERS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "TYPE_PRESENTATION": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "BALL_CATALOG": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "WORLD_MAP": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "LOCAL_MAP": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "NATURES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        }
+      },
+      "baselineChanges": [],
+      "persistence": {}
+    },
+    {
+      "name": "Voyager (v0.3.6).gba",
+      "outcome": "NO_FAMILY_MATCH",
+      "family": null,
+      "compatibilityPercent": 20.63,
+      "catalogCounters": {},
+      "languageCount": 0,
+      "canonicalCount": 0,
+      "speciesPhysicalCount": null,
+      "moveMinimumCount": null,
+      "sqliteEqualityVerified": false,
+      "capabilities": {
+        "SPECIES_CATALOG": {
+          "status": "NOT_FOUND",
+          "confidence": 0.035830618892508145,
+          "coveredRecords": 22,
+          "expectedRecords": 613,
+          "incompleteRecords": 0
+        },
+        "SPECIES_NAMES": {
+          "status": "PARTIAL",
+          "confidence": 0.998371335504886,
+          "coveredRecords": 613,
+          "expectedRecords": 614
+        },
+        "SPECIES_TYPES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.035830618892508145,
+          "coveredRecords": 22,
+          "expectedRecords": 613
+        },
+        "TYPE_CHART": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 96
+        },
+        "BASE_STATS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.035830618892508145,
+          "coveredRecords": 22,
+          "expectedRecords": 613
+        },
+        "SPRITES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 614,
+          "expectedRecords": 614
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "EVOLUTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 614,
+          "expectedRecords": 614
+        },
+        "MOVE_CATALOG": {
+          "status": "PARTIAL",
+          "confidence": 0.952112676056338,
+          "coveredRecords": 338,
+          "expectedRecords": 355
+        },
+        "MOVE_DETAILS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.5521126760563381,
+          "coveredRecords": 196,
+          "expectedRecords": 355
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "LEARNSETS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "EGG_MOVES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "MACHINE_MOVES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "TUTOR_MOVES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "ABILITIES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 17,
+          "expectedRecords": 17,
+          "incompleteRecords": 0
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "ABILITY_MECHANICS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "AREA_ENCOUNTERS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "TYPE_PRESENTATION": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "BALL_CATALOG": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "WORLD_MAP": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "LOCAL_MAP": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "NATURES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        }
+      },
+      "baselineChanges": [],
+      "persistence": {}
+    },
+    {
+      "name": "Elite Redux (2.65.3b).gba",
+      "outcome": "NO_FAMILY_MATCH",
+      "family": null,
+      "compatibilityPercent": 4.17,
+      "catalogCounters": {},
+      "languageCount": 0,
+      "canonicalCount": 0,
+      "speciesPhysicalCount": null,
+      "moveMinimumCount": null,
+      "sqliteEqualityVerified": false,
+      "capabilities": {
+        "SPECIES_CATALOG": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 2
+        },
+        "SPECIES_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 411,
+          "incompleteRecords": 411
+        },
+        "SPECIES_TYPES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 2
+        },
+        "TYPE_CHART": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 26
+        },
+        "BASE_STATS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 2
+        },
+        "SPRITES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 411,
+          "expectedRecords": 411
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "incompleteRecords": 0
+        },
+        "EVOLUTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "MOVE_CATALOG": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "MOVE_DETAILS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 2
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "LEARNSETS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "EGG_MOVES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "MACHINE_MOVES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "TUTOR_MOVES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "ABILITIES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "incompleteRecords": 0
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "ABILITY_MECHANICS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "AREA_ENCOUNTERS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "TYPE_PRESENTATION": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "BALL_CATALOG": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "WORLD_MAP": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "LOCAL_MAP": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "NATURES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        }
+      },
+      "baselineChanges": [],
+      "persistence": {}
+    },
+    {
+      "name": "Emerald Ex (1.0.4).gba",
+      "outcome": "SELECTED",
+      "family": "EMERALD",
+      "compatibilityPercent": 54.17,
+      "catalogCounters": {
+        "species": 972,
+        "namedSpecies": 0,
+        "speciesWithStats": 972,
+        "speciesWithSprites": 972,
+        "speciesWithDescriptions": 0,
+        "evolutionEdges": 0,
+        "learnsetEntries": 15931,
+        "learnsetRulesets": 1,
+        "moves": 691,
+        "movesWithDetails": 0,
+        "movesWithDescriptions": 0,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 0,
+        "tutorMoveLinks": 0,
+        "types": 18,
+        "namedTypes": 0,
+        "typesWithSemanticRoles": 0,
+        "typeMatchups": 120,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 12,
+        "encounterAreas": 7,
+        "movesWithCategories": 0,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "languageCount": 0,
+      "canonicalCount": 0,
+      "speciesPhysicalCount": 973,
+      "moveMinimumCount": null,
+      "sqliteEqualityVerified": true,
+      "capabilities": {
+        "SPECIES_CATALOG": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "SPECIES_TYPES": {
+          "status": "AVAILABLE",
+          "confidence": 0.998972250770812,
+          "coveredRecords": 972,
+          "expectedRecords": 972,
+          "incompleteRecords": 0
+        },
+        "TYPE_CHART": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 361,
+          "expectedRecords": 361
+        },
+        "BASE_STATS": {
+          "status": "AVAILABLE",
+          "confidence": 0.998972250770812,
+          "coveredRecords": 972,
+          "expectedRecords": 972,
+          "incompleteRecords": 0
+        },
+        "SPRITES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 972,
+          "expectedRecords": 972,
+          "incompleteRecords": 0
+        },
+        "EVOLUTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 972,
+          "incompleteRecords": 972
+        },
+        "MOVE_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 0.0,
+          "coveredRecords": 691,
+          "expectedRecords": 691,
+          "incompleteRecords": 0
+        },
+        "MOVE_DETAILS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.5295774647887324,
+          "coveredRecords": 188,
+          "expectedRecords": 355
+        },
+        "LEARNSETS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 972,
+          "expectedRecords": 972,
+          "incompleteRecords": 0
+        },
+        "EGG_MOVES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "MACHINE_MOVES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "TUTOR_MOVES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "ABILITIES": {
+          "status": "AVAILABLE",
+          "confidence": 0.0,
+          "coveredRecords": 257,
+          "expectedRecords": 257,
+          "incompleteRecords": 0
+        },
+        "ABILITY_MECHANICS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 257,
+          "incompleteRecords": 257
+        },
+        "AREA_ENCOUNTERS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "TYPE_PRESENTATION": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "BALL_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "WORLD_MAP": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "LOCAL_MAP": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 83,
+          "expectedRecords": 83,
+          "incompleteRecords": 0
+        },
+        "NATURES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 25,
+          "expectedRecords": 25,
+          "incompleteRecords": 0
+        },
+        "SPECIES_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        }
+      },
+      "baselineChanges": [],
+      "persistence": {
+        "bytes": 10465280,
+        "writeMillis": 18597,
+        "reopenMillis": 2661,
+        "sections": 17,
+        "logicalDigestVersion": 1,
+        "beforeCatalogSha256": "5f4b35c9f74564aef107581cc65e8c59694def7d49f3f4a2c02b9f210132c88f",
+        "afterCatalogSha256": "5f4b35c9f74564aef107581cc65e8c59694def7d49f3f4a2c02b9f210132c88f"
+      }
+    },
+    {
+      "name": "Exceeded (15.2).gba",
+      "outcome": "SELECTED",
+      "family": "EMERALD",
+      "compatibilityPercent": 54.16,
+      "catalogCounters": {
+        "species": 1539,
+        "namedSpecies": 1539,
+        "speciesWithStats": 1539,
+        "speciesWithSprites": 1538,
+        "speciesWithDescriptions": 0,
+        "evolutionEdges": 0,
+        "learnsetEntries": 0,
+        "learnsetRulesets": 0,
+        "moves": 340,
+        "movesWithDetails": 340,
+        "movesWithDescriptions": 0,
+        "eggMoveLinks": 0,
+        "machineMoveLinks": 25842,
+        "tutorMoveLinks": 4602,
+        "types": 19,
+        "namedTypes": 0,
+        "typesWithSemanticRoles": 0,
+        "typeMatchups": 125,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 12,
+        "encounterAreas": 0,
+        "movesWithCategories": 340,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "languageCount": 1,
+      "canonicalCount": 0,
+      "speciesPhysicalCount": 1542,
+      "moveMinimumCount": 355,
+      "sqliteEqualityVerified": true,
+      "capabilities": {
+        "SPECIES_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 0.9993514915693904,
+          "coveredRecords": 1539,
+          "expectedRecords": 1539,
+          "incompleteRecords": 0
+        },
+        "SPECIES_TYPES": {
+          "status": "AVAILABLE",
+          "confidence": 0.9993514915693904,
+          "coveredRecords": 1539,
+          "expectedRecords": 1539,
+          "incompleteRecords": 0
+        },
+        "TYPE_CHART": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 361,
+          "expectedRecords": 361
+        },
+        "BASE_STATS": {
+          "status": "AVAILABLE",
+          "confidence": 0.9993514915693904,
+          "coveredRecords": 1539,
+          "expectedRecords": 1539,
+          "incompleteRecords": 0
+        },
+        "SPRITES": {
+          "status": "PARTIAL",
+          "confidence": 0.9993514915693904,
+          "coveredRecords": 1538,
+          "expectedRecords": 1539,
+          "incompleteRecords": 1
+        },
+        "EVOLUTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 1542,
+          "incompleteRecords": 1542
+        },
+        "MOVE_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 0.952112676056338,
+          "coveredRecords": 340,
+          "expectedRecords": 340,
+          "incompleteRecords": 0
+        },
+        "MOVE_DETAILS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "LEARNSETS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 1542,
+          "incompleteRecords": 1542
+        },
+        "EGG_MOVES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "MACHINE_MOVES": {
+          "status": "AVAILABLE",
+          "confidence": 0.7162971286730175,
+          "coveredRecords": 1542,
+          "expectedRecords": 1542,
+          "incompleteRecords": 0
+        },
+        "TUTOR_MOVES": {
+          "status": "AVAILABLE",
+          "confidence": 0.9086381322957199,
+          "coveredRecords": 1542,
+          "expectedRecords": 1542,
+          "incompleteRecords": 0
+        },
+        "ABILITIES": {
+          "status": "AMBIGUOUS",
+          "confidence": 0.9358974358974359
+        },
+        "ABILITY_MECHANICS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "incompleteRecords": 0
+        },
+        "AREA_ENCOUNTERS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "TYPE_PRESENTATION": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "BALL_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "WORLD_MAP": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "LOCAL_MAP": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "NATURES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 25,
+          "expectedRecords": 25,
+          "incompleteRecords": 0
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1542,
+          "expectedRecords": 1542
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 1541
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 340
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0
+        }
+      },
+      "baselineChanges": [],
+      "persistence": {
+        "bytes": 1720320,
+        "writeMillis": 3569,
+        "reopenMillis": 1637,
+        "sections": 18,
+        "logicalDigestVersion": 1,
+        "beforeCatalogSha256": "b8679258462293d4195cc451708245a515de593e3049db29c80ee5faaf36933f",
+        "afterCatalogSha256": "b8679258462293d4195cc451708245a515de593e3049db29c80ee5faaf36933f"
+      }
+    }
+  ]
+}

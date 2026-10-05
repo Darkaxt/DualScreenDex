@@ -1,19 +1,20 @@
 # ROM compatibility matrix
 
-This document lists all **342 distinct ROM identities** in the October 3, 2026 current library snapshot. The 19 selected Gen II rows now come from a focused source-bound relationship evaluation; the other 323 row objects retain the completed October 4 full-corpus baseline unchanged. This is composite evidence, not a new full-corpus run. A row describes the public build named in the **ROM** column, not every release of that project.
+This document lists all **342 distinct ROM identities** in the October 3, 2026 current library snapshot. The 19 selected Gen II rows and 13 Gen III cohort rows now come from focused source-bound evaluations; the other 310 row objects retain the completed October 4 full-corpus baseline unchanged. This is composite evidence, not a new full-corpus run. A row describes the public build named in the **ROM** column, not every release of that project.
 
 Capability percentages are confidence from bounded compiled structural evidence, not a promise that every optional feature is supported. These are static catalog observations, not live gameplay or physical-device acceptance.
 
 - Full342 baseline source: `f7214d1f644aa97f3bdfacddd3de8dcefdede9f5`
 - Focused 19-input Gen II source: `6272147fa7ae4dce6d1a70d146667c15b1d1f5e1` ([acceptance](2026-10-04-gen2-relationships-acceptance.md))
+- Focused 13-input Gen III source: `4b62be1dc8e7a19b19ccdc3ac50c451a844fc07c` ([acceptance](2026-10-05-gen3-wide-core-acceptance.md))
 - Inputs: **342**
-- Detected family and materialized catalog: **300**
-- Persisted and exactly reopened SQLite catalogs: **300**
-- Resolved ROM-language manifests: **285**
+- Detected family and materialized catalog: **301**
+- Persisted and exactly reopened SQLite catalogs: **301**
+- Resolved ROM-language manifests: **286**
 - Unknown ROM-language manifests: **15**
 - Resolved multilingual manifests: **0**
 - Ambiguous family: **2**
-- No family match: **40**
+- No family match: **39**
 - Parser, catalog, persistence and decoded-reference errors: **0**
 
 The **Languages** column counts proven ROM-content projections. `?` means language authority remains unknown; it does not assume English. Text columns use the selected native-language projection. Structurally non-applicable ability domains remain `N/A`, including when text authority is unknown.
@@ -58,7 +59,7 @@ Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for 
 | 2 | Gold/Silver family | 5 | 86.67% | 0 |
 | 2 | Crystal family | 14 | 69.97% | 0 |
 | 3 | Ruby/Sapphire family | 15 | 91.80% | 0 |
-| 3 | Emerald family | 74 | 81.58% | 0 |
+| 3 | Emerald family | 75 | 81.83% | 0 |
 | 3 | FireRed/LeafGreen family | 89 | 89.81% | 0 |
 
 ## Generation 1
@@ -253,7 +254,7 @@ Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for 
 
 ### Emerald family
 
-<details><summary>74 ROM inputs</summary>
+<details><summary>75 ROM inputs</summary>
 
 | ROM | Languages | Coverage | Species | Names | Types | Chart | Stats | Sprites | Dex text | Evos | Moves | Move data | Move text | Learnsets | Egg | Machines | Tutors | Abilities | Ability text | Ability logic | Encounters | Type UI | Balls | World map | Local maps | Natures |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -310,7 +311,8 @@ Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for 
 | Pokescape (v1.0.4).gba | 1 | 74.97% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 0% | P 99% | 100% | 100% | 74% | 90% | ? 95% | 0% | 0% | 100% | 100% | 100% | 0% | 100% | 100% |
 | Pokémon Hearth (v0.1.27).gba | 1 | 72.22% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 35% | 100% | 100% | P 99% | 100% | P 31% | P 96% | N/A | 100% | 100% | 100% | 0% | 100% | 0% | 0% | 0% | P 50% |
 | Quetzal (Emerald Multiplayer) (v0.8.4).gba | 1 | 53.79% | 91% | P 91% | 100% | 100% | 100% | 100% | 0% | 0% | 95% | 100% | 100% | 0% | 0% | 0% | 83% | ? 95% | 0% | 0% | ? 0% | 100% | 100% | 0% | 0% | 100% |
-| R.O.W.E. (2.1.9.1 Experimental).gba | 1 | 41.29% | 0% | P 91% | 0% | 0% | 0% | 100% | 0% | 0% | 95% | 100% | 0% | 0% | 0% | 0% | 82% | 100% | 100% | 0% | 0% | 100% | 100% | ? 0% | 0% | 100% |
+| R.O.W.E. (2.1.1).gba | 1 | 70.83% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 0% | 100% | P 100% | 100% | 100% | 74% | 0% | 89% | 100% | 100% | 0% | 0% | 100% | 100% | ? 0% | 0% | 100% |
+| R.O.W.E. (2.1.9.1 Experimental).gba | 1 | 70.82% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 0% | 100% | P 100% | 100% | 100% | 73% | 74% | 0% | 100% | 100% | 0% | 0% | 100% | 100% | ? 0% | 0% | 100% |
 | Recollection Quest (v1.2).gba | 1 | 75.26% | 100% | 100% | 100% | 100% | 100% | P 100% | P 100% | 0% | 100% | 100% | P 99% | 100% | P 32% | P 100% | N/A | 100% | 100% | 100% | 0% | 100% | 100% | 0% | 0% | P 50% |
 | Regis’ Origin (v1.0).gba | 1 | 83.33% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 0% | 100% | 100% | 100% | 96% | 90% | 100% | 100% | 0% | 100% | 100% | 100% | ? 0% | 100% | 100% |
 | Resolute (v2.97).gba | 1 | 83.20% | P 100% | 100% | 100% | 100% | 100% | 100% | 0% | 0% | 100% | 100% | 100% | 100% | 100% | 96% | 93% | 100% | 100% | P 100% | 100% | 100% | 100% | 100% | 0% | 100% |
@@ -458,7 +460,6 @@ No catalog or optional feature support is claimed for these inputs.
 | Peridot Version (v2.3.0).gbc | GBC | NO_FAMILY_MATCH |
 | Pisces (v1.5.4).gba | GBA | NO_FAMILY_MATCH |
 | Prism (v0.95.0254).gbc | GBC | NO_FAMILY_MATCH |
-| R.O.W.E. (2.1.1).gba | GBA | NO_FAMILY_MATCH |
 | Recharged Emerald (v2.2.8).gba | GBA | NO_FAMILY_MATCH |
 | Recharged Yellow (v1.9.7).gba | GBA | NO_FAMILY_MATCH |
 | Recordkeepers (v1.2.1).gba | GBA | NO_FAMILY_MATCH |

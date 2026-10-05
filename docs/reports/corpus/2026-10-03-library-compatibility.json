@@ -1,19 +1,19 @@
 {
   "schemaVersion": 1,
   "date": "2026-10-03",
-  "verifiedDate": "2026-10-04",
-  "evidenceMode": "full342-baseline-with-focused-gen2-relationships",
+  "verifiedDate": "2026-10-05",
+  "evidenceMode": "full342-baseline-with-focused-gen2-relationships-and-gen3-wide-core",
   "corpusInputDigestSha256": "733e36785fa9a5b71bc4121343a6b6d2cbd27e43e08b3fddc2e2870bac1a0561",
   "summary": {
     "inputCount": 342,
-    "selectedCount": 300,
+    "selectedCount": 301,
     "ambiguousCount": 2,
-    "noFamilyMatchCount": 40,
+    "noFamilyMatchCount": 39,
     "errorCount": 0,
-    "resolvedLanguageManifests": 285,
+    "resolvedLanguageManifests": 286,
     "unknownLanguageManifests": 15,
     "multilingualCount": 0,
-    "persistedAndReopenedCount": 300
+    "persistedAndReopenedCount": 301
   },
   "rows": [
     {
@@ -963,8 +963,6 @@
     },
     {
       "name": "Soulgold (v1.1.4).gba",
-      "evidence": "fresh-full342-source-bound",
-      "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
       "aliases": [
         {
           "archive": "Pokemon Soulgold (v1.1.4).7z",
@@ -972,6 +970,8 @@
           "console": "Nintendo - Game Boy Advance"
         }
       ],
+      "evidence": "focused-gen3-wide-core-source-bound",
+      "sourceCommit": "4b62be1dc8e7a19b19ccdc3ac50c451a844fc07c",
       "generation": 3,
       "family": "EMERALD",
       "languageCount": 1,
@@ -979,99 +979,150 @@
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "SPECIES_NAMES": {
-          "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 1038,
+          "expectedRecords": 1038,
+          "incompleteRecords": 0
         },
         "SPECIES_TYPES": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 1038,
+          "expectedRecords": 1038,
+          "incompleteRecords": 0
         },
         "TYPE_CHART": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 441,
+          "expectedRecords": 441
         },
         "BASE_STATS": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 1038,
+          "expectedRecords": 1038,
+          "incompleteRecords": 0
         },
         "SPRITES": {
           "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "POKEDEX_DESCRIPTIONS": {
-          "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 1038,
+          "expectedRecords": 1038,
+          "incompleteRecords": 0
         },
         "EVOLUTIONS": {
           "status": "PARTIAL",
-          "confidence": 0.3400770712909441
+          "confidence": 0.3400770712909441,
+          "coveredRecords": 353,
+          "expectedRecords": 1038,
+          "incompleteRecords": 685
         },
         "MOVE_CATALOG": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 849,
+          "expectedRecords": 849,
+          "incompleteRecords": 0
         },
         "MOVE_DETAILS": {
           "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "MOVE_DESCRIPTIONS": {
-          "status": "PARTIAL",
-          "confidence": 0.9941037735849056
+          "confidence": 1.0,
+          "coveredRecords": 849,
+          "expectedRecords": 849
         },
         "LEARNSETS": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 1038,
+          "expectedRecords": 1038,
+          "incompleteRecords": 0
         },
         "EGG_MOVES": {
           "status": "PARTIAL",
-          "confidence": 0.19150285351934052
+          "confidence": 0.19150285351934052,
+          "coveredRecords": 302,
+          "expectedRecords": 1577,
+          "incompleteRecords": 1275
         },
         "MACHINE_MOVES": {
           "status": "PARTIAL",
-          "confidence": 0.6582117945466075
+          "confidence": 0.6582117945466075,
+          "coveredRecords": 1038,
+          "expectedRecords": 1577,
+          "incompleteRecords": 539
         },
         "TUTOR_MOVES": {
           "status": "NOT_APPLICABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "ABILITIES": {
           "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "ABILITY_DESCRIPTIONS": {
-          "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 532,
+          "expectedRecords": 532,
+          "incompleteRecords": 0
         },
         "ABILITY_MECHANICS": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 532,
+          "expectedRecords": 532,
+          "incompleteRecords": 0
         },
         "AREA_ENCOUNTERS": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "TYPE_PRESENTATION": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "BALL_CATALOG": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "WORLD_MAP": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "LOCAL_MAP": {
           "status": "PARTIAL",
-          "confidence": 0.07738095238095238
+          "confidence": 0.07738095238095238,
+          "coveredRecords": 13,
+          "expectedRecords": 168,
+          "incompleteRecords": 155
         },
         "NATURES": {
           "status": "PARTIAL",
-          "confidence": 0.5
+          "confidence": 0.5,
+          "coveredRecords": 0,
+          "expectedRecords": 25,
+          "incompleteRecords": 25
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1038,
+          "expectedRecords": 1038
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1038,
+          "expectedRecords": 1038
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9941037735849056,
+          "coveredRecords": 843,
+          "expectedRecords": 848
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 531,
+          "expectedRecords": 531
         }
       },
       "catalogCounters": {
@@ -1109,8 +1160,8 @@
         "referenceErrors": 0,
         "sqliteReopenEqualityVerified": true,
         "logicalDigestVersion": 1,
-        "beforeCatalogSha256": "bd3f283fcf08c8d34ef30b03fec2eecdcac5ca3b8d951f579261b9ff5402946c",
-        "afterCatalogSha256": "bd3f283fcf08c8d34ef30b03fec2eecdcac5ca3b8d951f579261b9ff5402946c"
+        "beforeCatalogSha256": "8fe069e9794f140dfca5d68290d2fae5cd1944582a58bc9241fa753caaca3b84",
+        "afterCatalogSha256": "8fe069e9794f140dfca5d68290d2fae5cd1944582a58bc9241fa753caaca3b84"
       }
     },
     {
@@ -3281,8 +3332,6 @@
     },
     {
       "name": "Voyager (Battle Frontier Demo) (v1.1).gba",
-      "evidence": "fresh-full342-source-bound",
-      "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
       "aliases": [
         {
           "archive": "Pokemon Voyager.7z",
@@ -3290,6 +3339,8 @@
           "console": "Nintendo - Game Boy Advance"
         }
       ],
+      "evidence": "focused-gen3-wide-core-source-bound",
+      "sourceCommit": "4b62be1dc8e7a19b19ccdc3ac50c451a844fc07c",
       "platform": "GBA",
       "outcome": "NO_FAMILY_MATCH"
     },
@@ -5486,8 +5537,6 @@
     },
     {
       "name": "Modern Emerald (v3.5).gba",
-      "evidence": "fresh-full342-source-bound",
-      "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
       "aliases": [
         {
           "archive": "Pokemon Modern Emerald (v3.5).7z",
@@ -5495,6 +5544,8 @@
           "console": "Nintendo - Game Boy Advance"
         }
       ],
+      "evidence": "focused-gen3-wide-core-source-bound",
+      "sourceCommit": "4b62be1dc8e7a19b19ccdc3ac50c451a844fc07c",
       "generation": 3,
       "family": "EMERALD",
       "languageCount": 1,
@@ -5502,99 +5553,151 @@
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "AVAILABLE",
-          "confidence": 0.9978354978354979
-        },
-        "SPECIES_NAMES": {
-          "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 0.9978354978354979,
+          "coveredRecords": 428,
+          "expectedRecords": 428,
+          "incompleteRecords": 0
         },
         "SPECIES_TYPES": {
           "status": "AVAILABLE",
-          "confidence": 0.9978354978354979
+          "confidence": 0.9978354978354979,
+          "coveredRecords": 428,
+          "expectedRecords": 428,
+          "incompleteRecords": 0
         },
         "TYPE_CHART": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 116,
+          "expectedRecords": 116
         },
         "BASE_STATS": {
           "status": "AVAILABLE",
-          "confidence": 0.9978354978354979
+          "confidence": 0.9978354978354979,
+          "coveredRecords": 428,
+          "expectedRecords": 428,
+          "incompleteRecords": 0
         },
         "SPRITES": {
           "status": "AVAILABLE",
-          "confidence": 0.9891774891774892
-        },
-        "POKEDEX_DESCRIPTIONS": {
-          "status": "PARTIAL",
-          "confidence": 0.9457700650759219
+          "confidence": 0.9891774891774892,
+          "coveredRecords": 428,
+          "expectedRecords": 428,
+          "incompleteRecords": 0
         },
         "EVOLUTIONS": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 462,
+          "expectedRecords": 462,
+          "incompleteRecords": 0
         },
         "MOVE_CATALOG": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 368,
+          "expectedRecords": 368,
+          "incompleteRecords": 0
         },
         "MOVE_DETAILS": {
           "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "MOVE_DESCRIPTIONS": {
-          "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "LEARNSETS": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 462,
+          "expectedRecords": 462,
+          "incompleteRecords": 0
         },
         "EGG_MOVES": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 172,
+          "expectedRecords": 172,
+          "incompleteRecords": 0
         },
         "MACHINE_MOVES": {
           "status": "AVAILABLE",
-          "confidence": 0.8132034632034632
+          "confidence": 0.8132034632034632,
+          "coveredRecords": 462,
+          "expectedRecords": 462,
+          "incompleteRecords": 0
         },
         "TUTOR_MOVES": {
           "status": "AVAILABLE",
-          "confidence": 0.9724025974025974
+          "confidence": 0.9724025974025974,
+          "coveredRecords": 459,
+          "expectedRecords": 459,
+          "incompleteRecords": 0
         },
         "ABILITIES": {
           "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "ABILITY_DESCRIPTIONS": {
-          "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 81,
+          "expectedRecords": 81,
+          "incompleteRecords": 0
         },
         "ABILITY_MECHANICS": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 81,
+          "expectedRecords": 81,
+          "incompleteRecords": 0
         },
         "AREA_ENCOUNTERS": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "TYPE_PRESENTATION": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "BALL_CATALOG": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "WORLD_MAP": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "LOCAL_MAP": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 557,
+          "expectedRecords": 557,
+          "incompleteRecords": 0
         },
         "NATURES": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 25,
+          "expectedRecords": 25,
+          "incompleteRecords": 0
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 462,
+          "expectedRecords": 462
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9457700650759219,
+          "coveredRecords": 436,
+          "expectedRecords": 461
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 368,
+          "expectedRecords": 368
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 81,
+          "expectedRecords": 81
         }
       },
       "catalogCounters": {
@@ -5632,8 +5735,8 @@
         "referenceErrors": 0,
         "sqliteReopenEqualityVerified": true,
         "logicalDigestVersion": 1,
-        "beforeCatalogSha256": "a71454342eae0bc79ed7e5334d677eec6a6ee9583ac1bf7c28ab82b89f7d8426",
-        "afterCatalogSha256": "a71454342eae0bc79ed7e5334d677eec6a6ee9583ac1bf7c28ab82b89f7d8426"
+        "beforeCatalogSha256": "1fcdb54e807fb8a3c6964aa6d1d73ea42d40d718e0aecb1ece87fc396e82b37e",
+        "afterCatalogSha256": "1fcdb54e807fb8a3c6964aa6d1d73ea42d40d718e0aecb1ece87fc396e82b37e"
       }
     },
     {
@@ -12154,13 +12257,13 @@
       }
     },
     {
-      "name": "Regis\u00e2\u20ac\u2122 Origin (v1.0).gba",
+      "name": "Regisâ€™ Origin (v1.0).gba",
       "evidence": "fresh-full342-source-bound",
       "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
       "aliases": [
         {
-          "archive": "Pokemon Regis\u00e2\u20ac\u2122 Origin (v1.0).7z",
-          "name": "Regis\u00e2\u20ac\u2122 Origin (v1.0).gba",
+          "archive": "Pokemon Regisâ€™ Origin (v1.0).7z",
+          "name": "Regisâ€™ Origin (v1.0).gba",
           "console": "Nintendo - Game Boy Advance"
         }
       ],
@@ -12629,13 +12732,13 @@
       }
     },
     {
-      "name": "Pok\u00c3\u00a9mon Hearth (v0.1.27).gba",
+      "name": "PokÃ©mon Hearth (v0.1.27).gba",
       "evidence": "fresh-full342-source-bound",
       "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
       "aliases": [
         {
           "archive": "Pokemon Hearth (v0.1.27).7z",
-          "name": "Pok\u00c3\u00a9mon Hearth (v0.1.27).gba",
+          "name": "PokÃ©mon Hearth (v0.1.27).gba",
           "console": "Nintendo - Game Boy Advance"
         }
       ],
@@ -14312,8 +14415,6 @@
     },
     {
       "name": "Elite Redux (2.65.3b).gba",
-      "evidence": "fresh-full342-source-bound",
-      "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
       "aliases": [
         {
           "archive": "Pokemon Elite Redux (2.65.3b).7z",
@@ -14321,6 +14422,8 @@
           "console": "Nintendo - Game Boy Advance"
         }
       ],
+      "evidence": "focused-gen3-wide-core-source-bound",
+      "sourceCommit": "4b62be1dc8e7a19b19ccdc3ac50c451a844fc07c",
       "platform": "GBA",
       "outcome": "NO_FAMILY_MATCH"
     },
@@ -21652,8 +21755,6 @@
     },
     {
       "name": "Inclement Emerald [Custom UI Update 1.5] (v1.1.3).gba",
-      "evidence": "fresh-full342-source-bound",
-      "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
       "aliases": [
         {
           "archive": "Pokemon Inclement Emerald [Custom UI Update 1.5] (v1.1.3).7z",
@@ -21661,6 +21762,8 @@
           "console": "Nintendo - Game Boy Advance"
         }
       ],
+      "evidence": "focused-gen3-wide-core-source-bound",
+      "sourceCommit": "4b62be1dc8e7a19b19ccdc3ac50c451a844fc07c",
       "generation": 3,
       "family": "EMERALD",
       "languageCount": 1,
@@ -21668,99 +21771,148 @@
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "SPECIES_NAMES": {
-          "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 1213,
+          "expectedRecords": 1213,
+          "incompleteRecords": 0
         },
         "SPECIES_TYPES": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 1213,
+          "expectedRecords": 1213,
+          "incompleteRecords": 0
         },
         "TYPE_CHART": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 361,
+          "expectedRecords": 361
         },
         "BASE_STATS": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 1213,
+          "expectedRecords": 1213,
+          "incompleteRecords": 0
         },
         "SPRITES": {
           "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "POKEDEX_DESCRIPTIONS": {
-          "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 1.0,
+          "coveredRecords": 1213,
+          "expectedRecords": 1213,
+          "incompleteRecords": 0
         },
         "EVOLUTIONS": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 1214,
+          "expectedRecords": 1214,
+          "incompleteRecords": 0
         },
         "MOVE_CATALOG": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 754,
+          "expectedRecords": 754,
+          "incompleteRecords": 0
         },
         "MOVE_DETAILS": {
           "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "MOVE_DESCRIPTIONS": {
-          "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "LEARNSETS": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 1214,
+          "expectedRecords": 1214,
+          "incompleteRecords": 0
         },
         "EGG_MOVES": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 370,
+          "expectedRecords": 370,
+          "incompleteRecords": 0
         },
         "MACHINE_MOVES": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "TUTOR_MOVES": {
           "status": "AVAILABLE",
-          "confidence": 0.8997034596375618
+          "confidence": 0.8997034596375618,
+          "coveredRecords": 1214,
+          "expectedRecords": 1214,
+          "incompleteRecords": 0
         },
         "ABILITIES": {
           "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "ABILITY_DESCRIPTIONS": {
-          "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 277,
+          "expectedRecords": 277,
+          "incompleteRecords": 0
         },
         "ABILITY_MECHANICS": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 277,
+          "incompleteRecords": 277
         },
         "AREA_ENCOUNTERS": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "TYPE_PRESENTATION": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "BALL_CATALOG": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "WORLD_MAP": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "LOCAL_MAP": {
           "status": "PARTIAL",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 540,
+          "expectedRecords": 540,
+          "incompleteRecords": 0
         },
         "NATURES": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 25,
+          "expectedRecords": 25,
+          "incompleteRecords": 0
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1214,
+          "expectedRecords": 1214
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 1213
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 754,
+          "expectedRecords": 754
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 277,
+          "expectedRecords": 277
         }
       },
       "catalogCounters": {
@@ -21798,8 +21950,8 @@
         "referenceErrors": 0,
         "sqliteReopenEqualityVerified": true,
         "logicalDigestVersion": 1,
-        "beforeCatalogSha256": "0a134b69ad5caaa7a6a2d911d76e28bb2faa7bc6c264f5f41470f3dee6e59550",
-        "afterCatalogSha256": "0a134b69ad5caaa7a6a2d911d76e28bb2faa7bc6c264f5f41470f3dee6e59550"
+        "beforeCatalogSha256": "5e8c6ea0b9c6b046ac0ab66221907633ab4d080d4bcea05c41227a8182d01c41",
+        "afterCatalogSha256": "5e8c6ea0b9c6b046ac0ab66221907633ab4d080d4bcea05c41227a8182d01c41"
       }
     },
     {
@@ -23037,8 +23189,6 @@
     },
     {
       "name": "Battle Theater (V2.6.0).gba",
-      "evidence": "fresh-full342-source-bound",
-      "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
       "aliases": [
         {
           "archive": "Pokemon Battle Theater (V2.6.0).7z",
@@ -23046,6 +23196,8 @@
           "console": "Nintendo - Game Boy Advance"
         }
       ],
+      "evidence": "focused-gen3-wide-core-source-bound",
+      "sourceCommit": "4b62be1dc8e7a19b19ccdc3ac50c451a844fc07c",
       "generation": 3,
       "family": "EMERALD",
       "languageCount": 1,
@@ -23053,99 +23205,150 @@
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "SPECIES_NAMES": {
-          "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 1571,
+          "expectedRecords": 1571,
+          "incompleteRecords": 0
         },
         "SPECIES_TYPES": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 1571,
+          "expectedRecords": 1571,
+          "incompleteRecords": 0
         },
         "TYPE_CHART": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 441,
+          "expectedRecords": 441
         },
         "BASE_STATS": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 1571,
+          "expectedRecords": 1571,
+          "incompleteRecords": 0
         },
         "SPRITES": {
           "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "POKEDEX_DESCRIPTIONS": {
-          "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 1571,
+          "expectedRecords": 1571,
+          "incompleteRecords": 0
         },
         "EVOLUTIONS": {
           "status": "PARTIAL",
-          "confidence": 0.33991088478676
+          "confidence": 0.33991088478676,
+          "coveredRecords": 534,
+          "expectedRecords": 1571,
+          "incompleteRecords": 1037
         },
         "MOVE_CATALOG": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 866,
+          "expectedRecords": 866,
+          "incompleteRecords": 0
         },
         "MOVE_DETAILS": {
           "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "MOVE_DESCRIPTIONS": {
-          "status": "PARTIAL",
-          "confidence": 0.9942196531791907
+          "confidence": 1.0,
+          "coveredRecords": 866,
+          "expectedRecords": 866
         },
         "LEARNSETS": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 1571,
+          "expectedRecords": 1571,
+          "incompleteRecords": 0
         },
         "EGG_MOVES": {
           "status": "PARTIAL",
-          "confidence": 0.31615776081424934
+          "confidence": 0.31615776081424934,
+          "coveredRecords": 497,
+          "expectedRecords": 1572,
+          "incompleteRecords": 1075
         },
         "MACHINE_MOVES": {
           "status": "PARTIAL",
-          "confidence": 0.9993638676844784
+          "confidence": 0.9993638676844784,
+          "coveredRecords": 1571,
+          "expectedRecords": 1572,
+          "incompleteRecords": 1
         },
         "TUTOR_MOVES": {
           "status": "NOT_APPLICABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "ABILITIES": {
           "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "ABILITY_DESCRIPTIONS": {
-          "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 311,
+          "expectedRecords": 311,
+          "incompleteRecords": 0
         },
         "ABILITY_MECHANICS": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 311,
+          "expectedRecords": 311,
+          "incompleteRecords": 0
         },
         "AREA_ENCOUNTERS": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "TYPE_PRESENTATION": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "BALL_CATALOG": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "WORLD_MAP": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "LOCAL_MAP": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 518,
+          "expectedRecords": 518,
+          "incompleteRecords": 0
         },
         "NATURES": {
           "status": "PARTIAL",
-          "confidence": 0.5
+          "confidence": 0.5,
+          "coveredRecords": 0,
+          "expectedRecords": 25,
+          "incompleteRecords": 25
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1571,
+          "expectedRecords": 1571
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1571,
+          "expectedRecords": 1571
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9942196531791907,
+          "coveredRecords": 860,
+          "expectedRecords": 865
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 310,
+          "expectedRecords": 310
         }
       },
       "catalogCounters": {
@@ -23183,8 +23386,8 @@
         "referenceErrors": 0,
         "sqliteReopenEqualityVerified": true,
         "logicalDigestVersion": 1,
-        "beforeCatalogSha256": "e90ec2427cb2b487db069834e0fbbdf4a63333a29831e16012ff7a1d9137e198",
-        "afterCatalogSha256": "e90ec2427cb2b487db069834e0fbbdf4a63333a29831e16012ff7a1d9137e198"
+        "beforeCatalogSha256": "f7318cc66ad40244ecb44d58734e82a7e7cf22e9818d5546a7298ecaede19267",
+        "afterCatalogSha256": "f7318cc66ad40244ecb44d58734e82a7e7cf22e9818d5546a7298ecaede19267"
       }
     },
     {
@@ -26594,8 +26797,6 @@
     },
     {
       "name": "Inclement Emerald (v1.1.3).gba",
-      "evidence": "fresh-full342-source-bound",
-      "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
       "aliases": [
         {
           "archive": "Pokemon Inclement Emerald (v1.1.3).7z",
@@ -26603,6 +26804,8 @@
           "console": "Nintendo - Game Boy Advance"
         }
       ],
+      "evidence": "focused-gen3-wide-core-source-bound",
+      "sourceCommit": "4b62be1dc8e7a19b19ccdc3ac50c451a844fc07c",
       "generation": 3,
       "family": "EMERALD",
       "languageCount": 1,
@@ -26610,99 +26813,148 @@
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "AVAILABLE",
-          "confidence": 0.999176276771005
-        },
-        "SPECIES_NAMES": {
-          "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 0.999176276771005,
+          "coveredRecords": 1213,
+          "expectedRecords": 1213,
+          "incompleteRecords": 0
         },
         "SPECIES_TYPES": {
           "status": "AVAILABLE",
-          "confidence": 0.999176276771005
+          "confidence": 0.999176276771005,
+          "coveredRecords": 1213,
+          "expectedRecords": 1213,
+          "incompleteRecords": 0
         },
         "TYPE_CHART": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 361,
+          "expectedRecords": 361
         },
         "BASE_STATS": {
           "status": "AVAILABLE",
-          "confidence": 0.999176276771005
+          "confidence": 0.999176276771005,
+          "coveredRecords": 1213,
+          "expectedRecords": 1213,
+          "incompleteRecords": 0
         },
         "SPRITES": {
           "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "POKEDEX_DESCRIPTIONS": {
-          "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 1.0,
+          "coveredRecords": 1213,
+          "expectedRecords": 1213,
+          "incompleteRecords": 0
         },
         "EVOLUTIONS": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 1214,
+          "expectedRecords": 1214,
+          "incompleteRecords": 0
         },
         "MOVE_CATALOG": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 754,
+          "expectedRecords": 754,
+          "incompleteRecords": 0
         },
         "MOVE_DETAILS": {
           "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "MOVE_DESCRIPTIONS": {
-          "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "LEARNSETS": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 1214,
+          "expectedRecords": 1214,
+          "incompleteRecords": 0
         },
         "EGG_MOVES": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 370,
+          "expectedRecords": 370,
+          "incompleteRecords": 0
         },
         "MACHINE_MOVES": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "TUTOR_MOVES": {
           "status": "AVAILABLE",
-          "confidence": 0.8997034596375618
+          "confidence": 0.8997034596375618,
+          "coveredRecords": 1214,
+          "expectedRecords": 1214,
+          "incompleteRecords": 0
         },
         "ABILITIES": {
           "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "ABILITY_DESCRIPTIONS": {
-          "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 277,
+          "expectedRecords": 277,
+          "incompleteRecords": 0
         },
         "ABILITY_MECHANICS": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 277,
+          "incompleteRecords": 277
         },
         "AREA_ENCOUNTERS": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "TYPE_PRESENTATION": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "BALL_CATALOG": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "WORLD_MAP": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "LOCAL_MAP": {
           "status": "PARTIAL",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 540,
+          "expectedRecords": 540,
+          "incompleteRecords": 0
         },
         "NATURES": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 25,
+          "expectedRecords": 25,
+          "incompleteRecords": 0
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1214,
+          "expectedRecords": 1214
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 1213
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 754,
+          "expectedRecords": 754
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 277,
+          "expectedRecords": 277
         }
       },
       "catalogCounters": {
@@ -26740,8 +26992,8 @@
         "referenceErrors": 0,
         "sqliteReopenEqualityVerified": true,
         "logicalDigestVersion": 1,
-        "beforeCatalogSha256": "862fea69feac0e748df6298084b81b54ca5ea21a9bd9f28f9a5351b31527f62f",
-        "afterCatalogSha256": "862fea69feac0e748df6298084b81b54ca5ea21a9bd9f28f9a5351b31527f62f"
+        "beforeCatalogSha256": "07e293f7526f9c2ef0b65d91ca35f6863330495689e38a07c2ca5f20645272ec",
+        "afterCatalogSha256": "07e293f7526f9c2ef0b65d91ca35f6863330495689e38a07c2ca5f20645272ec"
       }
     },
     {
@@ -31216,8 +31468,6 @@
     },
     {
       "name": "Emerald Ex (1.0.4).gba",
-      "evidence": "fresh-full342-source-bound",
-      "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
       "aliases": [
         {
           "archive": "Pokemon Emerald Ex (1.0.4).7z",
@@ -31225,6 +31475,8 @@
           "console": "Nintendo - Game Boy Advance"
         }
       ],
+      "evidence": "focused-gen3-wide-core-source-bound",
+      "sourceCommit": "4b62be1dc8e7a19b19ccdc3ac50c451a844fc07c",
       "generation": 3,
       "family": "EMERALD",
       "languageCount": 0,
@@ -31232,99 +31484,133 @@
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "NOT_FOUND",
-          "confidence": 0
-        },
-        "SPECIES_NAMES": {
-          "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "SPECIES_TYPES": {
           "status": "AVAILABLE",
-          "confidence": 0.998972250770812
+          "confidence": 0.998972250770812,
+          "coveredRecords": 972,
+          "expectedRecords": 972,
+          "incompleteRecords": 0
         },
         "TYPE_CHART": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 361,
+          "expectedRecords": 361
         },
         "BASE_STATS": {
           "status": "AVAILABLE",
-          "confidence": 0.998972250770812
+          "confidence": 0.998972250770812,
+          "coveredRecords": 972,
+          "expectedRecords": 972,
+          "incompleteRecords": 0
         },
         "SPRITES": {
           "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "POKEDEX_DESCRIPTIONS": {
-          "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 1.0,
+          "coveredRecords": 972,
+          "expectedRecords": 972,
+          "incompleteRecords": 0
         },
         "EVOLUTIONS": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 972,
+          "incompleteRecords": 972
         },
         "MOVE_CATALOG": {
           "status": "AVAILABLE",
-          "confidence": 0
+          "confidence": 0.0,
+          "coveredRecords": 691,
+          "expectedRecords": 691,
+          "incompleteRecords": 0
         },
         "MOVE_DETAILS": {
           "status": "NOT_FOUND",
-          "confidence": 0.5295774647887324
-        },
-        "MOVE_DESCRIPTIONS": {
-          "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.5295774647887324,
+          "coveredRecords": 188,
+          "expectedRecords": 355
         },
         "LEARNSETS": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 972,
+          "expectedRecords": 972,
+          "incompleteRecords": 0
         },
         "EGG_MOVES": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "MACHINE_MOVES": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "TUTOR_MOVES": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "ABILITIES": {
           "status": "AVAILABLE",
-          "confidence": 0
-        },
-        "ABILITY_DESCRIPTIONS": {
-          "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0,
+          "coveredRecords": 257,
+          "expectedRecords": 257,
+          "incompleteRecords": 0
         },
         "ABILITY_MECHANICS": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 257,
+          "incompleteRecords": 257
         },
         "AREA_ENCOUNTERS": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "TYPE_PRESENTATION": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "BALL_CATALOG": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "WORLD_MAP": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "LOCAL_MAP": {
           "status": "PARTIAL",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 83,
+          "expectedRecords": 83,
+          "incompleteRecords": 0
         },
         "NATURES": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 25,
+          "expectedRecords": 25,
+          "incompleteRecords": 0
+        },
+        "SPECIES_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
         }
       },
       "catalogCounters": {
@@ -31362,8 +31648,8 @@
         "referenceErrors": 0,
         "sqliteReopenEqualityVerified": true,
         "logicalDigestVersion": 1,
-        "beforeCatalogSha256": "bdf1c64ed0ce06fd85a3d5a30026434001ffb305b5c9e2ef4859779db4058a18",
-        "afterCatalogSha256": "bdf1c64ed0ce06fd85a3d5a30026434001ffb305b5c9e2ef4859779db4058a18"
+        "beforeCatalogSha256": "5f4b35c9f74564aef107581cc65e8c59694def7d49f3f4a2c02b9f210132c88f",
+        "afterCatalogSha256": "5f4b35c9f74564aef107581cc65e8c59694def7d49f3f4a2c02b9f210132c88f"
       }
     },
     {
@@ -36486,8 +36772,6 @@
     },
     {
       "name": "Voyager (v0.3.6).gba",
-      "evidence": "fresh-full342-source-bound",
-      "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
       "aliases": [
         {
           "archive": "Pokemon Voyager.7z",
@@ -36495,6 +36779,8 @@
           "console": "Nintendo - Game Boy Advance"
         }
       ],
+      "evidence": "focused-gen3-wide-core-source-bound",
+      "sourceCommit": "4b62be1dc8e7a19b19ccdc3ac50c451a844fc07c",
       "platform": "GBA",
       "outcome": "NO_FAMILY_MATCH"
     },
@@ -37569,8 +37855,6 @@
     },
     {
       "name": "Heart and Soul (v2.0.6).gba",
-      "evidence": "fresh-full342-source-bound",
-      "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
       "aliases": [
         {
           "archive": "Pokemon Heart and Soul (v2.0.6).7z",
@@ -37578,6 +37862,8 @@
           "console": "Nintendo - Game Boy Advance"
         }
       ],
+      "evidence": "focused-gen3-wide-core-source-bound",
+      "sourceCommit": "4b62be1dc8e7a19b19ccdc3ac50c451a844fc07c",
       "generation": 3,
       "family": "EMERALD",
       "languageCount": 1,
@@ -37585,99 +37871,150 @@
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "SPECIES_NAMES": {
-          "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 1427,
+          "expectedRecords": 1427,
+          "incompleteRecords": 0
         },
         "SPECIES_TYPES": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 1427,
+          "expectedRecords": 1427,
+          "incompleteRecords": 0
         },
         "TYPE_CHART": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 441,
+          "expectedRecords": 441
         },
         "BASE_STATS": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 1427,
+          "expectedRecords": 1427,
+          "incompleteRecords": 0
         },
         "SPRITES": {
           "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "POKEDEX_DESCRIPTIONS": {
-          "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 1427,
+          "expectedRecords": 1427,
+          "incompleteRecords": 0
         },
         "EVOLUTIONS": {
           "status": "PARTIAL",
-          "confidence": 0.37421163279607567
+          "confidence": 0.37421163279607567,
+          "coveredRecords": 534,
+          "expectedRecords": 1427,
+          "incompleteRecords": 893
         },
         "MOVE_CATALOG": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 848,
+          "expectedRecords": 848,
+          "incompleteRecords": 0
         },
         "MOVE_DETAILS": {
           "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "MOVE_DESCRIPTIONS": {
-          "status": "PARTIAL",
-          "confidence": 0.9940968122786304
+          "confidence": 1.0,
+          "coveredRecords": 848,
+          "expectedRecords": 848
         },
         "LEARNSETS": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 1427,
+          "expectedRecords": 1427,
+          "incompleteRecords": 0
         },
         "EGG_MOVES": {
           "status": "PARTIAL",
-          "confidence": 0.30470737913486007
+          "confidence": 0.30470737913486007,
+          "coveredRecords": 479,
+          "expectedRecords": 1572,
+          "incompleteRecords": 1093
         },
         "MACHINE_MOVES": {
           "status": "PARTIAL",
-          "confidence": 0.9077608142493638
+          "confidence": 0.9077608142493638,
+          "coveredRecords": 1427,
+          "expectedRecords": 1572,
+          "incompleteRecords": 145
         },
         "TUTOR_MOVES": {
           "status": "NOT_APPLICABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "ABILITIES": {
           "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "ABILITY_DESCRIPTIONS": {
-          "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 311,
+          "expectedRecords": 311,
+          "incompleteRecords": 0
         },
         "ABILITY_MECHANICS": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 311,
+          "expectedRecords": 311,
+          "incompleteRecords": 0
         },
         "AREA_ENCOUNTERS": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "TYPE_PRESENTATION": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "BALL_CATALOG": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "WORLD_MAP": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "LOCAL_MAP": {
           "status": "PARTIAL",
-          "confidence": 0.030303030303030304
+          "confidence": 0.030303030303030304,
+          "coveredRecords": 5,
+          "expectedRecords": 165,
+          "incompleteRecords": 160
         },
         "NATURES": {
           "status": "PARTIAL",
-          "confidence": 0.5
+          "confidence": 0.5,
+          "coveredRecords": 0,
+          "expectedRecords": 25,
+          "incompleteRecords": 25
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1427,
+          "expectedRecords": 1427
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1427,
+          "expectedRecords": 1427
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9940968122786304,
+          "coveredRecords": 842,
+          "expectedRecords": 847
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 310,
+          "expectedRecords": 310
         }
       },
       "catalogCounters": {
@@ -37715,8 +38052,8 @@
         "referenceErrors": 0,
         "sqliteReopenEqualityVerified": true,
         "logicalDigestVersion": 1,
-        "beforeCatalogSha256": "331ac80cb5b7ec778ad1e238a03d244a20bfb2d8b4e10944d326206795f87ebd",
-        "afterCatalogSha256": "331ac80cb5b7ec778ad1e238a03d244a20bfb2d8b4e10944d326206795f87ebd"
+        "beforeCatalogSha256": "5f51f669fe71fffac064b9a80e24f29d453efbd3bfb6a2b9b72b5af4c5df4fde",
+        "afterCatalogSha256": "5f51f669fe71fffac064b9a80e24f29d453efbd3bfb6a2b9b72b5af4c5df4fde"
       }
     },
     {
@@ -41748,13 +42085,13 @@
       }
     },
     {
-      "name": "Let\u00c2\u00b4s Go Pikachu (v6.0).gba",
+      "name": "LetÂ´s Go Pikachu (v6.0).gba",
       "evidence": "fresh-full342-source-bound",
       "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
       "aliases": [
         {
-          "archive": "Pokemon Let\u00c2\u00b4s Go Pikachu (v6.0).7z",
-          "name": "Let\u00c2\u00b4s Go Pikachu (v6.0).gba",
+          "archive": "Pokemon LetÂ´s Go Pikachu (v6.0).7z",
+          "name": "LetÂ´s Go Pikachu (v6.0).gba",
           "console": "Nintendo - Game Boy Advance"
         }
       ],
@@ -41763,8 +42100,6 @@
     },
     {
       "name": "Exceeded (15.2).gba",
-      "evidence": "fresh-full342-source-bound",
-      "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
       "aliases": [
         {
           "archive": "Pokemon Exceeded (15.2).7z",
@@ -41772,6 +42107,8 @@
           "console": "Nintendo - Game Boy Advance"
         }
       ],
+      "evidence": "focused-gen3-wide-core-source-bound",
+      "sourceCommit": "4b62be1dc8e7a19b19ccdc3ac50c451a844fc07c",
       "generation": 3,
       "family": "EMERALD",
       "languageCount": 1,
@@ -41779,99 +42116,142 @@
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "AVAILABLE",
-          "confidence": 0.9993514915693904
-        },
-        "SPECIES_NAMES": {
-          "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 0.9993514915693904,
+          "coveredRecords": 1539,
+          "expectedRecords": 1539,
+          "incompleteRecords": 0
         },
         "SPECIES_TYPES": {
           "status": "AVAILABLE",
-          "confidence": 0.9993514915693904
+          "confidence": 0.9993514915693904,
+          "coveredRecords": 1539,
+          "expectedRecords": 1539,
+          "incompleteRecords": 0
         },
         "TYPE_CHART": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 361,
+          "expectedRecords": 361
         },
         "BASE_STATS": {
           "status": "AVAILABLE",
-          "confidence": 0.9993514915693904
+          "confidence": 0.9993514915693904,
+          "coveredRecords": 1539,
+          "expectedRecords": 1539,
+          "incompleteRecords": 0
         },
         "SPRITES": {
           "status": "PARTIAL",
-          "confidence": 0.9993514915693904
-        },
-        "POKEDEX_DESCRIPTIONS": {
-          "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.9993514915693904,
+          "coveredRecords": 1538,
+          "expectedRecords": 1539,
+          "incompleteRecords": 1
         },
         "EVOLUTIONS": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 1542,
+          "incompleteRecords": 1542
         },
         "MOVE_CATALOG": {
           "status": "AVAILABLE",
-          "confidence": 0.952112676056338
+          "confidence": 0.952112676056338,
+          "coveredRecords": 340,
+          "expectedRecords": 340,
+          "incompleteRecords": 0
         },
         "MOVE_DETAILS": {
           "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "MOVE_DESCRIPTIONS": {
-          "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 1.0
         },
         "LEARNSETS": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 1542,
+          "incompleteRecords": 1542
         },
         "EGG_MOVES": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "MACHINE_MOVES": {
           "status": "AVAILABLE",
-          "confidence": 0.7162971286730175
+          "confidence": 0.7162971286730175,
+          "coveredRecords": 1542,
+          "expectedRecords": 1542,
+          "incompleteRecords": 0
         },
         "TUTOR_MOVES": {
           "status": "AVAILABLE",
-          "confidence": 0.9086381322957199
+          "confidence": 0.9086381322957199,
+          "coveredRecords": 1542,
+          "expectedRecords": 1542,
+          "incompleteRecords": 0
         },
         "ABILITIES": {
           "status": "AMBIGUOUS",
           "confidence": 0.9358974358974359
         },
-        "ABILITY_DESCRIPTIONS": {
-          "status": "NOT_FOUND",
-          "confidence": 0
-        },
         "ABILITY_MECHANICS": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "incompleteRecords": 0
         },
         "AREA_ENCOUNTERS": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "TYPE_PRESENTATION": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "BALL_CATALOG": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "WORLD_MAP": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "LOCAL_MAP": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "NATURES": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 25,
+          "expectedRecords": 25,
+          "incompleteRecords": 0
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1542,
+          "expectedRecords": 1542
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 1541
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 340
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0
         }
       },
       "catalogCounters": {
@@ -41909,8 +42289,8 @@
         "referenceErrors": 0,
         "sqliteReopenEqualityVerified": true,
         "logicalDigestVersion": 1,
-        "beforeCatalogSha256": "21ce819fabaa847795d2829a81357b8a077ef7979a337a94e3504dd6f13fecd6",
-        "afterCatalogSha256": "21ce819fabaa847795d2829a81357b8a077ef7979a337a94e3504dd6f13fecd6"
+        "beforeCatalogSha256": "b8679258462293d4195cc451708245a515de593e3049db29c80ee5faaf36933f",
+        "afterCatalogSha256": "b8679258462293d4195cc451708245a515de593e3049db29c80ee5faaf36933f"
       }
     },
     {
@@ -42993,8 +43373,6 @@
     },
     {
       "name": "R.O.W.E. (2.1.1).gba",
-      "evidence": "fresh-full342-source-bound",
-      "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
       "aliases": [
         {
           "archive": "Pokemon R.O.W.E. (2.1.1).7z",
@@ -43007,8 +43385,197 @@
           "console": "Nintendo - Game Boy Advance"
         }
       ],
-      "platform": "GBA",
-      "outcome": "NO_FAMILY_MATCH"
+      "evidence": "focused-gen3-wide-core-source-bound",
+      "sourceCommit": "4b62be1dc8e7a19b19ccdc3ac50c451a844fc07c",
+      "generation": 3,
+      "family": "EMERALD",
+      "languageCount": 1,
+      "compatibilityPercent": 70.83,
+      "capabilities": {
+        "SPECIES_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1025,
+          "expectedRecords": 1025,
+          "incompleteRecords": 0
+        },
+        "SPECIES_TYPES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1025,
+          "expectedRecords": 1025,
+          "incompleteRecords": 0
+        },
+        "TYPE_CHART": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 361,
+          "expectedRecords": 361
+        },
+        "BASE_STATS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1025,
+          "expectedRecords": 1025,
+          "incompleteRecords": 0
+        },
+        "SPRITES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1025,
+          "expectedRecords": 1025,
+          "incompleteRecords": 0
+        },
+        "EVOLUTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 1025,
+          "incompleteRecords": 1025
+        },
+        "MOVE_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 832,
+          "expectedRecords": 832,
+          "incompleteRecords": 0
+        },
+        "MOVE_DETAILS": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 831,
+          "expectedRecords": 832,
+          "incompleteRecords": 1
+        },
+        "LEARNSETS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1025,
+          "expectedRecords": 1025,
+          "incompleteRecords": 0
+        },
+        "EGG_MOVES": {
+          "status": "AVAILABLE",
+          "confidence": 0.7373913043478261,
+          "coveredRecords": 424,
+          "expectedRecords": 424,
+          "incompleteRecords": 0
+        },
+        "MACHINE_MOVES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "TUTOR_MOVES": {
+          "status": "AVAILABLE",
+          "confidence": 0.8897696653628858,
+          "coveredRecords": 2301,
+          "expectedRecords": 2301,
+          "incompleteRecords": 0
+        },
+        "ABILITIES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 369,
+          "expectedRecords": 369,
+          "incompleteRecords": 0
+        },
+        "ABILITY_MECHANICS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 369,
+          "incompleteRecords": 369
+        },
+        "AREA_ENCOUNTERS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "TYPE_PRESENTATION": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "BALL_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "WORLD_MAP": {
+          "status": "AMBIGUOUS",
+          "confidence": 0.0
+        },
+        "LOCAL_MAP": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0
+        },
+        "NATURES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 25,
+          "expectedRecords": 25,
+          "incompleteRecords": 0
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1025,
+          "expectedRecords": 1025
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 1025
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 832,
+          "expectedRecords": 832
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 369,
+          "expectedRecords": 369
+        }
+      },
+      "catalogCounters": {
+        "species": 1025,
+        "namedSpecies": 1025,
+        "speciesWithStats": 1025,
+        "speciesWithSprites": 1025,
+        "speciesWithDescriptions": 0,
+        "evolutionEdges": 0,
+        "learnsetEntries": 20253,
+        "learnsetRulesets": 1,
+        "moves": 832,
+        "movesWithDetails": 832,
+        "movesWithDescriptions": 832,
+        "eggMoveLinks": 4346,
+        "machineMoveLinks": 0,
+        "tutorMoveLinks": 3039,
+        "types": 18,
+        "namedTypes": 0,
+        "typesWithSemanticRoles": 0,
+        "typeMatchups": 120,
+        "abilities": 369,
+        "abilitiesWithDescriptions": 369,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 12,
+        "encounterAreas": 0,
+        "movesWithCategories": 831,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "health": {
+        "parserErrors": 0,
+        "catalogErrors": 0,
+        "persistenceErrors": 0,
+        "referenceErrors": 0,
+        "sqliteReopenEqualityVerified": true,
+        "logicalDigestVersion": 1,
+        "beforeCatalogSha256": "0f4f6441a2d745cd7a024258e42df1a5d35cd26c46e0b3c5caf55ddc420e17d5",
+        "afterCatalogSha256": "0f4f6441a2d745cd7a024258e42df1a5d35cd26c46e0b3c5caf55ddc420e17d5"
+      }
     },
     {
       "name": "PureRed (22.08.26).gbc",
@@ -45767,8 +46334,6 @@
     },
     {
       "name": "R.O.W.E. (2.1.9.1 Experimental).gba",
-      "evidence": "fresh-full342-source-bound",
-      "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
       "aliases": [
         {
           "archive": "Pokemon R.O.W.E. (2.1.1).7z",
@@ -45776,133 +46341,184 @@
           "console": "Nintendo - Game Boy Advance"
         }
       ],
+      "evidence": "focused-gen3-wide-core-source-bound",
+      "sourceCommit": "4b62be1dc8e7a19b19ccdc3ac50c451a844fc07c",
       "generation": 3,
       "family": "EMERALD",
       "languageCount": 1,
-      "compatibilityPercent": 41.29,
+      "compatibilityPercent": 70.82,
       "capabilities": {
         "SPECIES_CATALOG": {
-          "status": "NOT_FOUND",
-          "confidence": 0.012165450121654502
-        },
-        "SPECIES_NAMES": {
-          "status": "PARTIAL",
-          "confidence": 0.9099756690997567
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1025,
+          "expectedRecords": 1025,
+          "incompleteRecords": 0
         },
         "SPECIES_TYPES": {
-          "status": "NOT_FOUND",
-          "confidence": 0.012165450121654502
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1025,
+          "expectedRecords": 1025,
+          "incompleteRecords": 0
         },
         "TYPE_CHART": {
-          "status": "NOT_FOUND",
-          "confidence": 0
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 361,
+          "expectedRecords": 361
         },
         "BASE_STATS": {
-          "status": "NOT_FOUND",
-          "confidence": 0.012165450121654502
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1025,
+          "expectedRecords": 1025,
+          "incompleteRecords": 0
         },
         "SPRITES": {
           "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "POKEDEX_DESCRIPTIONS": {
-          "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 1.0,
+          "coveredRecords": 1025,
+          "expectedRecords": 1025,
+          "incompleteRecords": 0
         },
         "EVOLUTIONS": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 1025,
+          "incompleteRecords": 1025
         },
         "MOVE_CATALOG": {
           "status": "AVAILABLE",
-          "confidence": 0.952112676056338
+          "confidence": 1.0,
+          "coveredRecords": 851,
+          "expectedRecords": 851,
+          "incompleteRecords": 0
         },
         "MOVE_DETAILS": {
-          "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "MOVE_DESCRIPTIONS": {
-          "status": "NOT_FOUND",
-          "confidence": 0
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 848,
+          "expectedRecords": 851,
+          "incompleteRecords": 3
         },
         "LEARNSETS": {
-          "status": "NOT_FOUND",
-          "confidence": 0
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1025,
+          "expectedRecords": 1025,
+          "incompleteRecords": 0
         },
         "EGG_MOVES": {
-          "status": "NOT_FOUND",
-          "confidence": 0
+          "status": "AVAILABLE",
+          "confidence": 0.7304347826086957,
+          "coveredRecords": 420,
+          "expectedRecords": 420,
+          "incompleteRecords": 0
         },
         "MACHINE_MOVES": {
-          "status": "NOT_FOUND",
-          "confidence": 0
+          "status": "AVAILABLE",
+          "confidence": 0.7406019122120817,
+          "coveredRecords": 2301,
+          "expectedRecords": 2301,
+          "incompleteRecords": 0
         },
         "TUTOR_MOVES": {
-          "status": "AVAILABLE",
-          "confidence": 0.8227737226277373
+          "status": "NOT_FOUND",
+          "confidence": 0.0
         },
         "ABILITIES": {
           "status": "AVAILABLE",
-          "confidence": 1
-        },
-        "ABILITY_DESCRIPTIONS": {
-          "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 372,
+          "expectedRecords": 372,
+          "incompleteRecords": 0
         },
         "ABILITY_MECHANICS": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 372,
+          "incompleteRecords": 372
         },
         "AREA_ENCOUNTERS": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "TYPE_PRESENTATION": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "BALL_CATALOG": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0
         },
         "WORLD_MAP": {
           "status": "AMBIGUOUS",
-          "confidence": 0
+          "confidence": 0.0
         },
         "LOCAL_MAP": {
           "status": "NOT_FOUND",
-          "confidence": 0
+          "confidence": 0.0
         },
         "NATURES": {
           "status": "AVAILABLE",
-          "confidence": 1
+          "confidence": 1.0,
+          "coveredRecords": 25,
+          "expectedRecords": 25,
+          "incompleteRecords": 0
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1025,
+          "expectedRecords": 1025
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 1025
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 851,
+          "expectedRecords": 851
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 372,
+          "expectedRecords": 372
         }
       },
       "catalogCounters": {
-        "species": 204,
-        "namedSpecies": 186,
-        "speciesWithStats": 0,
-        "speciesWithSprites": 204,
+        "species": 1025,
+        "namedSpecies": 1025,
+        "speciesWithStats": 1025,
+        "speciesWithSprites": 1025,
         "speciesWithDescriptions": 0,
         "evolutionEdges": 0,
-        "learnsetEntries": 0,
-        "learnsetRulesets": 0,
-        "moves": 339,
-        "movesWithDetails": 339,
-        "movesWithDescriptions": 0,
-        "eggMoveLinks": 0,
-        "machineMoveLinks": 0,
-        "tutorMoveLinks": 528,
-        "types": 1,
+        "learnsetEntries": 20286,
+        "learnsetRulesets": 1,
+        "moves": 851,
+        "movesWithDetails": 851,
+        "movesWithDescriptions": 851,
+        "eggMoveLinks": 4201,
+        "machineMoveLinks": 12980,
+        "tutorMoveLinks": 0,
+        "types": 18,
         "namedTypes": 0,
         "typesWithSemanticRoles": 0,
-        "typeMatchups": 0,
+        "typeMatchups": 120,
         "abilities": 372,
         "abilitiesWithDescriptions": 372,
         "abilitiesWithMechanics": 0,
         "captureBalls": 12,
         "encounterAreas": 0,
-        "movesWithCategories": 339,
+        "movesWithCategories": 848,
         "abilitiesWithProvenTypedModifiers": 0,
         "provenTypedAbilityModifiers": 0
       },
@@ -45913,8 +46529,8 @@
         "referenceErrors": 0,
         "sqliteReopenEqualityVerified": true,
         "logicalDigestVersion": 1,
-        "beforeCatalogSha256": "d07e7e9dd7d6b84db9c9bcb6dfe45a47b832e2f2c8f7f55ffc559ca5a8633d08",
-        "afterCatalogSha256": "d07e7e9dd7d6b84db9c9bcb6dfe45a47b832e2f2c8f7f55ffc559ca5a8633d08"
+        "beforeCatalogSha256": "6ec131c149b15f203be32294a81e608e7e4394b0bf49fa4ed37290fa3b98d577",
+        "afterCatalogSha256": "6ec131c149b15f203be32294a81e608e7e4394b0bf49fa4ed37290fa3b98d577"
       }
     },
     {
@@ -46549,7 +47165,8 @@
   },
   "sourceCommits": [
     "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
-    "6272147fa7ae4dce6d1a70d146667c15b1d1f5e1"
+    "6272147fa7ae4dce6d1a70d146667c15b1d1f5e1",
+    "4b62be1dc8e7a19b19ccdc3ac50c451a844fc07c"
   ],
   "focusedGen2Relationships": {
     "inputCount": 19,
@@ -46569,6 +47186,26 @@
     },
     "acceptance": "2026-10-04-gen2-relationships-acceptance.json",
     "unaffectedRowsRetained": 323,
+    "fullCorpusRerun": false
+  },
+  "focusedGen3WideCore": {
+    "inputCount": 13,
+    "gainCount": 1,
+    "sourceCommit": "4b62be1dc8e7a19b19ccdc3ac50c451a844fc07c",
+    "parserSchemaVersion": 86,
+    "executionReceiptSummary": {
+      "schemaVersion": 1,
+      "sourceCommit": "4b62be1dc8e7a19b19ccdc3ac50c451a844fc07c",
+      "inputCount": 13,
+      "rawReportSha256": "49c4adf4daecb3ddb90a99d117eded1e6b4a458252f4418ba3667fbee4e138be",
+      "generator": {
+        "name": "parser-cli",
+        "schemaVersion": 16,
+        "sha256": "72f997b48b0cf7e1e91a6cb6c25eafa2de2f69ea4cdcbdcb3ad909b095ca1110"
+      }
+    },
+    "acceptance": "2026-10-05-gen3-wide-core-acceptance.json",
+    "unaffectedRowsRetained": 329,
     "fullCorpusRerun": false
   }
 }

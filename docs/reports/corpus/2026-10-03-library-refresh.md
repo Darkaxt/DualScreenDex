@@ -6,6 +6,7 @@ The GB/GBC/GBA Pokémon hack library has changed enough to warrant a new corpus 
 
 - [Current 342-ROM compatibility matrix](2026-10-03-library-compatibility.md)
 - [October 4 Gen II relationship acceptance: seven gains, 19 checked catalogs](2026-10-04-gen2-relationships-acceptance.md)
+- [October 5 Gen III widened-core acceptance: two recovered ROWE cores, 13-input cohort](2026-10-05-gen3-wide-core-acceptance.md)
 - [Machine-readable rows, aliases, provenance, and delta receipt](2026-10-03-library-compatibility.json)
 - [Current library identity](../../../release/current-library-corpus.json)
 - [Frozen 333-input release matrix](../../rom-compatibility-matrix.md)
@@ -49,18 +50,20 @@ The subsequent [Gen I acceptance](2026-10-03-gen1-core-acceptance.md) supersedes
 
 The [Gen II acceptance](2026-10-03-gen2-core-acceptance.md) supersedes **18 rows** and adds Polished, Inheritance, Ambrosia and Sour Crystal. Four bounded executions total 58 parser executions over 18 identities, with diagnostic/intermediate rows superseded explicitly. All 15 accepted selected catalogs close decoded references and pass complete SQLite write/reopen equality and matching logical digests. The effective matrix is **263 historical + 31 retained delta + 30 Gen I + 18 Gen II identities**. Not every row was scanned against the latest source; official standalone Gen II controls were unavailable and not run.
 
+The [October 5 Gen III widened-core acceptance](2026-10-05-gen3-wide-core-acceptance.md) supersedes 13 cohort rows after a fresh serial packaged run. ROWE 2.1.1 now selects, and Experimental gains 1,025 canonical names/stats/sprites and a reference-safe expanded ordinary level-up catalog. All ten selected catalogs close complete references and exact SQLite reopening. The 11 controls retain their outcomes/counters/capability statuses; Voyager's two builds and Elite Redux remain unmatched. The matrix now combines 19 Gen II and 13 Gen III focused rows with 310 unchanged full342-baseline rows, without a full-corpus rerun.
+
 | Current snapshot outcome | Count |
 |---|---:|
 | Inputs | 342 |
-| Selected family and materialized catalog | 300 |
+| Selected family and materialized catalog | 301 |
 | Ambiguous family | 2 |
-| No family match | 40 |
+| No family match | 39 |
 | Parser errors | 0 |
-| Resolved ROM-language manifests | 285 |
+| Resolved ROM-language manifests | 286 |
 | Unknown ROM-language manifests | 15 |
 | Proven multilingual manifests | 0 |
 
-The original inventory-only routing rate was 286/342, versus 276/333 in the historical release benchmark; that denominator/input change was not a parser gain. The subsequent **286 → 296 → 300 on the same 342 identities** is a verified ten-catalog Gen I gain plus four Gen II catalogs. Routing still does not imply complete optional data or maps.
+The original inventory-only routing rate was 286/342, versus 276/333 in the historical release benchmark; that denominator/input change was not a parser gain. The subsequent **286 → 296 → 300 → 301 on the same 342 identities** is a verified ten-catalog Gen I gain, four Gen II catalogs and one newly routed ROWE catalog. Experimental's core recovery improves an already-selected row rather than adding another routing gain. Routing still does not imply complete optional data or maps.
 
 N/A capabilities remain outside coverage denominators. Capability confidence and record-based coverage are different measures; neither family recognition nor a high confidence cell proves complete runtime behavior.
 
@@ -81,7 +84,7 @@ N/A capabilities remain outside coverage denominators. Capability confidence and
 | Crystal Advance Redux | Selects; 82.58%; move text, machines, and World Map missing | Secondary structural follow-up; no exact public source match established by this audit. |
 | Phoenix Red | Selects; 95.22% | Lower urgency. |
 | Emerald Ex / Exceeded | Select; 54.17% / 54.16% | Names or acquisition/text datasets remain absent; routing alone is insufficient. |
-| ROWE 2.1.9.1 Experimental | Selects; 41.29%; base stats, learnsets, encounters, and Local Map absent | Urgent Gen III core-layout target before cosmetic or numeric-mechanics work. |
+| ROWE 2.1.9.1 Experimental / 2.1.1 | Both select; 70.82% / 70.83%; 1,025 canonical names/stats/sprites each | Core and ordinary level-up recovery accepted; nonordinary categories, forms, tutor/machine gaps, Dex/evolutions/maps remain separately ledgered. |
 | Emerald Rogue 2.2.1 EX / Vanilla | Select; 62.47% / 83.08% | Evidence retained, but dedicated Rogue-only work remains outside the active priority queue. |
 
 ## Recommended compatibility-expansion order
@@ -108,17 +111,17 @@ Sources: [Polished Crystal](https://github.com/rangi42/polishedcrystal), [Crysta
 
 **Accepted boundary:** independently validated canonical species/name/stat/type and move joins, decoded reference closure and 15 complete SQLite reopen checks. Eleven selected related controls retain their data; three unmatched siblings are explicit. Official Gold/Silver/Crystal inputs were unavailable and not run. Maps, optional fields and live state remain separately ledgered/gated; the next investigation priority is Gen III, not an automatic new parser or Android run.
 
-### 3. Gen III core ABI correctness, led by ROWE
+### 3. Gen III core ABI correctness — ROWE accepted host/static
 
-Prioritize **ROWE 2.1.9.1 Experimental and the retained unmatched 2.1.1**, then source-backed Voyager's two builds and Elite Redux. These five inputs are a high-value oracle set, not necessarily one engine ABI.
+**Completed at the bounded core boundary:** ROWE 2.1.9.1 Experimental and retained 2.1.1 independently resolve 1,025 canonical names/stats/types/sprites and complete ordinary level-up joins. [Acceptance](2026-10-05-gen3-wide-core-acceptance.md) records 313 affected parser/catalog tests, 40 CLI tests, a fresh 13-input cohort, all ten selected catalogs' exact SQLite reopening and unchanged related controls. Physical stat/name extents remain 2,301/2,302; move counts are independently proven ordinary acquisition minima, not full game bounds.
 
-ROWE's fresh materialized catalog has only 204 species and **zero species with base stats**, despite a selected Emerald family. Its local source declares expanded species and a `BaseStats` structure with widened experience/ability fields. Derive alignment and stride from compiled accesses, not stale offset comments or familiar struct sizes. This is a more meaningful improvement than raising an aggregate percentage with optional text or numeric ability proofs.
+Bidirectionally coupled compiled name/map/default-stat consumers prove the widened 64-byte core and canonical native indices. Actual field/acquisition consumers independently prove aligned byte-target 20-byte and 56-byte move prefixes, distinct from the existing hybrid ABI. Nonordinary split rows remain unclassified and MOVE_DETAILS is PARTIAL; no project title/hash/fixed-root override, source count or relaxed threshold was added.
 
-Emerald Ex and Exceeded are secondary sibling checks only if compiled evidence proves that a generic resolver change applies. No exact public-source match for those current binaries was established here.
+Voyager's two builds and Elite Redux remain unmatched under `LIB26-G3-SIBLINGS`, not inferred members of one ABI. Emerald Ex and Exceeded are preserved deficient controls, with no exact public-source match established by this audit. The next core investigation must be separately selected; this acceptance does not authorize an automatic new sibling or full-corpus run.
 
-Sources: [ROWE](https://github.com/BelialClover/RoweSource), [Voyager](https://github.com/ghoulslash/pokevoyager), [Elite Redux](https://github.com/Elite-Redux/eliteredux).
+Sources: [ROWE](https://github.com/BelialClover/RoweSource), [newer ROWE structural oracle](https://github.com/BelialClover/RoweRepo/tree/e596e740cffbfb1d18e9bbd1ee2bd6a757f478c8), [Voyager](https://github.com/ghoulslash/pokevoyager), [Elite Redux](https://github.com/Elite-Redux/eliteredux). Neither ROWE source snapshot is exact-build authority.
 
-**Acceptance:** supported core layouts must produce coherent names, stats, types, learnsets, and cross-references, with no wrong-stride fallback. Preserve Battle Theater, Heart and Soul, Soulgold, Modern Emerald, and official Gen III controls across their distinct ABIs. Selection alone is not closure.
+**Accepted boundary:** coherent canonical core, ordinary level-up minimum/reference closure, canonical sprite rendering and exact SQLite persistence, preserving the 11 related controls. Official standalone Gen III controls were not retained/admitted and were not run. Experimental's old 528 tutor links are now explicitly NOT_FOUND rather than carried across an unvalidated expanded join; older machines, categories/full move domain/extensions, forms/runtime variants, evolution/Dex text, encounters/maps and numeric mechanics have named closure conditions below. No APK, live-memory or device acceptance is implied.
 
 ### 4. Finish reusable map consumers on working catalogs
 
@@ -130,7 +133,7 @@ After those consumers are understood, check Static Yellow's two missing Local Ma
 
 ### Lower-priority work and measurement cautions
 
-Across the 300 selected rows, the counts of PARTIAL/AMBIGUOUS/NOT_FOUND cells are: species 179, Dex text 166, Local Map 140, numeric ability mechanics 104, and World Map 70. These counts are **not missing-record totals** and exclude N/A. A nearly complete 151-species catalog and a severely deficient expanded catalog can both contribute one partial cell. Newly routed incomplete catalogs can increase these gap counts even though compatibility improved.
+Across the 301 selected composite rows, recomputing PARTIAL/AMBIGUOUS/NOT_FOUND cells gives: species 142, Dex text 167, Local Map 141, numeric ability mechanics 105, and World Map 71. These counts are **not missing-record totals** and exclude N/A. A nearly complete 151-species catalog and a severely deficient expanded catalog can both contribute one partial cell. Newly routed incomplete catalogs can increase these gap counts even though compatibility improved.
 
 Therefore:
 
@@ -143,7 +146,7 @@ Therefore:
 
 ## Follow-up ledger
 
-`LIB26-G1-CORE` and `LIB26-G2-CORE` are accepted at their bounded host/static boundaries. The subsequent [October 4 relationship checkpoint](2026-10-04-gen2-relationships-acceptance.md) accepts seven Gen II evolution/level-up gains and validates all 19 selected Gen II catalogs, without a new full342 run. The current matrix is composite: these 19 rows supersede the full342 baseline, while the other 323 row objects and their provenance remain unchanged. Gen II acceptance closes canonical/static joins and reference-safe SQLite persistence, not every optional feature. Remaining entries have named targets and explicit closure conditions; none is silently deferred or claimed complete.
+`LIB26-G1-CORE` and `LIB26-G2-CORE` are accepted at their bounded host/static boundaries. The subsequent [October 4 relationship checkpoint](2026-10-04-gen2-relationships-acceptance.md) accepts seven Gen II evolution/level-up gains and validates all 19 selected Gen II catalogs, without a new full342 run. The current matrix is composite: 19 Gen II and 13 Gen III focused rows supersede the full342 baseline, while the other 310 row objects and their provenance remain unchanged. Gen II acceptance closes canonical/static joins and reference-safe SQLite persistence, not every optional feature. Remaining entries have named targets and explicit closure conditions; none is silently deferred or claimed complete.
 
 | ID | Status | Named target | Closure condition |
 |---|---|---|---|
@@ -156,7 +159,14 @@ Therefore:
 | LIB26-G2-SIBLINGS | Not implemented | Black & White 3 Genesis / current Orange / Peridot 2.3.0 | Separate complete identity/core/move/graphics contracts and exact-build reference-safe catalogs. |
 | LIB26-G2-OFFICIAL-CONTROLS | Not run | Official Gold / Silver / Crystal | Retained, separately authorized official inputs and bounded host/static regression; no download or Android authorization implied. |
 | LIB26-G2-OPTIONAL | Not implemented | Polished Crystal / Inheritance | Independently prove National Dex conversion, noncanonical forms, abilities, acquisition/text/graphics/maps, and save/live ABIs before exposing them; no inherited retail geometry or blanket modern ability N/A. |
-| LIB26-G3-CORE | Recommended | ROWE first; Voyager and Elite Redux separately | Usable expanded species/stat/type/acquisition catalogs without wrong-stride fallback. |
+| LIB26-G3-CORE | Accepted host/static | ROWE 2.1.9.1 Experimental / 2.1.1; 11 related controls | [1,025 canonical names/stats/sprites each, coherent ordinary level-up minimum, complete references and ten exact SQLite reopens](2026-10-05-gen3-wide-core-acceptance.md). |
+| LIB26-G3-SIBLINGS | Open; unchanged unmatched controls | Voyager Battle Frontier Demo 1.1 / Voyager 0.3.6 / Elite Redux 2.65.3b | Separately prove exact compiled core/index/move consumers and coherent canonical catalogs; preserve the related ABI cohort and verify complete references/SQLite reopening. |
+| LIB26-G3-ROWE-MOVE-DOMAIN | Open | Both ROWE builds; three Experimental and one older unclassified split rows | Independently prove the full move bound, nonordinary static category semantics and any extension fields before promoting them; ordinary minima 852/833 remain distinct from full game counts. |
+| LIB26-G3-ROWE-FORMS | Open | Both ROWE builds; excluded aliases/forms and runtime stat variant | Complete alternate native-index/form/default-versus-runtime contracts, reference-safe materialization and appropriate static/runtime authority; no liveness inferred from names or stats. |
+| LIB26-G3-ROWE-RELATIONSHIPS | Open | Both ROWE builds; zero evolution/Dex-description rows | Prove compiled evolution/Dex-text consumers and native/Dex joins against the canonical domain, with malformed/truncated cases, complete references and SQLite equality. |
+| LIB26-G3-ROWE-TUTORS | Open; old Experimental links not retained | Experimental tutor join; older missing machine dataset | Exact list/compatibility/index/count consumers and all referenced move-domain authority, canonical joins and ambiguity/termination guards. Experimental remains NOT_FOUND (528 old links → 0); older has 3,039 reference-closed tutor links but zero machine links. |
+| LIB26-G3-ROWE-OPTIONAL | Open | Both ROWE builds; encounter/maps, numeric ability mechanics and save/live structures | Independently prove each missing consumer/ABI; retain canonical core and fail-closed status. Static host references/persistence do not authorize Android or runtime-state acceptance. |
+| LIB26-G3-OFFICIAL-CONTROLS | Not run | Official Ruby/Sapphire/Emerald/FireRed/LeafGreen | Retained, separately authorized exact inputs and bounded host/static regression; no download, device or release authority. |
 | LIB26-MAPS | Recommended | Heart and Soul, Soulgold, Pokescape, Tourmaline | Map-consumer proof, valid assets/references, and related-cohort regression. |
 | LIB26-G1-OPTIONAL | Recommended | Six PureRGB builds; both Yellow Kaizo builds; Static Yellow and Christmas Kaizo variants | PureRGB sprites/Dex/World/Local datasets and Yellow/Christmas missing Dex/Local datasets resolved through independent compiled authority and failure isolation. |
 | LIB26-G1-FORMS | Recommended | Six PureRGB builds, 13 separately handled non-Dex form IDs | Proven alternate base/index/type semantics and reference-safe materialization; no positional canonical-stat fallback. |

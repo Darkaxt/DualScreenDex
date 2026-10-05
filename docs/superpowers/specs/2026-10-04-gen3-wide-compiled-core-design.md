@@ -1,6 +1,6 @@
 # Gen III widened compiled-core recovery
 
-**Status: IN_PROGRESS — both originals resolve 1,025 canonical names/stats and reference-safe level-up catalogs with exact SQLite reopening at `1364e9b2`; canonical sprite/category corrections passed 313 affected parser/catalog tests (one optional original-ROM test skipped). Fresh corrected-source acceptance is pending.**
+**Status: ACCEPTED_HOST_STATIC_CORE — [October 5 acceptance](../../reports/corpus/2026-10-05-gen3-wide-core-acceptance.md) verifies 1,025 canonical names/stats/rendered sprites per original, complete ordinary level-up references, ten exact SQLite reopens, unchanged 11 controls, 313 affected parser/catalog and 40 CLI tests (one optional original-ROM test skipped). Full move-domain/forms/tutor/machine and other optional gaps remain explicitly ledgered; no device or release acceptance.**
 
 ## Scope and authority
 
