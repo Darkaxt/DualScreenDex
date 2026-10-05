@@ -134,7 +134,9 @@ internal class CapabilityAggregationStrategy : FamilyProbePhaseStrategy {
                         moveDetails = core.resolvedMoveDetails,
                         abilityNames = semantic.resolvedAbilityNames,
                         abilityMechanics = abilityMechanics.layout,
+                        baseStats = core.resolvedBaseStats,
                     ),
+                    compiledCanonicalSpecies = core.compiledCanonicalSpecies,
                     gen2CompactCore = identity.gen2Compact?.core?.metadata,
                     languageManifest = core.languageManifest.withDefaultLocalizedTables(
                         LocalizedTableLayout(
@@ -219,6 +221,11 @@ internal class CapabilityAggregationStrategy : FamilyProbePhaseStrategy {
         core: CoreDatasetsPhaseResult.Resolved,
         semantic: SemanticDomainPhaseResult.Resolved,
     ): AbilityMechanicsPhaseResult {
+        if (core.compiledCanonicalSpecies != null) {
+            return AbilityMechanicsPhaseResult(null, unavailableMechanics(
+                "compiled widened numeric ability slots do not prove battle-mechanics consumers",
+            ))
+        }
         if (identity.gen2Compact != null) {
             return AbilityMechanicsPhaseResult(null, unavailableMechanics("compact ability-mechanics authority is unavailable"))
         }

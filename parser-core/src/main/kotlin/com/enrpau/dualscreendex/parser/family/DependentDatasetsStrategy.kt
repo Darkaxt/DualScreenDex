@@ -104,6 +104,16 @@ internal class DependentDatasetsStrategy : FamilyProbePhaseStrategy {
             )
         }
 
+        if (core.compiledCanonicalSpecies != null) {
+            return state.withDependentDatasets(DependentDatasetsPhaseResult.Resolved(
+                semanticDomain = semantic,
+                sprites = sprites,
+                evolutions = missingEvidence("canonical index authority does not prove an evolution consumer"),
+                learnsets = compiledWideLearnsetEvidence(core), learnsetTables = emptyList(), learnsetSelector = null,
+                resolvedLearnsets = core.compiledWideMoves?.learnsets,
+                resolvedLearnsetTable = core.compiledWideMoves?.learnsetTable,
+            ))
+        }
         val evolutionAndLearnset = if (generation < 3) {
             val layout = tables.evolutions ?: tables.learnsets
             layout?.let {

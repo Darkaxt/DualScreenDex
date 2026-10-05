@@ -7,6 +7,7 @@ import com.enrpau.dualscreendex.parser.dataset.learnsets.LearnsetRowOutcome
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.language.defaultTextCodec
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
+import com.enrpau.dualscreendex.parser.model.requiresCompiledCanonicalSpecies
 import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.text.Gen1DescriptionTextCodec
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
@@ -238,10 +239,15 @@ object RelationshipMaterializers {
     private fun typedLearnsets(
         layout: ResolvedRomLayout,
     ): RecordMaterialization<List<LearnsetEntry>> {
-        val records = layout.resolvedDatasets.learnsets?.catalogPrimaryEntries()
+        val projected = layout.resolvedDatasets.learnsets?.catalogPrimaryEntries()
             ?: return emptyMaterialization()
         val resolved = requireNotNull(layout.resolvedDatasets.learnsets)
         val rows = resolved.primary?.layout?.rows ?: return emptyMaterialization()
+        val canonical = layout.compiledCanonicalSpecies
+        if (layout.requiresCompiledCanonicalSpecies && canonical?.coherentLearnsets(layout) == null) {
+            return emptyMaterialization()
+        }
+        val records = if (canonical != null) projected.filterKeys { it in canonical.nativeToDex } else projected
         val failures = rows.mapNotNull { row ->
             (row as? LearnsetRowOutcome.Malformed)?.let {
                 row.rowIndex to boundedReason(row.reasons)

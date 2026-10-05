@@ -110,6 +110,7 @@ sealed interface LearnsetRowOutcome {
             "Decoded(rowIndex=$rowIndex, entries=$entries, termination=$termination)"
     }
 
+    /** Zero pointer or independently excluded slot; inactive backing bytes are not interpreted. */
     data class StructuralEmpty(
         override val rowIndex: Int,
     ) : LearnsetRowOutcome
@@ -292,6 +293,22 @@ interface LearnsetTableDecoder {
 }
 
 class LearnsetCodec : LearnsetTableDecoder {
+    internal fun decodeCanonicalGen3(
+        session: RomAnalysisSession,
+        layout: LearnsetTableLayout,
+        activeRowIndices: Set<Int>,
+        moveCount: Int,
+    ): LearnsetTableOutcome {
+        session.cancellation.throwIfCancellationRequested()
+        if (layout.format != LearnsetFormat.MoveU16LevelU16 || activeRowIndices.isEmpty() ||
+            activeRowIndices.any { it <= 0 || it >= layout.speciesCount }
+        ) return LearnsetTableOutcome.Rejected(layout, "canonical wide learnsets require an independent bounded active domain")
+        return decodeGen3Rows(session, layout, moveCount, LearnsetResolutionLedger(
+            extentLimit = session.limits.maxDatasetExtentBytes,
+            workLimit = session.limits.maxProbeWorkPerDataset.toLong(),
+        ), activeRowIndices.toSet())
+    }
+
     fun decodeGen3(
         session: RomAnalysisSession,
         layout: LearnsetTableLayout,
@@ -311,7 +328,16 @@ class LearnsetCodec : LearnsetTableDecoder {
         layout: LearnsetTableLayout,
         moveCount: Int,
         ledger: LearnsetResolutionLedger,
+    ): LearnsetTableOutcome = decodeGen3Rows(session, layout, moveCount, ledger, null)
+
+    private fun decodeGen3Rows(
+        session: RomAnalysisSession,
+        layout: LearnsetTableLayout,
+        moveCount: Int,
+        ledger: LearnsetResolutionLedger,
+        activeRowIndices: Set<Int>?,
     ): LearnsetTableOutcome {
+        session.cancellation.throwIfCancellationRequested()
         try {
             ledger.consumeWork("layout attempt")
         } catch (exhausted: LearnsetWorkBudgetStop) {
@@ -369,8 +395,10 @@ class LearnsetCodec : LearnsetTableDecoder {
 
         return try {
             val rawPointers = List(layout.speciesCount) { row ->
+                session.cancellation.throwIfCancellationRequested()
                 ledger.consumeWork("pointer-table row")
-                session.rom.u32le(pointerExtent.offset + row * layout.pointerStride)
+                if (activeRowIndices != null && row !in activeRowIndices) 0L
+                else session.rom.u32le(pointerExtent.offset + row * layout.pointerStride)
             }
             val targets = rawPointers.map { raw -> gbaTarget(raw, session.rom.size) }
             val distinctTargets = targets.filterNotNull().distinct().sorted()
@@ -378,6 +406,7 @@ class LearnsetCodec : LearnsetTableDecoder {
                 target to distinctTargets.getOrNull(index + 1)
             }.toMap()
             val rows = rawPointers.indices.map { row ->
+                session.cancellation.throwIfCancellationRequested()
                 val raw = rawPointers[row]
                 when {
                     raw == 0L -> LearnsetRowOutcome.StructuralEmpty(row)
@@ -580,6 +609,7 @@ class LearnsetCodec : LearnsetTableDecoder {
         val entries = mutableListOf<LearnsetEntryValue>()
         var cursor = start
         repeat(MAX_ENTRIES_PER_ROW) {
+            session.cancellation.throwIfCancellationRequested()
             if (cursor + 2 > end) return malformed(row, "wide row is not explicitly terminated")
             ledger.consumeWork("wide row entry")
             val move = session.rom.u16le(cursor)

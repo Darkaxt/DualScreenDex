@@ -7,6 +7,7 @@ import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.language.defaultTextCodec
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
+import com.enrpau.dualscreendex.parser.model.requiresCompiledCanonicalSpecies
 import com.enrpau.dualscreendex.parser.model.ValidationEvidence
 
 internal enum class SpeciesSemanticDomainSource {
@@ -224,6 +225,21 @@ internal object SpeciesSemanticDomainResolver {
             }
         }
         val species = materialization.records.values
+        if (layout.requiresCompiledCanonicalSpecies) {
+            val canonical = layout.compiledCanonicalSpecies
+            if (canonical?.coherentBaseStats(layout) == null || materialization.records.keys != canonical.nativeToDex.keys) {
+                return SpeciesSemanticDomainResolution.Unavailable("compiled canonical semantic authority is incoherent", false)
+            }
+            return SpeciesSemanticDomainResolution.Resolved(SpeciesSemanticDomain(
+                expectedSpeciesIds = canonical.nativeToDex.keys,
+                coveredStatRecords = species.count { it.baseStats.status == CapabilityStatus.AVAILABLE &&
+                    it.typeIds.status == CapabilityStatus.AVAILABLE },
+                excludedStructuralRecords = (rawCount - canonical.nativeToDex.size).coerceAtLeast(0),
+                coveredNameRecords = species.count { it.name.value?.any(Char::isLetterOrDigit) == true },
+                activeDomainReason = "selected canonical native IDs through coupled inverse-first-match/forward compiled consumers",
+                source = SpeciesSemanticDomainSource.COMPILED_SPECIES_TO_DEX_MAP,
+            ))
+        }
         val mapped = species.filter { record -> (record.dexNumber.value ?: 0) > 0 }
         val navigable = mapped.filter { record -> record.name.value?.any(Char::isLetterOrDigit) == true }
         val expansionDomain = layout.pokeemeraldExpansion != null

@@ -216,14 +216,22 @@ class MoveDetailsCodecTest {
                 MoveDetailsAbi.HYBRID_BATTLE_MOVE_20 -> putHybridBattleMove(bytes, 7)
                 MoveDetailsAbi.BATTLE_ENGINE_20 -> putBattleEngineMove(bytes, 7)
                 MoveDetailsAbi.UNIFIED_MOVE_INFO_48 -> putUnifiedMoveInfo(bytes, 7)
+                MoveDetailsAbi.ALIGNED_BYTE_TARGET_MOVE_20,
+                MoveDetailsAbi.ALIGNED_BYTE_TARGET_MOVE_56 -> putAlignedByteTargetMove(bytes, 7)
             }
-            assertTrue(
-                MoveDetailsCodec().decode(
-                    moveDetailsSession(bytes),
-                    MoveDetailsTableLayout(7, 1, abi),
-                ) is MoveDetailsTableOutcome.Decoded,
-            )
+            val decoded = MoveDetailsCodec().decode(
+                moveDetailsSession(bytes), MoveDetailsTableLayout(7, 1, abi),
+            ) as MoveDetailsTableOutcome.Decoded
+            assertTrue("exact EOF row must decode under $abi", decoded.rows.single() is MoveDetailsRowOutcome.Decoded)
         }
+    }
+
+    private fun putAlignedByteTargetMove(bytes: ByteArray, offset: Int) {
+        bytes[offset] = 5
+        bytes[offset + 2] = 60
+        bytes[offset + 4] = 90
+        bytes[offset + 5] = 10
+        bytes[offset + 16] = 2
     }
 
     private fun putWidenedRetailMove(bytes: ByteArray, offset: Int) {

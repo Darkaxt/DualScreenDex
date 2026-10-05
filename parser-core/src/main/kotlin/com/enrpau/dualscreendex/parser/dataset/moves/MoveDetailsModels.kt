@@ -28,6 +28,16 @@ enum class MoveDetailsAbi(
 
     /** Expansion-derived `MoveInfo` with pointer names and packed scalar fields. */
     UNIFIED_MOVE_INFO_48(48, TableRecordFormat.UNIFIED_MOVE_INFO_48),
+
+    /** Aligned effect/flags prefix with byte target at 7 and signed priority at 8. */
+    ALIGNED_BYTE_TARGET_MOVE_20(20, TableRecordFormat.ALIGNED_BYTE_TARGET_MOVE_20),
+
+    /** Same proven prefix with an uninterpreted extension and independently proven physical stride. */
+    ALIGNED_BYTE_TARGET_MOVE_56(56, TableRecordFormat.ALIGNED_BYTE_TARGET_MOVE_56),
+    ;
+
+    val isAlignedByteTarget: Boolean get() =
+        this == ALIGNED_BYTE_TARGET_MOVE_20 || this == ALIGNED_BYTE_TARGET_MOVE_56
 }
 
 enum class MoveSplit(val rawValue: Int) {
@@ -105,6 +115,8 @@ data class Gen3MoveDetailsRecord(
     val argument: Int?,
     val zMovePower: Int?,
     val zMoveEffect: Int?,
+    /** Encoded category retained on byte-target ABIs, including values without static category authority. */
+    val nativeSplitId: Int? = null,
 )
 
 data class CatalogMoveDetails(
@@ -180,6 +192,7 @@ class ResolvedMoveDetailsLayout(
                         MoveSplit.SPECIAL -> MoveCategory.SPECIAL
                         MoveSplit.STATUS -> MoveCategory.STATUS
                         null -> when {
+                            table.abi.isAlignedByteTarget -> MoveCategory.UNKNOWN
                             record.power == 0 -> MoveCategory.STATUS
                             record.typeId in 0..8 -> MoveCategory.PHYSICAL
                             record.typeId in 10..17 -> MoveCategory.SPECIAL

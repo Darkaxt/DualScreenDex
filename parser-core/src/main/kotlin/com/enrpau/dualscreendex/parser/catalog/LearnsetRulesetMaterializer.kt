@@ -4,6 +4,7 @@ import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.Gen3LearnsetTableLayout
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.TableLayout
+import com.enrpau.dualscreendex.parser.model.requiresCompiledCanonicalSpecies
 
 object LearnsetRulesetMaterializer {
     fun materialize(
@@ -11,6 +12,8 @@ object LearnsetRulesetMaterializer {
         layout: ResolvedRomLayout,
         primaryEntries: Map<Int, List<LearnsetEntry>>,
     ): List<LearnsetRuleset> {
+        val canonical = layout.compiledCanonicalSpecies
+        if (layout.requiresCompiledCanonicalSpecies && canonical?.coherentLearnsets(layout) == null) return emptyList()
         val primaryTable = layout.tables.learnsets
         val primaryOffset = primaryTable?.offset
         val primary = primaryTable?.let { Candidate(it, 1.0, primaryEntries) }
@@ -31,7 +34,9 @@ object LearnsetRulesetMaterializer {
                         stride = table.pointerStride,
                     ),
                     resolved.confidence,
-                    resolved.catalogEntries(),
+                    resolved.catalogEntries().let { entries ->
+                        if (canonical != null) entries.filterKeys { it in canonical.nativeToDex } else entries
+                    },
                 )
             }
             return label(

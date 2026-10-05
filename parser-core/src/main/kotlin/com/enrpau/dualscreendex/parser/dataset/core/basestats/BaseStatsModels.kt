@@ -5,13 +5,16 @@ import com.enrpau.dualscreendex.parser.resolution.CandidateLayoutIdentity
 import com.enrpau.dualscreendex.parser.resolution.ImmutableDatasetLayout
 import java.util.Collections
 
-/** The only two ordinary Gen III base-stat ABIs that this unit can interpret. */
+/** Fixed-width Gen III base-stat ABIs admitted by the typed decoder. */
 enum class BaseStatsAbi(val recordSize: Int) {
     /** Retail `struct BaseStats`: two one-byte ability IDs at offsets 22 and 23. */
     RETAIL_28(28),
 
     /** Battle Engine ABI: three little-endian u16 ability IDs at offsets 22, 24, and 26. */
     BATTLE_ENGINE_32(32),
+
+    /** Compiled widened stats/experience with four u16 ability slots at offsets 30 through 36. */
+    WIDE_STATS_64(64),
 }
 
 class BaseStatsTableLayout(

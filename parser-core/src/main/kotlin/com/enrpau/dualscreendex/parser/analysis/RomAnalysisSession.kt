@@ -106,6 +106,20 @@ class RomAnalysisSession(
         gen2ItemReferences = java.util.Collections.unmodifiableList(accepted.toList())
     }
 
+    private val compiledWideCoreCache = java.util.IdentityHashMap<
+        com.enrpau.dualscreendex.parser.text.PokemonTextCodec,
+        com.enrpau.dualscreendex.parser.parse.Gen3CompiledWideCoreOutcome,
+    >()
+
+    @Synchronized
+    internal fun compiledWideCore(codec: com.enrpau.dualscreendex.parser.text.PokemonTextCodec):
+        com.enrpau.dualscreendex.parser.parse.Gen3CompiledWideCoreOutcome {
+        cancellation.throwIfCancellationRequested()
+        return compiledWideCoreCache.getOrPut(codec) {
+            com.enrpau.dualscreendex.parser.parse.Gen3CompiledWideCoreResolver.resolve(this, codec)
+        }
+    }
+
     private val nominatedGbaReferenceSiteCache = mutableMapOf<Int, GbaTargetReferenceEvidence?>()
     val exactProfileIdentity: ExactProfileIdentity? = exactProfile?.let {
         ExactProfileIdentity.derive(it, rom, header)

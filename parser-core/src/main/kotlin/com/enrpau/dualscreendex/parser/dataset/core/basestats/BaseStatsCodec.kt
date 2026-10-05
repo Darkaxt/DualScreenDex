@@ -17,6 +17,7 @@ class BaseStatsCodec : BaseStatsTableDecoder {
         session: RomAnalysisSession,
         layout: BaseStatsTableLayout,
     ): BaseStatsTableOutcome {
+        session.cancellation.throwIfCancellationRequested()
         val checked = when (
             val extent = session.limits.checkTableExtent(
                 offset = layout.offset,
@@ -52,15 +53,21 @@ class BaseStatsCodec : BaseStatsTableDecoder {
         rowIndex: Int,
         recordOffset: Int,
     ): BaseStatsRowOutcome {
+        session.cancellation.throwIfCancellationRequested()
         val bytes = session.rom.slice(recordOffset, abi.recordSize)
         if (bytes.all { it == 0.toByte() }) {
             return BaseStatsRowOutcome.StructuralEmpty(rowIndex)
         }
 
-        val stats = (0 until STAT_COUNT).map { session.rom.u8(recordOffset + it) }
+        val wide = abi == BaseStatsAbi.WIDE_STATS_64
+        val typeAdjustment = if (wide) WIDE_TYPE_ADJUSTMENT else 0
+        val tailAdjustment = if (wide) WIDE_TAIL_ADJUSTMENT else 0
+        val stats = (0 until STAT_COUNT).map {
+            if (wide) session.rom.u16le(recordOffset + it * 2) else session.rom.u8(recordOffset + it)
+        }
         val types = listOf(
-            session.rom.u8(recordOffset + PRIMARY_TYPE_OFFSET),
-            session.rom.u8(recordOffset + SECONDARY_TYPE_OFFSET),
+            session.rom.u8(recordOffset + PRIMARY_TYPE_OFFSET + typeAdjustment),
+            session.rom.u8(recordOffset + SECONDARY_TYPE_OFFSET + typeAdjustment),
         )
         val reasons = buildList {
             stats.forEachIndexed { index, value ->
@@ -80,10 +87,14 @@ class BaseStatsCodec : BaseStatsTableDecoder {
             BaseStatsAbi.BATTLE_ENGINE_32 -> (0 until BATTLE_ENGINE_ABILITY_SLOTS).map { slot ->
                 session.rom.u16le(recordOffset + ABILITY_OFFSET + slot * 2)
             }
+            BaseStatsAbi.WIDE_STATS_64 -> (0 until WIDE_ABILITY_SLOTS).map { slot ->
+                session.rom.u16le(recordOffset + ABILITY_OFFSET + tailAdjustment + slot * 2)
+            }
         }.filter { it != 0 }.distinct()
         val safariOffset = when (abi) {
             BaseStatsAbi.RETAIL_28 -> RETAIL_SAFARI_FLEE_OFFSET
             BaseStatsAbi.BATTLE_ENGINE_32 -> BATTLE_ENGINE_SAFARI_FLEE_OFFSET
+            BaseStatsAbi.WIDE_STATS_64 -> WIDE_SAFARI_FLEE_OFFSET
         }
         val bodyOffset = safariOffset + 1
         val packedBody = session.rom.u8(recordOffset + bodyOffset)
@@ -99,20 +110,24 @@ class BaseStatsCodec : BaseStatsTableDecoder {
                     specialDefense = stats[5],
                 ),
                 typeIds = types,
-                catchRate = session.rom.u8(recordOffset + CATCH_RATE_OFFSET),
-                baseExperienceYield = session.rom.u8(recordOffset + BASE_EXP_YIELD_OFFSET),
-                evYield = session.rom.u16le(recordOffset + EV_YIELD_OFFSET),
+                catchRate = session.rom.u8(recordOffset + CATCH_RATE_OFFSET + typeAdjustment),
+                baseExperienceYield = if (wide) {
+                    session.rom.u16le(recordOffset + WIDE_EXP_YIELD_OFFSET)
+                } else {
+                    session.rom.u8(recordOffset + BASE_EXP_YIELD_OFFSET)
+                },
+                evYield = session.rom.u16le(recordOffset + EV_YIELD_OFFSET + tailAdjustment),
                 heldItemIds = listOf(
-                    session.rom.u16le(recordOffset + COMMON_ITEM_OFFSET),
-                    session.rom.u16le(recordOffset + RARE_ITEM_OFFSET),
+                    session.rom.u16le(recordOffset + COMMON_ITEM_OFFSET + tailAdjustment),
+                    session.rom.u16le(recordOffset + RARE_ITEM_OFFSET + tailAdjustment),
                 ),
-                genderRatio = session.rom.u8(recordOffset + GENDER_RATIO_OFFSET),
-                eggCycles = session.rom.u8(recordOffset + EGG_CYCLES_OFFSET),
-                baseFriendship = session.rom.u8(recordOffset + BASE_FRIENDSHIP_OFFSET),
-                growthRate = session.rom.u8(recordOffset + GROWTH_RATE_OFFSET),
+                genderRatio = session.rom.u8(recordOffset + GENDER_RATIO_OFFSET + tailAdjustment),
+                eggCycles = session.rom.u8(recordOffset + EGG_CYCLES_OFFSET + tailAdjustment),
+                baseFriendship = session.rom.u8(recordOffset + BASE_FRIENDSHIP_OFFSET + tailAdjustment),
+                growthRate = session.rom.u8(recordOffset + GROWTH_RATE_OFFSET + tailAdjustment),
                 eggGroupIds = listOf(
-                    session.rom.u8(recordOffset + EGG_GROUP_1_OFFSET),
-                    session.rom.u8(recordOffset + EGG_GROUP_2_OFFSET),
+                    session.rom.u8(recordOffset + EGG_GROUP_1_OFFSET + tailAdjustment),
+                    session.rom.u8(recordOffset + EGG_GROUP_2_OFFSET + tailAdjustment),
                 ),
                 abilityIds = abilityIds,
                 safariZoneFleeRate = session.rom.u8(recordOffset + safariOffset),
@@ -142,6 +157,11 @@ class BaseStatsCodec : BaseStatsTableDecoder {
         const val BATTLE_ENGINE_ABILITY_SLOTS = 3
         const val RETAIL_SAFARI_FLEE_OFFSET = 24
         const val BATTLE_ENGINE_SAFARI_FLEE_OFFSET = 28
+        const val WIDE_TYPE_ADJUSTMENT = 6
+        const val WIDE_TAIL_ADJUSTMENT = 8
+        const val WIDE_EXP_YIELD_OFFSET = 16
+        const val WIDE_ABILITY_SLOTS = 4
+        const val WIDE_SAFARI_FLEE_OFFSET = 38
         const val BODY_COLOR_MASK = 0x7F
         const val NO_FLIP_MASK = 0x80
     }

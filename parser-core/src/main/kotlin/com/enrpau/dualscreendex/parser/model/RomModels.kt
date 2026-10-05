@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.model
 
+import com.enrpau.dualscreendex.parser.dataset.core.basestats.ResolvedBaseStatsLayout
 import com.enrpau.dualscreendex.parser.dataset.types.ResolvedTypeChartLayout
 import com.enrpau.dualscreendex.parser.dataset.descriptions.ResolvedDescriptionLayout
 import com.enrpau.dualscreendex.parser.dataset.evolutions.ResolvedEvolutionLayout
@@ -120,6 +121,9 @@ enum class TableRecordFormat {
     GEN2_COMPACT_BASE_STATS,
     GEN2_MASKED_MOVE_7,
     GEN2_EXTENDED_TYPE_NAMES,
+    WIDE_STATS_64,
+    ALIGNED_BYTE_TARGET_MOVE_20,
+    ALIGNED_BYTE_TARGET_MOVE_56,
 }
 
 data class ProfileTables(
@@ -144,6 +148,7 @@ class ResolvedDatasetLayouts(
     moveDetails: ResolvedMoveDetailsLayout? = null,
     abilityNames: ResolvedAbilityNameLayout? = null,
     abilityMechanics: ResolvedAbilityMechanicsLayout? = null,
+    baseStats: ResolvedBaseStatsLayout? = null,
 ) {
     val typeChart: ResolvedTypeChartLayout? = typeChart?.immutableSnapshot()
     val descriptions: ResolvedDescriptionLayout? = descriptions?.immutableSnapshot()
@@ -152,13 +157,14 @@ class ResolvedDatasetLayouts(
     val moveDetails: ResolvedMoveDetailsLayout? = moveDetails?.immutableSnapshot()
     val abilityNames: ResolvedAbilityNameLayout? = abilityNames?.immutableSnapshot()
     val abilityMechanics: ResolvedAbilityMechanicsLayout? = abilityMechanics?.immutableSnapshot()
+    val baseStats: ResolvedBaseStatsLayout? = baseStats?.immutableSnapshot()
 
     fun immutableSnapshot(): ResolvedDatasetLayouts = this
 
     override fun equals(other: Any?): Boolean = other is ResolvedDatasetLayouts &&
         typeChart == other.typeChart && descriptions == other.descriptions && evolutions == other.evolutions &&
             learnsets == other.learnsets && moveDetails == other.moveDetails && abilityNames == other.abilityNames &&
-            abilityMechanics == other.abilityMechanics
+            abilityMechanics == other.abilityMechanics && baseStats == other.baseStats
 
     override fun hashCode(): Int {
         var result = typeChart?.hashCode() ?: 0
@@ -168,6 +174,7 @@ class ResolvedDatasetLayouts(
         result = 31 * result + (moveDetails?.hashCode() ?: 0)
         result = 31 * result + (abilityNames?.hashCode() ?: 0)
         result = 31 * result + (abilityMechanics?.hashCode() ?: 0)
+        result = 31 * result + (baseStats?.hashCode() ?: 0)
         return result
     }
 }
@@ -221,6 +228,7 @@ data class ResolvedRomLayout(
     val itemRootNomination: GbaItemRootNomination = GbaItemRootNomination.Absent,
     val itemNameAuthority: GbaItemNameAuthority = GbaItemNameAuthority.Unavailable(),
     val gen2CompactCore: Gen2CompactCoreMetadata? = null,
+    val compiledCanonicalSpecies: Gen3CompiledCanonicalSpeciesMetadata? = null,
 )
 
 /** Compiled-authorized expanded capture-ball tables and their ROM-native item relationship. */

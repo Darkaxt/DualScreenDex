@@ -16,6 +16,7 @@ class MoveDetailsCodec : MoveDetailsTableDecoder {
         session: RomAnalysisSession,
         layout: MoveDetailsTableLayout,
     ): MoveDetailsTableOutcome {
+        session.cancellation.throwIfCancellationRequested()
         val checked = when (
             val extent = session.limits.checkTableExtent(
                 offset = layout.offset,
@@ -35,6 +36,7 @@ class MoveDetailsCodec : MoveDetailsTableDecoder {
             )
         }
         val rows = List(layout.count.toInt()) { rowIndex ->
+            session.cancellation.throwIfCancellationRequested()
             decodeRow(
                 session = session,
                 abi = layout.abi,
@@ -56,6 +58,7 @@ class MoveDetailsCodec : MoveDetailsTableDecoder {
         if (abi == MoveDetailsAbi.UNIFIED_MOVE_INFO_48) {
             return decodeUnifiedMoveInfoRow(session, rowIndex, recordOffset)
         }
+        if (abi.isAlignedByteTarget) return decodeAlignedByteTargetRow(session, rowIndex, recordOffset)
 
         val widened = abi != MoveDetailsAbi.RETAIL_12
         val typeOffset = when (abi) {
@@ -89,6 +92,8 @@ class MoveDetailsCodec : MoveDetailsTableDecoder {
             MoveDetailsAbi.HYBRID_BATTLE_MOVE_20 -> HYBRID_PRIORITY_OFFSET
             MoveDetailsAbi.BATTLE_ENGINE_20 -> BATTLE_ENGINE_PRIORITY_OFFSET
             MoveDetailsAbi.UNIFIED_MOVE_INFO_48 -> error("unified MoveInfo rows decode through their packed ABI")
+            MoveDetailsAbi.ALIGNED_BYTE_TARGET_MOVE_20,
+            MoveDetailsAbi.ALIGNED_BYTE_TARGET_MOVE_56 -> error("aligned byte-target rows decode through their distinct ABI")
         }
         val priority = session.rom.u8(recordOffset + priorityOffset).toByte().toInt()
         val splitRaw = when (abi) {
@@ -98,6 +103,8 @@ class MoveDetailsCodec : MoveDetailsTableDecoder {
             MoveDetailsAbi.HYBRID_BATTLE_MOVE_20 -> session.rom.u8(recordOffset + HYBRID_SPLIT_OFFSET)
             MoveDetailsAbi.BATTLE_ENGINE_20 -> session.rom.u8(recordOffset + BATTLE_ENGINE_SPLIT_OFFSET)
             MoveDetailsAbi.UNIFIED_MOVE_INFO_48 -> error("unified MoveInfo rows decode through their packed ABI")
+            MoveDetailsAbi.ALIGNED_BYTE_TARGET_MOVE_20,
+            MoveDetailsAbi.ALIGNED_BYTE_TARGET_MOVE_56 -> error("aligned byte-target rows decode through their distinct ABI")
         }
         val reasons = buildList {
             if (abi != MoveDetailsAbi.WIDENED_RETAIL_16 && typeId !in 0..MAX_TYPE_ID) {
@@ -231,8 +238,52 @@ class MoveDetailsCodec : MoveDetailsTableDecoder {
                 zMoveEffect = session.rom.u8(recordOffset + BATTLE_ENGINE_Z_EFFECT_OFFSET),
             )
             MoveDetailsAbi.UNIFIED_MOVE_INFO_48 -> error("unified MoveInfo rows decode through their packed ABI")
+            MoveDetailsAbi.ALIGNED_BYTE_TARGET_MOVE_20,
+            MoveDetailsAbi.ALIGNED_BYTE_TARGET_MOVE_56 -> error("aligned byte-target rows decode through their distinct ABI")
         }
         return MoveDetailsRowOutcome.Decoded(rowIndex, record)
+    }
+
+    private fun decodeAlignedByteTargetRow(
+        session: RomAnalysisSession,
+        rowIndex: Int,
+        recordOffset: Int,
+    ): MoveDetailsRowOutcome {
+        val rom = session.rom
+        val type = rom.u8(recordOffset + 3)
+        val accuracy = rom.u8(recordOffset + 4)
+        val pp = rom.u8(recordOffset + 5)
+        val chance = rom.u8(recordOffset + 6)
+        val priority = rom.u8(recordOffset + 8).toByte().toInt()
+        val rawSplit = rom.u8(recordOffset + 16)
+        val reasons = buildList {
+            if (type !in 0..MAX_TYPE_ID) add("type value $type exceeds $MAX_TYPE_ID")
+            if (accuracy != ACCURACY_ALWAYS && accuracy != ACCURACY_ENGINE_DEFINED &&
+                accuracy !in MIN_PERCENT_ACCURACY..MAX_PERCENT
+            ) add("accuracy value $accuracy is outside the admitted scalar domain")
+            if (pp !in 0..MAX_PP) add("pp value $pp exceeds $MAX_PP")
+            if (chance !in 0..MAX_PERCENT && chance != CHANCE_ENGINE_DEFINED) {
+                add("secondary-effect chance $chance is outside the admitted scalar domain")
+            }
+            if (priority !in MIN_PRIORITY..MAX_PRIORITY) add("priority value $priority is outside $MIN_PRIORITY..$MAX_PRIORITY")
+        }
+        if (reasons.isNotEmpty()) return MoveDetailsRowOutcome.Malformed(rowIndex, reasons)
+        return MoveDetailsRowOutcome.Decoded(rowIndex, Gen3MoveDetailsRecord(
+            effectId = rom.u16le(recordOffset),
+            power = rom.u8(recordOffset + 2),
+            typeId = type,
+            accuracy = accuracy,
+            pp = pp,
+            secondaryEffectChance = chance,
+            targetMask = rom.u8(recordOffset + 7),
+            priority = priority,
+            flags = rom.u32le(recordOffset + 12),
+            split = MoveSplit.fromRaw(rawSplit),
+            argument = rom.u8(recordOffset + 17),
+            zMovePower = null,
+            zMoveEffect = null,
+            nativeSplitId = rawSplit,
+        ))
     }
 
     private fun decodeUnifiedMoveInfoRow(

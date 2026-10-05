@@ -98,7 +98,9 @@ internal class SemanticDomainStrategy : FamilyProbePhaseStrategy {
             generation = definition.formatGeneration,
             platform = session.header.platform,
         )
-        val descriptionResolution = textCodec?.let { codec ->
+        val descriptionResolution = if (rawCore.compiledCanonicalSpecies != null) {
+            ResolvedDescriptionEvidence(missingEvidence("canonical Dex conversion does not prove description-row authority"), null)
+        } else textCodec?.let { codec ->
             resolveDescriptions(session, definition, identity, rawCore, codec)
         } ?: ResolvedDescriptionEvidence(
             missingEvidence("authoritative language codec is unavailable for localized descriptions"),
@@ -364,7 +366,9 @@ internal class SemanticDomainStrategy : FamilyProbePhaseStrategy {
         val rom = session.rom
         val tables = core.candidateTables
         val expansion = identity.expansion
-        val activeTypeLowerBound = if (definition.formatGeneration == 3) {
+        val activeTypeLowerBound = if (core.compiledCanonicalSpecies != null) {
+            compiledWideRecords(core).values.flatMap { it.typeIds }.maxOrNull()?.plus(1)
+        } else if (definition.formatGeneration == 3) {
             core.baseStatsLayout?.let { baseStats ->
                 TableValidators.inferGen3ActiveTypeCount(
                     rom,
@@ -458,7 +462,8 @@ internal class SemanticDomainStrategy : FamilyProbePhaseStrategy {
         val rom = session.rom
         val unified = identity.headerlessUnifiedSpecies?.metadata
         val domain = AbilitySemanticDomain(
-            unified?.abilities?.let { abilities ->
+            core.compiledCanonicalSpecies?.let { compiledWideRecords(core).values.flatMap { it.abilityIds }.toSet() }
+                ?: unified?.abilities?.let { abilities ->
                 validatedHeaderlessUnifiedAbilityIds(
                     rom = rom,
                     species = unified,

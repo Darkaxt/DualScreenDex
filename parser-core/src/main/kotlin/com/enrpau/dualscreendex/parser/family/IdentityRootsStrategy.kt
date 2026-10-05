@@ -7,6 +7,8 @@ import com.enrpau.dualscreendex.parser.analysis.ExactTableLayoutSnapshot
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.parse.Gen3CompiledNameGeometryResolver
+import com.enrpau.dualscreendex.parser.parse.Gen3CompiledWideCoreOutcome
+import com.enrpau.dualscreendex.parser.model.TableRecordFormat
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.ExpandedSplitCaptureBallMetadata
 import com.enrpau.dualscreendex.parser.model.GbaCompiledReferenceIndex
@@ -63,6 +65,7 @@ internal sealed interface IdentityRootsPhaseResult {
         val probeCodec: PokemonTextCodec,
         nativeNameCandidates: List<NativeNameCandidate> = emptyList(),
         val gen2Compact: Gen2CompactFamilyAuthority? = null,
+        val compiledWideCore: Gen3CompiledWideCoreOutcome.Resolved? = null,
     ) : IdentityRootsPhaseResult {
         val nativeNameCandidates = Collections.unmodifiableList(nativeNameCandidates.toList())
         val exactProfile = exactProfile
@@ -157,6 +160,33 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
             family = definition.family,
             cancellation = session.cancellation,
         )
+        if (generation == 3) when (val wide = session.compiledWideCore(probeCodec)) {
+            is Gen3CompiledWideCoreOutcome.Rejected -> return IdentityRootsPhaseResult.Rejected(ParserProbe(
+                definition.family, score.sumOf { it.points }, false, 0, score, emptyList(),
+                diagnostics = listOf("compiled wide-core rejection: ${wide.reason}"),
+            ))
+            is Gen3CompiledWideCoreOutcome.Resolved -> {
+                val original = resolveTables(session.rom, definition, baseProfile, probeCodec, session.cancellation)
+                val stats = wide.baseStats.table
+                return IdentityRootsPhaseResult.Resolved(
+                    exactProfile = null, baseProfile = baseProfile, identityMatched = identityMatched,
+                    scoreEvidence = score, expansion = null,
+                    compiledGbaReferences = session.gbaReferenceIndex?.asLegacyCounts(),
+                    tableResolution = original.copy(
+                        tables = original.tables.copy(
+                            speciesNames = wide.speciesNames,
+                            baseStats = TableLayout(stats.offset.toInt(), stats.count.toInt(), stats.abi.recordSize,
+                                format = TableRecordFormat.WIDE_STATS_64),
+                            moveNames = null, moveData = null, evolutions = null, learnsets = null, descriptions = null,
+                        ),
+                        publishedDataEvidence = null,
+                        itemNameAuthority = session.itemNameResolver.original(original.itemPublishedRoute),
+                    ),
+                    probeCodec = probeCodec, compiledWideCore = wide,
+                )
+            }
+            Gen3CompiledWideCoreOutcome.Absent -> Unit
+        }
         val expansion = if (generation == 3 && identityMatched) {
             PokeemeraldExpansionResolver.resolve(session.rom, probeCodec)
         } else {

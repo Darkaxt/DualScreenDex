@@ -1,6 +1,9 @@
 package com.enrpau.dualscreendex.parser.family
 
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
+import com.enrpau.dualscreendex.parser.dataset.core.basestats.ResolvedBaseStatsLayout
+import com.enrpau.dualscreendex.parser.model.Gen3CompiledCanonicalSpeciesMetadata
+import com.enrpau.dualscreendex.parser.parse.Gen3CompiledWideMoveOutcome
 import com.enrpau.dualscreendex.parser.catalog.Gen1DetachedSpeciesResolver
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.ProfileTables
@@ -46,7 +49,11 @@ internal sealed interface CoreDatasetsPhaseResult {
         publishedPartialBaseStatsCandidate: PublishedPartialBaseStatsCandidate? = null,
         val languageManifest: RomLanguageManifest = RomLanguageManifest.UNKNOWN,
         val gen2RelationshipRejection: String? = null,
+        resolvedBaseStats: ResolvedBaseStatsLayout? = null,
+        val compiledCanonicalSpecies: Gen3CompiledCanonicalSpeciesMetadata? = null,
+        val compiledWideMoves: Gen3CompiledWideMoveOutcome.Resolved? = null,
     ) : CoreDatasetsPhaseResult {
+        val resolvedBaseStats = resolvedBaseStats?.immutableSnapshot()
         val candidateTables = candidateTables.immutableCopy()
         val speciesNames = speciesNames.immutableCopy()
         val baseStats = baseStats.immutableCopy()
@@ -81,6 +88,9 @@ internal sealed interface CoreDatasetsPhaseResult {
             publishedPartialBaseStatsCandidate = publishedPartialBaseStatsCandidate,
             languageManifest = languageManifest,
             gen2RelationshipRejection = gen2RelationshipRejection,
+            resolvedBaseStats = resolvedBaseStats,
+            compiledCanonicalSpecies = compiledCanonicalSpecies,
+            compiledWideMoves = compiledWideMoves,
         )
     }
 }
@@ -104,6 +114,7 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
         definition: EngineFamilyDefinition,
         identity: IdentityRootsPhaseResult.Resolved,
     ): CoreDatasetsPhaseResult.Resolved {
+        identity.compiledWideCore?.let { return resolveCompiledWideCorePhase(session, identity, it) }
         identity.gen2Compact?.let { compact ->
             return CoreDatasetsPhaseResult.Resolved(
                 candidateTables = compact.tables, speciesCount = compact.core.metadata.slots.size,

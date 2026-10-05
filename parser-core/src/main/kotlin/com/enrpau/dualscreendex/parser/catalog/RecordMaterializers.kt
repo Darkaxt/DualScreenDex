@@ -1,6 +1,7 @@
 package com.enrpau.dualscreendex.parser.catalog
 
 import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
+import com.enrpau.dualscreendex.parser.dataset.core.basestats.BaseStatsRowOutcome
 import com.enrpau.dualscreendex.parser.family.validatedDirectAbilityIds
 import com.enrpau.dualscreendex.parser.family.validatedHeaderlessUnifiedAbilityIds
 import com.enrpau.dualscreendex.parser.io.RomImage
@@ -8,6 +9,7 @@ import com.enrpau.dualscreendex.parser.language.defaultTextCodec
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.model.TableRecordFormat
+import com.enrpau.dualscreendex.parser.model.requiresCompiledCanonicalSpecies
 import com.enrpau.dualscreendex.parser.parse.CompiledTypeNameResolver
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
 import com.enrpau.dualscreendex.parser.validate.Gen3BaseStatAbilitySlots
@@ -29,8 +31,12 @@ object RecordMaterializers {
         layout: ResolvedRomLayout,
         cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
     ): SpeciesMaterialization {
+        cancellation.throwIfCancellationRequested()
         val names = layout.tables.speciesNames
         val stats = layout.tables.baseStats
+        if (layout.requiresCompiledCanonicalSpecies) {
+            return compiledWideSpecies(rom, layout, cancellation)
+        }
         val compact = layout.gen2CompactCore
         if (compact != null || stats?.format == TableRecordFormat.GEN2_COMPACT_BASE_STATS) {
             if (layout.generation != 2 || compact == null || names == null ||
@@ -236,6 +242,37 @@ object RecordMaterializers {
         return SpeciesMaterialization(records, indexResolution)
     }
 
+    private fun compiledWideSpecies(
+        rom: RomImage,
+        layout: ResolvedRomLayout,
+        cancellation: ParserCancellationToken,
+    ): SpeciesMaterialization {
+        val canonical = layout.compiledCanonicalSpecies
+        val typed = canonical?.coherentBaseStats(layout)
+            ?: return SpeciesMaterialization(emptyMap(), SpeciesIndexResolution.Unavailable(
+                emptyMap(), "compiled canonical species require coherent name/base/index and typed-row authority",
+            ))
+        val index = SpeciesIndexResolver.resolveWithEvidence(rom, layout, cancellation = cancellation)
+        val codec = layout.defaultTextCodec()
+        val records = canonical.nativeToDex.mapValues { (native, dex) ->
+            cancellation.throwIfCancellationRequested()
+            val decoded = (typed.rows[native] as BaseStatsRowOutcome.Decoded).record
+            val name = codec?.let { readName(rom, canonical.speciesNames, native, it, cancellation) }
+            SpeciesRecord(
+                id = native,
+                dexNumber = CatalogField.available(dex),
+                name = name?.takeIf { it.any(Char::isLetterOrDigit) }?.let(CatalogField.Companion::available)
+                    ?: CatalogField.notFound(TEXT_CODEC_UNAVAILABLE_REASON),
+                typeIds = CatalogField.available(decoded.typeIds),
+                baseStats = CatalogField.available(decoded.stats),
+                sprite = CatalogField.notFound("sprite was not materialized"),
+                abilityIds = CatalogField.available(decoded.abilityIds),
+                growthRate = CatalogField.available(decoded.growthRate),
+            )
+        }
+        return SpeciesMaterialization(records, index)
+    }
+
     private fun numericSpeciesRows(
         rom: RomImage,
         layout: ResolvedRomLayout,
@@ -385,8 +422,10 @@ object RecordMaterializers {
                     },
                     typeId = detail?.typeId?.let(CatalogField.Companion::available)
                         ?: CatalogField.notFound("move details were not resolved from the ROM"),
-                    category = detail?.category?.let(CatalogField.Companion::available)
-                        ?: CatalogField.notFound("move details were not resolved from the ROM"),
+                    category = detail?.category?.takeUnless {
+                        it == MoveCategory.UNKNOWN && layout.resolvedDatasets.moveDetails?.table?.abi?.isAlignedByteTarget == true
+                    }?.let(CatalogField.Companion::available)
+                        ?: CatalogField.notFound("move category lacks static compiled authority"),
                     power = detail?.power?.let(CatalogField.Companion::available)
                         ?: CatalogField.notFound("move details were not resolved from the ROM"),
                     accuracy = detail?.accuracy?.let(CatalogField.Companion::available)
@@ -562,6 +601,13 @@ object RecordMaterializers {
     }
 
     private fun validatedAbilityIds(rom: RomImage, layout: ResolvedRomLayout): Set<Int> {
+        val canonical = layout.compiledCanonicalSpecies
+        if (layout.requiresCompiledCanonicalSpecies) {
+            val typed = canonical?.coherentBaseStats(layout) ?: return emptySet()
+            return canonical.nativeToDex.keys.flatMap { native ->
+                (typed.rows[native] as BaseStatsRowOutcome.Decoded).record.abilityIds
+            }.toSet()
+        }
         val unified = layout.headerlessUnifiedSpecies
         val unifiedAbilities = unified?.abilities
         if (unified != null && unifiedAbilities != null) {

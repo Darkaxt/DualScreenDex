@@ -7,6 +7,7 @@ import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.language.defaultTextCodec
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
+import com.enrpau.dualscreendex.parser.model.requiresCompiledCanonicalSpecies
 import com.enrpau.dualscreendex.parser.resolution.BudgetKind
 
 /** Transient, immutable row authority; never changes public Pokédex numbering or persisted layouts. */
@@ -72,6 +73,16 @@ object SpeciesIndexResolver {
         cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
     ): SpeciesIndexResolution {
         cancellation.throwIfCancellationRequested()
+        val canonical = layout.compiledCanonicalSpecies
+        if (layout.requiresCompiledCanonicalSpecies) {
+            if (canonical?.coherentBaseStats(layout) == null) {
+                return SpeciesIndexResolution.Unavailable(emptyMap(), "compiled canonical species authority is incomplete or incoherent")
+            }
+            return SpeciesIndexResolution.Resolved(
+                canonical.nativeToDex,
+                SpeciesDescriptionIndex(emptyMap(), "canonical Dex conversion does not prove description-row authority"),
+            )
+        }
         return when (layout.generation) {
             1 -> resolveGen1(rom, layout, cancellation)
             2 -> SpeciesIndexResolution.Resolved((1..(layout.speciesCount ?: 0)).associateWith { it })
