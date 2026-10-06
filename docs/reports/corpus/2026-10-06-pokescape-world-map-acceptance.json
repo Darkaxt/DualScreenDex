@@ -13,6 +13,19 @@
   "originalReadsAcrossConsumedAdmissions": 5,
   "abandonedPreflightReservations": 2,
   "fullCorpusRerun": false,
+  "roundClosure": {
+    "date": "2026-10-07",
+    "specificationBlockers": 0,
+    "requiredTrackedDeferrals": 0,
+    "cleanupTransactionsApplied": 3,
+    "disposableOutputRootsVerifiedAbsent": 8,
+    "deletedFiles": 3481,
+    "deletedDirectories": 331,
+    "logicalDeletedBytes": 160685952,
+    "compactPrivateProofRetained": true,
+    "originalsAndRetainedCorporaPreserved": true,
+    "cleanupGradleMutexAcquired": false
+  },
   "executionReceiptSummary": {
     "schemaVersion": 1,
     "sourceCommit": "36b495c541215761ee20786284dda156a5b47ac3",

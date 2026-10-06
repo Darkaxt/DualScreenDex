@@ -1,6 +1,6 @@
 # Pokescape World Map recovery
 
-**Status: IN_PROGRESS.** Authorization: `already_authorized` by the user's October 6 go-ahead, followed by the ongoing goal to improve compatibility one target ROM at a time. This round targets the retained Pokescape v1.0.4 build's missing World Map. Regression inputs are controls, not additional implementation targets. Complete acceptance, publication and attributable cleanup before selecting another round.
+**Status: COMPLETE — bounded host/static World Map round closed October 7, 2026.** Authorization: `already_authorized` by the user's October 6 go-ahead, followed by the ongoing goal to improve compatibility one target ROM at a time. This round targets the retained Pokescape v1.0.4 build's missing World Map. Regression inputs are controls, not additional implementation targets. Complete acceptance, publication and attributable cleanup before selecting another round.
 
 ## Baseline and boundary
 
@@ -36,3 +36,5 @@ Smart-sync against live fork/master immediately before each commit. Preserve unr
 ## Closure
 
 The round is complete only when all PKW requirements are reconciled, the admitted target's World Map is verified with correct raster/semantic/reference/persistence outcomes, regressions are excluded, public evidence is pushed, required private proof is retained, and disposable output cleanup is actually applied. Required gaps remain blockers or staged tracked deferrals until fixed. Unrelated optional capabilities stay explicitly ledgered without being claimed recovered.
+
+**Final reconciliation:** PKW-01 through PKW-08 are satisfied without changing these requirements; zero blockers and zero required tracked deferrals. The [acceptance](../../reports/corpus/2026-10-06-pokescape-world-map-acceptance.md) binds packaged production source `36b495c541215761ee20786284dda156a5b47ac3`, exact independent raster/geometry/native joins, complete references and whole SQLite equality. All working core/Local Map data and 341 unrelated matrix rows are preserved. The [plan](../plans/2026-10-06-pokescape-world-map-plan.md) records actual host tests, publication, compact private retention and three applied cleanup transactions/eight absent output roots. Remaining optional fields are explicitly named in the library ledger, not required-round deferrals or whole-ROM acceptance.

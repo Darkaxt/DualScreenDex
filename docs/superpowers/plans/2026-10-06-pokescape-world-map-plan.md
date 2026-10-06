@@ -1,6 +1,6 @@
 # Pokescape World Map staged plan
 
-**Status: IN_PROGRESS. Authorization: already_authorized.** Specification: [authoritative design](../specs/2026-10-06-pokescape-world-map-design.md). One target ROM per round; controls are regression-only. No new source worktree, agents or Workflows.
+**Status: COMPLETE — bounded host/static round closed October 7, 2026. Authorization: already_authorized.** Specification: [authoritative design](../specs/2026-10-06-pokescape-world-map-design.md). One target ROM per round; controls are regression-only. No new source worktree, agents or Workflows.
 
 ## Stages
 
@@ -22,19 +22,21 @@
 | PKW-04 | Satisfied | Malformed pointer/row/name, extent/32-nomination budget and cancellation cases pass. Optional catalog isolation and legacy composition tests pass; no new catch or swallowed cancellation. |
 | PKW-05 | Satisfied | Complete before/after comparisons preserve 13 stored sections, all core counters and 520 Local Maps; only proven World Map/related labels and their metadata change. Synthetic affine/tiled/text and legacy resolver controls suffice for unchanged raster code. No other real ROM admitted. |
 | PKW-06 | Satisfied | Parser 87, SQL 2. Actual host results: parser 93 cases, storage 119 (six skips), CLI 76 (one skip), zero failures. Exact packaged source `36b495c541215761ee20786284dda156a5b47ac3` and runtime/report digests bound; whole SQLite structural equality, two integrity checks, matching logical digests and 83,623 complete-reference checks/zero errors. |
-| PKW-07 | Publication pending | Sanitized one-target acceptance prepared, 341 unrelated matrix row objects/provenance preserved. `LIB26-G3-POKESCAPE-WORLD` plus named section-domain/text/optional limits distinguish the verified gain from unrelated backlog. Final smart-sync publication remains required. |
-| PKW-08 | Cleanup pending | Two exact cleanup transactions register scratch/compiler/report roots; compact admissions, consumed/abandoned receipts, RED/GREEN XML and gate evidence retained privately. Every Gradle call acquired the gate: two workers/no parallel, observed Gradle 3 GB, requested Kotlin 3 GB, one configured 512 MB test fork, no memory failure. No agents/devices/other original inputs. Applied cleanup and absence checks pending. |
+| PKW-07 | Satisfied | Sanitized acceptance checkpoint `4ccbff72` pushed; 341 unrelated matrix row objects/provenance preserved. `LIB26-G3-POKESCAPE-WORLD` and named section-domain/text/optional limits distinguish this gain from unrelated backlog. Final closure publishes this reconciliation; no required gap reclassified away. |
+| PKW-08 | Satisfied | Compact immutable admissions/receipts, source/runtime/report pins, independent proof and RED/GREEN XML/logs SHA-verified outside Temp/Git. Three exact cleanup transactions applied: 3,481 files/331 directories, 160,685,952 logical bytes; eight output roots verified absent, zero residuals. Original/corpus/source/stash protected. Every Gradle call acquired the gate: two workers/no parallel, observed Gradle 3 GB, requested Kotlin 3 GB, configured one 512 MB fork; no memory failure. Cleanup acquired no Gradle mutex. No agents/devices/other original inputs. |
 
-**Blockers:** Only Stage 5 final publication, compact proof finalization and applied cleanup/absence verification remain. Stages 1–4 are reconciled; actual one-target host/static acceptance is verified, but round closure is still IN_PROGRESS.
+**Blockers:** Zero. All five stages reconciled against the unchanged specification; this is bounded host/static World Map completion, not whole-ROM or live-device completion.
 
-**Required tracked deferrals:** None. Any later required gap must be assigned a named stage and verification method, then resolved before dependent/final closure.
+**Required tracked deferrals:** Zero. No acceptance requirement was removed, weakened or silently moved into unrelated backlog.
 
 **Separate compatibility backlog:** `LIB26-MAPS` now names only Heart and Soul, Soulgold and Tourmaline. This round's `LIB26-G3-POKESCAPE-WORLD` closes the proven static map boundary; `LIB26-G3-POKESCAPE-SECTION-DOMAIN`, `LIB26-G3-POKESCAPE-TEXT` and `LIB26-G3-POKESCAPE-OPTIONAL` name actual field limits and closure conditions. These are not quietly removed required World Map deliverables or whole-ROM completion claims.
 
-## Next action
+## Final verification and closure
 
 Stage 2 observed four failures in eight valid regression tests before implementation. Stage 3's first expanded run exposed one **fixture** with a second compiled site omitted from its declared complete reference set; the fixture was corrected without changing production evidence requirements. Fresh 63-case parser GREEN and complete host storage/CLI suites followed. Inline review checked register preservation, signed branch math, pointer/extent bounds, candidate-local references, conflicts, cancellation and unchanged legacy fallback. No original pixel correspondence is inferred from the checked public source.
 
 Stage 4 consumed the fresh exact-source packaged acceptance and independent private check; all required outcomes are recorded in the [sanitized acceptance](../../reports/corpus/2026-10-06-pokescape-world-map-acceptance.md). Two launcher/producer preflights were abandoned before consumption, with zero original reads/parser calls; corrected producers used new reservations. Total original reads: five; parser executions: two; distinct target: one; real controls: zero.
 
-Publish the coherent sanitized evidence checkpoint, preserve compact private proof, review/inspect/ticket/apply the two exact cleanup transactions and verify absence. Reconcile the full unchanged specification at zero required gaps, then smart-sync and push final closure. No further original read or Gradle run is needed for documentation/cleanup.
+Stage 5's complete signed-manifest inspection found only attributed untracked generated members, no links/protected source/originals. Reviewed tickets applied serially without a build mutex; fresh helper status is terminal `applied` for all three transactions, with no residual helper files. Scratch, parser-core/parser-cli/catalog-store/save-core/root build outputs and project Gradle/Kotlin caches are absent. Shared toolchains/global caches, retained controls/corpora and canonical source remain intact. Compact private evidence is approximately 0.5 MB; reproducible SQLite/runtime/compiler payloads and superseded nominee bulk were not backed up.
+
+Final documentation checks compare all 341 unaffected row objects against the prior published source, validate public receipt/digest/reference/test counts, inspect privacy and links, and verify the production-source diff remains unchanged from the accepted package. Final smart-sync commit/push publishes closure to the fork, with canonical source cleanliness checked afterward. Continue the broader compatibility goal only through another separately selected one-target round.
