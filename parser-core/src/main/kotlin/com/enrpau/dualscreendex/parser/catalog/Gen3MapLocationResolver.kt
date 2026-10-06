@@ -66,7 +66,7 @@ object Gen3MapLocationResolver {
             cancellation,
             extentLimit,
         )
-        val contextualSections = findRegionEntryResolution(rom, sections, codec, cancellation)?.let { entries ->
+        val contextualSections = findRegionEntryResolution(rom, sections, codec, cancellation, references)?.let { entries ->
             resolveContextualSections(rom, entries.root, sections, cancellation)
         }.orEmpty()
         return names - contextualSections
@@ -91,14 +91,16 @@ object Gen3MapLocationResolver {
             requiredSections.values.toSet(),
             codec,
             cancellation,
+            references,
         ) ?: return null
         val preferredSections = resolveHeaderByBaseArea(rom, encounterBaseIds, references, cancellation)
             .mapValues { (_, header) -> rom.u8(header + REGION_SECTION_OFFSET) }
         val enrichedSections = preferredSections.filterValues { section ->
-            decodeRegionEntry(rom, regionEntries.root, section, codec, cancellation) != null
+            regionEntries.contains(section) &&
+                decodeRegionEntry(rom, regionEntries.root, section, codec, cancellation) != null
         }
         val sections = enrichedSections.takeIf { it.keys.containsAll(requiredSections.keys) } ?: requiredSections
-        val entries = sections.values.toSet().mapNotNull { section ->
+        val entries = sections.values.toSet().filter(regionEntries::contains).mapNotNull { section ->
             cancellation.throwIfCancellationRequested()
             decodeRegionEntry(rom, regionEntries.root, section, codec, cancellation)?.let { section to it }
         }.toMap(linkedMapOf())
@@ -829,9 +831,33 @@ object Gen3MapLocationResolver {
         sectionIds: Set<Int>,
         codec: PokemonTextCodec?,
         cancellation: ParserCancellationToken,
+        references: GbaReferenceIndex? = null,
     ): RegionEntryResolution? {
         cancellation.throwIfCancellationRequested()
         if (sectionIds.isEmpty()) return null
+        if (references != null) {
+            val compiled = CompiledGen3RegionEntryTable.discover(rom, references, cancellation)
+            if (compiled.rejected) return null
+            if (compiled.tables.isNotEmpty()) {
+                val table = compiled.tables.singleOrNull() ?: return null
+                val boundedSections = sectionIds.filter(table::contains).toSet()
+                val requiredAnchors = minOf(REGION_ENTRY_ANCHORS, boundedSections.size)
+                if (requiredAnchors == 0 || boundedSections.any { section ->
+                        !emptyRegionEntry(rom, table.root, section) &&
+                            !validRegionEntryShell(rom, table.root, section, codec, cancellation)
+                    } || boundedSections.count { section ->
+                        validRegionEntry(rom, table.root, section, codec, cancellation)
+                    } < requiredAnchors
+                ) return null
+                val entries = boundedSections.mapNotNull { section ->
+                    cancellation.throwIfCancellationRequested()
+                    decodeRegionEntry(rom, table.root, section, codec, cancellation)?.let { section to it }
+                }.toMap()
+                mapTrace("region-entries compiled bounded rows=${table.count} mapped=${entries.size} " +
+                    "excluded=${sectionIds.size - boundedSections.size}")
+                return RegionEntryResolution(table.root, entries, table.count)
+            }
+        }
         val maxSection = sectionIds.maxOrNull() ?: return null
         val requiredAnchorCount = minOf(REGION_ENTRY_ANCHORS, sectionIds.size)
         val provisionalAnchors = sectionIds.sortedDescending().take(requiredAnchorCount)
@@ -1086,7 +1112,10 @@ private data class MapGroupsLayout(
 private data class RegionEntryResolution(
     val root: Int,
     val entries: Map<Int, Gen3RegionMapEntry>,
-)
+    val count: Int? = null,
+) {
+    fun contains(section: Int): Boolean = section >= 0 && (count == null || section < count)
+}
 
 internal data class Gen3MapLocationResolution(
     val sectionByBaseArea: Map<Int, Int>,

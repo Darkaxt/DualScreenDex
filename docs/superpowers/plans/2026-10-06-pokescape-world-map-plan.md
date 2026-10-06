@@ -16,16 +16,16 @@
 
 | Requirement | Status | Evidence / pending action |
 |---|---|---|
-| PKW-01 | Pending Stage 1 | Fresh MAIN diagnostic admission and exact contract trace not yet issued/executed. |
-| PKW-02 | Pending Stages 1–3 | Production changes prohibited until compiled/data authority and observed RED tests establish the gap. |
-| PKW-03 | Pending Stages 1–4 | Correct target raster and semantic joins need independent original-bound proof. |
-| PKW-04 | Pending Stages 2–3 | New boundary coverage and actual cancellation/isolation verification required. |
-| PKW-05 | Pending Stages 1–4 | Retained public row is historical baseline only; fresh working-dataset and regression comparisons required. |
-| PKW-06 | Pending Stages 3–4 | Cache revision depends on actual production change; full equality and references are mandatory. |
-| PKW-07 | Pending Stage 5 | No gain published or claimed yet; target's unrelated missing datasets remain separate backlog. |
-| PKW-08 | In progress | Existing canonical checkout and verified public source reused; no new original reads/builds/devices yet. Scratch registration, required gate evidence, private proof and applied cleanup still pending. |
+| PKW-01 | Stage 1 satisfied; Stage 4 pending | Fresh MAIN diagnostic and baseline reservations consumed separately. Baseline reaches asset composition but fails the region-entry join. A compiled guarded eight-byte name consumer proves the table's ordinal bound; one encounter section exceeds it. Exact public asset equality was **not** established and is not used as pixel authority. Relocated source-independent fixture reproduces rejection. |
+| PKW-02 | Stage 3 host satisfied; final review pending | New bounded-consumer helper proves compare/BHI, literal root, row stride, name-field displacement and indirect read with register flow. Complete indexed sites and whole table extent required; conflicts, incomplete evidence and nomination exhaustion reject. Existing shell/text checks and anchor thresholds retained. |
+| PKW-03 | Stage 4 pending | No original-bound raster/semantic acceptance claimed. Affine/tiled/text synthetic exact-pixel regressions pass; target asset/geometry/reference proof remains mandatory. |
+| PKW-04 | Stage 3 host satisfied | Fresh malformed pointer/row/name, extent/32-nomination budget and cancellation cases pass. Optional catalog regression suite passes; no new catch or swallowed cancellation. |
+| PKW-05 | Stage 4 pending | Fresh baseline matches historical working core counters and retains 520 Local Maps. Focused legacy synthetic regressions pass; final target before/after and complete-reference comparisons pending. No real control input needed for unchanged raster code yet. |
+| PKW-06 | Stage 3 host satisfied; Stage 4 pending | Parser revision 87, SQL unchanged at 2. Host results: parser 63/63; storage 119 cases, zero failures/six opt-in skips; CLI 76 cases, zero failures/one opt-in skip. Exact committed-source packaging and target reopening still pending. |
+| PKW-07 | Stage 5 pending | No gain published or claimed yet; target's unrelated missing datasets remain separate backlog. |
+| PKW-08 | In progress | Two exact cleanup transactions register scratch/compiler/report roots; compact RED/diagnostic admissions retained privately. Each required Gradle call acquired the installed gate, two workers/no parallel, requested Gradle/Kotlin 3 GB, one 512 MB test fork; no memory failure. Kotlin strategy preserved. No agents/devices/other original inputs. Cleanup pending. |
 
-**Blockers:** Stage 1 original admission/proof and all dependent acceptance gates remain open. These are expected pending gates, not a request for another implementation go-ahead.
+**Blockers:** Stage 4 exact-source target raster/geometry/reference/persistence acceptance and Stage 5 publication/cleanup remain open. Stages 1–3 are reconciled at their host boundaries; this source checkpoint is not real-input feature completion.
 
 **Required tracked deferrals:** None. Any later required gap must be assigned a named stage and verification method, then resolved before dependent/final closure.
 
@@ -33,4 +33,6 @@
 
 ## Next action
 
-Complete Stage 1 read-only resolver/source/test analysis, register one bounded scratch root, and review a new exact MAIN diagnostic admission. Keep execution IN_PROGRESS until the specification's acceptance, publication and cleanup gates are genuinely met or an actual authority/resource blocker requires a safe hold.
+Stage 2 observed four failures in eight valid regression tests before implementation. Stage 3's first expanded run exposed one **fixture** with a second compiled site omitted from its declared complete reference set; the fixture was corrected without changing production evidence requirements. Fresh 63-case parser GREEN and complete host storage/CLI suites followed. Inline review checked register preservation, signed branch math, pointer/extent bounds, candidate-local references, conflicts, cancellation and unchanged legacy fallback. No original pixel correspondence is inferred from the checked public source.
+
+Smart-sync and publish the coherent source checkpoint, rebuild/stamp the packaged CLI at that exact commit, then issue a fresh one-target MAIN acceptance reservation. Independently validate compiled raster/semantic consumers and all decoded references/persistence before updating the matrix. Keep execution IN_PROGRESS until publication and actual cleanup close.
