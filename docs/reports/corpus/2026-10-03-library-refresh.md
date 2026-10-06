@@ -7,6 +7,7 @@ The GB/GBC/GBA Pokémon hack library has changed enough to warrant a new corpus 
 - [Current 342-ROM compatibility matrix](2026-10-03-library-compatibility.md)
 - [October 4 Gen II relationship acceptance: seven gains, 19 checked catalogs](2026-10-04-gen2-relationships-acceptance.md)
 - [October 5 Gen III widened-core acceptance: two recovered ROWE cores, 13-input cohort](2026-10-05-gen3-wide-core-acceptance.md)
+- [October 6 Pokescape World Map acceptance: one independently checked static map](2026-10-06-pokescape-world-map-acceptance.md)
 - [Machine-readable rows, aliases, provenance, and delta receipt](2026-10-03-library-compatibility.json)
 - [Current library identity](../../../release/current-library-corpus.json)
 - [Frozen 333-input release matrix](../../rom-compatibility-matrix.md)
@@ -50,7 +51,7 @@ The subsequent [Gen I acceptance](2026-10-03-gen1-core-acceptance.md) supersedes
 
 The [Gen II acceptance](2026-10-03-gen2-core-acceptance.md) supersedes **18 rows** and adds Polished, Inheritance, Ambrosia and Sour Crystal. Four bounded executions total 58 parser executions over 18 identities, with diagnostic/intermediate rows superseded explicitly. All 15 accepted selected catalogs close decoded references and pass complete SQLite write/reopen equality and matching logical digests. The effective matrix is **263 historical + 31 retained delta + 30 Gen I + 18 Gen II identities**. Not every row was scanned against the latest source; official standalone Gen II controls were unavailable and not run.
 
-The [October 5 Gen III widened-core acceptance](2026-10-05-gen3-wide-core-acceptance.md) supersedes 13 cohort rows after a fresh serial packaged run. ROWE 2.1.1 now selects, and Experimental gains 1,025 canonical names/stats/sprites and a reference-safe expanded ordinary level-up catalog. All ten selected catalogs close complete references and exact SQLite reopening. The 11 controls retain their outcomes/counters/capability statuses; Voyager's two builds and Elite Redux remain unmatched. The matrix now combines 19 Gen II and 13 Gen III focused rows with 310 unchanged full342-baseline rows, without a full-corpus rerun.
+The [October 5 Gen III widened-core acceptance](2026-10-05-gen3-wide-core-acceptance.md) supersedes 13 cohort rows after a fresh serial packaged run. ROWE 2.1.1 now selects, and Experimental gains 1,025 canonical names/stats/sprites and a reference-safe expanded ordinary level-up catalog. All ten selected catalogs close complete references and exact SQLite reopening. The 11 controls retain their outcomes/counters/capability statuses; Voyager's two builds and Elite Redux remain unmatched. The matrix now combines 19 Gen II, 13 Gen III widened-core and one [Pokescape World Map](2026-10-06-pokescape-world-map-acceptance.md) focused rows with 309 unchanged full342-baseline rows, without a full-corpus rerun.
 
 | Current snapshot outcome | Count |
 |---|---:|
@@ -78,6 +79,7 @@ N/A capabilities remain outside coverage denominators. Capability confidence and
 | Polished Crystal, Ambrosia, Crystal Inheritance, Sour Crystal | All four select with complete named canonical stat joins and independently resolved move details | Modern catalogs remain essential-only; Ambrosia categories and Sour optional gaps are explicit. Faithful alias is not a fifth identity. |
 | Static Yellow, 2 variants | Both select; 87.50%; Dex text and Local Map not found | A focused optional-capability follow-up, not a family-routing problem. |
 | Battle Theater 2.6 | Selects; 89.78%; both maps available | Preserve as an expanded-engine regression control, not a first map target. |
+| Pokescape 1.0.4 | Selects; 79.14%; World Map and all 520 Local Maps available | One independently checked raster, 64 locations/116 encounter-base bindings and corroborated label gains; remaining text/core optional gaps stay ledgered. |
 | Heart and Soul 2.0.6 / Soulgold 1.1.4 | 80.92% / 79.40%; World Map missing, Local Map partial | Useful source-backed map follow-ups with functioning base catalogs. |
 | FireRed Reignited / Leafgreen Regrown | Both select; 95.33% | Lower urgency; numeric ability proof is not a prerequisite for otherwise usable catalogs. |
 | Saiph 2, 4 modes | All select; 95.71% | Keep all four distinct binaries as regression controls. |
@@ -125,7 +127,9 @@ Sources: [ROWE](https://github.com/BelialClover/RoweSource), [newer ROWE structu
 
 ### 4. Finish reusable map consumers on working catalogs
 
-First source-backed set: **Heart and Soul, Soulgold, Pokescape, Tourmaline**. World Map is missing on all four; Local Map is partial on the first two, available on Pokescape, and absent on Tourmaline. Do not reuse an old plan that treats Pokescape's Local Map or Battle Theater's two maps as still missing.
+**Pokescape World Map accepted:** [one target's exact compiled/static acceptance](2026-10-06-pokescape-world-map-acceptance.md) verifies the raster, 64 locations, native joins, complete references and SQLite equality while retaining all 520 Local Maps. It does not close missing optional text or imply a shared ABI.
+
+Remaining source-backed candidates: **Heart and Soul, Soulgold, Tourmaline**. World Map remains missing on these three; Local Map is partial on the first two and absent on Tourmaline. Do not treat Pokescape's maps or Battle Theater's two maps as missing. Select and independently admit one target per round.
 
 After those consumers are understood, check Static Yellow's two missing Local Maps and both Christmas Kaizo map gaps for shared Gen I patterns. Group candidates by compiled loading/rendering contracts, not project titles.
 
@@ -133,7 +137,7 @@ After those consumers are understood, check Static Yellow's two missing Local Ma
 
 ### Lower-priority work and measurement cautions
 
-Across the 301 selected composite rows, recomputing PARTIAL/AMBIGUOUS/NOT_FOUND cells gives: species 142, Dex text 167, Local Map 141, numeric ability mechanics 105, and World Map 71. These counts are **not missing-record totals** and exclude N/A. A nearly complete 151-species catalog and a severely deficient expanded catalog can both contribute one partial cell. Newly routed incomplete catalogs can increase these gap counts even though compatibility improved.
+Across the 301 selected composite rows, recomputing PARTIAL/AMBIGUOUS/NOT_FOUND cells gives: species 142, Dex text 167, Local Map 141, numeric ability mechanics 105, and World Map 70. These counts are **not missing-record totals** and exclude N/A. A nearly complete 151-species catalog and a severely deficient expanded catalog can both contribute one partial cell. Newly routed incomplete catalogs can increase these gap counts even though compatibility improved.
 
 Therefore:
 
@@ -146,7 +150,7 @@ Therefore:
 
 ## Follow-up ledger
 
-`LIB26-G1-CORE` and `LIB26-G2-CORE` are accepted at their bounded host/static boundaries. The subsequent [October 4 relationship checkpoint](2026-10-04-gen2-relationships-acceptance.md) accepts seven Gen II evolution/level-up gains and validates all 19 selected Gen II catalogs, without a new full342 run. The current matrix is composite: 19 Gen II and 13 Gen III focused rows supersede the full342 baseline, while the other 310 row objects and their provenance remain unchanged. Gen II acceptance closes canonical/static joins and reference-safe SQLite persistence, not every optional feature. Remaining entries have named targets and explicit closure conditions; none is silently deferred or claimed complete.
+`LIB26-G1-CORE` and `LIB26-G2-CORE` are accepted at their bounded host/static boundaries. The subsequent [October 4 relationship checkpoint](2026-10-04-gen2-relationships-acceptance.md) accepts seven Gen II evolution/level-up gains and validates all 19 selected Gen II catalogs, without a new full342 run. The current matrix is composite: 19 Gen II, 13 Gen III widened-core and one Pokescape World Map focused rows supersede the full342 baseline, while the other 309 row objects and their provenance remain unchanged. Gen II acceptance closes canonical/static joins and reference-safe SQLite persistence, not every optional feature. Remaining entries have named targets and explicit closure conditions; none is silently deferred or claimed complete.
 
 | ID | Status | Named target | Closure condition |
 |---|---|---|---|
@@ -167,7 +171,11 @@ Therefore:
 | LIB26-G3-ROWE-TUTORS | Open; old Experimental links not retained | Experimental tutor join; older missing machine dataset | Exact list/compatibility/index/count consumers and all referenced move-domain authority, canonical joins and ambiguity/termination guards. Experimental remains NOT_FOUND (528 old links → 0); older has 3,039 reference-closed tutor links but zero machine links. |
 | LIB26-G3-ROWE-OPTIONAL | Open | Both ROWE builds; encounter/maps, numeric ability mechanics and save/live structures | Independently prove each missing consumer/ABI; retain canonical core and fail-closed status. Static host references/persistence do not authorize Android or runtime-state acceptance. |
 | LIB26-G3-OFFICIAL-CONTROLS | Not run | Official Ruby/Sapphire/Emerald/FireRed/LeafGreen | Retained, separately authorized exact inputs and bounded host/static regression; no download, device or release authority. |
-| LIB26-MAPS | Recommended | Heart and Soul, Soulgold, Pokescape, Tourmaline | Map-consumer proof, valid assets/references, and related-cohort regression. |
+| LIB26-G3-POKESCAPE-WORLD | Accepted host/static | Pokescape 1.0.4 World Map | [Exact 26,880-pixel raster, 64 native locations/116 encounter-base bindings, complete references and SQLite equality; working core/520 Local Maps unchanged](2026-10-06-pokescape-world-map-acceptance.md). |
+| LIB26-G3-POKESCAPE-SECTION-DOMAIN | Explicit represented-domain limit | Pokescape's one encountered section outside the compiled static table | Independently prove a representing compiled consumer before exposing a name/location; absent representation is not authority to invent geometry or expand the table. |
+| LIB26-G3-POKESCAPE-TEXT | Open | Pokescape's 214 unresolved required Local Map names, one encounter label and 1,097 POI text obligations | Independently prove static/contextual text consumers and native map/POI joins; preserve the raster/catalog and explicit applicability contract, with reference closure/SQLite equality. POI text covers 1,052/2,149, distinct from guide records with content. |
+| LIB26-G3-POKESCAPE-OPTIONAL | Open | Pokescape's missing Dex text/move details/categories, five move-description gaps, ambiguous abilities and missing ability text/mechanics/native type label | Select a separately bounded consumer contract; prove native indices/counts/fields before publication, preserve all working datasets and verify complete references/SQLite equality. World Map acceptance does not close these fields. |
+| LIB26-MAPS | Recommended; separate one-target rounds | Heart and Soul, Soulgold, Tourmaline | Independently prove map consumers, valid assets/geometry/native references and bounded regressions; no shared ABI inferred from names or Pokescape acceptance. |
 | LIB26-G1-OPTIONAL | Recommended | Six PureRGB builds; both Yellow Kaizo builds; Static Yellow and Christmas Kaizo variants | PureRGB sprites/Dex/World/Local datasets and Yellow/Christmas missing Dex/Local datasets resolved through independent compiled authority and failure isolation. |
 | LIB26-G1-FORMS | Recommended | Six PureRGB builds, 13 separately handled non-Dex form IDs | Proven alternate base/index/type semantics and reference-safe materialization; no positional canonical-stat fallback. |
 

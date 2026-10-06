@@ -1,12 +1,13 @@
 # ROM compatibility matrix
 
-This document lists all **342 distinct ROM identities** in the October 3, 2026 current library snapshot. The 19 selected Gen II rows and 13 Gen III cohort rows now come from focused source-bound evaluations; the other 310 row objects retain the completed October 4 full-corpus baseline unchanged. This is composite evidence, not a new full-corpus run. A row describes the public build named in the **ROM** column, not every release of that project.
+This document lists all **342 distinct ROM identities** in the October 3, 2026 current library snapshot. The 19 selected Gen II rows, 13 Gen III cohort rows and one Pokescape World Map row come from focused source-bound evaluations; the other 309 row objects retain the completed October 4 full-corpus baseline unchanged. This is composite evidence, not a new full-corpus run. A row describes the public build named in the **ROM** column, not every release of that project.
 
 Capability percentages are confidence from bounded compiled structural evidence, not a promise that every optional feature is supported. These are static catalog observations, not live gameplay or physical-device acceptance.
 
 - Full342 baseline source: `f7214d1f644aa97f3bdfacddd3de8dcefdede9f5`
 - Focused 19-input Gen II source: `6272147fa7ae4dce6d1a70d146667c15b1d1f5e1` ([acceptance](2026-10-04-gen2-relationships-acceptance.md))
 - Focused 13-input Gen III source: `4b62be1dc8e7a19b19ccdc3ac50c451a844fc07c` ([acceptance](2026-10-05-gen3-wide-core-acceptance.md))
+- Focused one-input Pokescape World Map source: `36b495c541215761ee20786284dda156a5b47ac3` ([acceptance](2026-10-06-pokescape-world-map-acceptance.md))
 - Inputs: **342**
 - Detected family and materialized catalog: **301**
 - Persisted and exactly reopened SQLite catalogs: **301**
@@ -59,7 +60,7 @@ Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for 
 | 2 | Gold/Silver family | 5 | 86.67% | 0 |
 | 2 | Crystal family | 14 | 69.97% | 0 |
 | 3 | Ruby/Sapphire family | 15 | 91.80% | 0 |
-| 3 | Emerald family | 75 | 81.83% | 0 |
+| 3 | Emerald family | 75 | 81.89% | 0 |
 | 3 | FireRed/LeafGreen family | 89 | 89.81% | 0 |
 
 ## Generation 1
@@ -308,7 +309,7 @@ Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for 
 | Mystique (1.1.1).gba | 1 | 89.62% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 37% | 100% | 100% | P 99% | 100% | P 31% | P 94% | N/A | 99% | P 99% | 100% | 100% | 100% | 100% | 100% | 100% | P 50% |
 | National History Museum (v1.0.4).gba | 1 | 79.14% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 0% | P 99% | 100% | 100% | 74% | 90% | ? 95% | 0% | 0% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Peach (Demo) (v1.4).gba | 1 | 58.33% | 100% | 100% | 100% | 0% | 100% | 0% | 0% | 100% | 95% | 100% | 100% | 100% | 0% | 0% | 90% | ? 95% | 0% | 0% | 100% | 100% | 0% | 0% | P 100% | 100% |
-| Pokescape (v1.0.4).gba | 1 | 74.97% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 0% | P 99% | 100% | 100% | 74% | 90% | ? 95% | 0% | 0% | 100% | 100% | 100% | 0% | 100% | 100% |
+| Pokescape (v1.0.4).gba | 1 | 79.14% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 0% | P 99% | 100% | 100% | 74% | 90% | ? 95% | 0% | 0% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Pokémon Hearth (v0.1.27).gba | 1 | 72.22% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 35% | 100% | 100% | P 99% | 100% | P 31% | P 96% | N/A | 100% | 100% | 100% | 0% | 100% | 0% | 0% | 0% | P 50% |
 | Quetzal (Emerald Multiplayer) (v0.8.4).gba | 1 | 53.79% | 91% | P 91% | 100% | 100% | 100% | 100% | 0% | 0% | 95% | 100% | 100% | 0% | 0% | 0% | 83% | ? 95% | 0% | 0% | ? 0% | 100% | 100% | 0% | 0% | 100% |
 | R.O.W.E. (2.1.1).gba | 1 | 70.83% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 0% | 100% | P 100% | 100% | 100% | 74% | 0% | 89% | 100% | 100% | 0% | 0% | 100% | 100% | ? 0% | 0% | 100% |
