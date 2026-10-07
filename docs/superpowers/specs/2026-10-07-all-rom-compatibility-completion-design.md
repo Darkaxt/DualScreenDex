@@ -26,6 +26,6 @@ Pokescape's working core, two map datasets and retained acceptance stay protecte
 - Five move-description gaps; ambiguous/unmaterialized ability names, descriptions and mechanics; one missing native type label.
 - Remaining Local/encounter/POI text and represented-domain limits documented by the existing field ledger. Prove applicability and actual native consumers before assigning data; never invent a World location for an unrepresented ordinal.
 
-**Immediate next action:** publish the sanitized move acceptance, preserve compact proof and apply registered output cleanup; then diagnose this ROM's next unresolved native contract, starting with Dex text. No repeated admission is implied. This batch does not complete the parent or automatically close the other obligations.
+**Immediate next action:** diagnose this ROM's next unresolved native contract, starting with Dex text, using public source and retained metadata first. Sanitized packed-move acceptance is published, compact proof is verified and all eight registered output roots are actually removed. No repeated admission is implied; every new original read still requires its separately reviewed one-use admission. The closed batch does not complete the parent or close any other obligation.
 
 The current matrix is composite. Publication of a later focused row does not turn historical rows into fresh evaluations. Any final whole-library acceptance must bind every identity to the accepted production source and preserve complete evidence/cleanup under its own bounded execution stage.

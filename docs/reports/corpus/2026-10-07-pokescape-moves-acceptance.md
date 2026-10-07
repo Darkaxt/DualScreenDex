@@ -42,4 +42,8 @@ All complete competing roots reject rather than being ranked. Partial, malformed
 
 Pokescape is **83.31%, not complete**. Dex text, five move-description gaps, ambiguous ability names and missing ability descriptions/mechanics, the missing native type label and remaining applicable Local/encounter/POI text remain active obligations. Existing represented-domain limits cannot be replaced with invented names or geometry.
 
-No Android/device/emulator/ADB, SaveRAM, APK, signing or release acceptance occurred. Original archives and retained corpora remain protected. Compact proof retention and registered output cleanup follow publication; that closure must not stop the parent task. **Next implementation target remains this ROM's next unresolved native contract.**
+## Applied output cleanup
+
+The registered eight batch-output roots are actually absent after installed transactional cleanup. All **3,892 signed members** were inspected: **3,542 files and 350 directories**, totaling **120,908,017 logical file bytes**, were deleted with zero residual roots, warnings or errors. This is not a measured volume-space delta. Compact proof was independently checked after deletion; canonical source, protected stash and protected corpus roots remain. No Gradle mutex, build or original-content read was used for cleanup.
+
+No Android/device/emulator/ADB, SaveRAM, APK, signing or release acceptance occurred. Original archives and retained corpora remain protected. Publication, verified retention and applied cleanup close only this packed-move batch. **Parent and current ROM remain IN_PROGRESS; the next contract is this ROM's missing Dex descriptions.**

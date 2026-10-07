@@ -437,6 +437,21 @@
       }
     }
   ],
+  "cleanup": {
+    "state": "APPLIED_AND_ABSENCE_VERIFIED",
+    "outputRootsRemoved": 8,
+    "signedMembersInspected": 3892,
+    "deletedFiles": 3542,
+    "deletedDirectories": 350,
+    "deletedLogicalFileBytes": 120908017,
+    "residualOutputRoots": 0,
+    "compactProofVerified": true,
+    "sourceStashAndProtectedCorpusRootsPreserved": true,
+    "gradleMutexAcquired": false,
+    "volumeDeltaClaimed": false,
+    "parentStatus": "IN_PROGRESS",
+    "nextContract": "Pokescape Dex descriptions"
+  },
   "limitations": [
     "Coverage is 83.31%, not full-ROM or parent completion.",
     "Dex descriptions, five move descriptions, ambiguous ability names/descriptions/mechanics, native type label and remaining Local/encounter/POI text remain active obligations.",
