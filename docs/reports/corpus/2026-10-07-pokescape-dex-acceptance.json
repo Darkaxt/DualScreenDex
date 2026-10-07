@@ -463,6 +463,24 @@
     "Current public source differs from the retained compiled target and is a structural oracle only.",
     "No other real ROM, full-corpus rerun, Android/emulator/ADB, APK, signing or release."
   ],
+  "cleanup": {
+    "status": "APPLIED_AND_ABSENT",
+    "publicationCommit": "3391c2cca2dcf1de7a76b416d7c29f1f79aead68",
+    "signedMembersInspected": 3873,
+    "deletedFiles": 3531,
+    "deletedDirectories": 342,
+    "logicalDeletedFileBytes": 122771003,
+    "exactOutputRootsAbsent": 8,
+    "compactPrivateProofRetainedAndReverified": true,
+    "originalCopies": 0,
+    "sqliteCopies": 0,
+    "jarCopies": 0,
+    "sourceStashAndProtectedCorporaPreserved": true,
+    "gradleMutexAcquired": false,
+    "residuals": 0,
+    "errors": 0,
+    "warnings": 0
+  },
   "ledgerIds": [
     "LIB26-G3-POKESCAPE-DEX",
     "LIB26-G3-POKESCAPE-CATEGORIES",

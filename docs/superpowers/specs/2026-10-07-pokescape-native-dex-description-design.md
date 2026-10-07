@@ -1,6 +1,6 @@
 # Pokescape native Dex-description batch
 
-**Status: IN_PROGRESS. Authorization: already_authorized.** This is a bounded leaf of the [all-ROM parent](2026-10-07-all-rom-compatibility-completion-design.md), not a new ROM target or parent completion.
+**Status: COMPLETE — bounded host/static leaf only. Authorization: already_authorized.** This is a bounded leaf of the [all-ROM parent](2026-10-07-all-rom-compatibility-completion-design.md), not a new ROM target or parent completion.
 
 ## Proven failure and contract
 
