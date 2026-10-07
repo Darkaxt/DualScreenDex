@@ -38,13 +38,13 @@ data class Arm7DataProcessing(
     val restoresStatusFromSpsr: Boolean = false,
 ) : Arm7Instruction {
     init { require(!restoresStatusFromSpsr || destination == Arm7Register.PC) }
-    override val registersRead: Set<Arm7Register> =
+    override val registersRead: Set<Arm7Register> get() =
         (first?.registersRead ?: emptySet()) + second.registersRead
-    override val registersWritten: Set<Arm7Register> = setOf(destination)
-    override val flagsRead: Set<Arm7Flag> = condition.flagsRead +
+    override val registersWritten: Set<Arm7Register> get() = setOf(destination)
+    override val flagsRead: Set<Arm7Flag> get() = condition.flagsRead +
         (first?.flagsRead ?: emptySet()) + second.flagsRead + additionalFlagsRead
-    override val memoryEffects: List<Arm7MemoryAccess> = emptyList()
-    override val controlEffect: Arm7ControlEffect = if (destination == Arm7Register.PC) {
+    override val memoryEffects: List<Arm7MemoryAccess> get() = emptyList()
+    override val controlEffect: Arm7ControlEffect get() = if (destination == Arm7Register.PC) {
         Arm7ControlEffect.ProgramCounterWrite(interworking = false)
     } else {
         Arm7ControlEffect.Sequential
@@ -65,11 +65,11 @@ data class Arm7Compare(
     override val flagsWritten: Set<Arm7Flag>,
     val restoresStatusFromSpsr: Boolean = false,
 ) : Arm7Instruction {
-    override val registersRead: Set<Arm7Register> = first.registersRead + second.registersRead
-    override val registersWritten: Set<Arm7Register> = emptySet()
-    override val flagsRead: Set<Arm7Flag> = condition.flagsRead + first.flagsRead + second.flagsRead
-    override val memoryEffects: List<Arm7MemoryAccess> = emptyList()
-    override val controlEffect: Arm7ControlEffect = Arm7ControlEffect.Sequential
+    override val registersRead: Set<Arm7Register> get() = first.registersRead + second.registersRead
+    override val registersWritten: Set<Arm7Register> get() = emptySet()
+    override val flagsRead: Set<Arm7Flag> get() = condition.flagsRead + first.flagsRead + second.flagsRead
+    override val memoryEffects: List<Arm7MemoryAccess> get() = emptyList()
+    override val controlEffect: Arm7ControlEffect get() = Arm7ControlEffect.Sequential
 }
 
 data class Arm7MemoryTransfer(
@@ -88,9 +88,9 @@ data class Arm7MemoryTransfer(
     val valueRegisterPcBias: Int = 0,
 ) : Arm7Instruction {
     init { require(valueRegisterPcBias == 0 || (!load && valueRegister == Arm7Register.PC)) }
-    override val registersRead: Set<Arm7Register> = address.registersRead +
+    override val registersRead: Set<Arm7Register> get() = address.registersRead +
         if (load) emptySet() else setOf(valueRegister)
-    override val registersWritten: Set<Arm7Register> = buildSet {
+    override val registersWritten: Set<Arm7Register> get() = buildSet {
         if (load) add(valueRegister)
         when (address) {
             is Arm7Address.RegisterOffset -> if (address.writeBack) add(address.base)
@@ -98,9 +98,9 @@ data class Arm7MemoryTransfer(
             is Arm7Address.PcRelative -> Unit
         }
     }
-    override val flagsRead: Set<Arm7Flag> = condition.flagsRead + address.flagsRead
-    override val flagsWritten: Set<Arm7Flag> = emptySet()
-    override val memoryEffects: List<Arm7MemoryAccess> = listOf(
+    override val flagsRead: Set<Arm7Flag> get() = condition.flagsRead + address.flagsRead
+    override val flagsWritten: Set<Arm7Flag> get() = emptySet()
+    override val memoryEffects: List<Arm7MemoryAccess> get() = listOf(
         Arm7MemoryAccess(
             direction = if (load) Arm7MemoryDirection.READ else Arm7MemoryDirection.WRITE,
             width = width,
@@ -109,7 +109,7 @@ data class Arm7MemoryTransfer(
             unalignedPolicy = unalignedPolicy,
         ),
     )
-    override val controlEffect: Arm7ControlEffect = if (load && valueRegister == Arm7Register.PC) {
+    override val controlEffect: Arm7ControlEffect get() = if (load && valueRegister == Arm7Register.PC) {
         Arm7ControlEffect.ProgramCounterWrite(interworking = false)
     } else {
         Arm7ControlEffect.Sequential
@@ -133,15 +133,15 @@ data class Arm7Multiply(
         require(Arm7Register.PC !in setOf(multiplicand, multiplier))
         require(accumulator != Arm7Register.PC)
     }
-    override val registersRead: Set<Arm7Register> = buildSet {
+    override val registersRead: Set<Arm7Register> get() = buildSet {
         add(multiplicand)
         add(multiplier)
         accumulator?.let(::add)
     }
-    override val registersWritten: Set<Arm7Register> = setOf(destination)
-    override val flagsRead: Set<Arm7Flag> = condition.flagsRead
-    override val memoryEffects: List<Arm7MemoryAccess> = emptyList()
-    override val controlEffect: Arm7ControlEffect = Arm7ControlEffect.Sequential
+    override val registersWritten: Set<Arm7Register> get() = setOf(destination)
+    override val flagsRead: Set<Arm7Flag> get() = condition.flagsRead
+    override val memoryEffects: List<Arm7MemoryAccess> get() = emptyList()
+    override val controlEffect: Arm7ControlEffect get() = Arm7ControlEffect.Sequential
 }
 
 data class Arm7LongMultiply(
@@ -162,7 +162,7 @@ data class Arm7LongMultiply(
         require(destinationLow != destinationHigh)
         require(Arm7Register.PC !in setOf(destinationLow, destinationHigh, multiplicand, multiplier))
     }
-    override val registersRead: Set<Arm7Register> = buildSet {
+    override val registersRead: Set<Arm7Register> get() = buildSet {
         add(multiplicand)
         add(multiplier)
         if (accumulate) {
@@ -170,10 +170,10 @@ data class Arm7LongMultiply(
             add(destinationHigh)
         }
     }
-    override val registersWritten: Set<Arm7Register> = setOf(destinationLow, destinationHigh)
-    override val flagsRead: Set<Arm7Flag> = condition.flagsRead
-    override val memoryEffects: List<Arm7MemoryAccess> = emptyList()
-    override val controlEffect: Arm7ControlEffect = Arm7ControlEffect.Sequential
+    override val registersWritten: Set<Arm7Register> get() = setOf(destinationLow, destinationHigh)
+    override val flagsRead: Set<Arm7Flag> get() = condition.flagsRead
+    override val memoryEffects: List<Arm7MemoryAccess> get() = emptyList()
+    override val controlEffect: Arm7ControlEffect get() = Arm7ControlEffect.Sequential
 }
 
 data class Arm7Swap(
@@ -188,15 +188,15 @@ data class Arm7Swap(
     val width: Arm7MemoryWidth,
 ) : Arm7Instruction {
     private val address = Arm7Address.RegisterOffset(addressRegister)
-    override val registersRead: Set<Arm7Register> = setOf(source, addressRegister)
-    override val registersWritten: Set<Arm7Register> = setOf(destination)
-    override val flagsRead: Set<Arm7Flag> = condition.flagsRead
-    override val flagsWritten: Set<Arm7Flag> = emptySet()
-    override val memoryEffects: List<Arm7MemoryAccess> = listOf(
+    override val registersRead: Set<Arm7Register> get() = setOf(source, addressRegister)
+    override val registersWritten: Set<Arm7Register> get() = setOf(destination)
+    override val flagsRead: Set<Arm7Flag> get() = condition.flagsRead
+    override val flagsWritten: Set<Arm7Flag> get() = emptySet()
+    override val memoryEffects: List<Arm7MemoryAccess> get() = listOf(
         Arm7MemoryAccess(Arm7MemoryDirection.READ, width, address, false, if (width == Arm7MemoryWidth.WORD) Arm7UnalignedPolicy.ROTATE_WORD_RIGHT_BY_ADDRESS else Arm7UnalignedPolicy.BYTE_ADDRESSABLE),
         Arm7MemoryAccess(Arm7MemoryDirection.WRITE, width, address, false, if (width == Arm7MemoryWidth.WORD) Arm7UnalignedPolicy.ALIGN_DOWN else Arm7UnalignedPolicy.BYTE_ADDRESSABLE),
     )
-    override val controlEffect: Arm7ControlEffect = Arm7ControlEffect.Sequential
+    override val controlEffect: Arm7ControlEffect get() = Arm7ControlEffect.Sequential
 }
 
 data class Arm7StatusTransfer(
@@ -220,13 +220,13 @@ data class Arm7StatusTransfer(
         }
     }
 
-    override val registersRead: Set<Arm7Register> = if (toStatus) valueRegister?.let(::setOf) ?: emptySet() else emptySet()
-    override val registersWritten: Set<Arm7Register> = if (!toStatus) setOf(requireNotNull(valueRegister)) else emptySet()
-    override val flagsRead: Set<Arm7Flag> = condition.flagsRead +
+    override val registersRead: Set<Arm7Register> get() = if (toStatus) valueRegister?.let(::setOf) ?: emptySet() else emptySet()
+    override val registersWritten: Set<Arm7Register> get() = if (!toStatus) setOf(requireNotNull(valueRegister)) else emptySet()
+    override val flagsRead: Set<Arm7Flag> get() = condition.flagsRead +
         if (!toStatus) Arm7Flag.entries.toSet() else emptySet()
-    override val flagsWritten: Set<Arm7Flag> = if (toStatus && fieldMask and 8 != 0) Arm7Flag.entries.toSet() else emptySet()
-    override val memoryEffects: List<Arm7MemoryAccess> = emptyList()
-    override val controlEffect: Arm7ControlEffect = if (
+    override val flagsWritten: Set<Arm7Flag> get() = if (toStatus && fieldMask and 8 != 0) Arm7Flag.entries.toSet() else emptySet()
+    override val memoryEffects: List<Arm7MemoryAccess> get() = emptyList()
+    override val controlEffect: Arm7ControlEffect get() = if (
         toStatus && statusRegister == Arm7StatusRegister.CPSR && fieldMask and 1 != 0
     ) {
         Arm7ControlEffect.StatusWrite(mayChangeInstructionSet = true)
@@ -259,16 +259,16 @@ data class Arm7BlockTransfer(
         require(!restoresStatusFromSpsr || (load && Arm7Register.PC in registers))
         require(pcStoreBias == 0 || (!load && Arm7Register.PC in registers))
     }
-    override val registersRead: Set<Arm7Register> = setOf(base) +
+    override val registersRead: Set<Arm7Register> get() = setOf(base) +
         if (load) emptySet() else registers.toSet()
-    override val registersWritten: Set<Arm7Register> = buildSet {
+    override val registersWritten: Set<Arm7Register> get() = buildSet {
         if (load) addAll(registers)
         if (writeBack) add(base)
     }
-    override val flagsRead: Set<Arm7Flag> = condition.flagsRead
-    override val flagsWritten: Set<Arm7Flag> =
+    override val flagsRead: Set<Arm7Flag> get() = condition.flagsRead
+    override val flagsWritten: Set<Arm7Flag> get() =
         if (restoresStatusFromSpsr) Arm7Flag.entries.toSet() else emptySet()
-    override val memoryEffects: List<Arm7MemoryAccess> = listOf(
+    override val memoryEffects: List<Arm7MemoryAccess> get() = listOf(
         Arm7MemoryAccess(
             direction = if (load) Arm7MemoryDirection.READ else Arm7MemoryDirection.WRITE,
             width = Arm7MemoryWidth.WORD,
@@ -278,7 +278,7 @@ data class Arm7BlockTransfer(
             registerCount = if (emptyListArm7Quirk) 1 else registers.size,
         ),
     )
-    override val controlEffect: Arm7ControlEffect = if (load && Arm7Register.PC in registers) {
+    override val controlEffect: Arm7ControlEffect get() = if (load && Arm7Register.PC in registers) {
         Arm7ControlEffect.ProgramCounterWrite(interworking = pcInterworking)
     } else {
         Arm7ControlEffect.Sequential
@@ -296,15 +296,15 @@ data class Arm7StackTransfer(
 ) : Arm7Instruction {
     init { require(registers.isNotEmpty()) }
 
-    override val registersRead: Set<Arm7Register> = setOf(Arm7Register.SP) +
+    override val registersRead: Set<Arm7Register> get() = setOf(Arm7Register.SP) +
         if (load) emptySet() else registers.toSet()
-    override val registersWritten: Set<Arm7Register> = buildSet {
+    override val registersWritten: Set<Arm7Register> get() = buildSet {
         add(Arm7Register.SP)
         if (load) addAll(registers)
     }
-    override val flagsRead: Set<Arm7Flag> = condition.flagsRead
-    override val flagsWritten: Set<Arm7Flag> = emptySet()
-    override val memoryEffects: List<Arm7MemoryAccess> = listOf(
+    override val flagsRead: Set<Arm7Flag> get() = condition.flagsRead
+    override val flagsWritten: Set<Arm7Flag> get() = emptySet()
+    override val memoryEffects: List<Arm7MemoryAccess> get() = listOf(
         Arm7MemoryAccess(
             direction = if (load) Arm7MemoryDirection.READ else Arm7MemoryDirection.WRITE,
             width = Arm7MemoryWidth.WORD,
@@ -314,7 +314,7 @@ data class Arm7StackTransfer(
             registerCount = registers.size,
         ),
     )
-    override val controlEffect: Arm7ControlEffect = if (load && Arm7Register.PC in registers) {
+    override val controlEffect: Arm7ControlEffect get() = if (load && Arm7Register.PC in registers) {
         Arm7ControlEffect.Return(interworking = true)
     } else {
         Arm7ControlEffect.Sequential
@@ -334,15 +334,15 @@ data class Arm7Branch(
 ) : Arm7Instruction {
     init { require(link == (returnAddress != null)) }
 
-    override val registersRead: Set<Arm7Register> = emptySet()
-    override val registersWritten: Set<Arm7Register> = buildSet {
+    override val registersRead: Set<Arm7Register> get() = emptySet()
+    override val registersWritten: Set<Arm7Register> get() = buildSet {
         add(Arm7Register.PC)
         if (link) add(Arm7Register.LR)
     }
-    override val flagsRead: Set<Arm7Flag> = condition.flagsRead
-    override val flagsWritten: Set<Arm7Flag> = emptySet()
-    override val memoryEffects: List<Arm7MemoryAccess> = emptyList()
-    override val controlEffect: Arm7ControlEffect = if (link) {
+    override val flagsRead: Set<Arm7Flag> get() = condition.flagsRead
+    override val flagsWritten: Set<Arm7Flag> get() = emptySet()
+    override val memoryEffects: List<Arm7MemoryAccess> get() = emptyList()
+    override val controlEffect: Arm7ControlEffect get() = if (link) {
         Arm7ControlEffect.Call(target, requireNotNull(returnAddress), exchange)
     } else {
         Arm7ControlEffect.DirectBranch(target, condition != Arm7Condition.ALWAYS)
@@ -359,15 +359,15 @@ data class Arm7BranchRegister(
     val link: Boolean,
     val exchange: Boolean,
 ) : Arm7Instruction {
-    override val registersRead: Set<Arm7Register> = setOf(targetRegister)
-    override val registersWritten: Set<Arm7Register> = buildSet {
+    override val registersRead: Set<Arm7Register> get() = setOf(targetRegister)
+    override val registersWritten: Set<Arm7Register> get() = buildSet {
         add(Arm7Register.PC)
         if (link) add(Arm7Register.LR)
     }
-    override val flagsRead: Set<Arm7Flag> = condition.flagsRead
-    override val flagsWritten: Set<Arm7Flag> = emptySet()
-    override val memoryEffects: List<Arm7MemoryAccess> = emptyList()
-    override val controlEffect: Arm7ControlEffect = when {
+    override val flagsRead: Set<Arm7Flag> get() = condition.flagsRead
+    override val flagsWritten: Set<Arm7Flag> get() = emptySet()
+    override val memoryEffects: List<Arm7MemoryAccess> get() = emptyList()
+    override val controlEffect: Arm7ControlEffect get() = when {
         !link && targetRegister == Arm7Register.LR -> Arm7ControlEffect.Return(interworking = exchange)
         else -> Arm7ControlEffect.IndirectBranch(targetRegister, interworking = exchange)
     }
@@ -381,10 +381,10 @@ data class Arm7SoftwareInterrupt(
     override val condition: Arm7Condition = Arm7Condition.ALWAYS,
     val comment: Int,
 ) : Arm7Instruction {
-    override val registersRead: Set<Arm7Register> = emptySet()
-    override val registersWritten: Set<Arm7Register> = setOf(Arm7Register.LR, Arm7Register.PC)
-    override val flagsRead: Set<Arm7Flag> = condition.flagsRead
-    override val flagsWritten: Set<Arm7Flag> = emptySet()
-    override val memoryEffects: List<Arm7MemoryAccess> = emptyList()
-    override val controlEffect: Arm7ControlEffect = Arm7ControlEffect.SupervisorCall(comment)
+    override val registersRead: Set<Arm7Register> get() = emptySet()
+    override val registersWritten: Set<Arm7Register> get() = setOf(Arm7Register.LR, Arm7Register.PC)
+    override val flagsRead: Set<Arm7Flag> get() = condition.flagsRead
+    override val flagsWritten: Set<Arm7Flag> get() = emptySet()
+    override val memoryEffects: List<Arm7MemoryAccess> get() = emptyList()
+    override val controlEffect: Arm7ControlEffect get() = Arm7ControlEffect.SupervisorCall(comment)
 }

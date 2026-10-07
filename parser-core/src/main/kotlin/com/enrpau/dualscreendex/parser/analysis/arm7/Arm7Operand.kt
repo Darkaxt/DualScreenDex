@@ -49,12 +49,12 @@ data class Arm7RegisterOperand(
         require(alignDownTo > 0 && alignDownTo.countOneBits() == 1)
     }
 
-    override val registersRead: Set<Arm7Register> = setOf(register)
+    override val registersRead: Set<Arm7Register> get() = setOf(register)
 }
 
 data class Arm7Immediate(val value: Long) : Arm7Operand {
     constructor(value: Int) : this(value.toLong())
-    override val registersRead: Set<Arm7Register> = emptySet()
+    override val registersRead: Set<Arm7Register> get() = emptySet()
 }
 
 data class Arm7RotatedImmediate(
@@ -69,8 +69,8 @@ data class Arm7RotatedImmediate(
         require(value in 0..0xFFFF_FFFFL)
     }
 
-    override val registersRead: Set<Arm7Register> = emptySet()
-    override val flagsRead: Set<Arm7Flag> =
+    override val registersRead: Set<Arm7Register> get() = emptySet()
+    override val flagsRead: Set<Arm7Flag> get() =
         if (carryInWhenUnrotated && rotateRight == 0) setOf(Arm7Flag.C) else emptySet()
 }
 
@@ -81,11 +81,11 @@ sealed interface Arm7ShiftAmount {
 
     data class Immediate(val value: Int) : Arm7ShiftAmount {
         init { require(value in 0..32) }
-        override val registersRead: Set<Arm7Register> = emptySet()
+        override val registersRead: Set<Arm7Register> get() = emptySet()
     }
 
     data class Register(val register: Arm7Register) : Arm7ShiftAmount {
-        override val registersRead: Set<Arm7Register> = setOf(register)
+        override val registersRead: Set<Arm7Register> get() = setOf(register)
     }
 }
 
@@ -97,8 +97,8 @@ data class Arm7ShiftedRegister(
     val pcBias: Int = 0,
 ) : Arm7Operand {
     init { require(pcBias == 0 || register == Arm7Register.PC) }
-    override val registersRead: Set<Arm7Register> = setOf(register) + amount.registersRead
-    override val flagsRead: Set<Arm7Flag> = if (carryInWhenZero) setOf(Arm7Flag.C) else emptySet()
+    override val registersRead: Set<Arm7Register> get() = setOf(register) + amount.registersRead
+    override val flagsRead: Set<Arm7Flag> get() = if (carryInWhenZero) setOf(Arm7Flag.C) else emptySet()
 }
 
 sealed interface Arm7Address {
@@ -122,7 +122,7 @@ sealed interface Arm7Address {
             require(alignBaseTo > 0 && alignBaseTo.countOneBits() == 1)
         }
 
-        override val registersRead: Set<Arm7Register> = buildSet {
+        override val registersRead: Set<Arm7Register> get() = buildSet {
             add(base)
             index?.let(::add)
         }
@@ -137,8 +137,8 @@ sealed interface Arm7Address {
         val basePcBias: Int = 0,
     ) : Arm7Address {
         init { require(basePcBias == 0 || base == Arm7Register.PC) }
-        override val registersRead: Set<Arm7Register> = setOf(base) + index.registersRead
-        override val flagsRead: Set<Arm7Flag> = index.flagsRead
+        override val registersRead: Set<Arm7Register> get() = setOf(base) + index.registersRead
+        override val flagsRead: Set<Arm7Flag> get() = index.flagsRead
     }
 
     data class PcRelative(
@@ -147,7 +147,7 @@ sealed interface Arm7Address {
         val alignBaseTo: Int,
         val resolvedAddress: Long,
     ) : Arm7Address {
-        override val registersRead: Set<Arm7Register> = setOf(Arm7Register.PC)
+        override val registersRead: Set<Arm7Register> get() = setOf(Arm7Register.PC)
     }
 }
 
