@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "date": "2026-10-03",
   "verifiedDate": "2026-10-07",
-  "evidenceMode": "full342-baseline-with-focused-gen2-relationships-gen3-wide-core-and-pokescape-map-moves-dex-move-text",
+  "evidenceMode": "full342-baseline-with-focused-gen2-relationships-gen3-wide-core-and-pokescape-map-moves-dex-move-text-type-names",
   "corpusInputDigestSha256": "733e36785fa9a5b71bc4121343a6b6d2cbd27e43e08b3fddc2e2870bac1a0561",
   "summary": {
     "inputCount": 342,
@@ -5907,8 +5907,8 @@
     },
     {
       "name": "Pokescape (v1.0.4).gba",
-      "evidence": "focused-pokescape-native-move-text-source-bound",
-      "sourceCommit": "db3c306ca48ac0b6e555f58565edd64283d7bf6e",
+      "evidence": "focused-pokescape-referenced-native-type-names-source-bound",
+      "sourceCommit": "f5a76c85f596fe4276293dedc3b0387980d2baa3",
       "aliases": [
         {
           "archive": "Pokemon Pokescape (v1.0.4).7z",
@@ -6083,8 +6083,8 @@
         "machineMoveLinks": 28223,
         "tutorMoveLinks": 3617,
         "types": 18,
-        "namedTypes": 17,
-        "typesWithSemanticRoles": 17,
+        "namedTypes": 18,
+        "typesWithSemanticRoles": 18,
         "typeMatchups": 120,
         "abilities": 0,
         "abilitiesWithDescriptions": 0,
@@ -6102,8 +6102,130 @@
         "referenceErrors": 0,
         "sqliteReopenEqualityVerified": true,
         "logicalDigestVersion": 1,
-        "beforeCatalogSha256": "6a2852c28770eaec0239b13a6eadc844bc380485b7cb56911cc6a97c273c571e",
-        "afterCatalogSha256": "6a2852c28770eaec0239b13a6eadc844bc380485b7cb56911cc6a97c273c571e"
+        "beforeCatalogSha256": "84d79c67cce35228090afea1b2c130bfbf689a26ec09133d3b95d6279f7ff12a",
+        "afterCatalogSha256": "84d79c67cce35228090afea1b2c130bfbf689a26ec09133d3b95d6279f7ff12a"
+      },
+      "localizedCapabilities": {
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1236,
+          "expectedRecords": 1236,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1235,
+          "expectedRecords": 1235,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 828,
+          "expectedRecords": 828,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 0.9939613526570048,
+          "coveredRecords": 828,
+          "expectedRecords": 828,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_NAMES": {
+          "status": "AMBIGUOUS",
+          "confidence": 0.9487179487179487,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "MANUAL_REVIEW",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "TYPE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 18,
+          "expectedRecords": 18,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "NATURE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 25,
+          "expectedRecords": 25,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ITEM_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 105,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 270,
+          "expectedRecords": 270,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "LOCAL_MAP_NAMES": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 270,
+          "expectedRecords": 484,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_REGION_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1,
+          "expectedRecords": 1,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_LOCATION_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 64,
+          "expectedRecords": 64,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 201,
+          "expectedRecords": 202,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "POI_TEXT": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 1052,
+          "expectedRecords": 2149,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        }
       }
     },
     {
@@ -47219,7 +47341,8 @@
     "36b495c541215761ee20786284dda156a5b47ac3",
     "8ca3489ca9b9207b590cc74df54be825f65e428b",
     "48730a00ea09037f8b2b60623e4e1c02d3e61a06",
-    "db3c306ca48ac0b6e555f58565edd64283d7bf6e"
+    "db3c306ca48ac0b6e555f58565edd64283d7bf6e",
+    "f5a76c85f596fe4276293dedc3b0387980d2baa3"
   ],
   "focusedGen2Relationships": {
     "inputCount": 19,
@@ -47332,6 +47455,25 @@
         "sha256": "159eeb7a8131f6c2f5241be2e14c7b6752886f5ff5eccb13fe0416db69cc8942"
       },
       "rawReportSha256": "88f54e3e2f1677c5bd5844091dbf1f8e5b11f3cc8366150ea7242bb6e51a99ac",
+      "inputCount": 1
+    },
+    "unaffectedRowsRetained": 341,
+    "fullCorpusRerun": false
+  },
+  "focusedPokescapeTypeNames": {
+    "inputCount": 1,
+    "sourceCommit": "f5a76c85f596fe4276293dedc3b0387980d2baa3",
+    "parserSchemaVersion": 91,
+    "acceptance": "2026-10-07-pokescape-type-name-acceptance.json",
+    "executionReceiptSummary": {
+      "schemaVersion": 1,
+      "sourceCommit": "f5a76c85f596fe4276293dedc3b0387980d2baa3",
+      "generator": {
+        "name": "parser-cli",
+        "schemaVersion": 16,
+        "sha256": "eaac61ed219ab815300a8e5739d9cc11746dce9de344a36d102881866d5bda4a"
+      },
+      "rawReportSha256": "82bbb2e17e0324b93f029782635678ac39274a798c1d355c711c60182b678dac",
       "inputCount": 1
     },
     "unaffectedRowsRetained": 341,
