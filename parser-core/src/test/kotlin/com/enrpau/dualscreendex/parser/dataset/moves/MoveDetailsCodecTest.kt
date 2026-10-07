@@ -215,6 +215,7 @@ class MoveDetailsCodecTest {
                 MoveDetailsAbi.WIDENED_RETAIL_16 -> putWidenedRetailMove(bytes, 7)
                 MoveDetailsAbi.HYBRID_BATTLE_MOVE_20 -> putHybridBattleMove(bytes, 7)
                 MoveDetailsAbi.BATTLE_ENGINE_20 -> putBattleEngineMove(bytes, 7)
+                MoveDetailsAbi.PACKED_FLAGS_MOVE_20 -> putPackedMove(bytes, 7)
                 MoveDetailsAbi.UNIFIED_MOVE_INFO_48 -> putUnifiedMoveInfo(bytes, 7)
                 MoveDetailsAbi.ALIGNED_BYTE_TARGET_MOVE_20,
                 MoveDetailsAbi.ALIGNED_BYTE_TARGET_MOVE_56 -> putAlignedByteTargetMove(bytes, 7)

@@ -3,6 +3,7 @@ package com.enrpau.dualscreendex.parser.family
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.dataset.core.basestats.ResolvedBaseStatsLayout
 import com.enrpau.dualscreendex.parser.model.Gen3CompiledCanonicalSpeciesMetadata
+import com.enrpau.dualscreendex.parser.parse.Gen3CompiledPackedMoveResolver
 import com.enrpau.dualscreendex.parser.parse.Gen3CompiledWideMoveOutcome
 import com.enrpau.dualscreendex.parser.catalog.Gen1DetachedSpeciesResolver
 import com.enrpau.dualscreendex.parser.io.RomImage
@@ -297,7 +298,7 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
                 }
             }
         }
-        val moveData = headerlessUnifiedMoves?.moveDataEvidence ?: publishedDataEvidence ?: dynamicMoveDataEvidence ?: tables.moveData?.let {
+        var moveData = headerlessUnifiedMoves?.moveDataEvidence ?: publishedDataEvidence ?: dynamicMoveDataEvidence ?: tables.moveData?.let {
             if (expansion != null) {
                 TableValidators.pokeemeraldExpansionMoveData(rom, it, inferredMoveCount ?: it.count)
             } else if (generation == 2 && it.format == TableRecordFormat.GEN2_MASKED_MOVE_7) {
@@ -328,6 +329,32 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
                 )
             }
         } ?: missing("move-data table not resolved")
+        if (generation == 3 && exact == null && expansion == null && publishedDataEvidence == null &&
+            headerlessUnifiedMoves == null && !moveData.compatible && moveNames.compatible && inferredMoveCount != null
+        ) {
+            val validatedNames = resolvedLayout(moveNamesLayout, moveNames)
+            val activeRows = activeMoveRows(rom, validatedNames, inferredMoveCount, probeCodec)
+            if (activeRows.isNotEmpty()) {
+                Gen3CompiledPackedMoveResolver.resolve(
+                    session, MoveDetailsSemanticDomain(inferredMoveCount.toLong(), activeRows),
+                )?.let { packed ->
+                    val table = packed.table
+                    tables = tables.copy(moveData = TableLayout(
+                        table.offset.toInt(), table.count.toInt(), table.abi.recordSize,
+                        format = table.abi.tableRecordFormat,
+                    ))
+                    moveNamesLayout = validatedNames
+                    moveData = ValidationEvidence(
+                        compatible = true, validRecords = packed.materializedRecords.size,
+                        totalRecords = table.count.toInt(), confidence = 1.0,
+                        reasons = listOf("complete compiled packed-flag BattleMove field/stride/signed-priority contract"),
+                        offset = table.offset.toInt(), recordSize = table.abi.recordSize,
+                        coveredRecords = activeRows.size, expectedRecords = activeRows.size, incompleteRecords = 0,
+                        format = table.abi.tableRecordFormat,
+                    )
+                }
+            }
+        }
         var effectiveMoveCount = DatasetResolvers.reconciledMoveCount(inferredMoveCount, moveData)
         if (effectiveMoveCount != inferredMoveCount && effectiveMoveCount != null && moveNamesLayout != null) {
             val reconciledNames = validateNames(rom, moveNamesLayout, effectiveMoveCount, probeCodec, generation)

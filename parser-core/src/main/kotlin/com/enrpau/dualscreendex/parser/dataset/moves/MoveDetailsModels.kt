@@ -26,6 +26,9 @@ enum class MoveDetailsAbi(
     /** Later Battle Engine ABI with u16 target, u32 flags, split, and Z-move metadata. */
     BATTLE_ENGINE_20(20, TableRecordFormat.BATTLE_ENGINE_MOVE_20),
 
+    /** Byte power, split at 11, u16 argument, and an opaque forty-bit packed flag tail. */
+    PACKED_FLAGS_MOVE_20(20, TableRecordFormat.PACKED_FLAGS_MOVE_20),
+
     /** Expansion-derived `MoveInfo` with pointer names and packed scalar fields. */
     UNIFIED_MOVE_INFO_48(48, TableRecordFormat.UNIFIED_MOVE_INFO_48),
 

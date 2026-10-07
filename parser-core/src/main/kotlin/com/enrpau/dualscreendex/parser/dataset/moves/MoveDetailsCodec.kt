@@ -59,6 +59,7 @@ class MoveDetailsCodec : MoveDetailsTableDecoder {
             return decodeUnifiedMoveInfoRow(session, rowIndex, recordOffset)
         }
         if (abi.isAlignedByteTarget) return decodeAlignedByteTargetRow(session, rowIndex, recordOffset)
+        if (abi == MoveDetailsAbi.PACKED_FLAGS_MOVE_20) return decodePackedFlagsRow(session, rowIndex, recordOffset)
 
         val widened = abi != MoveDetailsAbi.RETAIL_12
         val typeOffset = when (abi) {
@@ -91,6 +92,7 @@ class MoveDetailsCodec : MoveDetailsTableDecoder {
             MoveDetailsAbi.WIDENED_RETAIL_16 -> WIDENED_RETAIL_PRIORITY_OFFSET
             MoveDetailsAbi.HYBRID_BATTLE_MOVE_20 -> HYBRID_PRIORITY_OFFSET
             MoveDetailsAbi.BATTLE_ENGINE_20 -> BATTLE_ENGINE_PRIORITY_OFFSET
+            MoveDetailsAbi.PACKED_FLAGS_MOVE_20 -> error("packed-flag BattleMove rows decode through their distinct ABI")
             MoveDetailsAbi.UNIFIED_MOVE_INFO_48 -> error("unified MoveInfo rows decode through their packed ABI")
             MoveDetailsAbi.ALIGNED_BYTE_TARGET_MOVE_20,
             MoveDetailsAbi.ALIGNED_BYTE_TARGET_MOVE_56 -> error("aligned byte-target rows decode through their distinct ABI")
@@ -102,6 +104,7 @@ class MoveDetailsCodec : MoveDetailsTableDecoder {
             MoveDetailsAbi.WIDENED_RETAIL_16 -> null
             MoveDetailsAbi.HYBRID_BATTLE_MOVE_20 -> session.rom.u8(recordOffset + HYBRID_SPLIT_OFFSET)
             MoveDetailsAbi.BATTLE_ENGINE_20 -> session.rom.u8(recordOffset + BATTLE_ENGINE_SPLIT_OFFSET)
+            MoveDetailsAbi.PACKED_FLAGS_MOVE_20 -> error("packed-flag BattleMove rows decode through their distinct ABI")
             MoveDetailsAbi.UNIFIED_MOVE_INFO_48 -> error("unified MoveInfo rows decode through their packed ABI")
             MoveDetailsAbi.ALIGNED_BYTE_TARGET_MOVE_20,
             MoveDetailsAbi.ALIGNED_BYTE_TARGET_MOVE_56 -> error("aligned byte-target rows decode through their distinct ABI")
@@ -237,11 +240,57 @@ class MoveDetailsCodec : MoveDetailsTableDecoder {
                 zMovePower = session.rom.u8(recordOffset + BATTLE_ENGINE_Z_POWER_OFFSET),
                 zMoveEffect = session.rom.u8(recordOffset + BATTLE_ENGINE_Z_EFFECT_OFFSET),
             )
+            MoveDetailsAbi.PACKED_FLAGS_MOVE_20 -> error("packed-flag BattleMove rows decode through their distinct ABI")
             MoveDetailsAbi.UNIFIED_MOVE_INFO_48 -> error("unified MoveInfo rows decode through their packed ABI")
             MoveDetailsAbi.ALIGNED_BYTE_TARGET_MOVE_20,
             MoveDetailsAbi.ALIGNED_BYTE_TARGET_MOVE_56 -> error("aligned byte-target rows decode through their distinct ABI")
         }
         return MoveDetailsRowOutcome.Decoded(rowIndex, record)
+    }
+
+    private fun decodePackedFlagsRow(
+        session: RomAnalysisSession,
+        rowIndex: Int,
+        recordOffset: Int,
+    ): MoveDetailsRowOutcome {
+        val rom = session.rom
+        val type = rom.u8(recordOffset + 3)
+        val accuracy = rom.u8(recordOffset + 4)
+        val pp = rom.u8(recordOffset + 5)
+        val chance = rom.u8(recordOffset + 6)
+        val priority = rom.u8(recordOffset + 10).toByte().toInt()
+        val rawSplit = rom.u8(recordOffset + 11)
+        val split = MoveSplit.fromRaw(rawSplit)
+        val reasons = buildList {
+            if (type !in 0..MAX_TYPE_ID) add("type value $type exceeds $MAX_TYPE_ID")
+            if (accuracy != ACCURACY_ALWAYS && accuracy != ACCURACY_ENGINE_DEFINED &&
+                accuracy !in MIN_PERCENT_ACCURACY..MAX_PERCENT
+            ) add("accuracy value $accuracy is outside the admitted scalar domain")
+            if (pp !in 0..MAX_PP) add("pp value $pp exceeds $MAX_PP")
+            if (chance !in 0..MAX_PERCENT && chance != CHANCE_ENGINE_DEFINED) {
+                add("secondary-effect chance $chance is outside the admitted scalar domain")
+            }
+            if (priority !in MIN_PRIORITY..MAX_PRIORITY) add("priority value $priority is outside $MIN_PRIORITY..$MAX_PRIORITY")
+            if (split == null) add("split value $rawSplit is not physical, special, or status")
+            if (rom.u8(recordOffset + 7) != 0) add("packed-flag BattleMove ABI padding is nonzero")
+        }
+        if (reasons.isNotEmpty()) return MoveDetailsRowOutcome.Malformed(rowIndex, reasons)
+        return MoveDetailsRowOutcome.Decoded(rowIndex, Gen3MoveDetailsRecord(
+            effectId = rom.u16le(recordOffset),
+            power = rom.u8(recordOffset + 2),
+            typeId = type,
+            accuracy = accuracy,
+            pp = pp,
+            secondaryEffectChance = chance,
+            targetMask = rom.u16le(recordOffset + 8),
+            priority = priority,
+            // Packed flags are retained verbatim; they are not the retail flag mask.
+            flags = rom.u8(recordOffset + 15).toLong() or (rom.u32le(recordOffset + 16) shl 8),
+            split = requireNotNull(split),
+            argument = rom.u16le(recordOffset + 12),
+            zMovePower = null,
+            zMoveEffect = rom.u8(recordOffset + 14),
+        ))
     }
 
     private fun decodeAlignedByteTargetRow(

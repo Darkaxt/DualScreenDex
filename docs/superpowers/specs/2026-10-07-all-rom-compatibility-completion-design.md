@@ -21,11 +21,11 @@ The goal is **100% compatibility across all ROMs, one ROM at a time**. A publish
 
 Pokescape's working core, two map datasets and retained acceptance stay protected. Remaining obligations include:
 
-- Move details/categories: 0 detailed records for 828 named moves; retained rejection reports 405/829 plausible rows and an incomplete populated domain. The public oracle declares an aligned 20-byte widened `BattleMove`, which the parser already supports, so adding another ABI blindly is not justified.
+- Move details/categories: last accepted target has 0 detailed records for 828 named moves; retained rejection reports 405/829 plausible rows and an incomplete populated domain. Fresh compiled diagnostics establish a distinct packed-bitfield 20-byte `BattleMove` (byte power, split at 11, u16 argument and opaque 40-bit tail), not the aligned layout of the current public source. Generic codec/consumer selection is host-verified; fresh exact-source target acceptance remains required before claiming a gain.
 - Dex descriptions: zero decoded species-description rows.
 - Five move-description gaps; ambiguous/unmaterialized ability names, descriptions and mechanics; one missing native type label.
 - Remaining Local/encounter/POI text and represented-domain limits documented by the existing field ledger. Prove applicability and actual native consumers before assigning data; never invent a World location for an unrepresented ordinal.
 
-**Immediate next action:** trace the existing move-detail selection/validation and public consumers, then use a fresh narrowly reviewed diagnostic admission to prove this build's actual root/ABI/domain/rejection. Implement the proven contract, not a guessed public-source layout. This batch does not complete the parent or automatically close the other obligations.
+**Immediate next action:** reconcile/publish the host-verified source checkpoint, then freshly admit exact packaged one-target acceptance and independent scalar/reference/whole-SQLite comparison. The proven contract, not the mismatching public layout, governs selection. This batch does not complete the parent or automatically close the other obligations.
 
 The current matrix is composite. Publication of a later focused row does not turn historical rows into fresh evaluations. Any final whole-library acceptance must bind every identity to the accepted production source and preserve complete evidence/cleanup under its own bounded execution stage.

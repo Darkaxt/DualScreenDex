@@ -6,24 +6,49 @@ internal data class GbaMoveFieldWitness(val root: Int, val stride: Int, val fiel
 
 /** Bounded straight-line field witnesses only; this is not a whole-function or global CFG verifier. */
 internal object GbaAffineMoveFieldWitnesses {
-    fun collect(session: RomAnalysisSession, codeEnd: Int, consumeWork: () -> Unit): Set<GbaMoveFieldWitness> {
+    fun collect(session: RomAnalysisSession, codeEnd: Int, consumeWork: () -> Unit): Set<GbaMoveFieldWitness> =
+        collectFields(session, codeEnd, consumeWork, null)
+
+    fun collectPacked(
+        session: RomAnalysisSession,
+        codeEnd: Int,
+        acceptRoot: (Int) -> Boolean,
+        consumeWork: () -> Unit,
+    ): Set<GbaMoveFieldWitness> = collectFields(session, codeEnd, consumeWork, acceptRoot)
+
+    private fun collectFields(
+        session: RomAnalysisSession,
+        codeEnd: Int,
+        consumeWork: () -> Unit,
+        acceptRoot: ((Int) -> Boolean)?,
+    ): Set<GbaMoveFieldWitness> {
+        val packed = acceptRoot != null
         val rom = session.rom
         val witnesses = linkedSetOf<GbaMoveFieldWitness>()
         val roots = linkedSetOf<Int>()
-        for (start in 0 until codeEnd - 2 step 2) {
+        for (start in 0 until codeEnd - 1 step 2) {
             if (start % 4096 == 0) session.cancellation.throwIfCancellationRequested()
             if (rom.u16le(start) and 0xf800 != 0x4800) continue
             val firstRoot = literalRoot(session, start) ?: continue
+            if (acceptRoot != null && !acceptRoot(firstRoot)) continue
             consumeWork()
             roots += firstRoot
             if (roots.size > session.limits.maxProbeRootsPerDataset) throw WideMoveBudgetStop()
             val registers = Array<Expression?>(16) { Expression(source = it, scale = 1) }
             var at = start
-            while (at + 2 <= codeEnd && at < start + 48) {
+            while (at.toLong() + 2 <= codeEnd && at.toLong() < start.toLong() + 48) {
                 session.cancellation.throwIfCancellationRequested()
                 consumeWork()
                 val word = rom.u16le(at)
                 val destination = word and 7
+                fun record(address: Expression?, width: Int, signed: Boolean) {
+                    val field = witness(address, width, signed, packed) ?: return
+                    if (acceptRoot != null && !acceptRoot(field.root)) return
+                    witnesses += field
+                    if (packed && field.field == 10 && width == 1 && !signed &&
+                        GbaSignedByteWitness.proves(session, at, destination, codeEnd, consumeWork)
+                    ) witnesses += field.copy(signed = true)
+                }
                 when {
                     word and 0xf800 == 0x4800 -> {
                         val register = (word ushr 8) and 7
@@ -32,7 +57,21 @@ internal object GbaAffineMoveFieldWitnesses {
                     word and 0xf800 == 0x0000 -> {
                         val source = (word ushr 3) and 7
                         val shift = (word ushr 6) and 31
-                        registers[destination] = registers[source]?.shift(shift)
+                        val value = registers[source]
+                        if (packed && shift == 16 && value?.root == null && value?.source != null &&
+                            value.scale == 1L && value.constant == 0L && at.toLong() + 4 <= codeEnd &&
+                            at.toLong() + 4 <= start.toLong() + 48
+                        ) {
+                            val next = rom.u16le(at + 2)
+                            if (next and 0xffc0 == 0x0c00 && (next ushr 3) and 7 == destination) {
+                                consumeWork()
+                                registers[destination] = null
+                                registers[next and 7] = Expression(source = at + 16, scale = 1)
+                                at += 4
+                                continue
+                            }
+                        }
+                        registers[destination] = value?.shift(shift)
                     }
                     word and 0xf800 == 0x1800 -> {
                         val left = registers[(word ushr 3) and 7]
@@ -40,8 +79,17 @@ internal object GbaAffineMoveFieldWitnesses {
                             else registers[(word ushr 6) and 7]
                         registers[destination] = combine(left, right, word and 0x200 != 0)
                     }
+                    packed && word and 0xff00 == 0x4400 -> {
+                        val target = destination or ((word ushr 4) and 8)
+                        val source = (word ushr 3) and 15
+                        if (target >= 13 || source >= 13) break
+                        registers[target] = combine(registers[target], registers[source], false)
+                    }
                     word and 0xff00 == 0x4600 -> {
-                        registers[destination or ((word ushr 4) and 8)] = registers[(word ushr 3) and 15]
+                        val target = destination or ((word ushr 4) and 8)
+                        val source = (word ushr 3) and 15
+                        if (packed && (target >= 13 || source >= 13)) break
+                        registers[target] = registers[source]
                     }
                     word and 0xf800 == 0x2000 -> registers[(word ushr 8) and 7] = Expression(constant = (word and 255).toLong())
                     word and 0xf800 == 0x3000 || word and 0xf800 == 0x3800 -> {
@@ -53,20 +101,20 @@ internal object GbaAffineMoveFieldWitnesses {
                         val width = when (word and 0xf800) { 0x6800 -> 4; 0x8800 -> 2; else -> 1 }
                         val address = combine(registers[(word ushr 3) and 7],
                             Expression(constant = (((word ushr 6) and 31) * width).toLong()), false)
-                        witness(address, width, false)?.let { witnesses += it }
-                        if (address?.root != null) break
-                        registers[destination] = Expression(source = destination, scale = 1)
+                        record(address, width, false)
+                        if (!packed && address?.root != null) break
+                        registers[destination] = Expression(source = if (packed) at + 16 else destination, scale = 1)
                     }
                     word and 0xfe00 in listOf(0x5800, 0x5a00, 0x5c00, 0x5600, 0x5e00) -> {
                         val kind = word and 0xfe00
                         val width = when (kind) { 0x5800 -> 4; 0x5a00, 0x5e00 -> 2; else -> 1 }
                         val address = combine(registers[(word ushr 3) and 7], registers[(word ushr 6) and 7], false)
-                        witness(address, width, kind == 0x5600 || kind == 0x5e00)?.let { witnesses += it }
-                        if (address?.root != null) break
-                        registers[destination] = Expression(source = destination, scale = 1)
+                        record(address, width, kind == 0x5600 || kind == 0x5e00)
+                        if (!packed && address?.root != null) break
+                        registers[destination] = Expression(source = if (packed) at + 16 else destination, scale = 1)
                     }
                     word and 0xf800 == 0x9800 -> registers[(word ushr 8) and 7] =
-                        Expression(source = (word ushr 8) and 7, scale = 1)
+                        Expression(source = if (packed) at + 16 else (word ushr 8) and 7, scale = 1)
                     else -> break
                 }
                 if (witnesses.size > session.limits.maxCandidatesPerDataset) throw WideMoveBudgetStop()
@@ -86,10 +134,13 @@ internal object GbaAffineMoveFieldWitnesses {
             ?.takeIf { it in 0 until session.rom.size }
     }
 
-    private fun witness(expression: Expression?, width: Int, signed: Boolean): GbaMoveFieldWitness? {
+    private fun witness(expression: Expression?, width: Int, signed: Boolean, packed: Boolean): GbaMoveFieldWitness? {
         val value = expression ?: return null
         val root = value.root ?: return null
-        if (value.source == null || value.scale !in listOf(20L, 56L) || value.constant !in 0..17) return null
+        if (value.source == null) return null
+        if (packed) {
+            if (value.scale != 20L || value.constant < 0 || value.constant + width > 20) return null
+        } else if (value.scale !in listOf(20L, 56L) || value.constant !in 0..17) return null
         return GbaMoveFieldWitness(root, value.scale.toInt(), value.constant.toInt(), width, signed)
     }
 
