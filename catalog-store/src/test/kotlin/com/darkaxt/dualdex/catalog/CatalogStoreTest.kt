@@ -156,7 +156,7 @@ class CatalogStoreTest {
             LocalMapAssetRenderer.render(reopened.localMaps, map.imageAssetKey, MapLighting.NIGHT),
         ).bytes)
         JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
-            database.execute("UPDATE catalog_metadata SET parser_schema_version = 139 WHERE id = 1")
+            database.execute("UPDATE catalog_metadata SET parser_schema_version = 140 WHERE id = 1")
             assertNull(CatalogReader(database).readComplete())
         }
         val stale = CatalogCache(root, JdbcCatalogDatabaseFactory).lookupComplete(catalog.romSha256)
@@ -164,7 +164,7 @@ class CatalogStoreTest {
         assertNull(stale.stored)
         cache.write(catalog, source, CatalogWriteProgress.complete())
         assertEquals(catalog, requireNotNull(CatalogCache(root, JdbcCatalogDatabaseFactory).readComplete(catalog.romSha256)).catalog)
-        assertEquals(140, CatalogSchema.parserSchemaVersion)
+        assertEquals(141, CatalogSchema.parserSchemaVersion)
         assertEquals(2, CatalogSchema.version)
     }
 
