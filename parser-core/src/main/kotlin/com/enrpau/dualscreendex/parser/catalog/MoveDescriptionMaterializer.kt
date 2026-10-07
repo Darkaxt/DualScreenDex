@@ -85,6 +85,10 @@ object MoveDescriptionMaterializer {
                 is DescriptionSearchOutcome.Unavailable -> null
             }
         }
+        when (val compiled = compiledPackedPointerTable(rom, layout, codec, gbaReferenceIndex, cancellation, budget)) {
+            is DescriptionSearchOutcome.Resolved -> return compiled.result
+            is DescriptionSearchOutcome.Unavailable -> if (compiled.reason != DescriptionSearchFailure.NO_AUTHORITY) return null
+        }
         return when (val outcome = referencedPointerTable(rom, codec, pointerCount, gbaReferenceIndex, cancellation, budget)) {
             is DescriptionSearchOutcome.Resolved -> outcome.result
             is DescriptionSearchOutcome.Unavailable -> if (outcome.reason == DescriptionSearchFailure.NO_AUTHORITY) {
@@ -100,7 +104,7 @@ object MoveDescriptionMaterializer {
         }
     }
 
-    private enum class DescriptionSearchFailure { NO_AUTHORITY, CONFLICT, INCOMPLETE_REFERENCE, BUDGET }
+    private enum class DescriptionSearchFailure { NO_AUTHORITY, CONFLICT, INCOMPLETE_REFERENCE, MALFORMED, BUDGET }
 
     private sealed interface DescriptionSearchOutcome {
         data class Resolved(val result: MoveDescriptionResult) : DescriptionSearchOutcome
@@ -549,6 +553,46 @@ object MoveDescriptionMaterializer {
         }
     }
 
+    private fun compiledPackedPointerTable(
+        rom: RomImage,
+        layout: ResolvedRomLayout,
+        codec: PokemonTextCodec,
+        references: GbaReferenceIndex?,
+        cancellation: ParserCancellationToken,
+        budget: MoveDescriptionBudget,
+    ): DescriptionSearchOutcome {
+        fun unavailable(reason: DescriptionSearchFailure) = DescriptionSearchOutcome.Unavailable(reason)
+        val numeric = layout.tables.moveData ?: return unavailable(DescriptionSearchFailure.NO_AUTHORITY)
+        val count = layout.moveCount ?: return unavailable(DescriptionSearchFailure.NO_AUTHORITY)
+        if (numeric.format != TableRecordFormat.PACKED_FLAGS_MOVE_20 ||
+            (numeric.stride ?: numeric.recordSize) != 20 || numeric.count != count ||
+            numeric.offset < 0 || numeric.offset.toLong() + count.toLong() * 20 > rom.size
+        ) return unavailable(DescriptionSearchFailure.NO_AUTHORITY)
+        if (references?.overflowed == true) return unavailable(DescriptionSearchFailure.INCOMPLETE_REFERENCE)
+        val roots = linkedSetOf<Int>()
+        // Independent complete role discovery: a reference-site cap cannot hide a competing root.
+        budget.recordScanBytes(rom.size.toLong())
+        for (site in 0..rom.size - 4 step 2) {
+            if (site % RomImage.DEFAULT_SCAN_CHECK_INTERVAL_BYTES == 0) cancellation.throwIfCancellationRequested()
+            if (rom.u16le(site) and 0xff00 != 0x4900 || rom.u16le(site + 2) != 0x1e68) continue
+            budget.recordMatch()
+            budget.recordRetainedReference()
+            val root = CompiledMoveDescriptionPointerBinding.root(rom, site, numeric.offset) {
+                budget.recordWork()
+            } ?: continue
+            budget.recordCompiledReference(root)
+            budget.recordRoot(root)
+            if (roots.add(root)) budget.recordCandidate()
+            if (roots.size > 1) return unavailable(DescriptionSearchFailure.CONFLICT)
+        }
+        cancellation.throwIfCancellationRequested()
+        val root = roots.singleOrNull() ?: return unavailable(DescriptionSearchFailure.NO_AUTHORITY)
+        if (root.toLong() + (count - 1L) * 4 > rom.size) return unavailable(DescriptionSearchFailure.MALFORMED)
+        val decoded = decodeCompleteCandidate(rom, codec, root, count - 1, cancellation, budget,
+            compiledPlaceholders = true) ?: return unavailable(DescriptionSearchFailure.MALFORMED)
+        return DescriptionSearchOutcome.Resolved(decoded)
+    }
+
     private fun referencedPointerTable(
         rom: RomImage,
         codec: PokemonTextCodec,
@@ -769,18 +813,23 @@ object MoveDescriptionMaterializer {
         pointerCount: Int,
         cancellation: ParserCancellationToken,
         budget: MoveDescriptionBudget,
+        compiledPlaceholders: Boolean = false,
     ): MoveDescriptionResult? {
+        if (compiledPlaceholders) budget.recordScanBytes(pointerCount.toLong() * 4)
         val descriptions = linkedMapOf<Int, String>()
         repeat(pointerCount) { index ->
             checkCancellation(index, cancellation)
             budget.recordWork()
             val textOffset = runCatching { rom.gbaPointer(offset + index * 4) }.getOrNull() ?: return null
             val length = minOf(192, rom.size - textOffset)
+            if (compiledPlaceholders) budget.recordScanBytes(length.toLong())
             val decoded = runCatching { codec.decodeDetailed(rom.slice(textOffset, length)) }.getOrNull()
                 ?: return null
             val normalized = decoded.text.replace(Regex("\\s+"), " ").trim()
             if (!decoded.terminated || decoded.validRatio < 0.85 ||
-                normalized.length < 5 && !isExplicitPlaceholder(normalized)
+                compiledPlaceholders && decoded.invalidUnits != 0 ||
+                normalized.length < 5 && !isExplicitPlaceholder(normalized) &&
+                    !(compiledPlaceholders && normalized == "---")
             ) return null
             descriptions[index + 1] = normalized
         }
@@ -858,6 +907,13 @@ object MoveDescriptionMaterializer {
         private var work = 0L
         private var scanBytes = 0L
         private var retainedReferences = 0
+        private val compiledReferences = hashMapOf<Int, Int>()
+
+        fun recordCompiledReference(root: Int) {
+            val count = (compiledReferences[root] ?: 0) + 1
+            if (count > limits.maxCompiledReferenceSitesPerCandidate) throw MoveDescriptionBudgetExceededException()
+            compiledReferences[root] = count
+        }
 
         fun independent() = MoveDescriptionBudget(limits)
 
