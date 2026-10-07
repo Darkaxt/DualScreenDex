@@ -1663,6 +1663,10 @@ class ProductionCompanionRuntime(
             requireActive(task)
             if (!checkpointWritesEnabled) return
         }
+        // Only complete catalogs are ever read back (lookupComplete/readComplete), so writing the
+        // earlier phases re-encoded every section four extra times for nothing: ~2 s on desktop and
+        // well over 10 s on a handheld during the first load.
+        if (progress.completedUnits < progress.totalUnits) return
         try {
             requireActive(task)
             catalogRepository?.write(
