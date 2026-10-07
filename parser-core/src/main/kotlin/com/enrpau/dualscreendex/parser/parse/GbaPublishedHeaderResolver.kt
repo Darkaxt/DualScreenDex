@@ -22,6 +22,8 @@ internal data class GbaHeaderPointers(
     val nameGeometry: Gen3CompiledNameGeometryResolver.Result = Gen3CompiledNameGeometryResolver.Result(),
 )
 
+internal data class GbaPublishedAbilityPointerRoles(val names: Int, val descriptions: Int)
+
 internal enum class GbaPublishedDataState { RESOLVED, ABSENT, AMBIGUOUS }
 
 /**
@@ -34,6 +36,15 @@ internal enum class GbaPublishedDataState { RESOLVED, ABSENT, AMBIGUOUS }
  * candidate has semantic evidence; equally credible windows are rejected rather than address-tied.
  */
 internal object GbaPublishedHeaderResolver {
+    /** Published roles only; compiled accessors still have to prove ownership, indices and extents. */
+    fun abilityPointerRolesForCore(rom: RomImage, coreRoot: Int): List<GbaPublishedAbilityPointerRoles> =
+        listOf(COMPACT_DATA_ROOT, FREE_SEEN_FLAGS_DATA_ROOT, STANDARD_DATA_ROOT).mapNotNull { start ->
+            if (rom.pointerOrNull(start) != coreRoot) return@mapNotNull null
+            val names = rom.pointerOrNull(start + 4) ?: return@mapNotNull null
+            val descriptions = rom.pointerOrNull(start + 8) ?: return@mapNotNull null
+            GbaPublishedAbilityPointerRoles(names, descriptions)
+        }.distinct()
+
     fun resolve(
         rom: RomImage,
         codec: PokemonTextCodec,

@@ -479,6 +479,21 @@ internal class SemanticDomainStrategy : FamilyProbePhaseStrategy {
     ): ResolvedAbilityEvidence {
         val rom = session.rom
         val unified = identity.headerlessUnifiedSpecies?.metadata
+        if (definition.formatGeneration == 3 && identity.exactProfile == null && identity.expansion == null &&
+            unified == null && core.compiledCanonicalSpecies == null && core.baseStats.compatible
+        ) {
+            val selectedCore = validatedAbilityCoverageLayout(rom,
+                resolvedLayout(core.candidateTables.baseStats, core.baseStats), core.baseStatsLayout)
+            selectedCore?.let { table ->
+                CompiledAbilitySemanticResolver.resolve(session, table, textCodec)?.let { compiled ->
+                    return ResolvedAbilityEvidence(compiled.evidence, compiled.names)
+                }
+                if (!Gen3BaseStatAbilitySlots.supportsLayout(rom, table, table.count)) {
+                    return ResolvedAbilityEvidence(
+                        missingEvidence("species ability fields require a proved compiled getter for this core ABI"), null)
+                }
+            }
+        }
         val domain = AbilitySemanticDomain(
             core.compiledCanonicalSpecies?.let { compiledWideRecords(core).values.flatMap { it.abilityIds }.toSet() }
                 ?: unified?.abilities?.let { abilities ->

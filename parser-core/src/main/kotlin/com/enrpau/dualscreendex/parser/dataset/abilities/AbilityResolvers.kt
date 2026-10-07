@@ -192,6 +192,9 @@ class AbilityNameResolver(
         semanticDomain: AbilitySemanticDomain,
         selectedLayout: AbilityNameTableLayout,
     ): DatasetResolution<ResolvedAbilityNameLayout> {
+        if (selectedLayout.terminatedInlineArray && semanticDomain.maximumDirectAbilityId.toLong() >= selectedLayout.count) {
+            return unavailable(1, "compiled ability IDs exceed the independently owned inline name boundary")
+        }
         val selectedDomain = AbilitySemanticDomain(
             semanticDomain.activeAbilityIds.filterTo(linkedSetOf()) { it < selectedLayout.count },
         )

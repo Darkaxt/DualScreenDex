@@ -93,7 +93,7 @@ internal fun selectAbilityNameEvidence(
 
 /**
  * Proves a fixed ability-name stride only when every complete reference-site consumer multiplies
- * an ability ID by the same immediate and adds that product to the nominated table root.
+ * an ability ID by the same fixed multiplier and adds that product to the nominated table root.
  */
 internal fun compiledAbilityNameStride(session: RomAnalysisSession, root: Int): Int? {
     val index = session.gbaReferenceIndex ?: return null
@@ -122,6 +122,19 @@ private fun compiledFixedStrideConsumer(rom: RomImage, rootLoadSite: Int): Int? 
     val rootLoad = rom.u16le(rootLoadSite)
     val add = rom.u16le(rootLoadSite + 2)
     // Strength-reduced fixed strides preserve the same root/product data flow as MUL.
+    if (move and 0xF800 == 0 && multiply and 0xFE00 == 0x1800 &&
+        rootLoad and 0xF800 == 0x4800 && add and 0xFE00 == 0x1800
+    ) {
+        val shift = (move ushr 6) and 31
+        val original = (move ushr 3) and 7
+        val product = move and 7
+        val base = (rootLoad ushr 8) and 7
+        if (shift in 1..5 && original != product && product != base &&
+            multiply and 7 == product &&
+            setOf((multiply ushr 3) and 7, (multiply ushr 6) and 7) == setOf(product, original) &&
+            setOf((add ushr 3) and 7, (add ushr 6) and 7) == setOf(product, base)
+        ) return (1 shl shift) + 1
+    }
     if (multiply and 0xF800 == 0 && rootLoad and 0xF800 == 0x4800 && add and 0xFE00 == 0x1800) {
         val shift = (multiply ushr 6) and 0x1F
         val product = multiply and 7

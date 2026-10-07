@@ -122,6 +122,9 @@ object RecordMaterializers {
         }
         val expansion = layout.pokeemeraldExpansion
         val unified = layout.headerlessUnifiedSpecies
+        val compiledAbilityNames = layout.resolvedDatasets.abilityNames
+        val compiledAbilitySlots = compiledAbilityNames?.compiledTextBinding?.speciesSlots
+        val compiledAbilityIds = compiledAbilityNames?.catalogDirectAbilityIds().orEmpty()
         val records = rows.associate { row ->
             val id = row.id
             val dexNumber = row.dexNumber
@@ -154,6 +157,13 @@ object RecordMaterializers {
                 layout.generation != 3 -> CatalogField.notApplicable("abilities are not part of this engine")
                 stats == null || statsIndex !in 0 until stats.count -> {
                     CatalogField.notFound("base-stat ability layout is unsupported or malformed")
+                }
+                compiledAbilitySlots != null -> {
+                    val nativeIds = compiledAbilitySlots.read(rom, statsIndex)
+                    if (statsOffset != null && baseStats != null && compiledAbilitySlots.matches(stats) &&
+                        nativeIds.all(compiledAbilityIds::contains)
+                    ) CatalogField.available(nativeIds) else CatalogField.notFound(
+                        "compiled species ability binding does not agree with the selected core or direct ID domain")
                 }
                 else -> {
                     val expansionAbilityOffset = expansion?.let {

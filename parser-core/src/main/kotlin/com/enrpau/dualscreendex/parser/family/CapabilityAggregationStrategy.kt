@@ -221,6 +221,11 @@ internal class CapabilityAggregationStrategy : FamilyProbePhaseStrategy {
         core: CoreDatasetsPhaseResult.Resolved,
         semantic: SemanticDomainPhaseResult.Resolved,
     ): AbilityMechanicsPhaseResult {
+        if (semantic.resolvedAbilityNames?.compiledTextBinding != null) {
+            return AbilityMechanicsPhaseResult(null, unavailableMechanics(
+                "compiled ability text and species slots do not prove battle-mechanics consumers",
+            ))
+        }
         if (core.compiledCanonicalSpecies != null) {
             return AbilityMechanicsPhaseResult(null, unavailableMechanics(
                 "compiled widened numeric ability slots do not prove battle-mechanics consumers",

@@ -71,7 +71,8 @@ object AbilityMechanicsMaterializer {
         compiledRatings = if (
             layout.pokeemeraldExpansion == null &&
             layout.headerlessUnifiedSpecies?.abilities?.abilityRatingOffset == null &&
-            layout.resolvedDatasets.abilityMechanics == null
+            layout.resolvedDatasets.abilityMechanics == null &&
+            layout.resolvedDatasets.abilityNames?.compiledTextBinding == null
         ) {
             CompiledAbilityRatingResolver.resolve(session, abilities.keys)
         } else {
@@ -88,6 +89,8 @@ object AbilityMechanicsMaterializer {
         compiledRatings: ResolvedCompiledAbilityRatings?,
     ): AbilityMechanicsResult? {
         if (layout.generation != 3) return null
+        val compiledTextOnly = layout.resolvedDatasets.abilityNames?.compiledTextBinding != null
+        if (compiledTextOnly && layout.resolvedDatasets.abilityMechanics == null) return null
         val embeddedMechanics = layout.pokeemeraldExpansion?.let { expansion ->
             EmbeddedAbilityMechanics(
                 recordSize = expansion.abilityRecordSize,
@@ -143,7 +146,9 @@ object AbilityMechanicsMaterializer {
                 mechanic.takeIf { it.abilityId in abilities }?.toCatalogMechanic(typeIdsByName)
             }
         }.orEmpty()
-        val documentedMechanics = if (binaryMechanics.mapTo(mutableSetOf()) { it.first }.containsAll(abilities.keys)) {
+        val documentedMechanics = if (compiledTextOnly ||
+            binaryMechanics.mapTo(mutableSetOf()) { it.first }.containsAll(abilities.keys)
+        ) {
             emptyList()
         } else {
             documentedAbilityProfile(abilities, abilityDescriptions)

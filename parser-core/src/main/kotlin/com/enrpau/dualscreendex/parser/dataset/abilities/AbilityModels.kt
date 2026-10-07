@@ -17,6 +17,7 @@ class AbilityNameTableLayout(
     val nameWidth: Int,
     val stride: Int = nameWidth,
     val nameOffset: Int = 0,
+    val terminatedInlineArray: Boolean = false,
 ) : ImmutableDatasetLayout<AbilityNameTableLayout> {
     constructor(
         offset: Int,
@@ -24,7 +25,8 @@ class AbilityNameTableLayout(
         nameWidth: Int,
         stride: Int = nameWidth,
         nameOffset: Int = 0,
-    ) : this(offset.toLong(), count.toLong(), nameWidth, stride, nameOffset)
+        terminatedInlineArray: Boolean = false,
+    ) : this(offset.toLong(), count.toLong(), nameWidth, stride, nameOffset, terminatedInlineArray)
 
     constructor(
         offset: Int,
@@ -32,10 +34,12 @@ class AbilityNameTableLayout(
         nameWidth: Int,
         stride: Int = nameWidth,
         nameOffset: Int = 0,
-    ) : this(offset.toLong(), count, nameWidth, stride, nameOffset)
+        terminatedInlineArray: Boolean = false,
+    ) : this(offset.toLong(), count, nameWidth, stride, nameOffset, terminatedInlineArray)
 
     override val layoutIdentity: CandidateLayoutIdentity = CandidateLayoutIdentity(
-        "ability-names:${offset.toString(16)}:$count:$nameWidth:$stride:$nameOffset",
+        "ability-names:${offset.toString(16)}:$count:$nameWidth:$stride:$nameOffset" +
+            if (terminatedInlineArray) ":terminated-inline-array" else "",
     )
 
     init {
@@ -52,7 +56,8 @@ class AbilityNameTableLayout(
 
     override fun equals(other: Any?): Boolean = this === other ||
         other is AbilityNameTableLayout && offset == other.offset && count == other.count &&
-        nameWidth == other.nameWidth && stride == other.stride && nameOffset == other.nameOffset
+        nameWidth == other.nameWidth && stride == other.stride && nameOffset == other.nameOffset &&
+            terminatedInlineArray == other.terminatedInlineArray
 
     override fun hashCode(): Int {
         var result = offset.hashCode()
@@ -60,11 +65,13 @@ class AbilityNameTableLayout(
         result = 31 * result + nameWidth
         result = 31 * result + stride
         result = 31 * result + nameOffset
+        if (terminatedInlineArray) result = 31 * result + 1
         return result
     }
 
     override fun toString(): String = "AbilityNameTableLayout(" +
-        "offset=$offset, count=$count, nameWidth=$nameWidth, stride=$stride, nameOffset=$nameOffset)"
+        "offset=$offset, count=$count, nameWidth=$nameWidth, stride=$stride, nameOffset=$nameOffset" +
+        (if (terminatedInlineArray) ", terminatedInlineArray=true" else "") + ")"
 }
 
 /** Ability IDs proven live by decoded base-stat records, never by species-name plausibility. */
@@ -129,6 +136,9 @@ class ResolvedAbilityNameLayout(
     val baseRowCount: Int,
     aliasLabels: Collection<AbilityAliasLabel>,
     unresolvedActiveAbilityIds: Collection<Int> = emptyList(),
+    val compiledTextBinding: CompiledAbilityTextBinding? = null,
+    val compiledDescriptions: ResolvedAbilityDescriptionLayout? = null,
+    val compiledDescriptionFailure: String? = null,
 ) : ImmutableDatasetLayout<ResolvedAbilityNameLayout> {
     val rows: List<AbilityNameRowOutcome> = immutable(rows.toList())
     val baseRows: List<AbilityNameRowOutcome> = immutable(this.rows.take(baseRowCount))
@@ -140,7 +150,12 @@ class ResolvedAbilityNameLayout(
     override val layoutIdentity: CandidateLayoutIdentity = CandidateLayoutIdentity(
         table.layoutIdentity.value + ":base=$baseRowCount:aliases=" +
             this.aliasLabels.joinToString(",") { "${it.sourceRowIndex}" } +
-            ":unresolved=" + this.unresolvedActiveAbilityIds.joinToString(","),
+            ":unresolved=" + this.unresolvedActiveAbilityIds.joinToString(",") +
+            (compiledTextBinding?.let { binding ->
+                ":compiled=${binding.getterEntry}:${binding.nameAccessorEntry}:${binding.descriptionAccessorEntry}" +
+                    ":slots=${binding.speciesSlots.layoutIdentity}:descriptions=${binding.descriptions.layoutIdentity.value}" +
+                    ":description-selection=${compiledDescriptions?.layoutIdentity?.value ?: "unavailable"}"
+            } ?: ""),
     )
 
     init {
@@ -167,6 +182,20 @@ class ResolvedAbilityNameLayout(
         }
         require(this.unresolvedActiveAbilityIds.none { baseRows[it] is AbilityNameRowOutcome.Decoded }) {
             "decoded ability names cannot also be marked unresolved"
+        }
+        require(compiledTextBinding != null || (compiledDescriptions == null && compiledDescriptionFailure == null)) {
+            "compiled descriptions require their paired native text binding"
+        }
+        compiledTextBinding?.let { binding ->
+            require(binding.names == table && table.terminatedInlineArray && baseRowCount.toLong() == table.count) {
+                "compiled text must retain its complete independently bounded direct name array"
+            }
+            require((compiledDescriptions != null) != (compiledDescriptionFailure != null)) {
+                "compiled description selection must retain a typed result or an explicit failure"
+            }
+            require(compiledDescriptions == null || compiledDescriptions.table == binding.descriptions) {
+                "compiled descriptions must use the paired native pointer table"
+            }
         }
     }
 
@@ -203,7 +232,9 @@ class ResolvedAbilityNameLayout(
     override fun equals(other: Any?): Boolean = this === other ||
         other is ResolvedAbilityNameLayout && table == other.table && rows == other.rows &&
             baseRowCount == other.baseRowCount && aliasLabels == other.aliasLabels &&
-            unresolvedActiveAbilityIds == other.unresolvedActiveAbilityIds
+            unresolvedActiveAbilityIds == other.unresolvedActiveAbilityIds &&
+            compiledTextBinding == other.compiledTextBinding && compiledDescriptions == other.compiledDescriptions &&
+            compiledDescriptionFailure == other.compiledDescriptionFailure
 
     override fun hashCode(): Int {
         var result = table.hashCode()
@@ -211,6 +242,11 @@ class ResolvedAbilityNameLayout(
         result = 31 * result + baseRowCount
         result = 31 * result + aliasLabels.hashCode()
         result = 31 * result + unresolvedActiveAbilityIds.hashCode()
+        if (compiledTextBinding != null) {
+            result = 31 * result + compiledTextBinding.hashCode()
+            result = 31 * result + (compiledDescriptions?.hashCode() ?: 0)
+            result = 31 * result + (compiledDescriptionFailure?.hashCode() ?: 0)
+        }
         return result
     }
 }

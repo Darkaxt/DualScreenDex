@@ -2,6 +2,7 @@ package com.enrpau.dualscreendex.parser.catalog
 
 import com.enrpau.dualscreendex.parser.analysis.ParserCancellationException
 import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
+import com.enrpau.dualscreendex.parser.dataset.abilities.AbilityDescriptionRowOutcome
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.language.defaultTextCodec
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
@@ -28,6 +29,27 @@ object AbilityDescriptionMaterializer {
         if (layout.generation != 3) return null
         val codec = layout.defaultTextCodec() ?: return null
         val names = layout.tables.abilities ?: return null
+        val typedNames = layout.resolvedDatasets.abilityNames
+        typedNames?.compiledTextBinding?.let { binding ->
+            val selected = typedNames.compiledDescriptions ?: return null
+            val core = layout.tables.baseStats ?: return null
+            if (!binding.speciesSlots.matches(core) || names.offset.toLong() != binding.names.offset ||
+                names.count.toLong() != binding.names.count || names.recordSize != binding.names.nameWidth ||
+                (names.stride ?: names.recordSize) != binding.names.stride || names.valuesArePointers || names.variableLength
+            ) return null
+            val ids = typedNames.catalogDirectAbilityIds()
+            val descriptions = buildMap {
+                selected.rows.forEach { row ->
+                    cancellation.throwIfCancellationRequested()
+                    if (row is AbilityDescriptionRowOutcome.Decoded && row.rowIndex > 0 && row.rowIndex in ids) {
+                        put(row.rowIndex, row.description)
+                    }
+                }
+            }
+            // MissingProse tokens remain in the typed row evidence; they are not invented natural prose.
+            return AbilityDescriptionResult(selected.table.offset.toInt(),
+                descriptions.size.toDouble() / ids.size.coerceAtLeast(1), descriptions)
+        }
         if (names.count < 2) return null
         val pointerTableBytes = names.count.toLong() * 4
         val nameStride = names.stride ?: names.recordSize

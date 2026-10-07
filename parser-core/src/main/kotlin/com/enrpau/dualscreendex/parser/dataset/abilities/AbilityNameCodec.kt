@@ -49,13 +49,13 @@ class AbilityNameCodec(
         val rows = List(layout.count.toInt()) { rowIndex ->
             cancellation.throwIfCancellationRequested()
             val recordOffset = extent.offset + rowIndex * layout.stride + layout.nameOffset
-            decodeRow(session, rowIndex, recordOffset, layout.nameWidth)
+            decodeRow(session, rowIndex, recordOffset, layout.nameWidth, layout.terminatedInlineArray)
         }
         if (rows.firstOrNull() !is AbilityNameRowOutcome.StructuralSentinel) {
             return AbilityNameTableOutcome.Rejected(layout, "ability-name row zero is not a structural none sentinel")
         }
 
-        val boundaryCandidates = rows.indices.asSequence()
+        val boundaryCandidates = if (layout.terminatedInlineArray) emptyList() else rows.indices.asSequence()
             .drop(1)
             .filter { index -> index > semanticDomain.maximumDirectAbilityId }
             .filter { index -> rows[index] is AbilityNameRowOutcome.StructuralSentinel }
@@ -78,7 +78,7 @@ class AbilityNameCodec(
                 start in 2 until rows.size &&
                 rows.subList(start, rows.size).all { it is AbilityNameRowOutcome.StructuralSentinel }
         }
-        val baseRowCount = boundary ?: terminalPaddingStart ?: rows.size
+        val baseRowCount = if (layout.terminatedInlineArray) rows.size else boundary ?: terminalPaddingStart ?: rows.size
         val activeOutsideCatalog = semanticDomain.activeAbilityIds.filter { it >= baseRowCount }
         if (activeOutsideCatalog.isNotEmpty()) {
             return AbilityNameTableOutcome.Rejected(
@@ -116,6 +116,7 @@ class AbilityNameCodec(
         rowIndex: Int,
         offset: Int,
         width: Int,
+        requireTerminator: Boolean,
     ): AbilityNameRowOutcome {
         val decoded = textCodec.decodeDetailed(
             rom = session.rom,
@@ -141,7 +142,7 @@ class AbilityNameCodec(
                 )
             }
         }
-        val complete = decoded.terminated || (decoded.contentBytes == width && decoded.invalidUnits == 0)
+        val complete = decoded.terminated || (!requireTerminator && decoded.contentBytes == width && decoded.invalidUnits == 0)
         if (!complete || decoded.validRatio < MINIMUM_VALID_BYTE_RATIO || decoded.text.isBlank()) {
             return AbilityNameRowOutcome.Malformed(
                 rowIndex,
