@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "date": "2026-10-03",
   "verifiedDate": "2026-10-07",
-  "evidenceMode": "full342-baseline-with-focused-gen2-relationships-gen3-wide-core-and-pokescape-map-moves-dex-move-text-type-names-species-categories",
+  "evidenceMode": "full342-baseline-with-focused-gen2-relationships-gen3-wide-core-and-pokescape-map-moves-dex-move-text-type-names-species-categories-ability-text",
   "corpusInputDigestSha256": "733e36785fa9a5b71bc4121343a6b6d2cbd27e43e08b3fddc2e2870bac1a0561",
   "summary": {
     "inputCount": 342,
@@ -5907,8 +5907,8 @@
     },
     {
       "name": "Pokescape (v1.0.4).gba",
-      "evidence": "focused-pokescape-native-species-categories-source-bound",
-      "sourceCommit": "6853d5d6a0d464d21613cd6f1b8f1156054dad34",
+      "evidence": "focused-pokescape-native-ability-text-species-joins-source-bound",
+      "sourceCommit": "2a9178406f782bbd66ed9ed219bf89eff7765220",
       "aliases": [
         {
           "archive": "Pokemon Pokescape (v1.0.4).7z",
@@ -5919,7 +5919,7 @@
       "generation": 3,
       "family": "EMERALD",
       "languageCount": 1,
-      "compatibilityPercent": 87.5,
+      "compatibilityPercent": 95.83,
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "AVAILABLE",
@@ -6002,15 +6002,18 @@
           "incompleteRecords": 0
         },
         "ABILITIES": {
-          "status": "AMBIGUOUS",
-          "confidence": 0.9487179487179487
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 298,
+          "expectedRecords": 298,
+          "incompleteRecords": 0
         },
         "ABILITY_MECHANICS": {
           "status": "NOT_FOUND",
           "confidence": 0.0,
           "coveredRecords": 0,
-          "expectedRecords": 0,
-          "incompleteRecords": 0
+          "expectedRecords": 298,
+          "incompleteRecords": 298
         },
         "AREA_ENCOUNTERS": {
           "status": "AVAILABLE",
@@ -6061,10 +6064,10 @@
           "expectedRecords": 828
         },
         "ABILITY_DESCRIPTIONS": {
-          "status": "NOT_FOUND",
-          "confidence": 0.0,
-          "coveredRecords": 0,
-          "expectedRecords": 0
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 298,
+          "expectedRecords": 298
         }
       },
       "catalogCounters": {
@@ -6086,8 +6089,8 @@
         "namedTypes": 18,
         "typesWithSemanticRoles": 18,
         "typeMatchups": 120,
-        "abilities": 0,
-        "abilitiesWithDescriptions": 0,
+        "abilities": 298,
+        "abilitiesWithDescriptions": 298,
         "abilitiesWithMechanics": 0,
         "captureBalls": 12,
         "encounterAreas": 202,
@@ -6103,8 +6106,8 @@
         "referenceErrors": 0,
         "sqliteReopenEqualityVerified": true,
         "logicalDigestVersion": 1,
-        "beforeCatalogSha256": "6672b02c8230915a80ade72b8265b20c2073c3dd05d40e0c25485ad02839f44f",
-        "afterCatalogSha256": "6672b02c8230915a80ade72b8265b20c2073c3dd05d40e0c25485ad02839f44f"
+        "beforeCatalogSha256": "bc0cb845fcc558441479ca366a7871b982b14b2809a12f3823b36abe71324bd4",
+        "afterCatalogSha256": "bc0cb845fcc558441479ca366a7871b982b14b2809a12f3823b36abe71324bd4"
       },
       "localizedCapabilities": {
         "SPECIES_NAMES": {
@@ -6148,18 +6151,18 @@
           "validatorReviewRecommended": false
         },
         "ABILITY_NAMES": {
-          "status": "AMBIGUOUS",
-          "confidence": 0.9487179487179487,
-          "coveredRecords": 0,
-          "expectedRecords": 0,
-          "reviewStatus": "MANUAL_REVIEW",
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 298,
+          "expectedRecords": 298,
+          "reviewStatus": "NONE",
           "validatorReviewRecommended": false
         },
         "ABILITY_DESCRIPTIONS": {
-          "status": "NOT_FOUND",
-          "confidence": 0.0,
-          "coveredRecords": 0,
-          "expectedRecords": 0,
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 298,
+          "expectedRecords": 298,
           "reviewStatus": "NONE",
           "validatorReviewRecommended": false
         },
@@ -47352,7 +47355,8 @@
     "48730a00ea09037f8b2b60623e4e1c02d3e61a06",
     "db3c306ca48ac0b6e555f58565edd64283d7bf6e",
     "f5a76c85f596fe4276293dedc3b0387980d2baa3",
-    "6853d5d6a0d464d21613cd6f1b8f1156054dad34"
+    "6853d5d6a0d464d21613cd6f1b8f1156054dad34",
+    "2a9178406f782bbd66ed9ed219bf89eff7765220"
   ],
   "focusedGen2Relationships": {
     "inputCount": 19,
@@ -47503,6 +47507,25 @@
         "sha256": "833e06e1d4f0d0ee189cc4e2bc5d77bc114b0834846079c67e71a8b6ecada0e9"
       },
       "rawReportSha256": "ac1304daf6c70347c32820314c2ddeacbe3bfb17a8ba24f3a00479e8ad803f85",
+      "inputCount": 1
+    },
+    "unaffectedRowsRetained": 341,
+    "fullCorpusRerun": false
+  },
+  "focusedPokescapeAbilityText": {
+    "inputCount": 1,
+    "sourceCommit": "2a9178406f782bbd66ed9ed219bf89eff7765220",
+    "parserSchemaVersion": 93,
+    "acceptance": "2026-10-07-pokescape-ability-text-acceptance.json",
+    "executionReceiptSummary": {
+      "schemaVersion": 1,
+      "sourceCommit": "2a9178406f782bbd66ed9ed219bf89eff7765220",
+      "generator": {
+        "name": "parser-cli",
+        "schemaVersion": 16,
+        "sha256": "6d3d3eb4db447ecd569f6ca84c38c7777aa9de8c1e4cfbe02f06b3538839f3d5"
+      },
+      "rawReportSha256": "80cb8e2e655118f661bef9d47636a06403d2e3a751099d41d28fb1046725cf01",
       "inputCount": 1
     },
     "unaffectedRowsRetained": 341,

@@ -13,6 +13,7 @@ Capability percentages are confidence from bounded compiled structural evidence,
 - Focused one-input Pokescape native move-text source: `db3c306ca48ac0b6e555f58565edd64283d7bf6e` ([acceptance](2026-10-07-pokescape-move-text-acceptance.md))
 - Focused one-input Pokescape referenced type-name source: `f5a76c85f596fe4276293dedc3b0387980d2baa3` ([acceptance](2026-10-07-pokescape-type-name-acceptance.md)); TYPE_NAMES 18/18, score unchanged 87.50%.
 - Focused one-input Pokescape native species-category source: `6853d5d6a0d464d21613cd6f1b8f1156054dad34` ([acceptance](2026-10-07-pokescape-species-category-acceptance.md)); SPECIES_CATEGORIES 1,235/1,235, score unchanged 87.50%.
+- Focused one-input Pokescape native ability-text/species-join source: `2a9178406f782bbd66ed9ed219bf89eff7765220` ([acceptance](2026-10-07-pokescape-ability-text-acceptance.md));298 names/descriptions,1,235 joins/2,697 edges; score87.50%→95.83%, mechanics still NOT_FOUND.
 - Inputs: **342**
 - Detected family and materialized catalog: **301**
 - Persisted and exactly reopened SQLite catalogs: **301**
@@ -65,7 +66,7 @@ Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for 
 | 2 | Gold/Silver family | 5 | 86.67% | 0 |
 | 2 | Crystal family | 14 | 69.97% | 0 |
 | 3 | Ruby/Sapphire family | 15 | 91.80% | 0 |
-| 3 | Emerald family | 75 | 82.00% | 0 |
+| 3 | Emerald family | 75 | 82.11% | 0 |
 | 3 | FireRed/LeafGreen family | 89 | 89.81% | 0 |
 
 ## Generation 1
@@ -314,7 +315,7 @@ Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for 
 | Mystique (1.1.1).gba | 1 | 89.62% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 37% | 100% | 100% | P 99% | 100% | P 31% | P 94% | N/A | 99% | P 99% | 100% | 100% | 100% | 100% | 100% | 100% | P 50% |
 | National History Museum (v1.0.4).gba | 1 | 79.14% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 0% | P 99% | 100% | 100% | 74% | 90% | ? 95% | 0% | 0% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Peach (Demo) (v1.4).gba | 1 | 58.33% | 100% | 100% | 100% | 0% | 100% | 0% | 0% | 100% | 95% | 100% | 100% | 100% | 0% | 0% | 90% | ? 95% | 0% | 0% | 100% | 100% | 0% | 0% | P 100% | 100% |
-| Pokescape (v1.0.4).gba | 1 | 87.50% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 74% | 90% | ? 95% | 0% | 0% | 100% | 100% | 100% | 100% | 100% | 100% |
+| Pokescape (v1.0.4).gba | 1 | 95.83% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 74% | 90% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Pokémon Hearth (v0.1.27).gba | 1 | 72.22% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 35% | 100% | 100% | P 99% | 100% | P 31% | P 96% | N/A | 100% | 100% | 100% | 0% | 100% | 0% | 0% | 0% | P 50% |
 | Quetzal (Emerald Multiplayer) (v0.8.4).gba | 1 | 53.79% | 91% | P 91% | 100% | 100% | 100% | 100% | 0% | 0% | 95% | 100% | 100% | 0% | 0% | 0% | 83% | ? 95% | 0% | 0% | ? 0% | 100% | 100% | 0% | 0% | 100% |
 | R.O.W.E. (2.1.1).gba | 1 | 70.83% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 0% | 100% | P 100% | 100% | 100% | 74% | 0% | 89% | 100% | 100% | 0% | 0% | 100% | 100% | ? 0% | 0% | 100% |
