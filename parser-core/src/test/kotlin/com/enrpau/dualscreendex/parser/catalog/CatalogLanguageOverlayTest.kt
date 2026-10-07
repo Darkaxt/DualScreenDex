@@ -874,6 +874,7 @@ class CatalogLanguageOverlayTest {
             expectedRecords = mapOf(
                 LocalizedTextCapability.SPECIES_NAMES to 1,
                 LocalizedTextCapability.SPECIES_DESCRIPTIONS to 1,
+                LocalizedTextCapability.SPECIES_CATEGORIES to 1,
             ),
             coveredRecords = mapOf(
                 LocalizedTextCapability.SPECIES_NAMES to speciesNames.size,

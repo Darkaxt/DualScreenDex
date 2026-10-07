@@ -697,6 +697,7 @@ private data class StoredCatalogLanguageOverlay(
     val localizedCapabilities: List<StoredLocalizedCapabilityState?>? = null,
     val speciesNames: Map<Int, CatalogField<String>?>? = null,
     val speciesDescriptions: Map<Int, CatalogField<String>?>? = null,
+    val speciesCategories: Map<Int, CatalogField<String>?>? = null,
     val moveNames: Map<Int, CatalogField<String>?>? = null,
     val moveDescriptions: Map<Int, CatalogField<String>?>? = null,
     val abilityNames: Map<Int, CatalogField<String>?>? = null,
@@ -738,6 +739,7 @@ private data class StoredCatalogLanguageOverlay(
             localizedCapabilities = storedCapabilities.toMap(linkedMapOf()),
             speciesNames = speciesNames.requiredTextMap("species names"),
             speciesDescriptions = speciesDescriptions.requiredTextMap("species descriptions"),
+            speciesCategories = speciesCategories.requiredTextMap("species categories"),
             moveNames = moveNames.requiredTextMap("move names"),
             moveDescriptions = moveDescriptions.requiredTextMap("move descriptions"),
             abilityNames = abilityNames.requiredTextMap("ability names"),
@@ -766,6 +768,7 @@ private data class StoredCatalogLanguageOverlay(
             },
             speciesNames = value.speciesNames,
             speciesDescriptions = value.speciesDescriptions,
+            speciesCategories = value.speciesCategories,
             moveNames = value.moveNames,
             moveDescriptions = value.moveDescriptions,
             abilityNames = value.abilityNames,
@@ -931,12 +934,25 @@ internal class CatalogSectionCodec {
                 val windows = runCatching { area.windows }.getOrNull()
                 if (windows.isNullOrEmpty()) area.copy(windows = setOf(EncounterWindow.ANY)) else area
             }
+        val species = decoded<Map<Int, SpeciesRecord>>("species", speciesType).mapValues { (_, record) ->
+            val category = requireNotNull(record.category) { "persisted species requires a category field" }
+            val checked = CatalogField(
+                requireNotNull(category.status) { "persisted species category requires a status" },
+                category.value,
+                requireNotNull(category.reasons) { "persisted species category requires reasons" },
+            )
+            val value = checked.value
+            require(value == null || value.isNotBlank() && value.length <= 4096) {
+                "persisted species category must be bounded and nonblank"
+            }
+            record.copy(category = checked)
+        }
         return ParsedCatalog(
             romSha256 = sha256,
             romCrc32 = crc32,
             family = family,
             platform = platform,
-            speciesById = decoded("species", speciesType),
+            speciesById = species,
             movesById = decoded("moves", movesType),
             typesById = decoded("types", typesType),
             abilitiesById = decoded("abilities", abilitiesType),

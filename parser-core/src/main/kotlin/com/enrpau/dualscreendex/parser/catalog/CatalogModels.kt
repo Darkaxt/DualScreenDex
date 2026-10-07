@@ -78,6 +78,7 @@ data class SpeciesRecord(
     val growthRate: CatalogField<Int> = CatalogField.notFound("growth rate was not materialized"),
     val navigable: Boolean = (dexNumber.value ?: 0) > 0 &&
         (name.value == null || name.value.any(Char::isLetterOrDigit)),
+    val category: CatalogField<String> = CatalogField.notFound("species category was not materialized"),
 )
 
 data class MoveRecord(

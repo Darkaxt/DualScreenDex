@@ -1453,6 +1453,7 @@ class ApiViewBuilderTest {
                 val expected = when (capability) {
                     LocalizedTextCapability.SPECIES_NAMES,
                     LocalizedTextCapability.SPECIES_DESCRIPTIONS,
+                    LocalizedTextCapability.SPECIES_CATEGORIES,
                     -> 2
                     LocalizedTextCapability.WORLD_LOCATION_NAMES -> 1
                     else -> 0

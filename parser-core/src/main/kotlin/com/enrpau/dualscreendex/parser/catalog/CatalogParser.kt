@@ -380,6 +380,7 @@ object CatalogMaterializer {
         }
         cancellation.throwIfCancellationRequested()
         val descriptions = descriptionMaterialization.records
+        val categories = SpeciesCategoryMaterializer.materialize(rom, layout, cancellation)
         val sprites = SpriteMaterializer.pokemon(rom, layout, cancellation = cancellation)
         val resolvedSprites = resolveSpriteAliases(baseSpecies, sprites, layout.generation)
         val mediaSpecies = baseSpecies.mapValues { (id, record) ->
@@ -401,6 +402,11 @@ object CatalogMaterializer {
                     !pokedexApplicable -> CatalogField.notApplicable("species is outside the ROM's compiled description-table domain")
                     description?.text != null -> CatalogField.available(description.text)
                     else -> CatalogField.notFound("description could not be decoded for species $id")
+                },
+                category = when {
+                    !pokedexApplicable -> CatalogField.notApplicable("species is outside the ROM's compiled description-table domain")
+                    categories[descriptionKey] != null -> CatalogField.available(categories.getValue(requireNotNull(descriptionKey)))
+                    else -> CatalogField.notFound("species category could not be validated for species $id")
                 },
                 height = when {
                     !pokedexApplicable -> CatalogField.notApplicable("species is outside the ROM's compiled description-table domain")

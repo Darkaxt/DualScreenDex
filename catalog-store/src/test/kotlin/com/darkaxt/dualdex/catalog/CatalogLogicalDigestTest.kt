@@ -50,7 +50,7 @@ class CatalogLogicalDigestTest {
         assertEquals(CatalogSchema.requiredSections + setOf("language_overlay:en", "language_overlay:fr"), sections.keySet())
         val overlay = sections.getAsJsonObject("language_overlay:en")
         assertEquals("en", overlay["language"].asString)
-        assertEquals(15, overlay.getAsJsonArray("localizedCapabilities").size())
+        assertEquals(LocalizedTextCapability.entries.size, overlay.getAsJsonArray("localizedCapabilities").size())
         assertEquals(setOf("regionKey", "locationKey", "value"), overlay.getAsJsonArray("worldLocationNames")[0].asJsonObject.keySet())
         assertTrue(sections.getAsJsonObject("runtime_metadata")["gen2TimeOfDayWramOffset"].isJsonNull)
         assertEquals(hash(encoded), sha(catalog))
@@ -169,6 +169,7 @@ class CatalogLogicalDigestTest {
         }, status = LanguageResolutionStatus.RESOLVED)
         val overlays = order(languages).associateWith { language ->
             val counts = mapOf(LocalizedTextCapability.SPECIES_NAMES to 2, LocalizedTextCapability.SPECIES_DESCRIPTIONS to 2,
+                LocalizedTextCapability.SPECIES_CATEGORIES to 2,
                 LocalizedTextCapability.AREA_NAMES to 2, LocalizedTextCapability.LOCAL_MAP_NAMES to 1,
                 LocalizedTextCapability.WORLD_REGION_NAMES to 1, LocalizedTextCapability.WORLD_LOCATION_NAMES to 2,
                 LocalizedTextCapability.ENCOUNTER_AREA_NAMES to 1)
