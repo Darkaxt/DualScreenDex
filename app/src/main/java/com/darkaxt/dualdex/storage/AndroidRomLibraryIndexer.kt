@@ -6,6 +6,7 @@ import com.darkaxt.dualdex.retroarch.RomIndexEntry
 import com.darkaxt.dualdex.retroarch.RomPlatform
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.model.Platform
+import java.io.IOException
 
 data class RomLibraryIndexResult(
     val entries: List<RomIndexEntry>,
@@ -19,7 +20,9 @@ class AndroidRomLibraryIndexer(
         val entries = mutableListOf<RomIndexEntry>()
         val warnings = mutableListOf<String>()
         val previousBySource = previousEntries.associateBy(RomIndexEntry::sourceId)
-        DocumentTreeAccess(resolver, treeUri).visitFilesRecursively { document, operation ->
+        DocumentTreeAccess(resolver, treeUri).visitFilesRecursively(
+            operation = StorageTraversalOperation(StorageTraversalPolicy.ROM_LIBRARY),
+        ) { document, operation ->
             if (document.name.substringAfterLast('.', "").lowercase() !in SUPPORTED_EXTENSIONS) return@visitFilesRecursively
             val entry = try {
                 val sourceId = document.uri.toString()
@@ -52,6 +55,10 @@ class AndroidRomLibraryIndexer(
                     )
                 }
             } catch (failure: IllegalArgumentException) {
+                warnings += "${document.name}: ${failure.message ?: failure.javaClass.simpleName}"
+                return@visitFilesRecursively
+            } catch (failure: IOException) {
+                // A corrupt or truncated archive is one bad file, not a reason to drop the whole library.
                 warnings += "${document.name}: ${failure.message ?: failure.javaClass.simpleName}"
                 return@visitFilesRecursively
             }

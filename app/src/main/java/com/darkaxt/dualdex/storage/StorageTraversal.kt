@@ -1,6 +1,8 @@
 package com.darkaxt.dualdex.storage
 
 import java.io.File
+import java.io.IOException
+import java.nio.file.DirectoryIteratorException
 import java.nio.file.Files
 import java.util.ArrayDeque
 
@@ -20,6 +22,17 @@ data class StorageTraversalQuota(
 
 object StorageTraversalPolicy {
     val DEFAULT = StorageTraversalQuota()
+
+    /**
+     * Game discovery walks whole shared-storage volumes, where RetroArch, emulator frontends, and
+     * BIOS packs alone can hold tens of thousands of entries. The default quota is sized for
+     * targeted lookups (saves, config) and made every whole-device scan fail on real handhelds.
+     */
+    val ROM_LIBRARY = StorageTraversalQuota(
+        maximumNodes = 250_000,
+        maximumDirectories = 30_000,
+        maximumFiles = 225_000,
+    )
 }
 
 class StorageTraversalLimitExceeded(message: String) : IllegalStateException(message)
@@ -85,11 +98,16 @@ internal object DirectFileTraversal {
             when {
                 candidate.isDirectory && !skipDirectory(candidate) && visitedDirectories.add(candidate.path) -> {
                     budget.visitDirectory()
-                    Files.newDirectoryStream(candidate.toPath()).use { children ->
-                        children.forEach { child ->
-                            budget.enqueueNode()
-                            queue.addLast(child.toFile())
+                    try {
+                        Files.newDirectoryStream(candidate.toPath()).use { children ->
+                            children.forEach { child ->
+                                budget.enqueueNode()
+                                queue.addLast(child.toFile())
+                            }
                         }
+                    } catch (_: IOException) {
+                        // One unreadable folder (LOST.DIR, a locked SD card folder) must not abort the whole walk.
+                    } catch (_: DirectoryIteratorException) {
                     }
                 }
                 candidate.isFile && visitedFiles.add(candidate.path) -> {

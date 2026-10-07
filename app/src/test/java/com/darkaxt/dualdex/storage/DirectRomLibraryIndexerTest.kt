@@ -157,6 +157,41 @@ class DirectRomLibraryIndexerTest {
     }
 
     @Test
+    fun `indexes a storage volume with more entries than the targeted lookup quota`() {
+        val root = temporaryRoot()
+        // A RetroArch install alone (cores, assets, thumbnails) can exceed the 20k-node default quota.
+        val clutter = File(root, "RetroArch/assets").apply { mkdirs() }
+        repeat(StorageTraversalPolicy.DEFAULT.maximumNodes + 1) { index -> File(clutter, "asset-$index.png").createNewFile() }
+        File(root, "Emulation/ROMs/gba").apply { mkdirs() }
+            .let { File(it, "Pokemon Emerald.gba").writeBytes(gameBoyAdvanceRom()) }
+
+        val result = DirectRomLibraryIndexer().index(listOf(root))
+
+        assertEquals(listOf("Pokemon Emerald.gba"), result.entries.map { it.sourceName })
+    }
+
+    @Test
+    fun `skips hidden folders and keeps scanning past unreadable ones`() {
+        val root = temporaryRoot()
+        File(root, ".thumbnails").apply { mkdirs() }
+            .let { File(it, "cached.gba").writeBytes(gameBoyAdvanceRom()) }
+        val locked = File(root, "LOST.DIR").apply { mkdirs() }
+        File(locked, "orphan.gba").writeBytes(gameBoyAdvanceRom())
+        File(root, "ROMs").apply { mkdirs() }
+            .let { File(it, "Pokemon Red.gb").writeBytes(gameBoyRom("POKEMON RED", color = false)) }
+        assumeTrue("needs a non-root user so folder permissions apply", locked.setReadable(false, false))
+        try {
+            assumeTrue("folder permissions are not enforced here", !locked.canRead())
+
+            val result = DirectRomLibraryIndexer().index(listOf(root))
+
+            assertEquals(listOf("Pokemon Red.gb"), result.entries.map { it.sourceName })
+        } finally {
+            locked.setReadable(true, false)
+        }
+    }
+
+    @Test
     fun `fails traversal before retaining more sources than the result quota`() {
         val root = temporaryRoot()
         File(root, "Pokemon Red.gb").writeBytes(gameBoyRom("POKEMON RED", color = false))
