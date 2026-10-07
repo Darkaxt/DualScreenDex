@@ -100,9 +100,21 @@ describe('RetroArch setup', () => {
     expect(screen.queryByRole('link', { name: 'RETRY OPENING GAME GUIDE' })).toBeNull();
   });
 
+  it('shows the companion as ready while RetroArch reports a running or paused game', () => {
+    const { rerender } = render(<SetupPage state={{ ...state, retroArch: { ...state.retroArch, connection: 'CONTENTLESS' } }} send={vi.fn()} />);
+    expect(screen.getByText('Waiting for a game')).toBeTruthy();
+
+    for (const connection of ['PLAYING', 'PAUSED']) {
+      rerender(<SetupPage state={{ ...state, retroArch: { ...state.retroArch, connection, gameBasename: 'Pokemon Emerald' } }} send={vi.fn()} />);
+      expect(screen.queryByText('Waiting for a game')).toBeNull();
+      expect(screen.getAllByText('Ready').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Connected').length).toBeGreaterThan(0);
+    }
+  });
+
   it('renders setup actions and live status in German without changing control URLs', () => {
     setInterfaceLanguage('DE');
-    render(<SetupPage state={{ ...state, retroArch: { ...state.retroArch, connection: 'CONNECTED' } }} send={vi.fn()} />);
+    render(<SetupPage state={{ ...state, retroArch: { ...state.retroArch, connection: 'CONTENTLESS' } }} send={vi.fn()} />);
 
     expect(screen.getByText('RETROARCH-VERBINDUNG')).toBeTruthy();
     expect(screen.getByText('12 Spiele gefunden.')).toBeTruthy();

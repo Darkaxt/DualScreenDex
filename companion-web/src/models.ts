@@ -459,6 +459,19 @@ export interface RetroArchState {
   presentationMessage?: PresentationMessage | null;
 }
 
+/**
+ * Values the Android runtime publishes in RetroArchState.connection
+ * (RetroArchConnection in retroarch-session/.../SessionMonitor.kt). There is no "CONNECTED" value:
+ * RetroArch is reachable when it reports CONTENTLESS (menu open) or a live game state.
+ */
+export function isRetroArchReachable(connection: string | null | undefined): boolean {
+  return connection === 'CONTENTLESS' || isGameLive(connection);
+}
+
+export function isGameLive(connection: string | null | undefined): boolean {
+  return connection === 'PLAYING' || connection === 'PAUSED';
+}
+
 export interface Rarity {
   relativeTier: 'WEAK' | 'ORDINARY' | 'COMPETENT' | 'STRONG' | 'MAJOR' | null;
   innateTier: 'FODDER' | 'STANDARD' | 'TRAINED' | 'VETERAN' | 'ELITE' | 'ACE' | null;
