@@ -275,6 +275,7 @@ data class SpeciesView(
     val abilities: List<AbilityView>,
     val evolutions: List<EvolutionView>,
     val hasSprite: Boolean,
+    val category: String? = null,
 )
 
 data class LearnsetView(val level: Int, val moveId: Int)
@@ -773,6 +774,7 @@ object ApiViewBuilder {
                     )
                 },
                 description = text.speciesDescription(species.id),
+                category = text.speciesCategory(species.id),
                 height = species.height.value,
                 weight = species.weight.value,
                 learnset = species.learnset.value.orEmpty().map { LearnsetView(it.level, it.moveId) },
@@ -1354,7 +1356,7 @@ object ApiViewBuilder {
         return CatalogLanguageOverlayView(
             binding = binding,
             species = catalog.speciesById.mapValues { (id, _) ->
-                LocalizedEntityTextView(text.speciesName(id), text.speciesDescription(id))
+                LocalizedEntityTextView(text.speciesName(id), text.speciesDescription(id), text.speciesCategory(id))
             },
             moves = catalog.movesById.mapValues { (id, _) ->
                 LocalizedEntityTextView(text.moveName(id), text.moveDescription(id))

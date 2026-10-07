@@ -11,6 +11,7 @@ import java.util.Collections
 enum class LocalizedTextCapability {
     SPECIES_NAMES,
     SPECIES_DESCRIPTIONS,
+    SPECIES_CATEGORIES,
     MOVE_NAMES,
     MOVE_DESCRIPTIONS,
     ABILITY_NAMES,
@@ -187,11 +188,13 @@ class CatalogLanguageOverlay(
     worldLocationNames: Map<WorldLocationKey, CatalogField<String>> = emptyMap(),
     encounterAreaNames: Map<Int, CatalogField<String>> = emptyMap(),
     poiTexts: Map<String, CatalogPoiText> = emptyMap(),
+    speciesCategories: Map<Int, CatalogField<String>> = emptyMap(),
 ) {
     val localizedCapabilities: Map<LocalizedTextCapability, LocalizedCapabilityState> =
         Collections.unmodifiableMap(LinkedHashMap(localizedCapabilities))
     val speciesNames = immutableTextMap(speciesNames) { it >= 0 }
     val speciesDescriptions = immutableTextMap(speciesDescriptions) { it >= 0 }
+    val speciesCategories = immutableTextMap(speciesCategories) { it > 0 }
     val moveNames = immutableTextMap(moveNames) { it >= 0 }
     val moveDescriptions = immutableTextMap(moveDescriptions) { it >= 0 }
     val abilityNames = immutableTextMap(abilityNames) { it >= 0 }
@@ -217,6 +220,7 @@ class CatalogLanguageOverlay(
         }
         requireCoverage(LocalizedTextCapability.SPECIES_NAMES, speciesNames.size)
         requireCoverage(LocalizedTextCapability.SPECIES_DESCRIPTIONS, speciesDescriptions.size)
+        requireCoverage(LocalizedTextCapability.SPECIES_CATEGORIES, speciesCategories.size)
         requireCoverage(LocalizedTextCapability.MOVE_NAMES, moveNames.size)
         requireCoverage(LocalizedTextCapability.MOVE_DESCRIPTIONS, moveDescriptions.size)
         requireCoverage(LocalizedTextCapability.ABILITY_NAMES, abilityNames.size)
@@ -250,6 +254,13 @@ class CatalogLanguageOverlay(
             "species description",
             "described species",
         )
+        val speciesCategoryIds = catalog.speciesById.filter { (id, record) ->
+            id > 0 && record.dexNumber.status != CapabilityStatus.NOT_APPLICABLE &&
+                record.description.status != CapabilityStatus.NOT_APPLICABLE &&
+                record.category.status != CapabilityStatus.NOT_APPLICABLE
+        }.keys
+        requireSubset(speciesCategories.keys, speciesCategoryIds, "species category", "category-applicable species")
+        requireExpected(LocalizedTextCapability.SPECIES_CATEGORIES, speciesCategoryIds.size)
         requireSubset(moveNames.keys, catalog.movesById.keys, "move name", "move")
         val describedMoveIds = catalog.movesById.keys.filterTo(hashSetOf()) { it > 0 }
         requireSubset(moveDescriptions.keys, describedMoveIds, "move description", "described move")
@@ -351,7 +362,7 @@ class CatalogLanguageOverlay(
     }
 
     private fun totalEntryCount(): Int =
-        speciesNames.size + speciesDescriptions.size + moveNames.size + moveDescriptions.size +
+        speciesNames.size + speciesDescriptions.size + speciesCategories.size + moveNames.size + moveDescriptions.size +
             abilityNames.size + abilityDescriptions.size + typeNames.size + natureNames.size + itemNames.size +
             areaNames.size + localMapNames.size + worldRegionNames.size + worldLocationNames.size +
             encounterAreaNames.size + poiTexts.size
@@ -359,6 +370,7 @@ class CatalogLanguageOverlay(
     private fun totalTextCharacters(): Long = sequence {
         yieldAll(speciesNames.values)
         yieldAll(speciesDescriptions.values)
+        yieldAll(speciesCategories.values)
         yieldAll(moveNames.values)
         yieldAll(moveDescriptions.values)
         yieldAll(abilityNames.values)
@@ -381,7 +393,8 @@ class CatalogLanguageOverlay(
     override fun equals(other: Any?): Boolean = other is CatalogLanguageOverlay &&
         language == other.language && overlayVersion == other.overlayVersion &&
         localizedCapabilities == other.localizedCapabilities && speciesNames == other.speciesNames &&
-        speciesDescriptions == other.speciesDescriptions && moveNames == other.moveNames &&
+        speciesDescriptions == other.speciesDescriptions && speciesCategories == other.speciesCategories &&
+        moveNames == other.moveNames &&
         moveDescriptions == other.moveDescriptions && abilityNames == other.abilityNames &&
         abilityDescriptions == other.abilityDescriptions && typeNames == other.typeNames &&
         natureNames == other.natureNames && itemNames == other.itemNames && areaNames == other.areaNames &&
@@ -390,7 +403,7 @@ class CatalogLanguageOverlay(
         poiTexts == other.poiTexts
 
     override fun hashCode(): Int = listOf(
-        language, overlayVersion, localizedCapabilities, speciesNames, speciesDescriptions, moveNames,
+        language, overlayVersion, localizedCapabilities, speciesNames, speciesDescriptions, speciesCategories, moveNames,
         moveDescriptions, abilityNames, abilityDescriptions, typeNames, natureNames, itemNames, areaNames,
         localMapNames, worldRegionNames, worldLocationNames, encounterAreaNames, poiTexts,
     ).fold(1) { result, value -> 31 * result + value.hashCode() }

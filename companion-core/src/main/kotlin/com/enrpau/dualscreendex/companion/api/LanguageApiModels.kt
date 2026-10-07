@@ -27,6 +27,7 @@ data class ActiveLanguageBindingView(
 data class LocalizedEntityTextView(
     val name: String?,
     val description: String? = null,
+    val category: String? = null,
 )
 
 data class LocalizedWorldLocationTextView(

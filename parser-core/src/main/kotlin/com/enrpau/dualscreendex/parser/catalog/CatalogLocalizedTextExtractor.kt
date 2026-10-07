@@ -50,6 +50,11 @@ internal object CatalogLocalizedTextExtractor {
             },
             capabilities[RomCapability.POKEDEX_DESCRIPTIONS],
         ) { it.description }
+        val speciesCategories = availableFields(speciesById.filter { (id, record) ->
+            id > 0 && record.dexNumber.status != CapabilityStatus.NOT_APPLICABLE &&
+                record.description.status != CapabilityStatus.NOT_APPLICABLE &&
+                record.category.status != CapabilityStatus.NOT_APPLICABLE
+        }) { it.category }
         val moveNames = authorizedFields(movesById, capabilities[RomCapability.MOVE_CATALOG]) { it.name }
         val moveDescriptions = authorizedFields(
             movesById.filterKeys { it > 0 },
@@ -119,6 +124,9 @@ internal object CatalogLocalizedTextExtractor {
                 capabilities[RomCapability.POKEDEX_DESCRIPTIONS], speciesDescriptions.size,
                 expectedRecords.getValue(LocalizedTextCapability.SPECIES_DESCRIPTIONS),
             ),
+            LocalizedTextCapability.SPECIES_CATEGORIES to localizedState(
+                null, speciesCategories.size, expectedRecords.getValue(LocalizedTextCapability.SPECIES_CATEGORIES),
+            ),
             LocalizedTextCapability.MOVE_NAMES to localizedState(
                 capabilities[RomCapability.MOVE_CATALOG], moveNames.size,
                 expectedRecords.getValue(LocalizedTextCapability.MOVE_NAMES),
@@ -178,6 +186,7 @@ internal object CatalogLocalizedTextExtractor {
                 localizedCapabilities = localizedCapabilities,
                 speciesNames = speciesNames,
                 speciesDescriptions = speciesDescriptions,
+                speciesCategories = speciesCategories,
                 moveNames = moveNames,
                 moveDescriptions = moveDescriptions,
                 abilityNames = abilityNames,
@@ -244,6 +253,9 @@ internal object CatalogLocalizedTextExtractor {
                     description = if (record.description.status == CapabilityStatus.NOT_APPLICABLE) {
                         record.description.copy(value = null)
                     } else CatalogField.notFound("species description is stored in the language overlay"),
+                    category = if (record.category.status == CapabilityStatus.NOT_APPLICABLE) {
+                        record.category.copy(value = null)
+                    } else CatalogField.notFound("species category is stored in the language overlay"),
                 )
             },
             movesById = movesById.mapValues { (_, record) ->
@@ -375,6 +387,11 @@ internal object CatalogLocalizedTextExtractor {
             LocalizedTextCapability.SPECIES_DESCRIPTIONS to speciesById.count { (id, record) ->
                 id > 0 && record.dexNumber.status != CapabilityStatus.NOT_APPLICABLE &&
                     record.description.status != CapabilityStatus.NOT_APPLICABLE
+            },
+            LocalizedTextCapability.SPECIES_CATEGORIES to speciesById.count { (id, record) ->
+                id > 0 && record.dexNumber.status != CapabilityStatus.NOT_APPLICABLE &&
+                    record.description.status != CapabilityStatus.NOT_APPLICABLE &&
+                    record.category.status != CapabilityStatus.NOT_APPLICABLE
             },
             LocalizedTextCapability.MOVE_NAMES to movesById.size,
             LocalizedTextCapability.MOVE_DESCRIPTIONS to movesById.keys.count { it > 0 },
@@ -554,5 +571,5 @@ internal object CatalogLocalizedTextExtractor {
         CapabilityStatus.NOT_FOUND,
         CapabilityStatus.NOT_APPLICABLE,
     )
-    private const val OVERLAY_FORMAT_VERSION = 1L
+    private const val OVERLAY_FORMAT_VERSION = 2L
 }

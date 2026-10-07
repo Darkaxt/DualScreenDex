@@ -105,6 +105,7 @@ class CatalogTextProjectionTest {
             val expected = when (capability) {
                 LocalizedTextCapability.SPECIES_NAMES,
                 LocalizedTextCapability.SPECIES_DESCRIPTIONS,
+                LocalizedTextCapability.SPECIES_CATEGORIES,
                 -> 1
                 else -> 0
             }

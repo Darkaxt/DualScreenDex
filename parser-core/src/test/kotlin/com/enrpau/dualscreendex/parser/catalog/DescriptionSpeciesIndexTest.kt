@@ -530,6 +530,43 @@ class DescriptionSpeciesIndexTest {
         assertTrue(unavailable.descriptionRows.isEmpty())
     }
 
+    @Test fun strictCategoriesFollowCompiledAliasesWithoutChangingProseOrPublicNumbers() {
+        val original = fixture(36)
+        val native = (1..11).associateWith { if (it % 2 == 0) 2 else 1 }
+        val expanded = expandedFixture(original, native)
+        val descriptions = expanded.layout.resolvedDatasets.descriptions!!
+        val categories = listOf("NONE", "SEED", "MOUSE")
+        categories.forEachIndexed { row, text ->
+            text.forEachIndexed { index, char -> expanded.bytes[0x3000 + row * 36 + index] =
+                (0xBB + char.code - 'A'.code).toByte() }
+            expanded.bytes[0x3000 + row * 36 + text.length] = 0xFF.toByte()
+        }
+        val selected = expanded.copy(layout = expanded.layout.copy(resolvedDatasets = ResolvedDatasetLayouts(
+            descriptions = ResolvedDescriptionLayout(descriptions.table, descriptions.rows.map { row ->
+                row as DescriptionRowOutcome.Decoded
+                DescriptionRowOutcome.Decoded(row.rowIndex, categories[row.rowIndex], row.height, row.weight, row.pages)
+            }, descriptions.compiledRowBinding))))
+        val catalog = media(selected)
+        for (id in 1..11) {
+            assertEquals(categories[native.getValue(id)], catalog.defaultTextProjection().speciesCategory(id))
+            assertEquals("prose ${native.getValue(id)}", catalog.defaultTextProjection().speciesDescription(id))
+            assertEquals(original.regional[id - 1], catalog.speciesById.getValue(id).dexNumber.value)
+            assertNull(catalog.speciesById.getValue(id).category.value)
+        }
+        val coverage = catalog.defaultLocalizedText()!!.localizedCapabilities.getValue(LocalizedTextCapability.SPECIES_CATEGORIES)
+        assertEquals(11, coverage.coveredRecords)
+        assertEquals(11, coverage.expectedRecords)
+        expanded.bytes[0x3000 + 36 + 1] = 0x08
+        val isolated = media(selected)
+        for (id in 1..11) {
+            assertEquals(if (id % 2 == 0) "MOUSE" else null, isolated.defaultTextProjection().speciesCategory(id))
+            assertEquals("prose ${native.getValue(id)}", isolated.defaultTextProjection().speciesDescription(id))
+            assertEquals(native.getValue(id) + 10, isolated.speciesById.getValue(id).height.value)
+        }
+        assertEquals(5, isolated.defaultLocalizedText()!!.localizedCapabilities
+            .getValue(LocalizedTextCapability.SPECIES_CATEGORIES).coveredRecords)
+    }
+
     private fun expandedFixture(original: Fixture, native: Map<Int, Int>): Fixture {
         val table = DescriptionTableLayout(0x3000, 3, 36, listOf(20))
         val rows = original.layout.resolvedDatasets.descriptions!!.rows.take(3)

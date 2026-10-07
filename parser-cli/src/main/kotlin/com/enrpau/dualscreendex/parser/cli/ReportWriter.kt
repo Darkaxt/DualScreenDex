@@ -521,6 +521,7 @@ data class CatalogMetrics(
     val provenTypedAbilityModifiers: Int = 0,
     val areaGuide: AreaGuideCatalogMetrics = AreaGuideCatalogMetrics(),
     val localizedCapabilities: Map<String, LocalizedCapabilityMetrics> = emptyMap(),
+    val speciesWithCategories: Int = 0,
 ) {
     companion object {
         fun from(catalog: ParsedCatalog): CatalogMetrics {
@@ -537,6 +538,7 @@ data class CatalogMetrics(
                 speciesWithStats = species.count { it.baseStats.status == CapabilityStatus.AVAILABLE },
                 speciesWithSprites = species.count { it.sprite.status == CapabilityStatus.AVAILABLE },
                 speciesWithDescriptions = species.count { text.speciesDescription(it.id) != null },
+                speciesWithCategories = species.count { text.speciesCategory(it.id) != null },
                 evolutionEdges = species.sumOf { it.evolutionEdges.value?.size ?: 0 },
                 learnsetEntries = species.sumOf { it.learnset.value?.size ?: 0 },
                 learnsetRulesets = catalog.learnsetRulesets.size,

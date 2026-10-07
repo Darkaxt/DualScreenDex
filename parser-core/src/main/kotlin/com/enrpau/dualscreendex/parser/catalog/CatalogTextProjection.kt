@@ -27,6 +27,8 @@ class CatalogTextProjection private constructor(
         catalog.speciesById[id]?.description?.value
     }
 
+    fun speciesCategory(id: Int): String? = overlay?.speciesCategories?.get(id)?.value
+
     fun moveName(id: Int): String? = text(overlay?.moveNames?.get(id)?.value) {
         catalog.movesById[id]?.name?.value
     }
