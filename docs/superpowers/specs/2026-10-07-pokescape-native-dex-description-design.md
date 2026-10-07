@@ -26,4 +26,6 @@ Eight separately reviewed diagnostic reads in this batch have been consumed (08â
 
 Reuse `DescriptionTableLayout`'s pointer-field identity: `36/[20]` is distinct from `36/[16]` and `36/[16,20]`. A narrow compiled resolver reuses the typed codec, dimensions-accessor matcher and positive palette-boundary helper, then proves the full species-row map. Its immutable selected layout carries that description-only binding to catalog publication; canonical species numbering remains unchanged.
 
+The category-prefix requirement proves the typed native record and decoder. The existing persisted species/language model has no category field: verification must check raw native categories without claiming category publication. The parent separately tracks persistence and native alias publication under `LIB26-G3-POKESCAPE-CATEGORIES`; no applicable field is waived.
+
 The fallback runs only after existing description validation fails and does not replace working exact/published/expansion routes. Failed optional proof retains the working core and maps. Diagnostics remain private; source, synthetic fixtures and sanitized evidence are publishable. The current original-read reservations are not reusable for acceptance or verification.

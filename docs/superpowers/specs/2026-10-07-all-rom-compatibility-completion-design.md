@@ -2,7 +2,7 @@
 
 **Status: IN_PROGRESS. Authorization: already_authorized; clarified by the user October 7, 2026.**
 
-The goal is **100% compatibility across all ROMs, one ROM at a time**. A published feature checkpoint, successful cleanup or completed leaf specification does not end this parent task. The completed [Pokescape World Map checkpoint](../../reports/corpus/2026-10-06-pokescape-world-map-acceptance.md) left that ROM at **79.14%**; the later [828-move recovery](../../reports/corpus/2026-10-07-pokescape-moves-acceptance.md) reaches **83.31%**, still not complete. Resume its remaining deficits before changing implementation target.
+The goal is **100% compatibility across all ROMs, one ROM at a time**. A published feature checkpoint, successful cleanup or completed leaf specification does not end this parent task. The completed [Pokescape World Map checkpoint](../../reports/corpus/2026-10-06-pokescape-world-map-acceptance.md) left that ROM at **79.14%**; the later [828-move recovery](../../reports/corpus/2026-10-07-pokescape-moves-acceptance.md) reaches **83.31%**, followed by [1,235 native Dex descriptions](../../reports/corpus/2026-10-07-pokescape-dex-acceptance.md) at **87.47%**, still not complete. Resume its remaining deficits before changing implementation target.
 
 ## Requirements
 
@@ -22,10 +22,10 @@ The goal is **100% compatibility across all ROMs, one ROM at a time**. A publish
 Pokescape's working core, two map datasets and retained acceptance stay protected. Remaining obligations include:
 
 - **Completed move leaf:** all 828 named moves now have independently accepted details/categories. Compiled diagnostics establish a distinct packed-bitfield 20-byte `BattleMove`, not the aligned layout of the current public source. Exact packaged source, 5,796 native scalar checks, complete references and whole-payload/retained-baseline equality close that field only; opaque flag semantics remain uninferred.
-- Dex descriptions: zero decoded species-description rows.
+- **Completed Dex-description leaf:** 906 physical rows/905 positive rows bind all 1,235 active species/forms; all published texts and 2,470 dimensions independently verified, complete references/SQLite equality and exact packed-baseline preservation. Raw categories are decoded but not persisted; `LIB26-G3-POKESCAPE-CATEGORIES` remains required parent publication work.
 - Five move-description gaps; ambiguous/unmaterialized ability names, descriptions and mechanics; one missing native type label.
 - Remaining Local/encounter/POI text and represented-domain limits documented by the existing field ledger. Prove applicability and actual native consumers before assigning data; never invent a World location for an unrepresented ordinal.
 
-**Immediate next action:** diagnose this ROM's next unresolved native contract, starting with Dex text, using public source and retained metadata first. Sanitized packed-move acceptance is published, compact proof is verified and all eight registered output roots are actually removed. No repeated admission is implied; every new original read still requires its separately reviewed one-use admission. The closed batch does not complete the parent or close any other obligation.
+**Immediate next action:** publish verified one-row native Dex acceptance, retain compact proof and apply its reviewed exact-output cleanup. Then diagnose this ROM's next unresolved native contract, starting with five move-description gaps, using public source and retained metadata first. The preceding packed-move cleanup remains complete; current Dex outputs are newly registered and still open. No repeated admission is implied; every new original read still requires its separately reviewed one-use admission. Closing this batch does not complete the parent or close any other obligation.
 
 The current matrix is composite. Publication of a later focused row does not turn historical rows into fresh evaluations. Any final whole-library acceptance must bind every identity to the accepted production source and preserve complete evidence/cleanup under its own bounded execution stage.
