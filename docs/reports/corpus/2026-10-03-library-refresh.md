@@ -2,6 +2,8 @@
 
 ## Decision and scope
 
+**Active parent goal: IN_PROGRESS — 100% compatibility with all ROMs, one ROM at a time.** The user clarified this completion boundary on October 7. The [parent specification](../../superpowers/specs/2026-10-07-all-rom-compatibility-completion-design.md) and [active ledger](../../superpowers/plans/2026-10-07-all-rom-compatibility-completion-plan.md) govern continuation. Pokescape's accepted World Map is a leaf checkpoint; the ROM remains at 79.14%, so its remaining move/Dex/ability/text/label obligations are active before selecting another implementation target. Priorities below remain the future candidate queue, not authorization to stop or skip current-ROM deficits.
+
 The GB/GBC/GBA Pokémon hack library has changed enough to warrant a new corpus snapshot. The current snapshot contains **342 distinct in-scope ROM identities**. The old corpus and its release evidence remain preserved. The inventory refresh itself did not change the production parser; the [Gen I expansion](2026-10-03-gen1-core-acceptance.md) adds ten selected catalogs and the [Gen II expansion](2026-10-03-gen2-core-acceptance.md) adds four. Neither step publishes a new APK.
 
 - [Current 342-ROM compatibility matrix](2026-10-03-library-compatibility.md)
