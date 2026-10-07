@@ -141,6 +141,15 @@ class DescriptionSpeciesIndexTest {
         }
     }
 
+    @Test fun expandedCategoryExtentRequiresPaletteNotAnUnrelatedBackgroundContract() {
+        val fixture = fixture(28, descriptionCount = 8)
+        val table = DescriptionTableLayout(0x3000, 3, 36, listOf(20))
+        putBackgroundNeighbor(fixture.bytes, 0x3000 + 3 * 36)
+        assertFalse(CompiledDescriptionExtentBinding.matches(RomImage(fixture.bytes), table, ResolutionLimits()) { true })
+        putPaletteNeighbor(fixture.bytes, 0x3000 + 3 * 36, site = 0xe80, callee = 0xe00, cpu = 0xf00)
+        assertFalse(CompiledDescriptionExtentBinding.matches(RomImage(fixture.bytes), table, ResolutionLimits()) { true })
+    }
+
     @Test fun backgroundConsumerRequiresFullLoopAndCalleePreservation() {
         for (offset in listOf(12, 48, 58, 100, 172, 178, 184, 188, 200,
             0x300 + 72, 0x300 + 282, 0x600 + 16, 0x680 + 18)) {
@@ -461,6 +470,81 @@ class DescriptionSpeciesIndexTest {
             .single { it.capability == RomCapability.POKEDEX_DESCRIPTIONS }
         assertEquals(11, evidence.expectedRecords)
         assertEquals(0, evidence.coveredRecords)
+    }
+
+    @Test fun expandedNativeAliasesDriveCatalogAndSemanticCoverageWithoutChangingPublicNumbers() {
+        val original = fixture(36)
+        val native = (1..11).associateWith { if (it % 2 == 0) 2 else 1 }
+        val expanded = expandedFixture(original, native)
+        val before = SpeciesIndexResolver.resolveWithEvidence(RomImage(original.bytes), original.layout)
+        val after = SpeciesIndexResolver.resolveWithEvidence(RomImage(expanded.bytes), expanded.layout)
+        assertEquals(before.values, after.values)
+        assertEquals(native, after.descriptionRows)
+        val catalog = media(expanded)
+        for (id in 1..11) {
+            assertEquals(original.regional[id - 1], catalog.speciesById.getValue(id).dexNumber.value)
+            assertEquals("prose ${native.getValue(id)}", catalog.defaultLocalizedText()!!.speciesDescriptions[id]?.value)
+            assertEquals(native.getValue(id) + 10, catalog.speciesById.getValue(id).height.value)
+        }
+        putWrapper(expanded.bytes, 0x400, 0x1000)
+        val layout = expanded.layout.copy(tables = expanded.layout.tables.copy(baseStats = TableLayout(0xa000, 12, 28)))
+        val capabilities = listOf(RomCapability.SPECIES_NAMES, RomCapability.BASE_STATS, RomCapability.POKEDEX_DESCRIPTIONS)
+            .map { CapabilityEvidence(it, true, 1.0, count = 12, validRecords = 12, totalRecords = 12) }
+        val evidence = ParserOrchestrator.applySpeciesSemanticDomain(RomImage(expanded.bytes), layout, capabilities)
+        assertEquals(11, evidence.single { it.capability == RomCapability.SPECIES_NAMES }.expectedRecords)
+        assertEquals(11, evidence.single { it.capability == RomCapability.POKEDEX_DESCRIPTIONS }.expectedRecords)
+        assertEquals(11, evidence.single { it.capability == RomCapability.POKEDEX_DESCRIPTIONS }.coveredRecords)
+        assertEquals(11, catalog.defaultLocalizedText()!!.localizedCapabilities
+            .getValue(LocalizedTextCapability.SPECIES_DESCRIPTIONS).coveredRecords)
+    }
+
+    @Test fun expandedNativeBindingIsImmutableAndCannotBorrowAnIncompletePhysicalDomain() {
+        val original = fixture(36)
+        val source = (1..11).associateWith { if (it % 2 == 0) 2 else 1 }.toMutableMap()
+        val expanded = expandedFixture(original, source)
+        source[1] = 2
+        val binding = requireNotNull(expanded.layout.resolvedDatasets.descriptions?.compiledRowBinding)
+        assertEquals(1, binding.rows[1])
+        assertThrows(UnsupportedOperationException::class.java) {
+            (binding.rows as MutableMap)[1] = 2
+        }
+        val incomplete = expandedFixture(original, mapOf(1 to 1, 2 to 2))
+        val result = SpeciesIndexResolver.resolveWithEvidence(RomImage(incomplete.bytes), incomplete.layout)
+        assertEquals(SpeciesIndexResolver.resolveWithEvidence(RomImage(original.bytes), original.layout).values, result.values)
+        assertTrue(result.descriptionRows.isEmpty())
+        assertNull(media(incomplete).defaultLocalizedText()!!.speciesDescriptions[1]?.value)
+        assertThrows(IllegalArgumentException::class.java) { CompiledDescriptionRowBinding(mapOf(2 to 1)) }
+        assertThrows(IllegalArgumentException::class.java) { CompiledDescriptionRowBinding(mapOf(1 to 0)) }
+        assertThrows(IllegalArgumentException::class.java) { expandedFixture(original, mapOf(1 to 1)) }
+    }
+
+    @Test fun expandedBindingCannotPromoteUnavailableOrBudgetExceededPublicAuthority() {
+        val original = fixture(36)
+        val expanded = expandedFixture(original, (1..11).associateWith { if (it % 2 == 0) 2 else 1 })
+        val budget = SpeciesIndexResolver.resolveWithEvidence(RomImage(expanded.bytes), expanded.layout,
+            ResolutionLimits(maxProbeWorkPerDataset = 1))
+        assertTrue(budget is SpeciesIndexResolution.BudgetExceeded)
+        assertTrue(budget.descriptionRows.isEmpty())
+        val unavailable = SpeciesIndexResolver.resolveWithEvidence(RomImage(expanded.bytes), expanded.layout.copy(speciesCount = null))
+        assertTrue(unavailable is SpeciesIndexResolution.Unavailable)
+        assertTrue(unavailable.descriptionRows.isEmpty())
+    }
+
+    private fun expandedFixture(original: Fixture, native: Map<Int, Int>): Fixture {
+        val table = DescriptionTableLayout(0x3000, 3, 36, listOf(20))
+        val rows = original.layout.resolvedDatasets.descriptions!!.rows.take(3)
+        val descriptions = ResolvedDescriptionLayout(table, rows, CompiledDescriptionRowBinding(native))
+        val publicTable = TableLayout(0x3000, 3, 36, pointerOffsets = listOf(20))
+        val manifest = original.layout.languageManifest
+        return original.copy(layout = original.layout.copy(
+            tables = original.layout.tables.copy(descriptions = publicTable),
+            resolvedDatasets = ResolvedDatasetLayouts(descriptions = descriptions),
+            languageManifest = RomLanguageManifest(manifest.defaultLanguage, manifest.projections.map {
+                RomLanguageProjection(it.language, it.codecId, it.codecVersion,
+                    LocalizedTableLayout(speciesNames = it.localizedTables.speciesNames, descriptions = publicTable),
+                    it.evidence, it.status)
+            }, manifest.status),
+        ))
     }
 
     private data class Fixture(

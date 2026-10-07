@@ -26,8 +26,16 @@ internal object CompiledDescriptionIndexBinding {
             rom.u16le(entry + 14) != 0x2901 ||
             rom.u16le(entry + 16) and 0xff00 != 0xd000
         ) return false
-        val height = if (table.recordSize == 28) 6 else 12
-        val weight = if (table.recordSize == 28) 8 else 14
+        val height = when {
+            table.recordSize == 28 -> 6
+            table.expandedCategory -> 14
+            else -> 12
+        }
+        val weight = when {
+            table.recordSize == 28 -> 8
+            table.expandedCategory -> 16
+            else -> 14
+        }
         return matchesField(rom, branchTarget(rom, entry + 12, conditional = true), table, height) &&
             matchesField(rom, branchTarget(rom, entry + 16, conditional = true), table, weight)
     }

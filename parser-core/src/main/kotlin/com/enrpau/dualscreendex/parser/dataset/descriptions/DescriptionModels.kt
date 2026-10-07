@@ -18,6 +18,8 @@ class DescriptionTableLayout(
     pointerOffsets: List<Int>,
 ) : ImmutableDatasetLayout<DescriptionTableLayout> {
     val pointerOffsets: List<Int> = immutableCopy(pointerOffsets)
+    /** Distinct compiled header, not the legacy one/two-page 36-byte record. */
+    val expandedCategory: Boolean get() = recordSize == 36 && pointerOffsets == listOf(20)
     override val layoutIdentity: CandidateLayoutIdentity = CandidateLayoutIdentity(
         "pokedex-descriptions:${offset.toString(16)}:$count:$recordSize:" +
             this.pointerOffsets.joinToString(","),
@@ -49,10 +51,27 @@ class DescriptionTableLayout(
             "pointerOffsets=$pointerOffsets, layoutIdentity=$layoutIdentity)"
 }
 
+/** Description-only native species joins; canonical public numbering is a separate contract. */
+class CompiledDescriptionRowBinding internal constructor(rows: Map<Int, Int>) {
+    val rows: Map<Int, Int> = Collections.unmodifiableMap(LinkedHashMap(rows))
+
+    init {
+        require(this.rows.isNotEmpty())
+        require(this.rows.keys == (1..this.rows.size).toSet())
+        require(this.rows.values.all { it > 0 })
+    }
+
+    override fun equals(other: Any?): Boolean =
+        this === other || other is CompiledDescriptionRowBinding && rows == other.rows
+
+    override fun hashCode(): Int = rows.hashCode()
+}
+
 /** Selected physical table plus the immutable row-by-row codec evidence used to validate it. */
 class ResolvedDescriptionLayout(
     val table: DescriptionTableLayout,
     rows: Collection<DescriptionRowOutcome>,
+    val compiledRowBinding: CompiledDescriptionRowBinding? = null,
 ) : ImmutableDatasetLayout<ResolvedDescriptionLayout> {
     val rows: List<DescriptionRowOutcome> = immutableCopy(rows)
     override val layoutIdentity: CandidateLayoutIdentity = table.layoutIdentity
@@ -66,6 +85,11 @@ class ResolvedDescriptionLayout(
         }
         require(this.rows.map { it.rowIndex } == this.rows.indices.toList()) {
             "resolved description row outcomes must be complete and index ordered"
+        }
+        compiledRowBinding?.let { binding ->
+            require(table.expandedCategory)
+            require(binding.rows.values.all { it in this.rows.indices && this.rows[it] is DescriptionRowOutcome.Decoded })
+            require(binding.rows.values.toSet() == (1 until this.rows.size).toSet())
         }
     }
 
@@ -86,11 +110,12 @@ class ResolvedDescriptionLayout(
     )
 
     override fun equals(other: Any?): Boolean =
-        this === other || other is ResolvedDescriptionLayout && table == other.table && rows == other.rows
+        this === other || other is ResolvedDescriptionLayout && table == other.table &&
+            rows == other.rows && compiledRowBinding == other.compiledRowBinding
 
-    override fun hashCode(): Int = 31 * table.hashCode() + rows.hashCode()
+    override fun hashCode(): Int = 31 * (31 * table.hashCode() + rows.hashCode()) + (compiledRowBinding?.hashCode() ?: 0)
 
-    override fun toString(): String = "ResolvedDescriptionLayout(table=$table, rows=$rows)"
+    override fun toString(): String = "ResolvedDescriptionLayout(table=$table, rows=$rows, compiledRowBinding=$compiledRowBinding)"
 }
 
 sealed interface DescriptionRecoveryProvenance {

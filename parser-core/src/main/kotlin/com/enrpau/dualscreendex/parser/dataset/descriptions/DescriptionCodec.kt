@@ -83,7 +83,7 @@ class DescriptionCodec(
             28 -> if (textCodec.language == LanguageTag.JAPANESE)
                 setOf(listOf(12)) else return "native description ABI requires Japanese codec"
             32 -> setOf(listOf(16))
-            36 -> setOf(listOf(16), listOf(16, 20))
+            36 -> setOf(listOf(16), listOf(16, 20), listOf(20))
             else -> return "unsupported Gen III description record size ${layout.recordSize}"
         }
         if (layout.pointerOffsets !in canonical) {
@@ -115,10 +115,20 @@ class DescriptionCodec(
         val reasons = mutableListOf<String>()
         val category = (if (layout.recordSize == 28)
             NativeGbaDescriptionCategory.decode(rom, record, textCodec, session.cancellation)
-            else decodeInlineCategory(session, record))
+            else decodeInlineCategory(session, record, if (layout.expandedCategory) 14 else CATEGORY_BYTES))
             ?: "".also { reasons += "category is not terminated readable text" }
-        val height = rom.u16le(record + if (layout.recordSize == 28) 6 else HEIGHT_OFFSET)
-        val weight = rom.u16le(record + if (layout.recordSize == 28) 8 else WEIGHT_OFFSET)
+        val heightOffset = when {
+            layout.recordSize == 28 -> 6
+            layout.expandedCategory -> 14
+            else -> HEIGHT_OFFSET
+        }
+        val weightOffset = when {
+            layout.recordSize == 28 -> 8
+            layout.expandedCategory -> 16
+            else -> WEIGHT_OFFSET
+        }
+        val height = rom.u16le(record + heightOffset)
+        val weight = rom.u16le(record + weightOffset)
         if (height !in 0..MAX_HEIGHT) reasons += "height $height is outside the structural range"
         if (weight !in 0..MAX_WEIGHT) reasons += "weight $weight is outside the structural range"
 
@@ -175,8 +185,8 @@ class DescriptionCodec(
         }
     }
 
-    private fun decodeInlineCategory(session: RomAnalysisSession, offset: Int): String? =
-        decodeTerminated(session, offset, CATEGORY_BYTES, MIN_CATEGORY_VALID_RATIO)
+    private fun decodeInlineCategory(session: RomAnalysisSession, offset: Int, maximumLength: Int): String? =
+        decodeTerminated(session, offset, maximumLength, MIN_CATEGORY_VALID_RATIO)
 
     private fun decodeDirectPage(session: RomAnalysisSession, offset: Int, maximumLength: Int): String? =
         decodeTerminated(session, offset, maximumLength, MIN_PAGE_VALID_RATIO)

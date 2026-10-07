@@ -10,9 +10,10 @@ internal object CompiledDescriptionExtentBinding {
         rom: RomImage,
         table: DescriptionTableLayout,
         limits: ResolutionLimits,
+        onBudgetExceeded: () -> Unit = {},
         work: () -> Boolean,
     ): Boolean {
-        if (table.recordSize != 28 || table.count < 2) return false
+        if ((table.recordSize != 28 && !table.expandedCategory) || table.count < 2) return false
         val end = table.offset + table.count * table.recordSize
         if (end !in 0..(rom.size - 16).toLong() || end % 4 != 0L) return false
         var nominated = 0
@@ -22,12 +23,15 @@ internal object CompiledDescriptionExtentBinding {
             val argumentLoad = rom.u16le(site) and 0xff00
             if (argumentLoad != 0x4800 && argumentLoad != 0x4900) continue
             if (literal(rom, site) != 0x08000000L + end) continue
-            if (!work() || ++nominated > minOf(limits.maxNominatedGbaReferenceSites,
-                    limits.maxCompiledReferenceSitesPerCandidate)) return false
+            if (!work()) return false
+            if (++nominated > minOf(limits.maxNominatedGbaReferenceSites, limits.maxCompiledReferenceSitesPerCandidate)) {
+                onBudgetExceeded()
+                return false
+            }
             if (argumentLoad == 0x4800 && end + 32 <= rom.size && palette(rom, site)) objectSizes += 32
             if (argumentLoad == 0x4900 && CompiledBackgroundDescriptionNeighbor.matches(rom, site)) objectSizes += 16
         }
-        return objectSizes.size == 1
+        return if (table.expandedCategory) objectSizes == setOf(32) else objectSizes.size == 1
     }
 
     private fun palette(rom: RomImage, site: Int): Boolean {

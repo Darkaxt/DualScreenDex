@@ -78,17 +78,40 @@ object SpeciesIndexResolver {
             if (canonical?.coherentBaseStats(layout) == null) {
                 return SpeciesIndexResolution.Unavailable(emptyMap(), "compiled canonical species authority is incomplete or incoherent")
             }
-            return SpeciesIndexResolution.Resolved(
+            return attachCompiledDescriptionRows(layout, SpeciesIndexResolution.Resolved(
                 canonical.nativeToDex,
                 SpeciesDescriptionIndex(emptyMap(), "canonical Dex conversion does not prove description-row authority"),
-            )
+            ))
         }
-        return when (layout.generation) {
+        return attachCompiledDescriptionRows(layout, when (layout.generation) {
             1 -> resolveGen1(rom, layout, cancellation)
             2 -> SpeciesIndexResolution.Resolved((1..(layout.speciesCount ?: 0)).associateWith { it })
             3 -> resolveGen3(rom, layout, limits, cancellation)
             else -> SpeciesIndexResolution.Unavailable(emptyMap(), "unsupported species-index generation")
-        }
+        })
+    }
+
+    private fun attachCompiledDescriptionRows(
+        layout: ResolvedRomLayout,
+        resolution: SpeciesIndexResolution,
+    ): SpeciesIndexResolution {
+        val selected = layout.resolvedDatasets.descriptions ?: return resolution
+        val binding = selected.compiledRowBinding ?: return resolution
+        if (resolution !is SpeciesIndexResolution.Resolved) return resolution
+        val physical = layout.tables.descriptions
+        val count = layout.speciesCount
+        val coherent = layout.generation == 3 && count != null && count > 1 &&
+            physical?.offset?.toLong() == selected.table.offset &&
+            physical.count.toLong() == selected.table.count &&
+            physical.recordSize == selected.table.recordSize &&
+            physical.pointerOffsets == selected.table.pointerOffsets &&
+            binding.rows.keys == (1 until count).toSet() &&
+            resolution.values.keys.filter { it > 0 }.toSet() == binding.rows.keys
+        return resolution.copy(descriptionIndex = if (coherent) {
+            SpeciesDescriptionIndex(binding.rows)
+        } else {
+            SpeciesDescriptionIndex(emptyMap(), "compiled description binding does not match the selected physical species/table domain")
+        })
     }
 
     private fun resolveGen1(

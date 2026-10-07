@@ -11,6 +11,7 @@ import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.model.ValidationEvidence
 import com.enrpau.dualscreendex.parser.parse.CompiledTypeNameResolver
 import com.enrpau.dualscreendex.parser.parse.DatasetResolvers
+import com.enrpau.dualscreendex.parser.parse.Gen3CompiledExpandedDescriptionResolver
 import com.enrpau.dualscreendex.parser.parse.Gen3PublishedPartialBaseStatsResolver
 import com.enrpau.dualscreendex.parser.parse.GbaPublishedHeaderResolver
 import com.enrpau.dualscreendex.parser.parse.PokeemeraldExpansionResolver
@@ -243,6 +244,23 @@ internal class SemanticDomainStrategy : FamilyProbePhaseStrategy {
                     ),
                     null,
                 )
+            }
+        }
+        core.speciesCount?.let { speciesCount ->
+            Gen3CompiledExpandedDescriptionResolver.resolve(session, speciesCount, textCodec)?.let { native ->
+                val covered = requireNotNull(native.compiledRowBinding).rows.size
+                return ResolvedDescriptionEvidence(ValidationEvidence(
+                    compatible = true,
+                    validRecords = native.rows.size,
+                    totalRecords = native.rows.size,
+                    confidence = 1.0,
+                    reasons = listOf("validated compiled expanded-category Dex ABI, positive object boundary and complete native species aliases"),
+                    offset = native.table.offset.toInt(),
+                    recordSize = native.table.recordSize,
+                    coveredRecords = covered,
+                    expectedRecords = speciesCount - 1,
+                    incompleteRecords = 0,
+                ), native)
             }
         }
         val publishedPokedexCount = GbaPublishedHeaderResolver.resolve(session.rom, textCodec).pokedexCount
