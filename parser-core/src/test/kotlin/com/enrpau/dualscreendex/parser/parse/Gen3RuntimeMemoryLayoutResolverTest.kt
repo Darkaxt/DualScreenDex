@@ -194,6 +194,43 @@ class Gen3RuntimeMemoryLayoutResolverTest {
         )
     }
 
+    @Test
+    fun prefersTheSignedTimeStructOverABusierUnsignedByteStruct() {
+        val bytes = ByteArray(0x2000)
+        repeat(32) { putU32(bytes, it * 4, 0x03001574) }
+        repeat(3) { putU32(bytes, 0x200 + it * 4, 0x030019AC) }
+        repeat(4) { putU32(bytes, 0x300 + it * 4, 0x03002378) }
+        writeBattleFlagMutation(bytes, 0x400, 0x03001574, 0x439, 0x02, set = true)
+        writeBattleFlagMutation(bytes, 0x440, 0x03001574, 0x439, 0x02, set = false)
+        val unsignedDecoy = 0x03004140 // Emerald's link manager `lman`: u8 fields read far more often
+        val localTime = 0x03005CF8 // Emerald's `gLocalTime`: struct Time { s16 days; s8 hours, minutes, seconds; }
+        repeat(5) { index ->
+            val start = 0x1000 + index * 0x20
+            val literal = start + 0x10
+            putU16(bytes, start, literalLoad(start, 0, literal))
+            putU16(bytes, start + 2, 0x7800 or (2 shl 6) or 1) // ldrb r1, [r0, #2]
+            putU16(bytes, start + 4, 0x7800 or (3 shl 6) or 2) // ldrb r2, [r0, #3]
+            putU16(bytes, start + 6, 0x7800 or (4 shl 6) or 3) // ldrb r3, [r0, #4]
+            putU16(bytes, start + 8, 0x4770) // bx lr
+            putU32(bytes, literal, unsignedDecoy)
+        }
+        val start = 0x1200
+        val literal = start + 0x10
+        putU16(bytes, start, literalLoad(start, 0, literal))
+        listOf(2, 3, 4).forEachIndexed { index, field ->
+            putU16(bytes, start + 2 + index * 4, 0x2000 or (1 shl 8) or field) // movs r1, #field
+            putU16(bytes, start + 4 + index * 4, 0x5600 or (1 shl 6) or 2) // ldrsb r2, [r0, r1]
+        }
+        putU16(bytes, start + 14, 0x4770) // bx lr
+        putU32(bytes, literal, localTime)
+        repeat(3) { putU32(bytes, 0x1300 + it * 4, localTime) }
+
+        assertEquals(
+            localTime.toLong(),
+            Gen3RuntimeMemoryLayoutResolver.resolve(RomImage(bytes), EngineFamily.EMERALD)?.liveClockAddress,
+        )
+    }
+
     private fun writeCandidate(bytes: ByteArray, start: Int, base: Int) {
         repeat(32) { putU32(bytes, start + it * 4, base) }
         repeat(3) { putU32(bytes, start + 0x200 + it * 4, base + 0x438) }

@@ -71,6 +71,7 @@ object Gen3RuntimeMemoryLayoutResolver {
                 val pointerRegister = (raw ushr 8) and 7
                 var cursor = offset + 2
                 val end = minOf(rom.size - 2, offset + CLOCK_FIELD_TRACE_BYTES)
+                val smallConstants = arrayOfNulls<Int>(8)
                 while (cursor <= end) {
                     val instruction = rom.u16le(cursor)
                     if (
@@ -83,6 +84,18 @@ object Gen3RuntimeMemoryLayoutResolver {
                         }
                         if (fieldOffset == CLOCK_HOUR_OFFSET && hasNightRangePredicate(rom, cursor, instruction and 7)) {
                             candidate.nightPredicateSites += cursor
+                        }
+                    }
+                    // `struct Time` declares hours/minutes/seconds as s8. Thumb has no immediate-offset
+                    // LDRSB, so the compiler emits `movs rO, #field; ldrsb rD, [rBase, rO]`. Unsigned
+                    // byte structs (e.g. Emerald's link manager `lman`) never load these offsets signed.
+                    if (instruction and 0xF800 == 0x2000) {
+                        smallConstants[(instruction ushr 8) and 7] = instruction and 0xFF
+                    }
+                    if (instruction and 0xFE00 == 0x5600 && (instruction ushr 3) and 7 == pointerRegister) {
+                        val fieldOffset = smallConstants[(instruction ushr 6) and 7]
+                        if (fieldOffset != null && fieldOffset in CLOCK_HOUR_OFFSET..CLOCK_SECOND_OFFSET) {
+                            candidate.signedFieldSites.getOrPut(fieldOffset) { linkedSetOf() } += cursor
                         }
                     }
                     if (instruction and 0xFF87 == 0x4700 || instruction and 0xFF00 == 0xBD00) break
@@ -109,6 +122,10 @@ object Gen3RuntimeMemoryLayoutResolver {
             return resolveExpandedClock(rom, references)
         }
         if (family !in SOURCE_CLOCK_FAMILIES) return null
+        evidence.filterValues { it.hasAllSignedClockFields }.keys
+            .filter { (references[it] ?: 0) >= MIN_SOURCE_CLOCK_REFERENCES }
+            .singleOrNull()
+            ?.let { return ResolvedLiveClock(address = it, schedule = null) }
         val candidates = complete.map { (address, candidate) ->
             SourceClockCandidate(
                 address = address,
@@ -535,8 +552,11 @@ object Gen3RuntimeMemoryLayoutResolver {
     )
     private data class ClockEvidence(
         val fieldSites: MutableMap<Int, MutableSet<Int>> = linkedMapOf(),
+        val signedFieldSites: MutableMap<Int, MutableSet<Int>> = linkedMapOf(),
         val nightPredicateSites: MutableSet<Int> = linkedSetOf(),
     ) {
+        val hasAllSignedClockFields: Boolean
+            get() = (CLOCK_HOUR_OFFSET..CLOCK_SECOND_OFFSET).all { signedFieldSites[it].orEmpty().isNotEmpty() }
         val hasAllClockFields: Boolean
             get() = (CLOCK_HOUR_OFFSET..CLOCK_SECOND_OFFSET).all { fieldSites[it].orEmpty().isNotEmpty() }
         val minimumFieldSites: Int
