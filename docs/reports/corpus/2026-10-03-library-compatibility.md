@@ -10,6 +10,7 @@ Capability percentages are confidence from bounded compiled structural evidence,
 - Focused one-input Pokescape World Map source: `36b495c541215761ee20786284dda156a5b47ac3` ([acceptance](2026-10-06-pokescape-world-map-acceptance.md))
 - Focused one-input Pokescape packed-move source: `8ca3489ca9b9207b590cc74df54be825f65e428b` ([acceptance](2026-10-07-pokescape-moves-acceptance.md))
 - Focused one-input Pokescape native Dex source: `48730a00ea09037f8b2b60623e4e1c02d3e61a06` ([acceptance](2026-10-07-pokescape-dex-acceptance.md))
+- Focused one-input Pokescape native move-text source: `db3c306ca48ac0b6e555f58565edd64283d7bf6e` ([acceptance](2026-10-07-pokescape-move-text-acceptance.md))
 - Inputs: **342**
 - Detected family and materialized catalog: **301**
 - Persisted and exactly reopened SQLite catalogs: **301**
@@ -311,7 +312,7 @@ Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for 
 | Mystique (1.1.1).gba | 1 | 89.62% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 37% | 100% | 100% | P 99% | 100% | P 31% | P 94% | N/A | 99% | P 99% | 100% | 100% | 100% | 100% | 100% | 100% | P 50% |
 | National History Museum (v1.0.4).gba | 1 | 79.14% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 0% | P 99% | 100% | 100% | 74% | 90% | ? 95% | 0% | 0% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Peach (Demo) (v1.4).gba | 1 | 58.33% | 100% | 100% | 100% | 0% | 100% | 0% | 0% | 100% | 95% | 100% | 100% | 100% | 0% | 0% | 90% | ? 95% | 0% | 0% | 100% | 100% | 0% | 0% | P 100% | 100% |
-| Pokescape (v1.0.4).gba | 1 | 87.47% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 99% | 100% | 100% | 74% | 90% | ? 95% | 0% | 0% | 100% | 100% | 100% | 100% | 100% | 100% |
+| Pokescape (v1.0.4).gba | 1 | 87.50% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 74% | 90% | ? 95% | 0% | 0% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Pokémon Hearth (v0.1.27).gba | 1 | 72.22% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 35% | 100% | 100% | P 99% | 100% | P 31% | P 96% | N/A | 100% | 100% | 100% | 0% | 100% | 0% | 0% | 0% | P 50% |
 | Quetzal (Emerald Multiplayer) (v0.8.4).gba | 1 | 53.79% | 91% | P 91% | 100% | 100% | 100% | 100% | 0% | 0% | 95% | 100% | 100% | 0% | 0% | 0% | 83% | ? 95% | 0% | 0% | ? 0% | 100% | 100% | 0% | 0% | 100% |
 | R.O.W.E. (2.1.1).gba | 1 | 70.83% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 0% | 100% | P 100% | 100% | 100% | 74% | 0% | 89% | 100% | 100% | 0% | 0% | 100% | 100% | ? 0% | 0% | 100% |

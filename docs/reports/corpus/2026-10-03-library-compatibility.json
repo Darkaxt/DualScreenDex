@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "date": "2026-10-03",
   "verifiedDate": "2026-10-07",
-  "evidenceMode": "full342-baseline-with-focused-gen2-relationships-gen3-wide-core-and-pokescape-map-moves-dex",
+  "evidenceMode": "full342-baseline-with-focused-gen2-relationships-gen3-wide-core-and-pokescape-map-moves-dex-move-text",
   "corpusInputDigestSha256": "733e36785fa9a5b71bc4121343a6b6d2cbd27e43e08b3fddc2e2870bac1a0561",
   "summary": {
     "inputCount": 342,
@@ -5907,8 +5907,8 @@
     },
     {
       "name": "Pokescape (v1.0.4).gba",
-      "evidence": "focused-pokescape-native-dex-source-bound",
-      "sourceCommit": "48730a00ea09037f8b2b60623e4e1c02d3e61a06",
+      "evidence": "focused-pokescape-native-move-text-source-bound",
+      "sourceCommit": "db3c306ca48ac0b6e555f58565edd64283d7bf6e",
       "aliases": [
         {
           "archive": "Pokemon Pokescape (v1.0.4).7z",
@@ -5919,7 +5919,7 @@
       "generation": 3,
       "family": "EMERALD",
       "languageCount": 1,
-      "compatibilityPercent": 87.47,
+      "compatibilityPercent": 87.5,
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "AVAILABLE",
@@ -6055,9 +6055,9 @@
           "expectedRecords": 1235
         },
         "MOVE_DESCRIPTIONS": {
-          "status": "PARTIAL",
+          "status": "AVAILABLE",
           "confidence": 0.9939613526570048,
-          "coveredRecords": 823,
+          "coveredRecords": 828,
           "expectedRecords": 828
         },
         "ABILITY_DESCRIPTIONS": {
@@ -6078,7 +6078,7 @@
         "learnsetRulesets": 1,
         "moves": 828,
         "movesWithDetails": 828,
-        "movesWithDescriptions": 823,
+        "movesWithDescriptions": 828,
         "eggMoveLinks": 3665,
         "machineMoveLinks": 28223,
         "tutorMoveLinks": 3617,
@@ -6102,8 +6102,8 @@
         "referenceErrors": 0,
         "sqliteReopenEqualityVerified": true,
         "logicalDigestVersion": 1,
-        "beforeCatalogSha256": "e12f0f8c041129664410786525409514d0ec68e3bb99523211e5473de20b3a12",
-        "afterCatalogSha256": "e12f0f8c041129664410786525409514d0ec68e3bb99523211e5473de20b3a12"
+        "beforeCatalogSha256": "6a2852c28770eaec0239b13a6eadc844bc380485b7cb56911cc6a97c273c571e",
+        "afterCatalogSha256": "6a2852c28770eaec0239b13a6eadc844bc380485b7cb56911cc6a97c273c571e"
       }
     },
     {
@@ -47218,7 +47218,8 @@
     "4b62be1dc8e7a19b19ccdc3ac50c451a844fc07c",
     "36b495c541215761ee20786284dda156a5b47ac3",
     "8ca3489ca9b9207b590cc74df54be825f65e428b",
-    "48730a00ea09037f8b2b60623e4e1c02d3e61a06"
+    "48730a00ea09037f8b2b60623e4e1c02d3e61a06",
+    "db3c306ca48ac0b6e555f58565edd64283d7bf6e"
   ],
   "focusedGen2Relationships": {
     "inputCount": 19,
@@ -47313,6 +47314,25 @@
         "schemaVersion": 16,
         "sha256": "008cfdd8da6d078eab4e95ce4911c052dde91e9eb7c164d3f79cc7cc051d8412"
       }
+    },
+    "unaffectedRowsRetained": 341,
+    "fullCorpusRerun": false
+  },
+  "focusedPokescapeMoveText": {
+    "inputCount": 1,
+    "sourceCommit": "db3c306ca48ac0b6e555f58565edd64283d7bf6e",
+    "parserSchemaVersion": 90,
+    "acceptance": "2026-10-07-pokescape-move-text-acceptance.json",
+    "executionReceiptSummary": {
+      "schemaVersion": 1,
+      "sourceCommit": "db3c306ca48ac0b6e555f58565edd64283d7bf6e",
+      "generator": {
+        "name": "parser-cli",
+        "schemaVersion": 16,
+        "sha256": "159eeb7a8131f6c2f5241be2e14c7b6752886f5ff5eccb13fe0416db69cc8942"
+      },
+      "rawReportSha256": "88f54e3e2f1677c5bd5844091dbf1f8e5b11f3cc8366150ea7242bb6e51a99ac",
+      "inputCount": 1
     },
     "unaffectedRowsRetained": 341,
     "fullCorpusRerun": false
