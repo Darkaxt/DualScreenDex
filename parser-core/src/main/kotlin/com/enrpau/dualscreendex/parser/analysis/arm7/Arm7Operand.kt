@@ -7,7 +7,12 @@ enum class Arm7Register(val index: Int) {
     R8(8), R9(9), R10(10), R11(11), R12(12), SP(13), LR(14), PC(15);
 
     companion object {
-        fun fromIndex(index: Int): Arm7Register = entries.firstOrNull { it.index == index }
+        // Called for every operand of every decoded instruction, so index directly instead of searching.
+        private val byIndex = entries.sortedBy(Arm7Register::index).also { registers ->
+            check(registers.map(Arm7Register::index) == (0..15).toList())
+        }.toTypedArray()
+
+        fun fromIndex(index: Int): Arm7Register = byIndex.getOrNull(index)
             ?: throw IllegalArgumentException("ARM register index must be in 0..15: $index")
     }
 }
