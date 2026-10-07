@@ -1,6 +1,6 @@
 # Pokescape referenced native type-name completion
 
-**Status: IN_PROGRESS. Authorization: already_authorized.** Next bounded leaf of the [all-ROM parent](2026-10-07-all-rom-compatibility-completion-design.md). Pokescape remains at independently accepted 87.50%; preserve all accepted move/Dex/map fields and stay on this ROM.
+**Status: COMPLETE at the bounded host/static referenced-field boundary; parent and ROM IN_PROGRESS. Authorization: already_authorized.** [Acceptance](../../reports/corpus/2026-10-07-pokescape-type-name-acceptance.md) verifies TYPE_NAMES 18/18 at source `f5a76c85`, parser 91/SQL 2; accepted score correctly remains 87.50%. [Execution reconciliation](../plans/2026-10-07-pokescape-native-type-name-plan.md) records compact proof, applied signed cleanup and zero required leaf blockers/deferrals. This leaf of the [all-ROM parent](2026-10-07-all-rom-compatibility-completion-design.md) preserves all accepted move/Dex/map fields and does not close the full ROM.
 
 ## Observed deficit and hypothesis
 
