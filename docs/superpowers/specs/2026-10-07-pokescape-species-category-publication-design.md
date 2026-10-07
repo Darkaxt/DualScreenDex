@@ -1,6 +1,6 @@
 # Pokescape native species-category publication
 
-**Status: IN_PROGRESS. Authorization: already_authorized.** Required `LIB26-G3-POKESCAPE-CATEGORIES` leaf of the [all-ROM parent](2026-10-07-all-rom-compatibility-completion-design.md). Current accepted Pokescape source `f5a76c85`, parser 91/SQL 2, coverage 87.50%; [type-name leaf](2026-10-07-pokescape-native-type-name-design.md) and its signed cleanup are closed. Stay on this ROM.
+**Status: IN_PROGRESS. Authorization: already_authorized.** Required `LIB26-G3-POKESCAPE-CATEGORIES` leaf of the [all-ROM parent](2026-10-07-all-rom-compatibility-completion-design.md). Category publication independently accepted at production source `6853d5d6`, parser 92/SQL 2/emitted overlay 2, SPECIES_CATEGORIES 1,235/1,235 and unchanged coverage 87.50%; [acceptance](../../reports/corpus/2026-10-07-pokescape-species-category-acceptance.md). Publication/compact proof/applied cleanup are pending final closure. The [type-name leaf](2026-10-07-pokescape-native-type-name-design.md) and its signed cleanup stay closed. Stay on this ROM.
 
 ## Established cause and authority boundary
 
