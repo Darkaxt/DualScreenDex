@@ -1,6 +1,8 @@
 package com.enrpau.dualscreendex.parser.catalog
 
 import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
+import com.enrpau.dualscreendex.parser.language.LocalizedTableLayout
+import com.enrpau.dualscreendex.parser.parse.CompiledReferencedTypeNames
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.CapabilityEvidence
 import com.enrpau.dualscreendex.parser.model.CapabilityReviewStatus
@@ -301,7 +303,18 @@ object CatalogMaterializer {
         } else {
             RecordMaterializers.typeChart(rom, layout)
         }
-        val rawTypes = RecordMaterializers.types(rom, layout, baseSpecies, chart, rawMoves, cancellation)
+        val initialTypes = RecordMaterializers.types(rom, layout, baseSpecies, chart, rawMoves, cancellation)
+        val referencedNames = CompiledReferencedTypeNames.resolve(rom, layout, initialTypes.keys, cancellation)
+        val languageManifest = if (referencedNames == null) layout.languageManifest else {
+            val tables = layout.languageManifest.defaultProjection()!!.localizedTables
+            layout.languageManifest.withDefaultLocalizedTables(LocalizedTableLayout(
+                speciesNames = tables.speciesNames, moveNames = tables.moveNames,
+                descriptions = tables.descriptions, abilities = tables.abilities, typeNames = referencedNames,
+            ))
+        }
+        val rawTypes = if (referencedNames == null) initialTypes else RecordMaterializers.types(
+            rom, layout.copy(languageManifest = languageManifest), baseSpecies, chart, rawMoves, cancellation,
+        )
         val baseTypes = TypePresentationMaterializer.apply(rawTypes) { typeId ->
             TypeMappings.presentationRole(layout.generation, typeId)
         }
@@ -327,7 +340,7 @@ object CatalogMaterializer {
             )
         }
         val essentialText = CatalogLocalizedTextExtractor.extract(
-            manifest = layout.languageManifest,
+            manifest = languageManifest,
             speciesById = baseSpecies,
             movesById = rawMoves,
             typesById = baseTypes,
@@ -418,7 +431,7 @@ object CatalogMaterializer {
             unavailableReason = "Pokédex descriptions were not materialized",
         )
         val mediaText = CatalogLocalizedTextExtractor.extract(
-            manifest = layout.languageManifest,
+            manifest = languageManifest,
             speciesById = mediaSpecies,
             movesById = rawMoves,
             typesById = baseTypes,
@@ -536,7 +549,7 @@ object CatalogMaterializer {
             unavailableReason = "learnsets were not materialized",
         )
         val relationshipText = CatalogLocalizedTextExtractor.extract(
-            manifest = layout.languageManifest,
+            manifest = languageManifest,
             speciesById = relationshipSpecies,
             movesById = rawMoves,
             typesById = baseTypes,
@@ -933,7 +946,7 @@ object CatalogMaterializer {
         cancellation.throwIfCancellationRequested()
         val namedItems = ItemNameMaterializer.join(itemNames, balls, localMaps)
         val finalText = CatalogLocalizedTextExtractor.extract(
-            manifest = layout.languageManifest,
+            manifest = languageManifest,
             speciesById = species,
             movesById = moves,
             typesById = types,

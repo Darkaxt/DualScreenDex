@@ -122,6 +122,8 @@ enum class TableRecordFormat {
     GEN2_COMPACT_BASE_STATS,
     GEN2_MASKED_MOVE_7,
     GEN2_EXTENDED_TYPE_NAMES,
+    /** Compiled-owned seven-byte prefix through the highest referenced native move type, not game count. */
+    GBA_REFERENCED_TYPE_NAMES,
     WIDE_STATS_64,
     ALIGNED_BYTE_TARGET_MOVE_20,
     ALIGNED_BYTE_TARGET_MOVE_56,

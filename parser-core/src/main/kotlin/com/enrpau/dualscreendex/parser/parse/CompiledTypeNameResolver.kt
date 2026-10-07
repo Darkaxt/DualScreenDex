@@ -40,6 +40,11 @@ internal object CompiledTypeNameResolver {
     ): Map<Int, DecodedTypeName>? {
         val compactGen2 = layout.format == TableRecordFormat.GEN2_COMPACT_TYPE_NAMES
         val extendedGen2 = layout.format == TableRecordFormat.GEN2_EXTENDED_TYPE_NAMES
+        val referencedGba = layout.format == TableRecordFormat.GBA_REFERENCED_TYPE_NAMES
+        if (referencedGba && (generation != 3 || layout.count !in GEN3_TYPE_COUNT + 1..STANDARD_ROLES.size ||
+                layout.recordSize != GEN3_TYPE_NAME_WIDTH || layout.variableLength || layout.valuesArePointers ||
+                (layout.stride ?: layout.recordSize) != GEN3_TYPE_NAME_WIDTH)
+        ) return null
         if ((compactGen2 || extendedGen2) && generation != 2) return null
         if (extendedGen2 && (layout.count !in 29..64 || layout.recordSize != 2 ||
                 !layout.valuesArePointers || layout.variableLength || layout.stride != null && layout.stride != 2)
@@ -47,10 +52,11 @@ internal object CompiledTypeNameResolver {
         val requiredIds = when {
             compactGen2 -> (0 until COMPACT_GEN2_TYPE_COUNT).toSet()
             extendedGen2 -> (0 until layout.count).toSet() - (10..18).toSet()
+            referencedGba -> (0 until layout.count).toSet()
             else -> requiredTypeIds(generation) ?: return null
         }
-        val expectedRoles = if (compactGen2 || extendedGen2) STANDARD_ROLES else expectedRoles(generation) ?: return null
-        val expectedCount = if (extendedGen2) layout.count else if (compactGen2) COMPACT_GEN2_TYPE_COUNT else typeCount(generation)
+        val expectedRoles = if (compactGen2 || extendedGen2 || referencedGba) STANDARD_ROLES else expectedRoles(generation) ?: return null
+        val expectedCount = if (extendedGen2 || referencedGba) layout.count else if (compactGen2) COMPACT_GEN2_TYPE_COUNT else typeCount(generation)
         if (layout.count != expectedCount || layout.offset < 0) return null
         if (compactGen2 || extendedGen2) {
             val bank = layout.bank ?: return null
