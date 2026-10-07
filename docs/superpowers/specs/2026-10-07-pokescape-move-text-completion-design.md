@@ -1,6 +1,6 @@
 # Pokescape remaining move-text contract
 
-**Status: IN_PROGRESS. Authorization: already_authorized.** Bounded next leaf of the [all-ROM parent](2026-10-07-all-rom-compatibility-completion-design.md). Stay on Pokescape; accepted descriptions/dimensions, moves and maps remain protected.
+**Status: COMPLETE at the bounded native move-field boundary; parent and ROM IN_PROGRESS. Authorization: already_authorized.** Bounded next leaf of the [all-ROM parent](2026-10-07-all-rom-compatibility-completion-design.md). Stay on Pokescape; accepted descriptions/dimensions, moves and maps remain protected.
 
 ## Observed deficit
 
@@ -24,3 +24,7 @@ Current Western pointer materialization accepts explicit dash placeholders in it
 First use retained generated metadata and public source, then one bounded original diagnostic admission. Nominate complete candidate pointer arrays and retain bounded consumer envelopes plus the five terminal text-token envelopes, without bulk decoded prose or ROM copies. Nomination is not selection. Only an independently traced compiled consumer may justify a production route. Stop implementation at a genuinely unresolved native-role question, not at an assumed threshold fix.
 
 Any category persistence, ability, type or map-text improvement remains a separate current-ROM batch. No other original or broader corpus is implicitly admitted.
+
+## Verified outcome
+
+[Acceptance](../../reports/corpus/2026-10-07-pokescape-move-text-acceptance.md) and [ledger](../plans/2026-10-07-pokescape-move-text-completion-plan.md) reconcile MT-01–06 with zero leaf blockers/deferrals: source `db3c306c`, parser 90/SQL 2, all 828 native fields/name joins (823 prose/five exact three-dash placeholders), complete references/SQLite/independent digest and exact Dex-baseline preservation. Publication `14456819` retains all 342 identities/341 other rows. Compact proof reverified; 3,870 signed generated members/119,845,545 logical file bytes deleted, eight roots absent. No legacy threshold changes, invented prose, full-corpus/device or whole-ROM completion claim. Continue the parent's remaining Pokescape obligations.

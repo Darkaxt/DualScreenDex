@@ -468,5 +468,25 @@
     "LIB26-G3-POKESCAPE-CATEGORIES",
     "LIB26-G3-POKESCAPE-TEXT",
     "LIB26-G3-POKESCAPE-OPTIONAL"
-  ]
+  ],
+  "cleanup": {
+    "status": "APPLIED_AND_ABSENT",
+    "publicationCommit": "14456819dfaf4d0af0b12418e6929cdbc0cb4d29",
+    "signedMembersInspected": 3870,
+    "inspectionPages": 39,
+    "deletedFiles": 3530,
+    "deletedDirectories": 340,
+    "logicalFileBytesDeleted": 119845545,
+    "exactOutputRootsAbsent": 8,
+    "residuals": 0,
+    "errors": 0,
+    "warnings": 0,
+    "compactProofReverified": true,
+    "sourceStashCorporaPreserved": true,
+    "originalCopies": 0,
+    "sqliteCopies": 0,
+    "jarCopies": 0,
+    "gradleMutexAcquired": false,
+    "scope": "Exact registered scratch/compiler output roots only; no volume-reclaimed-byte or complete-host-coverage claim."
+  }
 }

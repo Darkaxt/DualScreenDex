@@ -29,4 +29,4 @@ Ability names/text/mechanics, the native type-label gap, item/Local/encounter/PO
 
 ## Retention and cleanup
 
-Compact native/host/receipt/digest evidence is retained privately without original, SQLite or JAR copies. The current registered output transaction remains open pending full retention re-verification and signed inspection/ticket/application; no cleanup completion is claimed yet. Stay on Pokescape after this bounded leaf.
+Compact native/host/receipt/digest evidence is retained and reverified privately without original, SQLite or JAR copies. All **3,870 signed members** were inspected across **39 pages**, then deleted through the installed ticketed wrapper: **3,530 files, 340 directories, 119,845,545 logical file bytes**. All **eight exact output roots are absent**, with zero residuals/errors/warnings; source, protected stash and corpora remain intact. No Gradle mutex or build was used for cleanup. Acceptance publication `14456819` closes this bounded field evidence; the parent remains IN_PROGRESS. Continue Pokescape's remaining obligations.
