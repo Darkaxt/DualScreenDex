@@ -149,6 +149,15 @@ object Gen3PlayerRuntimeLayoutResolver {
         val counts = buildList {
             var offset = 0
             while (offset <= rom.size - SAVE_SLOT_LAYOUT_BYTES) {
+                // Cheap pre-check of the SaveBlock2 entry (the same test as save2Valid below) so the
+                // 4M-offset sweep of a 16 MiB ROM doesn't allocate an entry list at every offset.
+                if (
+                    rom.u16le(offset) != 0 ||
+                    rom.u16le(offset + 2) !in saveAbi.saveBlock2Size..saveAbi.saveBlock2Size + MAX_SAVE_ABI_GROWTH
+                ) {
+                    offset += 4
+                    continue
+                }
                 val entries = List(SAVE_SLOT_SECTION_COUNT) { index ->
                     SaveSlotEntry(
                         byteOffset = rom.u16le(offset + index * SAVE_SLOT_ENTRY_BYTES),

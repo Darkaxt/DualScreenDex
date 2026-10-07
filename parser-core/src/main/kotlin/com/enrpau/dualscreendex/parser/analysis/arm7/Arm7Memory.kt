@@ -25,8 +25,9 @@ class Arm7Memory(
     val romImage: RomImage,
     hostRegions: List<Arm7HostMemoryRegion> = emptyList(),
 ) {
-    private val ewram = ByteArray(EWRAM_SIZE)
-    private val iwram = ByteArray(IWRAM_SIZE)
+    // Most proofs run short ROM-only helpers; allocate the 288 KiB of RAM only when emulated code touches it.
+    private val ewram by lazy(LazyThreadSafetyMode.NONE) { ByteArray(EWRAM_SIZE) }
+    private val iwram by lazy(LazyThreadSafetyMode.NONE) { ByteArray(IWRAM_SIZE) }
     private val trace = mutableListOf<Arm7MemoryTrace>()
     private val hostRegions = hostRegions.map { it.copy(bytes = it.bytes.copyOf()) }
     private var sequence = 0L
