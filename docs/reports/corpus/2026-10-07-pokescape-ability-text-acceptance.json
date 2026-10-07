@@ -473,5 +473,31 @@
     "LIB26-G3-POKESCAPE-ABILITY-TEXT",
     "LIB26-G3-POKESCAPE-OPTIONAL",
     "LIB26-G3-POKESCAPE-TEXT"
-  ]
+  ],
+  "closure": {
+    "status": "CLOSED_HOST_STATIC_NATIVE_BOUNDARY",
+    "acceptanceCommit": "7ab8523461877a83757ab4e816bbf52a7994dbf5",
+    "requiredLeafBlockers": 0,
+    "trackedLeafDeferrals": 0,
+    "compactMembersReverified": 81,
+    "compactBytes": 523771,
+    "signedMembersInspected": 4264,
+    "inspectionPages": 43,
+    "filesDeleted": 3665,
+    "directoriesDeleted": 599,
+    "logicalBytesDeleted": 131048929,
+    "exactRootsAbsent": 9,
+    "residuals": 0,
+    "errors": 0,
+    "warnings": 0,
+    "gradleMutexAcquiredForCleanup": false,
+    "sourceStashOriginalsCorporaPreserved": true,
+    "completeHostInactivityClaim": false,
+    "parentAndRomStatus": "IN_PROGRESS",
+    "requiredContinuation": [
+      "numeric ability mechanics and typed modifiers",
+      "item names",
+      "required Local Map, encounter and POI text"
+    ]
+  }
 }
