@@ -1,0 +1,453 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-07",
+  "status": "ACCEPTED_HOST_STATIC_PACKED_MOVES",
+  "sourceCommit": "8ca3489ca9b9207b590cc74df54be825f65e428b",
+  "parserSchemaVersion": 88,
+  "sqlSchemaVersion": 2,
+  "scope": "One retained Pokescape build: generic compiled packed-bitfield BattleMove contract and all named move scalar/category records. Parent and current ROM remain IN_PROGRESS. No full-corpus/device/release claim.",
+  "inputCount": 1,
+  "targetCount": 1,
+  "realControlCount": 0,
+  "parserExecutionsAcrossBoundedRuns": 1,
+  "originalReadsAcrossConsumedAdmissions": 7,
+  "abandonedPreflightReservations": 0,
+  "fullCorpusRerun": false,
+  "executionReceiptSummary": {
+    "schemaVersion": 1,
+    "sourceCommit": "8ca3489ca9b9207b590cc74df54be825f65e428b",
+    "inputCount": 1,
+    "rawReportSha256": "d3712827872ca3c120db25a90e03b721a4dd374cc116fd56e05d0553cb57d50d",
+    "generator": {
+      "name": "parser-cli",
+      "schemaVersion": 16,
+      "sha256": "9c7f08b7e3e9e2df8b3db8f38da8f1d4f471fea0da65a478ba718395c6c5bfde"
+    }
+  },
+  "verification": {
+    "nativeMoveCount": 828,
+    "independentScalarFieldsChecked": 5796,
+    "completeReferenceChecks": 84452,
+    "referenceErrors": 0,
+    "sqliteCompleteCatalogStructuralEquality": true,
+    "matchingLogicalDigests": true,
+    "independentCanonicalDigestEquality": true,
+    "sqliteIntegrityChecks": 1,
+    "retainedBaselineReverseProjectionEquality": true,
+    "baselineReverseProjectionSha256": "8f5ad9651886458f08571d5ea50e3f8f4e34740a6a425202988f741b1bf04550",
+    "unchangedCompleteSections": 16,
+    "changedSections": [
+      "moves",
+      "capabilities"
+    ],
+    "changedMoveFields": [
+      "typeId",
+      "category",
+      "power",
+      "accuracy",
+      "pp",
+      "priority",
+      "effectId"
+    ],
+    "hostTests": {
+      "parser-core": {
+        "tests": 328,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 9
+      },
+      "catalog-store": {
+        "tests": 119,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 6
+      },
+      "parser-cli": {
+        "tests": 76,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 1
+      }
+    },
+    "redRegressions": [
+      {
+        "scope": "codec",
+        "tests": 5,
+        "failuresBeforeImplementation": 5
+      },
+      {
+        "scope": "selector",
+        "tests": 10,
+        "failuresBeforeImplementation": 3
+      },
+      {
+        "scope": "core integration",
+        "tests": 2,
+        "failuresBeforeImplementation": 1
+      }
+    ],
+    "gradleGateAcquiredForEveryExecution": true,
+    "maxWorkers": 2,
+    "parallelProjects": false,
+    "gradleHeapObserved": "3g",
+    "kotlinDaemonHeapRequested": "3g",
+    "kotlinStrategy": "project_default",
+    "testForksConfigured": 1,
+    "testMaximumHeapConfigured": "512m",
+    "memoryFailures": [],
+    "profileLimits": [
+      "Kotlin heap requested, not measured total-host/native cap.",
+      "Sixteen opt-in test cases skipped; no original-based test opt-in enabled.",
+      "Post-commit packaging rebuilt the source-stamped JAR; CLI test task was up-to-date after the earlier full fresh 76-case run."
+    ]
+  },
+  "rows": [
+    {
+      "name": "Pokescape (v1.0.4).gba",
+      "family": "EMERALD",
+      "beforeCompatibilityPercent": 79.14,
+      "compatibilityPercent": 83.31,
+      "capabilities": {
+        "SPECIES_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 0.9991909385113269,
+          "coveredRecords": 1235,
+          "expectedRecords": 1235,
+          "incompleteRecords": 0
+        },
+        "SPECIES_TYPES": {
+          "status": "AVAILABLE",
+          "confidence": 0.9991909385113269,
+          "coveredRecords": 1235,
+          "expectedRecords": 1235,
+          "incompleteRecords": 0
+        },
+        "TYPE_CHART": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 361,
+          "expectedRecords": 361
+        },
+        "BASE_STATS": {
+          "status": "AVAILABLE",
+          "confidence": 0.9991909385113269,
+          "coveredRecords": 1235,
+          "expectedRecords": 1235,
+          "incompleteRecords": 0
+        },
+        "SPRITES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1235,
+          "expectedRecords": 1235,
+          "incompleteRecords": 0
+        },
+        "EVOLUTIONS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1236,
+          "expectedRecords": 1236,
+          "incompleteRecords": 0
+        },
+        "MOVE_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 828,
+          "expectedRecords": 828,
+          "incompleteRecords": 0
+        },
+        "MOVE_DETAILS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "LEARNSETS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1236,
+          "expectedRecords": 1236,
+          "incompleteRecords": 0
+        },
+        "EGG_MOVES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 370,
+          "expectedRecords": 370,
+          "incompleteRecords": 0
+        },
+        "MACHINE_MOVES": {
+          "status": "AVAILABLE",
+          "confidence": 0.7372991295614328,
+          "coveredRecords": 1236,
+          "expectedRecords": 1236,
+          "incompleteRecords": 0
+        },
+        "TUTOR_MOVES": {
+          "status": "AVAILABLE",
+          "confidence": 0.9030420711974111,
+          "coveredRecords": 1236,
+          "expectedRecords": 1236,
+          "incompleteRecords": 0
+        },
+        "ABILITIES": {
+          "status": "AMBIGUOUS",
+          "confidence": 0.9487179487179487
+        },
+        "ABILITY_MECHANICS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "incompleteRecords": 0
+        },
+        "AREA_ENCOUNTERS": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "TYPE_PRESENTATION": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "BALL_CATALOG": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "WORLD_MAP": {
+          "status": "AVAILABLE",
+          "confidence": 1.0
+        },
+        "LOCAL_MAP": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 520,
+          "expectedRecords": 520,
+          "incompleteRecords": 0
+        },
+        "NATURES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 25,
+          "expectedRecords": 25,
+          "incompleteRecords": 0
+        },
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1236,
+          "expectedRecords": 1236
+        },
+        "POKEDEX_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 1235
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9939613526570048,
+          "coveredRecords": 823,
+          "expectedRecords": 828
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0
+        }
+      },
+      "catalogCounters": {
+        "species": 1235,
+        "namedSpecies": 1235,
+        "speciesWithStats": 1235,
+        "speciesWithSprites": 1235,
+        "speciesWithDescriptions": 0,
+        "evolutionEdges": 538,
+        "learnsetEntries": 19537,
+        "learnsetRulesets": 1,
+        "moves": 828,
+        "movesWithDetails": 828,
+        "movesWithDescriptions": 823,
+        "eggMoveLinks": 3665,
+        "machineMoveLinks": 28223,
+        "tutorMoveLinks": 3617,
+        "types": 18,
+        "namedTypes": 17,
+        "typesWithSemanticRoles": 17,
+        "typeMatchups": 120,
+        "abilities": 0,
+        "abilitiesWithDescriptions": 0,
+        "abilitiesWithMechanics": 0,
+        "captureBalls": 12,
+        "encounterAreas": 202,
+        "movesWithCategories": 828,
+        "abilitiesWithProvenTypedModifiers": 0,
+        "provenTypedAbilityModifiers": 0
+      },
+      "areaGuide": {
+        "areaIdentities": 520,
+        "namedAreaIdentities": 270,
+        "exitRecords": 946,
+        "resolvedExitRecords": 536,
+        "encounterSpeciesRecords": 1936,
+        "namedEncounterSpeciesRecords": 1936,
+        "encounterWindowGroups": 202,
+        "resolvedEncounterWindowGroups": 202,
+        "encounterLevelRecords": 1936,
+        "resolvedEncounterLevelRecords": 1936,
+        "encounterRateRecords": 1936,
+        "resolvedEncounterRateRecords": 1936,
+        "localMapCount": 520,
+        "poiBearingMapCount": 457,
+        "poiRecords": 2149,
+        "poiRecordsWithContent": 652
+      },
+      "localizedCapabilities": {
+        "SPECIES_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1236,
+          "expectedRecords": 1236,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "SPECIES_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 1235,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 828,
+          "expectedRecords": 828,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "MOVE_DESCRIPTIONS": {
+          "status": "PARTIAL",
+          "confidence": 0.9939613526570048,
+          "coveredRecords": 823,
+          "expectedRecords": 828,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_NAMES": {
+          "status": "AMBIGUOUS",
+          "confidence": 0.9487179487179487,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "MANUAL_REVIEW",
+          "validatorReviewRecommended": false
+        },
+        "ABILITY_DESCRIPTIONS": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 0,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "TYPE_NAMES": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 17,
+          "expectedRecords": 18,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "NATURE_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 25,
+          "expectedRecords": 25,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ITEM_NAMES": {
+          "status": "NOT_FOUND",
+          "confidence": 0.0,
+          "coveredRecords": 0,
+          "expectedRecords": 105,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "AREA_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 270,
+          "expectedRecords": 270,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "LOCAL_MAP_NAMES": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 270,
+          "expectedRecords": 484,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_REGION_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 1,
+          "expectedRecords": 1,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "WORLD_LOCATION_NAMES": {
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 64,
+          "expectedRecords": 64,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "ENCOUNTER_AREA_NAMES": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 201,
+          "expectedRecords": 202,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        },
+        "POI_TEXT": {
+          "status": "PARTIAL",
+          "confidence": 1.0,
+          "coveredRecords": 1052,
+          "expectedRecords": 2149,
+          "reviewStatus": "NONE",
+          "validatorReviewRecommended": false
+        }
+      },
+      "persistence": {
+        "sections": 18,
+        "logicalDigestVersion": 1,
+        "beforeCatalogSha256": "2b358be2edee8eb010e110ec6f2a2f40c157ec06155a1dad0bf25e1cfd683fe4",
+        "afterCatalogSha256": "2b358be2edee8eb010e110ec6f2a2f40c157ec06155a1dad0bf25e1cfd683fe4"
+      },
+      "health": {
+        "parserErrors": 0,
+        "catalogErrors": 0,
+        "persistenceErrors": 0,
+        "referenceErrors": 0,
+        "sqliteReopenEqualityVerified": true
+      }
+    }
+  ],
+  "limitations": [
+    "Coverage is 83.31%, not full-ROM or parent completion.",
+    "Dex descriptions, five move descriptions, ambiguous ability names/descriptions/mechanics, native type label and remaining Local/encounter/POI text remain active obligations.",
+    "Packed flag bits remain opaque; no retail flag meanings or unsupported move mechanics are inferred.",
+    "Signed-byte proof is bounded local forward provenance, not a global CFG or runtime-execution claim.",
+    "Public expansion source is a structural oracle only; current project source has a different layout.",
+    "No other real ROM, full-corpus rerun, Android/emulator/ADB, APK, signing or release."
+  ],
+  "ledgerIds": [
+    "LIB26-G3-POKESCAPE-MOVES",
+    "LIB26-G3-POKESCAPE-TEXT",
+    "LIB26-G3-POKESCAPE-OPTIONAL"
+  ]
+}

@@ -2,7 +2,7 @@
 
 **Status: IN_PROGRESS. Authorization: already_authorized; clarified by the user October 7, 2026.**
 
-The goal is **100% compatibility across all ROMs, one ROM at a time**. A published feature checkpoint, successful cleanup or completed leaf specification does not end this parent task. The completed [Pokescape World Map checkpoint](../../reports/corpus/2026-10-06-pokescape-world-map-acceptance.md) leaves that ROM at **79.14%**, not complete. Resume its remaining deficits before changing implementation target.
+The goal is **100% compatibility across all ROMs, one ROM at a time**. A published feature checkpoint, successful cleanup or completed leaf specification does not end this parent task. The completed [Pokescape World Map checkpoint](../../reports/corpus/2026-10-06-pokescape-world-map-acceptance.md) left that ROM at **79.14%**; the later [828-move recovery](../../reports/corpus/2026-10-07-pokescape-moves-acceptance.md) reaches **83.31%**, still not complete. Resume its remaining deficits before changing implementation target.
 
 ## Requirements
 
@@ -21,11 +21,11 @@ The goal is **100% compatibility across all ROMs, one ROM at a time**. A publish
 
 Pokescape's working core, two map datasets and retained acceptance stay protected. Remaining obligations include:
 
-- Move details/categories: last accepted target has 0 detailed records for 828 named moves; retained rejection reports 405/829 plausible rows and an incomplete populated domain. Fresh compiled diagnostics establish a distinct packed-bitfield 20-byte `BattleMove` (byte power, split at 11, u16 argument and opaque 40-bit tail), not the aligned layout of the current public source. Generic codec/consumer selection is host-verified; fresh exact-source target acceptance remains required before claiming a gain.
+- **Completed move leaf:** all 828 named moves now have independently accepted details/categories. Compiled diagnostics establish a distinct packed-bitfield 20-byte `BattleMove`, not the aligned layout of the current public source. Exact packaged source, 5,796 native scalar checks, complete references and whole-payload/retained-baseline equality close that field only; opaque flag semantics remain uninferred.
 - Dex descriptions: zero decoded species-description rows.
 - Five move-description gaps; ambiguous/unmaterialized ability names, descriptions and mechanics; one missing native type label.
 - Remaining Local/encounter/POI text and represented-domain limits documented by the existing field ledger. Prove applicability and actual native consumers before assigning data; never invent a World location for an unrepresented ordinal.
 
-**Immediate next action:** reconcile/publish the host-verified source checkpoint, then freshly admit exact packaged one-target acceptance and independent scalar/reference/whole-SQLite comparison. The proven contract, not the mismatching public layout, governs selection. This batch does not complete the parent or automatically close the other obligations.
+**Immediate next action:** publish the sanitized move acceptance, preserve compact proof and apply registered output cleanup; then diagnose this ROM's next unresolved native contract, starting with Dex text. No repeated admission is implied. This batch does not complete the parent or automatically close the other obligations.
 
 The current matrix is composite. Publication of a later focused row does not turn historical rows into fresh evaluations. Any final whole-library acceptance must bind every identity to the accepted production source and preserve complete evidence/cleanup under its own bounded execution stage.
