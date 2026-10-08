@@ -27,7 +27,7 @@ Accepted work:
 Still required before completion:
 
 - Independently proved and implemented native ability mechanics/typed modifiers. Published mechanics remain **NOT_FOUND, 0/298**. Retained conditional arithmetic and local CFG diagnostics are not production implementation or acceptance.
-- Required item names and Local/encounter/POI text; high map or overall scores do not waive these requirements.
+- Required Local/encounter/POI text; high map or overall scores do not waive these requirements. **Subsequent October8 checkpoint, outside the fixed window above:** [requested item names](2026-10-08-pokescape-item-name-acceptance.md) independently accepted105/105 with12 ball references/274 item-POI joins; POI_TEXT1052/2149→1326/2149. Score and all341 other rows unchanged; mechanics0/298, Local names270/484 and encounter names201/202 remain open.
 - Any remaining applicable partial capability or validation gap. The current matrix still reports partial machine/tutor confidence; confidence and record-based coverage are different measures.
 
 ## Overall current library progress

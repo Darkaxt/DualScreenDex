@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "date": "2026-10-03",
-  "verifiedDate": "2026-10-07",
-  "evidenceMode": "full342-baseline-with-focused-gen2-relationships-gen3-wide-core-and-pokescape-map-moves-dex-move-text-type-names-species-categories-ability-text",
+  "verifiedDate": "2026-10-08",
+  "evidenceMode": "full342-baseline-with-focused-gen2-relationships-gen3-wide-core-and-pokescape-map-moves-dex-move-text-type-names-species-categories-ability-text-item-names",
   "corpusInputDigestSha256": "733e36785fa9a5b71bc4121343a6b6d2cbd27e43e08b3fddc2e2870bac1a0561",
   "summary": {
     "inputCount": 342,
@@ -5907,8 +5907,8 @@
     },
     {
       "name": "Pokescape (v1.0.4).gba",
-      "evidence": "focused-pokescape-native-ability-text-species-joins-source-bound",
-      "sourceCommit": "2a9178406f782bbd66ed9ed219bf89eff7765220",
+      "evidence": "focused-pokescape-native-item-names-and-requested-joins-source-bound",
+      "sourceCommit": "eaaaaff19306cd012c70611ca7ee1a6f7349ca5a",
       "aliases": [
         {
           "archive": "Pokemon Pokescape (v1.0.4).7z",
@@ -6106,8 +6106,8 @@
         "referenceErrors": 0,
         "sqliteReopenEqualityVerified": true,
         "logicalDigestVersion": 1,
-        "beforeCatalogSha256": "bc0cb845fcc558441479ca366a7871b982b14b2809a12f3823b36abe71324bd4",
-        "afterCatalogSha256": "bc0cb845fcc558441479ca366a7871b982b14b2809a12f3823b36abe71324bd4"
+        "beforeCatalogSha256": "3d16d40eb1e0668a182533f94c8eed522b313a1831018afc58422326394634cc",
+        "afterCatalogSha256": "3d16d40eb1e0668a182533f94c8eed522b313a1831018afc58422326394634cc"
       },
       "localizedCapabilities": {
         "SPECIES_NAMES": {
@@ -6183,9 +6183,9 @@
           "validatorReviewRecommended": false
         },
         "ITEM_NAMES": {
-          "status": "NOT_FOUND",
-          "confidence": 0.0,
-          "coveredRecords": 0,
+          "status": "AVAILABLE",
+          "confidence": 1.0,
+          "coveredRecords": 105,
           "expectedRecords": 105,
           "reviewStatus": "NONE",
           "validatorReviewRecommended": false
@@ -6233,7 +6233,7 @@
         "POI_TEXT": {
           "status": "PARTIAL",
           "confidence": 1.0,
-          "coveredRecords": 1052,
+          "coveredRecords": 1326,
           "expectedRecords": 2149,
           "reviewStatus": "NONE",
           "validatorReviewRecommended": false
@@ -47356,7 +47356,8 @@
     "db3c306ca48ac0b6e555f58565edd64283d7bf6e",
     "f5a76c85f596fe4276293dedc3b0387980d2baa3",
     "6853d5d6a0d464d21613cd6f1b8f1156054dad34",
-    "2a9178406f782bbd66ed9ed219bf89eff7765220"
+    "2a9178406f782bbd66ed9ed219bf89eff7765220",
+    "eaaaaff19306cd012c70611ca7ee1a6f7349ca5a"
   ],
   "focusedGen2Relationships": {
     "inputCount": 19,
@@ -47526,6 +47527,25 @@
         "sha256": "6d3d3eb4db447ecd569f6ca84c38c7777aa9de8c1e4cfbe02f06b3538839f3d5"
       },
       "rawReportSha256": "80cb8e2e655118f661bef9d47636a06403d2e3a751099d41d28fb1046725cf01",
+      "inputCount": 1
+    },
+    "unaffectedRowsRetained": 341,
+    "fullCorpusRerun": false
+  },
+  "focusedPokescapeItemNames": {
+    "inputCount": 1,
+    "sourceCommit": "eaaaaff19306cd012c70611ca7ee1a6f7349ca5a",
+    "parserSchemaVersion": 94,
+    "acceptance": "2026-10-08-pokescape-item-name-acceptance.json",
+    "executionReceiptSummary": {
+      "schemaVersion": 1,
+      "sourceCommit": "eaaaaff19306cd012c70611ca7ee1a6f7349ca5a",
+      "generator": {
+        "name": "parser-cli",
+        "schemaVersion": 16,
+        "sha256": "3d826cd2389cbd3afa1f2e84bdc7c5ce62a403f09e598c68c60ffd33bfc62d3c"
+      },
+      "rawReportSha256": "a3b6643d356cadc8241a75f9519731bf307cea7ee66618fa03f49123ca14dd33",
       "inputCount": 1
     },
     "unaffectedRowsRetained": 341,

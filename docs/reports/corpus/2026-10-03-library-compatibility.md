@@ -14,6 +14,7 @@ Capability percentages are confidence from bounded compiled structural evidence,
 - Focused one-input Pokescape referenced type-name source: `f5a76c85f596fe4276293dedc3b0387980d2baa3` ([acceptance](2026-10-07-pokescape-type-name-acceptance.md)); TYPE_NAMES 18/18, score unchanged 87.50%.
 - Focused one-input Pokescape native species-category source: `6853d5d6a0d464d21613cd6f1b8f1156054dad34` ([acceptance](2026-10-07-pokescape-species-category-acceptance.md)); SPECIES_CATEGORIES 1,235/1,235, score unchanged 87.50%.
 - Focused one-input Pokescape native ability-text/species-join source: `2a9178406f782bbd66ed9ed219bf89eff7765220` ([acceptance](2026-10-07-pokescape-ability-text-acceptance.md));298 names/descriptions,1,235 joins/2,697 edges; score87.50%→95.83%, mechanics still NOT_FOUND.
+- Focused one-input Pokescape native requested item-name source: `eaaaaff19306cd012c70611ca7ee1a6f7349ca5a` ([acceptance](2026-10-08-pokescape-item-name-acceptance.md));105/105 names,12 ball references/274 item-POI joins; POI_TEXT1326/2149, score unchanged95.83%, mechanics still0/298.
 - Inputs: **342**
 - Detected family and materialized catalog: **301**
 - Persisted and exactly reopened SQLite catalogs: **301**
