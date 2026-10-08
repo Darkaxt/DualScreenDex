@@ -15,6 +15,8 @@ import com.enrpau.dualscreendex.parser.model.ResolvedDatasetLayouts
 import com.enrpau.dualscreendex.parser.model.RomCapability
 import com.enrpau.dualscreendex.parser.model.ScoreEvidence
 import com.enrpau.dualscreendex.parser.model.ValidationEvidence
+import com.enrpau.dualscreendex.parser.parse.Gen3SelectedCoreItemOutcome
+import com.enrpau.dualscreendex.parser.parse.Gen3SelectedCoreItemRoute
 import com.enrpau.dualscreendex.parser.parse.capabilityEvidence
 import com.enrpau.dualscreendex.parser.parse.speciesCatalogEvidence
 import com.enrpau.dualscreendex.parser.language.LanguageResolutionStatus
@@ -100,6 +102,15 @@ internal class CapabilityAggregationStrategy : FamilyProbePhaseStrategy {
             descriptions = semantic.descriptionsLayout,
             abilities = semantic.abilitiesLayout,
         )
+        val selectedCore = if (definition.formatGeneration == 3) Gen3SelectedCoreItemRoute.fromValidated(
+            session, resolvedTables.speciesNames, resolvedTables.baseStats, core.speciesNames, core.baseStats,
+        ) else null
+        val itemAuthority = when (val outcome = selectedCore?.let {
+            session.itemNameResolver.selectedCore(it, identity.tableResolution.itemPublishedRoute)
+        }) {
+            is Gen3SelectedCoreItemOutcome.Evaluated -> outcome.authority
+            Gen3SelectedCoreItemOutcome.NotNominated, null -> identity.tableResolution.itemNameAuthority
+        }
         return state.withProbe(
             ParserProbe(
                 family = definition.family,
@@ -119,7 +130,7 @@ internal class CapabilityAggregationStrategy : FamilyProbePhaseStrategy {
                     moveCount = core.moveCount,
                     tables = resolvedTables,
                     itemRootNomination = identity.tableResolution.itemRootNomination,
-                    itemNameAuthority = identity.tableResolution.itemNameAuthority,
+                    itemNameAuthority = itemAuthority,
                     pokeemeraldExpansion = expansion?.metadata,
                     headerlessUnifiedSpecies = identity.headerlessUnifiedSpecies?.metadata,
                     expandedSplitCaptureBalls = identity.expandedSplitCaptureBalls,

@@ -18,6 +18,27 @@ internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSess
 
     private val originalResults = mutableMapOf<GbaItemPublishedRoute, GbaItemNameAuthority>()
     private var originalProof: Result? = null
+    private val sanitizerPools = linkedSetOf<Int>()
+    private val auxiliaryResults = mutableMapOf<Pair<Int, Int>, Gen3GuardedItemAuxiliaryConsumer.Proof?>()
+    private val auxiliary = Gen3GuardedItemAuxiliaryConsumer(::word, ::literalSlot, ::literal, ::bl, ::sanitize)
+    private val byteOriginResults = mutableMapOf<Pair<Int, Int>, Gen3ItemByteOriginConsumer.Proof?>()
+    private val byteOrigin = Gen3ItemByteOriginConsumer(::word, ::literalSlot, ::literal, ::bl) {
+        session.cancellation.throwIfCancellationRequested()
+    }
+
+    private fun byteOriginConsumer(site: Int, root: Int): Gen3ItemByteOriginConsumer.Proof? {
+        session.cancellation.throwIfCancellationRequested()
+        val key = site to root
+        if (key in byteOriginResults) return byteOriginResults[key]
+        return byteOrigin.resolve(site, root).also { byteOriginResults[key] = it }
+    }
+
+    private fun guardedAuxiliary(site: Int, root: Int): Gen3GuardedItemAuxiliaryConsumer.Proof? {
+        session.cancellation.throwIfCancellationRequested()
+        val key = site to root
+        if (key in auxiliaryResults) return auxiliaryResults[key]
+        return auxiliary.resolve(site, root).also { auxiliaryResults[key] = it }
+    }
 
     /** Composed once in identity/root resolution; defaults and invoked absence never grant discovery. */
     @Synchronized
@@ -54,20 +75,76 @@ internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSess
         return authority
     }
 
-    private fun proveOriginal(): Result {
-        if (!scan(rom.size)) return unavailable("original item reference nomination budget")
-        val index = session.gbaReferenceIndex ?: return unavailable("original item references unavailable")
-        if (index.overflowed) return unavailable("original item reference inventory overflow")
-        val hints = index.itemConsumerHints ?: return unavailable("original item candidate hints incomplete")
-        if (!hints.complete || hints.observedSites > minOf(64, session.limits.maxCandidatesPerDataset)) {
-            return unavailable("original item candidate inventory overflow")
+    private data class CoreKey(val nameRoot: Int, val nameStride: Int, val statRoot: Int, val statStride: Int,
+                               val count: Int, val route: GbaItemPublishedRoute)
+    private data class CoreBinding(val pools: Set<Int>)
+    private val selectedCoreResults = mutableMapOf<CoreKey, Gen3SelectedCoreItemOutcome>()
+    private var originalNomination: GbaReferenceIndex? = null
+
+    @Synchronized
+    fun selectedCore(core: Gen3SelectedCoreItemRoute, route: GbaItemPublishedRoute): Gen3SelectedCoreItemOutcome {
+        session.cancellation.throwIfCancellationRequested()
+        fun rejected(reason: String) = Gen3SelectedCoreItemOutcome.Evaluated(GbaItemNameAuthority.Unavailable(reason))
+        if (!core.belongsTo(session)) return rejected("selected core belongs to another analysis session")
+        if (route == GbaItemPublishedRoute.NotEvaluated) return Gen3SelectedCoreItemOutcome.NotNominated
+        val key = CoreKey(core.nameRoot, core.nameStride, core.statRoot, core.statStride, core.count, route)
+        selectedCoreResults[key]?.let { return it }
+        val index = originalNomination() ?: return rejected("selected-core item nomination unavailable")
+        val bindings = linkedMapOf<Int, CoreBinding>()
+        for (site in requireNotNull(index.itemConsumerHints).sites) {
+            session.cancellation.throwIfCancellationRequested()
+            coreBinding(site, core)?.let { bindings[site] = it }
         }
+        val outcome = when {
+            exhausted -> rejected("selected-core item work budget exhausted")
+            bindings.isEmpty() -> Gen3SelectedCoreItemOutcome.NotNominated
+            (route as? GbaItemPublishedRoute.Invoked)?.nomination == GbaItemRootNomination.Ambiguous ->
+                rejected("selected-core item authority conflicts with ambiguous published nomination")
+            else -> {
+                val proof = proveOriginal(index, bindings)
+                val table = proof.table
+                val published = (route as? GbaItemPublishedRoute.Invoked)?.nomination as? GbaItemRootNomination.Nominated
+                when {
+                    table == null -> rejected(proof.reason)
+                    table.root == core.nameRoot || table.root == core.statRoot -> rejected("item root conflicts with selected core roles")
+                    published != null && published.offset != table.root -> rejected("selected-core item authority conflicts with published root")
+                    else -> Gen3SelectedCoreItemOutcome.Evaluated(GbaItemNameAuthority.Available(
+                        table.root, table.stride, table.count, table.nameBytes, table.excludedIds.singleOrNull(),
+                        if (published == null) GbaItemNameProvenance.COMPILED_CONSUMER else GbaItemNameProvenance.PUBLISHED_ROOT))
+                }
+            }
+        }
+        session.cancellation.throwIfCancellationRequested()
+        selectedCoreResults[key] = outcome
+        return outcome
+    }
+
+    /** Reuse the charged immutable nomination inventory, never a failed route's authority. */
+    private fun originalNomination(): GbaReferenceIndex? {
+        originalNomination?.let { return it }
+        if (!scan(rom.size)) return null
+        val index = session.gbaReferenceIndex ?: return null
+        val hints = index.itemConsumerHints ?: return null
+        if (index.overflowed || !hints.complete ||
+            hints.observedSites > minOf(64, session.limits.maxCandidatesPerDataset)) return null
+        originalNomination = index
+        return index
+    }
+
+    private fun proveOriginal(): Result {
+        val index = originalNomination() ?: return unavailable("original item reference nomination unavailable")
+        return proveOriginal(index, emptyMap())
+    }
+
+    private fun proveOriginal(index: GbaReferenceIndex, coreBindings: Map<Int, CoreBinding>): Result {
+        val hints = requireNotNull(index.itemConsumerHints)
         if (hints.sites.isEmpty()) return unavailable("no original compiled item candidates")
         val roots = linkedSetOf<Int>()
         val targets = linkedSetOf<Int>()
         for (site in hints.sites) {
             session.cancellation.throwIfCancellationRequested()
             val root = literal(site) ?: return unavailable("incomplete original item candidate literal")
+            if (site in coreBindings) continue
             val getter = pointerGetter(site, root)
             if (getter == null) {
                 // A complete distinct wrapper may discharge a hint, never an item-root reference.
@@ -100,11 +177,14 @@ internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSess
             evidence.putAll(recovered)
         }
         val pools = linkedMapOf<Int, Set<Int>>()
+        val corePools = coreBindings.values.flatMap { it.pools }.toSet()
         for (root in roots) {
-            pools[root] = ownedLiteralPools(root, evidence.getValue(root))
+            val references = evidence.getValue(root)
+            val owned = ownedLiteralPools(root, references)
                 ?: return unavailable("incomplete original item pool inventory")
+            pools[root] = owned + corePools.intersect(references.instructionSites.mapTo(linkedSetOf()) { it and -4 })
         }
-        val calls = callers(targets, pools.values.flatten().toSet())
+        val calls = callers(targets, pools.values.flatten().toSet() + corePools)
             ?: return unavailable("original item caller or pool incoming inventory unavailable")
         val tables = mutableListOf<Table>()
         for (root in roots) {
@@ -192,15 +272,23 @@ internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSess
         val pools = linkedSetOf<Int>()
         for (site in references.instructionSites) {
             session.cancellation.throwIfCancellationRequested()
-            val getter = pointerGetter(site, root) ?: scalarGetter(site, root) ?: continue
+            val getter = pointerGetter(site, root) ?: scalarGetter(site, root)
+            if (getter == null) {
+                // Complete auxiliary leaves own their data even when its bytes nominate no instruction site.
+                if (descriptionConsumer(site, root) != null) pools += requireNotNull(literalSlot(site))
+                guardedAuxiliary(site, root)?.let { pools += it.pools }
+                numericHalfwordConsumer(site, root)?.let { pools += it.pools }
+                byteOriginConsumer(site, root)?.let { pools += it.pools }
+                continue
+            }
             val pool = literalSlot(site) ?: continue
             if (pool != ((getter.codeEnd + 3) and -4) ||
                 (pool != getter.codeEnd && word(getter.codeEnd) != 0)) continue
             pools += pool
         }
         if (exhausted) return null
-        // Only pools actually interpreted as root-reference instructions need this disposition.
-        return pools.intersect(references.instructionSites.mapTo(linkedSetOf()) { it and -4 })
+        // Incoming guards cover every positively owned word, not just reinterpreted data-site witnesses.
+        return pools + sanitizerPools
     }
 
     private fun prove(root: Int, index: GbaReferenceIndex, references: GbaTargetReferenceEvidence,
@@ -211,14 +299,27 @@ internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSess
             ?: return unavailable("incomplete item pool inventory")
         val getters = mutableListOf<Getter>()
         val descriptions = mutableListOf<DescriptionConsumer>()
+        val guarded = mutableListOf<Gen3GuardedItemAuxiliaryConsumer.Proof>()
+        val numeric = mutableListOf<NumericConsumer>()
+        val origins = mutableListOf<Gen3ItemByteOriginConsumer.Proof>()
         for (site in references.instructionSites) {
             session.cancellation.throwIfCancellationRequested()
             if (literal(site) != root) return unavailable("item reference site does not load nominated root")
             val getter = pointerGetter(site, root) ?: scalarGetter(site, root)
             if (getter == null) {
                 if ((site and -4) in pools) continue // exact owned word, never an arbitrary unsupported site
-                descriptions += descriptionConsumer(site, root)
-                    ?: return unavailable("unreconciled item getter at 0x${site.toString(16)}")
+                val descriptionConsumer = descriptionConsumer(site, root)
+                if (descriptionConsumer != null) descriptions += descriptionConsumer
+                else {
+                    val auxiliaryConsumer = guardedAuxiliary(site, root)
+                    if (auxiliaryConsumer != null) guarded += auxiliaryConsumer
+                    else {
+                        val numericConsumer = numericHalfwordConsumer(site, root)
+                        if (numericConsumer != null) numeric += numericConsumer
+                        else origins += byteOriginConsumer(site, root)
+                            ?: return unavailable("unreconciled item getter at 0x${site.toString(16)}")
+                    }
+                }
             } else getters += getter
         }
         if (getters.map { it.stride to it.count }.distinct().size != 1) return unavailable("conflicting item geometry")
@@ -229,16 +330,19 @@ internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSess
         // Reconcile the complete source-shaped scalar ABI. Otherwise losing the first getter
         // could silently widen the name field to the next numeric field's offset.
         val description = (width + 9) and -4
-        val expectedFields = listOf(width to 2, width + 2 to 2, width + 4 to 1, width + 5 to 1,
-            description to 4, description + 4 to 1, description + 5 to 1, description + 6 to 1,
-            description + 7 to 1, description + 8 to 4, description + 12 to 1,
-            description + 16 to 4, description + 20 to 1)
-        val fields = getters.filter { it.field != null }.map { requireNotNull(it.field) to it.width }
-        if (fields.size != expectedFields.size || fields.toSet() != expectedFields.toSet()) {
-            return unavailable("incomplete or conflicting item scalar field inventory")
-        }
+        val abi = scalarAbi(getters, width, description)
+            ?: return unavailable("incomplete or conflicting item scalar field inventory")
         if (descriptions.any { it.stride != pointer.stride || it.count != pointer.count || it.field != description }) {
             return unavailable("conflicting auxiliary item description geometry")
+        }
+        if (guarded.any { it.stride != pointer.stride || it.count != pointer.count || it.field != description + 12 }) {
+            return unavailable("conflicting guarded auxiliary byte geometry")
+        }
+        if (numeric.any { it.stride != pointer.stride || it.field != description + 14 }) {
+            return unavailable("conflicting numeric-return halfword geometry")
+        }
+        if (origins.any { it.stride != pointer.stride || it.field != width + 2 }) {
+            return unavailable("conflicting byte-only root-origin geometry")
         }
         if (boundary.width != 2 || width !in 1 until pointer.stride || getters.any {
                 it.field != null && it.field + it.width > pointer.stride
@@ -266,7 +370,60 @@ internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSess
         }
         if (exhausted) return unavailable("item wrapper budget")
         if (contracts.distinct().size != 1) return unavailable("missing or conflicting static item copy contracts")
-        return Result(Table(root, pointer.stride, pointer.count, width, setOfNotNull(contracts.single().excludedId)), "complete compiled static item-name consumer")
+        return Result(Table(root, pointer.stride, pointer.count, width, setOfNotNull(contracts.single().excludedId)),
+            "complete compiled static item-name consumer (${abi.name.lowercase()})")
+    }
+
+    private enum class ScalarAbi { CLASSIC_13, PROJECTED_HALFWORD_10 }
+
+    private fun scalarAbi(getters: List<Getter>, width: Int, description: Int): ScalarAbi? {
+        val classic = listOf(width to 2, width + 2 to 2, width + 4 to 1, width + 5 to 1,
+            description to 4, description + 4 to 1, description + 5 to 1, description + 6 to 1,
+            description + 7 to 1, description + 8 to 4, description + 12 to 1,
+            description + 16 to 4, description + 20 to 1).map { (field, bytes) -> Triple(field, bytes, bytes * 8) }
+        val projected = listOf(Triple(width, 2, 16), Triple(width + 2, 1, 8), Triple(width + 3, 1, 8),
+            Triple(description, 4, 32), Triple(description + 4, 1, 8), Triple(description + 5, 1, 8),
+            Triple(description + 6, 1, 8), Triple(description + 8, 4, 32),
+            Triple(description + 14, 2, 8), Triple(description + 16, 1, 8))
+        val fields = getters.filter { it.field != null }
+            .map { Triple(requireNotNull(it.field), it.width, it.resultBits) }
+        return when {
+            fields.size == classic.size && fields.toSet() == classic.toSet() -> ScalarAbi.CLASSIC_13
+            fields.size == projected.size && fields.toSet() == projected.toSet() -> ScalarAbi.PROJECTED_HALFWORD_10
+            else -> null
+        }
+    }
+
+    /** Complete non-item getter/predicate/boolean leaf bound to both current physical core roles. */
+    private fun coreBinding(site: Int, core: Gen3SelectedCoreItemRoute): CoreBinding? {
+        val entry = site - 18
+        if (!matches(entry, 0xB500, 0x0400, 0x0C00) || !matches(entry + 10, 0x0400, 0x0C00) ||
+            word(site) and 0xFF00 != 0x4900 || !matches(site + 2, 0x1840, 0xBC02, 0x4708, 0) ||
+            literal(site) != core.nameRoot || immediateMulStride(entry + 14) != core.nameStride ||
+            literalSlot(site) != entry + 28) return null
+        val predicate = wrapperCall(entry + 6, entry, entry + 32) ?: return null
+        if (!matches(predicate, 0xB510, 0x0400, 0x0C04) ||
+            word(predicate + 6) and 0xFF00 != 0x4800 || literalSlot(predicate + 6) != predicate + 28 ||
+            !matches(predicate + 8, 0x4284, 0xD804, 0x1C20) ||
+            !matches(predicate + 18, 0x2800, 0xD104, 0x2000, 0xE003, 0) ||
+            !matches(predicate + 32, 0x1C20, 0xBC10, 0xBC02, 0x4708)) return null
+        val maximum = wrapperLiteral(predicate + 6, 0, predicate + 28, predicate + 32) ?: return null
+        // The inclusive terminal value classifies this helper's role; it never creates another row.
+        if (maximum !in 0..0xFFFFL || maximum != core.count.toLong() && maximum != core.count.toLong() - 1) return null
+        val leaf = wrapperCall(predicate + 14, predicate, predicate + 40) ?: return null
+        if (!matches(leaf, 0x0400, 0x0C00) || word(leaf + 4) and 0xFF00 != 0x4A00 ||
+            word(leaf + 8) != 0x1809 ||
+            !matches(leaf + 12, 0x1889, 0x7809, 0x4248, 0x4308, 0x0FC0, 0x4770)) return null
+        val first = shift(word(leaf + 6), 0, 1) ?: return null
+        val last = shift(word(leaf + 10), 1, 1) ?: return null
+        if (stride(first, last) != core.statStride || literal(leaf + 4) != core.statRoot) return null
+        val leafPool = (leaf + 27) and -4
+        if (literalSlot(leaf + 4) != leafPool || (leafPool != leaf + 24 && word(leaf + 24) != 0)) return null
+        val ranges = listOf(entry until entry + 32, predicate until predicate + 40, leaf until leafPool + 4)
+        for (i in ranges.indices) for (j in 0 until i) {
+            if (ranges[i].first <= ranges[j].last && ranges[j].first <= ranges[i].last) return null
+        }
+        return CoreBinding(setOf(entry + 28, predicate + 28, leafPool))
     }
 
     /**
@@ -334,7 +491,7 @@ internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSess
     }
 
     private data class Getter(val entry: Int, val stride: Int, val count: Int, val field: Int?,
-                              val codeEnd: Int, val width: Int = 0)
+                              val codeEnd: Int, val width: Int = 0, val resultBits: Int = width * 8)
 
     private fun pointerGetter(site: Int, root: Int): Getter? =
         shiftPointerGetter(site, root) ?: mulPointerGetter(site, root)
@@ -365,8 +522,12 @@ internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSess
         shiftScalarGetter(site, root) ?: mulScalarGetter(site, root)
 
     private fun shiftScalarGetter(site: Int, root: Int): Getter? {
-        val entry = site - 6
-        if (!matches(entry, 0xB510, 0x0400, 0x0C00) || word(site) and 0xFF00 != 0x4C00 || literal(site) != root) return null
+        val entry = when {
+            matches(site - 6, 0xB510, 0x0400, 0x0C00) -> site - 6
+            word(site - 2) == 0xB510 && matches(site + 2, 0x0400, 0x0C00) -> site - 2
+            else -> return null
+        }
+        if (word(site) and 0xFF00 != 0x4C00 || literal(site) != root) return null
         val count = sanitize(bl(entry + 8) ?: return null) ?: return null
         if (!matches(entry + 12, 0x0400, 0x0C00) || word(entry + 18) != 0x1809) return null
         val first = shift(word(entry + 16), 0, 1) ?: return null
@@ -379,9 +540,17 @@ internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSess
         if (word(cursor) and 0xFF00 == 0x3100) { adjustment += word(cursor) and 255; cursor += 2 }
         val load = word(cursor)
         val width = when (load and 0xF800) { 0x7800 -> 1; 0x8800 -> 2; 0x6800 -> 4; else -> return null }
-        if (load and 0x3F != 8 || !matches(cursor + 2, 0xBC10, 0xBC02, 0x4708)) return null
+        if (load and 0x3F != 8) return null
         val field = adjustment + ((load ushr 6) and 31) * width
-        return Getter(entry, stride(first, last) ?: return null, count, field, cursor + 8, width)
+        cursor += 2
+        var resultBits = width * 8
+        if (word(cursor) == 0x0600) {
+            if (width != 2 || word(cursor + 2) != 0x0E00) return null
+            resultBits = 8
+            cursor += 4
+        }
+        if (!matches(cursor, 0xBC10, 0xBC02, 0x4708)) return null
+        return Getter(entry, stride(first, last) ?: return null, count, field, cursor + 6, width, resultBits)
     }
 
     private fun mulScalarGetter(site: Int, root: Int): Getter? {
@@ -401,6 +570,34 @@ internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSess
         if (load and 0x3F != 0 || !matches(cursor + 2, 0xBC10, 0xBC02, 0x4708)) return null
         val field = adjustment + ((load ushr 6) and 31) * width
         return Getter(entry, stride, count, field, cursor + 8, width)
+    }
+
+    private data class NumericConsumer(val stride: Int, val field: Int, val pools: Set<Int>)
+
+    /**
+     * Complete numeric-return disposition, separate from the mandatory scalar inventory.
+     * The root is loaded after the opaque call and dies in a halfword load. Both arms
+     * restore the eight-byte frame across the exact internal literal and zero pad.
+     * Callee ABI preservation is assumed; its effects, category and index domain are not authority.
+     */
+    private fun numericHalfwordConsumer(site: Int, root: Int): NumericConsumer? {
+        val entry = site - 20
+        if (!matches(entry, 0xB510, 0x0400, 0x0C04, 0x1C20) ||
+            wrapperCall(entry + 8, entry, entry + 48) == null ||
+            !matches(entry + 12, 0x0600, 0x0E00) || word(entry + 16) and 0xFF00 != 0x2800 ||
+            word(entry + 18) != 0xD109 || word(site) and 0xFF00 != 0x4900 ||
+            literalSlot(site) != entry + 36 || literal(site) != root ||
+            word(site + 4) != 0x1900 || word(site + 8) != 0x1840 ||
+            !matches(entry + 32, 0xE003, 0) ||
+            !matches(entry + 40, 0x2000, 0xBC10, 0xBC02, 0x4708)) return null
+        val first = shift(word(site + 2), 4, 0) ?: return null
+        val last = shift(word(site + 6), 0, 0) ?: return null
+        val stride = stride(first, last) ?: return null
+        val load = word(site + 10)
+        if (load < 0 || load and 0xF83F != 0x8800) return null
+        val field = ((load ushr 6) and 31) * 2
+        if (field !in 0..stride - 2) return null
+        return NumericConsumer(stride, field, setOf(entry + 36))
     }
 
     private data class DescriptionConsumer(val stride: Int, val count: Int, val field: Int)
@@ -436,13 +633,22 @@ internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSess
         return (move and 255).takeIf { it.toLong() in 2..MAX_RECORD_BYTES }
     }
 
-    /** This entire call-free leaf normalizes u16, compares an instruction-built upper bound and returns zero on BHI. */
+    /** Complete call-free u16 leaves; both arms return and skip any owned bound literal. */
     private fun sanitize(entry: Int): Int? {
-        if (!matches(entry, 0xB500, 0x0400, 0x0C01) || word(entry + 6) and 0xFF00 != 0x2000 ||
-            !matches(entry + 10, 0x4281, 0xD801, 0x1C08, 0xE000, 0x2000, 0xBC02, 0x4708)) return null
-        val shift = shift(word(entry + 8), 0, 0) ?: return null
-        val maximum = (word(entry + 6) and 255).toLong() shl shift
-        return (maximum + 1).takeIf { it in 1..65536 }?.toInt()
+        if (!matches(entry, 0xB500, 0x0400, 0x0C01)) return null
+        if (word(entry + 6) and 0xFF00 == 0x2000 &&
+            matches(entry + 10, 0x4281, 0xD801, 0x1C08, 0xE000, 0x2000, 0xBC02, 0x4708)) {
+            val shift = shift(word(entry + 8), 0, 0) ?: return null
+            val maximum = (word(entry + 6) and 255).toLong() shl shift
+            return (maximum + 1).takeIf { it in 1..65536 }?.toInt()
+        }
+        if (word(entry + 6) and 0xFF00 != 0x4800 || literalSlot(entry + 6) != entry + 16 ||
+            !matches(entry + 8, 0x4281, 0xD803, 0x1C08, 0xE002) ||
+            !matches(entry + 20, 0x2000, 0xBC02, 0x4708)) return null
+        val maximum = wrapperLiteral(entry + 6, 0, entry + 16, entry + 20) ?: return null
+        if (maximum !in 0..0xFFFFL) return null
+        sanitizerPools += entry + 16
+        return (maximum + 1).toInt()
     }
 
     private fun stride(first: Int, last: Int): Int? = (((1L shl first) + 1) shl last)
@@ -459,7 +665,7 @@ internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSess
         if (!scan(rom.size)) return null
         val sites = targets.associateWith { mutableListOf<Int>() }
         val guardedHalfwords = hashSetOf<Int>()
-        for (pool in guardedPools) {
+        for (pool in guardedPools + sanitizerPools) {
             guardedHalfwords += pool
             guardedHalfwords += pool + 2
             // Positive ownership permits only a BX immediately before this word or one zero pad.
@@ -472,6 +678,9 @@ internal class Gen3CompiledItemNameResolver(private val session: RomAnalysisSess
         val limit = minOf(session.limits.maxNominatedGbaReferenceSites, MAX_CALLERS)
         for (at in 0..rom.size - 2 step 2) {
             if (at and 4095 == 0) session.cancellation.throwIfCancellationRequested()
+            // Complete owners skip these data words; they cannot themselves nominate executable edges.
+            // Edges from every other source into either data halfword/padding still reject the proof.
+            if (at in guardedHalfwords) continue
             val call = if (at <= rom.size - 4) rawBl(at) else null
             if (guardedHalfwords.isNotEmpty() && (call in guardedHalfwords ||
                     rawBranch(at) in guardedHalfwords)) incoming = true
