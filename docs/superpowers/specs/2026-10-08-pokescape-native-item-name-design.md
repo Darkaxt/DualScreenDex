@@ -4,6 +4,8 @@
 
 ## Established diagnosis and limits
 
+The following paragraph records the scheduling baseline. Subsequent native evidence and remaining architectural blockers are reconciled in the [execution ledger](../plans/2026-10-08-pokescape-native-item-name-plan.md); none revises the requirements or promotes production acceptance.
+
 The existing Gen III resolver accepts an instruction-built immediate/shift sanitizer only. Already retained compiled code instead normalizes the incoming low16 bits, loads a scalar upper bound through an owned PC-relative literal, branches unsigned-high to zero, and returns across that literal pool. Retained execution establishes the selector's 0–798 accessible domain, but does not independently establish item object extent, names, numeric-field boundary, complete root-reference/caller inventory or name-copy ownership. An adjacent retained pointer getter nominates stride40 and an inline root; these remain nominations until full consumer reconciliation. Public source is a structural oracle only. No new item payload has been admitted.
 
 ## Requirements
