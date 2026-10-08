@@ -472,11 +472,23 @@
     "One ROM only;341 unrelated rows and corpus summaries preserved. No live/device/Android/emulator/ADB/APK/signing/release or upstream claim."
   ],
   "closure": {
-    "status": "ACCEPTANCE_PUBLISHED_CLEANUP_PENDING",
-    "requiredLeafBlockers": [
-      "exact transactional output cleanup"
-    ],
+    "status": "CLOSED_HOST_STATIC_REQUESTED_ITEM_BOUNDARY",
+    "requiredLeafBlockers": 0,
     "trackedLeafDeferrals": 0,
+    "acceptanceCommit": "8b830e93d1c80859fca840b95b5de0e3a80515d4",
+    "compactMembersReverified": 417,
+    "compactBytes": 2787457,
+    "signedMembersInspected": 4026,
+    "inspectionPages": 41,
+    "membersDeleted": 4026,
+    "logicalBytesDeleted": 130093660,
+    "exactRootsAbsent": 9,
+    "residuals": 0,
+    "errors": 0,
+    "warnings": 0,
+    "gradleMutexAcquiredForCleanup": false,
+    "sourceStashOriginalsCorporaPreserved": true,
+    "completeHostInactivityClaim": false,
     "parentAndRomStatus": "IN_PROGRESS"
   }
 }

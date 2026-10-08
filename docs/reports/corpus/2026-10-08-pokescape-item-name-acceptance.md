@@ -38,6 +38,6 @@ Only `language_overlay:en` changes; all17 other complete sections, both maps, as
 
 ## Required continuation
 
-Publish and verify this acceptance, retain compact pinned private evidence, then inspect/ticket/apply exact registered expendable outputs after consumers finish. Cleanup is pending, not claimed complete here.
+Acceptance `8b830e93` published and both fork refs verified. Compact417 members/2,787,457 bytes reverified; all4,026 signed expendable output members inspected across41 pages and deleted through the installed transactional ticket,130,093,660 logical bytes. Nine exact roots absent, zero residuals/errors/warnings; source/stash/originals/corpora preserved. No Gradle mutex or build for cleanup; no complete-host inactivity claim. Required item-name leaf blockers/deferrals=0 at the stated boundary.
 
 Continue the same ROM: ability mechanics/typed modifiers, required Local map names270/484, encounter names201/202 and POI text1326/2149, plus applicable machine/tutor confidence/validation gaps. No ROM switch, live/device acceptance, APK/signing, new tag or public release is claimed by this leaf.

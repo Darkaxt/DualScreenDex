@@ -1,6 +1,6 @@
 # Pokescape native item names — bounded same-ROM contract
 
-**Status: IN_PROGRESS. Authorization: already_authorized.** The [parent specification](2026-10-07-all-rom-compatibility-completion-design.md) remains authoritative. This independent required static-text batch is scheduled before further mechanics composition; it does not close, waive or replace [AM-01–07](2026-10-07-pokescape-native-ability-mechanics-design.md). Pokescape remains the sole implementation target. Accepted coverage is 95.83%; mechanics remains NOT_FOUND, 0/298. The requested release remains pending current-ROM completion.
+**Status: COMPLETE at the bounded host/static requested-item-name boundary; parent/ROM/release IN_PROGRESS. Authorization: already_authorized.** The [parent specification](2026-10-07-all-rom-compatibility-completion-design.md) remains authoritative. This independent required static-text batch is scheduled before further mechanics composition; it does not close, waive or replace [AM-01–07](2026-10-07-pokescape-native-ability-mechanics-design.md). Pokescape remains the sole implementation target. Accepted coverage is 95.83%; mechanics remains NOT_FOUND, 0/298. The requested release remains pending current-ROM completion.
 
 ## Established diagnosis and limits
 
