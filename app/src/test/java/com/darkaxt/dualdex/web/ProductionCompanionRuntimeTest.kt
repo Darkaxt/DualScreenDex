@@ -1943,7 +1943,7 @@ class ProductionCompanionRuntimeTest {
         runtime.load("incoming.gba", RomImage(ByteArray(0xC0)))
         executor.runNext()
 
-        assertEquals(1, writes.writeCalls)
+        assertEquals(0, writes.writeCalls)
         assertTrue(publications.none { (ready, hash) -> ready || hash == incoming.romSha256 })
         assertNull(runtime.catalogHash())
         assertFalse(runtime.gateway.bootstrap().catalogReady)

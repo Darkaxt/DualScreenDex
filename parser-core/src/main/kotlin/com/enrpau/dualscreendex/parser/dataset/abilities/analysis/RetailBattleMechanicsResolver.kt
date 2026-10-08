@@ -353,6 +353,12 @@ object RetailBattleMechanicsResolver {
         var edges = 0
         var offset = 0
         while (offset <= image.size - 4) {
+            // Only a Thumb BL high half (0xF000-0xF7FF) can decode to a linked branch; skip the full
+            // decode for every other halfword of the ROM.
+            if (image.u16le(offset) and 0xF800 != 0xF000) {
+                offset += 2
+                continue
+            }
             val instruction = decoded(image, offset)
             val branch = instruction as? Arm7Branch
             if (branch?.link == true && branch.instructionSet == Arm7InstructionSet.THUMB) {
@@ -371,6 +377,11 @@ object RetailBattleMechanicsResolver {
     private fun decodedLiteralReferences(image: RomImage, target: Int): Set<Int> = buildSet {
         var offset = 0
         while (offset <= image.size - 2) {
+            // Only `ldr rD, [pc, #imm]` (0x4800-0x4FFF) decodes to a PC-relative word load.
+            if (image.u16le(offset) and 0xF800 != 0x4800) {
+                offset += 2
+                continue
+            }
             val transfer = decoded(image, offset) as? Arm7MemoryTransfer
             val address = transfer?.address as? Arm7Address.PcRelative
             if (transfer?.load == true && transfer.width == Arm7MemoryWidth.WORD &&

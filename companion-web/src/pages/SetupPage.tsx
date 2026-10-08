@@ -1,6 +1,6 @@
 import { Header } from '../components';
 import { formatUiNumber, msg, pluralCategory } from '../i18n';
-import type { RetroArchState, State } from '../models';
+import { isGameLive, type RetroArchState, type State } from '../models';
 import { renderPresentationMessage } from '../presentationMessages';
 
 const disconnected: RetroArchState = {
@@ -67,7 +67,7 @@ export function SetupPage({ state, send }: { state: State; send: (type: string, 
       <SetupStep number="3" title={msg('liveSession')} status={retroArch.connection}>
         <div class="setup-facts">
           <span><small>{msg('game')}</small><strong>{retroArch.gameBasename ?? msg('noGameOpen')}</strong></span>
-          <span><small>{msg('companion')}</small><strong>{retroArch.connection === 'CONNECTED' ? msg('ready') : msg('waitingForGame')}</strong></span>
+          <span><small>{msg('companion')}</small><strong>{isGameLive(retroArch.connection) ? msg('ready') : msg('waitingForGame')}</strong></span>
         </div>
         <a class="setup-action setup-action-primary" href="dualdex://open/retroarch">{msg('openRetroArch')}</a>
         {retroArch.resolution === 'FAILED' && <>
@@ -94,6 +94,7 @@ function SetupStep({ number, title, status, children }: { number: string; title:
 function setupStatusLabel(status: string): string {
   const labels: Record<string, string> = {
     GRANTED: msg('ready'), VERIFIED: msg('ready'), CONNECTED: msg('connected'),
+    CONTENTLESS: msg('connected'), PLAYING: msg('connected'), PAUSED: msg('connected'),
     MISSING: msg('needsAccess'), NOT_CONFIGURED: msg('needsSetup'), RESTART_REQUIRED: msg('restartNeeded'),
     DISCONNECTED: msg('notConnected'), CONNECTING: msg('connecting'),
   };

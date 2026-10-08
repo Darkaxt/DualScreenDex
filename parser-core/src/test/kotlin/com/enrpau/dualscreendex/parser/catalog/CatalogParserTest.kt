@@ -685,6 +685,37 @@ class CatalogParserTest {
     }
 
     @Test
+    fun catalogThemeEvidenceRetainsOnlyTheLocalMapsTheThemeSamples() {
+        val rasters = (1..40).map { index ->
+            RgbaSprite(16, 16, IntArray(256) { pixel -> 0xff000000.toInt() or (index * 0x010203 + pixel) })
+        }
+        // The last map repeats the first raster so duplicates are covered too.
+        val mapRasters = rasters + rasters.first()
+        val local = LocalMapCatalog(
+            maps = mapRasters.indices.map { index ->
+                LocalMap("local/$index", "Local $index", index, 16, 16, 1, 1, "local/$index/map")
+            },
+            assets = mapRasters.withIndex().associate { (index, raster) ->
+                "local/$index/map" to PngMapAsset(PngEncoder.encode(raster))
+            },
+        )
+
+        val retained = CatalogMaterializer.catalogThemeAssets(
+            emptyMap(),
+            TrainerAssetCatalog(),
+            WorldMapCatalog(),
+            local,
+        ).getValue(CatalogThemeAssetClass.LOCAL_MAP)
+
+        val expected = rasters.sortedBy(RomThemeMaterializer::assetFingerprint).take(16)
+        assertEquals(expected.toSet(), retained.toSet())
+        assertEquals(
+            RomThemeMaterializer.materialize(mapOf(CatalogThemeAssetClass.LOCAL_MAP to rasters, CatalogThemeAssetClass.SPECIES to rasters)),
+            RomThemeMaterializer.materialize(mapOf(CatalogThemeAssetClass.LOCAL_MAP to retained, CatalogThemeAssetClass.SPECIES to rasters)),
+        )
+    }
+
+    @Test
     fun reportsStructurallyResolvedPartialAbilityDescriptionsForManualReview() {
         val count = 21
         val bytes = ByteArray(0x8000) { 0xFF.toByte() }

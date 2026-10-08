@@ -536,6 +536,22 @@ class CatalogStoreTest {
     }
 
     @Test
+    fun revision92CachesWithTheUnsignedLiveClockRootAreRejectedAndCurrentReopens() {
+        val root = newRoot().toFile()
+        val cache = CatalogCache(root, JdbcCatalogDatabaseFactory)
+        val catalog = completeCatalog("9".repeat(64))
+        val source = CatalogSourceMetadata.direct("Synthetic.gba", 65536, "SYNTHETIC")
+        cache.write(catalog, source, CatalogWriteProgress.complete())
+        JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
+            database.execute("UPDATE catalog_metadata SET parser_schema_version = 92 WHERE id = 1")
+            assertNull(CatalogReader(database).readComplete())
+        }
+        cache.write(catalog, source, CatalogWriteProgress.complete())
+        assertEquals(catalog, requireNotNull(CatalogCache(root, JdbcCatalogDatabaseFactory).readComplete(catalog.romSha256)).catalog)
+        assertTrue(CatalogSchema.parserSchemaVersion > 92)
+    }
+
+    @Test
     fun revision82CachesBeforeCompiledCoreExpansionAreRejectedAndCurrentReopens() {
         val root = newRoot().toFile()
         val cache = CatalogCache(root, JdbcCatalogDatabaseFactory)

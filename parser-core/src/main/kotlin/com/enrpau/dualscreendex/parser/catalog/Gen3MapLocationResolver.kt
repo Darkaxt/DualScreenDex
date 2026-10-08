@@ -360,7 +360,22 @@ object Gen3MapLocationResolver {
      * zero-extension and four-byte pointer indexing. The data arrays may be sparse or relocated;
      * only the required encounter keys are authoritative.
      */
+    /** The whole-ROM scan below is a pure function of the ROM and runs several times per parse. */
+    private var compiledRootsCache: Pair<java.lang.ref.WeakReference<RomImage>, List<MapGroupsLayout>>? = null
+
     private fun findCompiledMapGroupsConsumerRoots(
+        rom: RomImage,
+        cancellation: ParserCancellationToken,
+    ): List<MapGroupsLayout> {
+        synchronized(this) {
+            compiledRootsCache?.takeIf { (cachedRom, _) -> cachedRom.get() === rom }?.let { return it.second }
+        }
+        val roots = scanCompiledMapGroupsConsumerRoots(rom, cancellation)
+        synchronized(this) { compiledRootsCache = java.lang.ref.WeakReference(rom) to roots }
+        return roots
+    }
+
+    private fun scanCompiledMapGroupsConsumerRoots(
         rom: RomImage,
         cancellation: ParserCancellationToken,
     ): List<MapGroupsLayout> = buildList {

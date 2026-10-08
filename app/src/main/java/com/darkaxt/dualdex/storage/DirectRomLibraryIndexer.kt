@@ -4,7 +4,7 @@ import com.darkaxt.dualdex.retroarch.RomIndexEntry
 import java.io.File
 
 class DirectRomLibraryIndexer internal constructor(
-    private val traversalQuota: StorageTraversalQuota = StorageTraversalPolicy.DEFAULT,
+    private val traversalQuota: StorageTraversalQuota = StorageTraversalPolicy.ROM_LIBRARY,
     private val identityReader: (File) -> StreamingRomSourceIdentity = StreamingRomSourceReader::read,
 ) {
     fun index(
@@ -55,7 +55,8 @@ class DirectRomLibraryIndexer internal constructor(
         DirectFileTraversal.visitFiles(
             roots = roots,
             quota = traversalQuota,
-            skipDirectory = { directory -> directory.isProtectedAndroidDirectory() },
+            // Dot-folders (.thumbnails, .Spotlight-V100, .Trash) hold caches and metadata, never ROMs.
+            skipDirectory = { directory -> directory.isHidden || directory.isProtectedAndroidDirectory() },
         ) { candidate, budget ->
             if (candidate.extension.lowercase() in SUPPORTED_EXTENSIONS) {
                 budget.retainResult()

@@ -7,7 +7,12 @@ enum class Arm7Register(val index: Int) {
     R8(8), R9(9), R10(10), R11(11), R12(12), SP(13), LR(14), PC(15);
 
     companion object {
-        fun fromIndex(index: Int): Arm7Register = entries.firstOrNull { it.index == index }
+        // Called for every operand of every decoded instruction, so index directly instead of searching.
+        private val byIndex = entries.sortedBy(Arm7Register::index).also { registers ->
+            check(registers.map(Arm7Register::index) == (0..15).toList())
+        }.toTypedArray()
+
+        fun fromIndex(index: Int): Arm7Register = byIndex.getOrNull(index)
             ?: throw IllegalArgumentException("ARM register index must be in 0..15: $index")
     }
 }
@@ -49,12 +54,12 @@ data class Arm7RegisterOperand(
         require(alignDownTo > 0 && alignDownTo.countOneBits() == 1)
     }
 
-    override val registersRead: Set<Arm7Register> = setOf(register)
+    override val registersRead: Set<Arm7Register> get() = setOf(register)
 }
 
 data class Arm7Immediate(val value: Long) : Arm7Operand {
     constructor(value: Int) : this(value.toLong())
-    override val registersRead: Set<Arm7Register> = emptySet()
+    override val registersRead: Set<Arm7Register> get() = emptySet()
 }
 
 data class Arm7RotatedImmediate(
@@ -69,8 +74,8 @@ data class Arm7RotatedImmediate(
         require(value in 0..0xFFFF_FFFFL)
     }
 
-    override val registersRead: Set<Arm7Register> = emptySet()
-    override val flagsRead: Set<Arm7Flag> =
+    override val registersRead: Set<Arm7Register> get() = emptySet()
+    override val flagsRead: Set<Arm7Flag> get() =
         if (carryInWhenUnrotated && rotateRight == 0) setOf(Arm7Flag.C) else emptySet()
 }
 
@@ -81,11 +86,11 @@ sealed interface Arm7ShiftAmount {
 
     data class Immediate(val value: Int) : Arm7ShiftAmount {
         init { require(value in 0..32) }
-        override val registersRead: Set<Arm7Register> = emptySet()
+        override val registersRead: Set<Arm7Register> get() = emptySet()
     }
 
     data class Register(val register: Arm7Register) : Arm7ShiftAmount {
-        override val registersRead: Set<Arm7Register> = setOf(register)
+        override val registersRead: Set<Arm7Register> get() = setOf(register)
     }
 }
 
@@ -97,8 +102,8 @@ data class Arm7ShiftedRegister(
     val pcBias: Int = 0,
 ) : Arm7Operand {
     init { require(pcBias == 0 || register == Arm7Register.PC) }
-    override val registersRead: Set<Arm7Register> = setOf(register) + amount.registersRead
-    override val flagsRead: Set<Arm7Flag> = if (carryInWhenZero) setOf(Arm7Flag.C) else emptySet()
+    override val registersRead: Set<Arm7Register> get() = setOf(register) + amount.registersRead
+    override val flagsRead: Set<Arm7Flag> get() = if (carryInWhenZero) setOf(Arm7Flag.C) else emptySet()
 }
 
 sealed interface Arm7Address {
@@ -122,7 +127,7 @@ sealed interface Arm7Address {
             require(alignBaseTo > 0 && alignBaseTo.countOneBits() == 1)
         }
 
-        override val registersRead: Set<Arm7Register> = buildSet {
+        override val registersRead: Set<Arm7Register> get() = buildSet {
             add(base)
             index?.let(::add)
         }
@@ -137,8 +142,8 @@ sealed interface Arm7Address {
         val basePcBias: Int = 0,
     ) : Arm7Address {
         init { require(basePcBias == 0 || base == Arm7Register.PC) }
-        override val registersRead: Set<Arm7Register> = setOf(base) + index.registersRead
-        override val flagsRead: Set<Arm7Flag> = index.flagsRead
+        override val registersRead: Set<Arm7Register> get() = setOf(base) + index.registersRead
+        override val flagsRead: Set<Arm7Flag> get() = index.flagsRead
     }
 
     data class PcRelative(
@@ -147,7 +152,7 @@ sealed interface Arm7Address {
         val alignBaseTo: Int,
         val resolvedAddress: Long,
     ) : Arm7Address {
-        override val registersRead: Set<Arm7Register> = setOf(Arm7Register.PC)
+        override val registersRead: Set<Arm7Register> get() = setOf(Arm7Register.PC)
     }
 }
 

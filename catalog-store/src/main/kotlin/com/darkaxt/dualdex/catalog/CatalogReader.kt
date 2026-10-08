@@ -44,7 +44,10 @@ import com.enrpau.dualscreendex.parser.model.TableLayout
 import com.enrpau.dualscreendex.parser.dataset.natures.NatureRecord
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import com.google.gson.TypeAdapter
 import com.google.gson.reflect.TypeToken
+import com.google.gson.stream.JsonReader
+import com.google.gson.stream.JsonWriter
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.FilterInputStream
@@ -791,7 +794,12 @@ private fun <K> Map<K, CatalogField<String>?>?.requiredTextMap(label: String): M
     }
 
 internal class CatalogSectionCodec {
-    private val gson: Gson = GsonBuilder().serializeNulls().create()
+    // Gson writes ByteArray as a JSON number list (~3.5 characters per byte). Local-map PNGs for a full
+    // Gen III region reach ~10 MiB, which became ~32 MiB of JSON that was encoded twice per first load.
+    private val gson: Gson = GsonBuilder()
+        .serializeNulls()
+        .registerTypeAdapter(ByteArray::class.java, Base64ByteArrayAdapter.nullSafe())
+        .create()
     private val speciesType = type<Map<Int, SpeciesRecord>>()
     private val movesType = type<Map<Int, MoveRecord>>()
     private val typesType = type<Map<Int, TypeRecord>>()
@@ -1157,3 +1165,12 @@ private fun CatalogRow.requiredString(column: String): String =
 
 private fun CatalogRow.requiredLong(column: String): Long =
     requireNotNull(long(column)) { "catalog column $column is null" }
+
+/** Stores binary payloads (local-map PNGs) as one Base64 string instead of a JSON number per byte. */
+private object Base64ByteArrayAdapter : TypeAdapter<ByteArray>() {
+    override fun write(out: JsonWriter, value: ByteArray) {
+        out.value(java.util.Base64.getEncoder().encodeToString(value))
+    }
+
+    override fun read(input: JsonReader): ByteArray = java.util.Base64.getDecoder().decode(input.nextString())
+}

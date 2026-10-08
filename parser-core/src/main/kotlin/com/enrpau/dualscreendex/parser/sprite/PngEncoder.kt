@@ -13,21 +13,24 @@ object PngEncoder {
     ): ByteArray {
         require(sprite.argb.size == sprite.width * sprite.height)
         cancellation.throwIfCancellationRequested()
-        val raw = ByteArrayOutputStream()
+        // Fill the filtered scanlines into one array: ByteArrayOutputStream.write(Int) is synchronized
+        // and was called four times per pixel for hundreds of full-size map renders.
+        val stride = sprite.width * 4 + 1
+        val raw = ByteArray(Math.multiplyExact(sprite.height, stride))
         repeat(sprite.height) { y ->
             cancellation.throwIfCancellationRequested()
-            raw.write(0)
+            var cursor = y * stride + 1
             repeat(sprite.width) { x ->
                 val color = sprite.argb[y * sprite.width + x]
-                raw.write(color ushr 16 and 0xFF)
-                raw.write(color ushr 8 and 0xFF)
-                raw.write(color and 0xFF)
-                raw.write(color ushr 24 and 0xFF)
+                raw[cursor++] = (color ushr 16).toByte()
+                raw[cursor++] = (color ushr 8).toByte()
+                raw[cursor++] = color.toByte()
+                raw[cursor++] = (color ushr 24).toByte()
             }
         }
         cancellation.throwIfCancellationRequested()
         val compressed = ByteArrayOutputStream().also { output ->
-            DeflaterOutputStream(output).use { it.write(raw.toByteArray()) }
+            DeflaterOutputStream(output).use { it.write(raw) }
         }.toByteArray()
         cancellation.throwIfCancellationRequested()
         return ByteArrayOutputStream().also { png ->

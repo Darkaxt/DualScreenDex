@@ -191,7 +191,7 @@ object RomThemeMaterializer {
         return red * red + green * green + blue * blue
     }
 
-    private fun assetFingerprint(sprite: RgbaSprite): Long {
+    internal fun assetFingerprint(sprite: RgbaSprite): Long {
         var hash = FNV_OFFSET
         hash = (hash xor sprite.width.toLong()) * FNV_PRIME
         hash = (hash xor sprite.height.toLong()) * FNV_PRIME
@@ -209,7 +209,7 @@ object RomThemeMaterializer {
     private const val MINIMUM_ASSET_CLASSES = 2
     private const val MINIMUM_DIRECT_COLORS = 4
     private const val MINIMUM_QUANTIZED_COLORS = 2
-    private const val MAX_ASSETS_PER_CLASS = 16
+    internal const val MAX_ASSETS_PER_CLASS = 16
     private const val MAX_SAMPLES_PER_ASSET = 512
     private const val MINIMUM_ALPHA = 0x80
     private const val BLACK = 0x000000

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import type { Catalog, State } from '../models';
+import { isRetroArchReachable, type Catalog, type State } from '../models';
 import { Header, SegmentedChoice } from '../components';
 import { formatUiDate, formatUiNumber, msg } from '../i18n';
 import { renderPresentationMessage } from '../presentationMessages';
@@ -185,7 +185,7 @@ function formatTime(epochMs: number | null | undefined): string {
 }
 
 function retroArchConnectionLabel(connection: string | null | undefined): string {
-  if (connection === 'CONNECTED') return msg('connected');
+  if (isRetroArchReachable(connection)) return msg('connected');
   if (connection === 'CONNECTING') return msg('connecting');
   return msg('notConnected');
 }
