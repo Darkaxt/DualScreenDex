@@ -2,7 +2,9 @@
 
 **Status: IN_PROGRESS. Authorization: already_authorized.** Same-ROM required work under [the parent specification](2026-10-07-all-rom-compatibility-completion-design.md). This scheduling does not waive [native mechanics](2026-10-07-pokescape-native-ability-mechanics-design.md), advance to another ROM, or authorize a release before current-ROM acceptance.
 
-Current accepted parser94 catalog: Local names270/484, encounter names201/202, POI text1326/2149; weighted coverage95.83%, mechanics0/298. Preserve the accepted item baseline `3d16d40eb1e0668a182533f94c8eed522b313a1831018afc58422326394634cc` and its independently verified historical ability-text reversal. The prior World Map leaf proves a guarded213-row compiled region-entry reader, not names outside that domain.
+Batch-entry accepted parser94 catalog: Local names270/484, encounter names201/202, POI text1326/2149; weighted coverage95.83%, mechanics0/298. Preserve the accepted item baseline `3d16d40eb1e0668a182533f94c8eed522b313a1831018afc58422326394634cc` and its independently verified historical ability-text reversal. The prior World Map leaf proves a guarded213-row compiled region-entry reader, not names outside that domain.
+
+The [accepted bounded-name batch](../../reports/corpus/2026-10-09-pokescape-map-name-acceptance.md) at `ecc26c96`, parser95/SQL2 now verifies Local482/484 and POI1769/2149 on unchanged stored references; encounter201/202, score95.83% and mechanics0/298 remain unchanged. Future behavior changes must also preserve current map-name baseline `aae4394d40b51168409ac0ded6df4d61a1f9f768fc0b7c8ce473cd54ef383190` and its exact item/historical ability reversals. Derived destination/exit/scene projections are not fresh native semantic validation. Remaining text/validation and zero-gap completion criteria are unchanged.
 
 ## Diagnosis and architecture
 

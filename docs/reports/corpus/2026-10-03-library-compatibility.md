@@ -15,6 +15,7 @@ Capability percentages are confidence from bounded compiled structural evidence,
 - Focused one-input Pokescape native species-category source: `6853d5d6a0d464d21613cd6f1b8f1156054dad34` ([acceptance](2026-10-07-pokescape-species-category-acceptance.md)); SPECIES_CATEGORIES 1,235/1,235, score unchanged 87.50%.
 - Focused one-input Pokescape native ability-text/species-join source: `2a9178406f782bbd66ed9ed219bf89eff7765220` ([acceptance](2026-10-07-pokescape-ability-text-acceptance.md));298 names/descriptions,1,235 joins/2,697 edges; score87.50%→95.83%, mechanics still NOT_FOUND.
 - Focused one-input Pokescape native requested item-name source: `eaaaaff19306cd012c70611ca7ee1a6f7349ca5a` ([acceptance](2026-10-08-pokescape-item-name-acceptance.md));105/105 names,12 ball references/274 item-POI joins; POI_TEXT1326/2149, score unchanged95.83%, mechanics still0/298.
+- Focused one-input Pokescape bounded native map-name source: `ecc26c969810fa39987febb397b3846c3d6f30f9` ([acceptance](2026-10-09-pokescape-map-name-acceptance.md)); Local names482/484, POI_TEXT1769/2149,212new native map-name joins/443new labels projected on unchanged stored destination references. No new native warp/exit/scene semantic validation; two Local/one encounter/380POI obligations remain. Score95.83% and mechanics0/298 unchanged;341other rows/history preserved.
 - Inputs: **342**
 - Detected family and materialized catalog: **301**
 - Persisted and exactly reopened SQLite catalogs: **301**

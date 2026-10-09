@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "date": "2026-10-03",
-  "verifiedDate": "2026-10-08",
-  "evidenceMode": "full342-baseline-with-focused-gen2-relationships-gen3-wide-core-and-pokescape-map-moves-dex-move-text-type-names-species-categories-ability-text-item-names",
+  "verifiedDate": "2026-10-09",
+  "evidenceMode": "full342-baseline-with-focused-gen2-relationships-gen3-wide-core-and-pokescape-map-moves-dex-move-text-type-names-species-categories-ability-text-item-names-bounded-map-names",
   "corpusInputDigestSha256": "733e36785fa9a5b71bc4121343a6b6d2cbd27e43e08b3fddc2e2870bac1a0561",
   "summary": {
     "inputCount": 342,
@@ -5907,8 +5907,8 @@
     },
     {
       "name": "Pokescape (v1.0.4).gba",
-      "evidence": "focused-pokescape-native-item-names-and-requested-joins-source-bound",
-      "sourceCommit": "eaaaaff19306cd012c70611ca7ee1a6f7349ca5a",
+      "evidence": "focused-pokescape-native-bounded-map-names-and-unchanged-reference-projections-source-bound",
+      "sourceCommit": "ecc26c969810fa39987febb397b3846c3d6f30f9",
       "aliases": [
         {
           "archive": "Pokemon Pokescape (v1.0.4).7z",
@@ -6106,8 +6106,8 @@
         "referenceErrors": 0,
         "sqliteReopenEqualityVerified": true,
         "logicalDigestVersion": 1,
-        "beforeCatalogSha256": "3d16d40eb1e0668a182533f94c8eed522b313a1831018afc58422326394634cc",
-        "afterCatalogSha256": "3d16d40eb1e0668a182533f94c8eed522b313a1831018afc58422326394634cc"
+        "beforeCatalogSha256": "aae4394d40b51168409ac0ded6df4d61a1f9f768fc0b7c8ce473cd54ef383190",
+        "afterCatalogSha256": "aae4394d40b51168409ac0ded6df4d61a1f9f768fc0b7c8ce473cd54ef383190"
       },
       "localizedCapabilities": {
         "SPECIES_NAMES": {
@@ -6193,15 +6193,15 @@
         "AREA_NAMES": {
           "status": "AVAILABLE",
           "confidence": 1.0,
-          "coveredRecords": 270,
-          "expectedRecords": 270,
+          "coveredRecords": 482,
+          "expectedRecords": 482,
           "reviewStatus": "NONE",
           "validatorReviewRecommended": false
         },
         "LOCAL_MAP_NAMES": {
           "status": "PARTIAL",
           "confidence": 1.0,
-          "coveredRecords": 270,
+          "coveredRecords": 482,
           "expectedRecords": 484,
           "reviewStatus": "NONE",
           "validatorReviewRecommended": false
@@ -6233,11 +6233,29 @@
         "POI_TEXT": {
           "status": "PARTIAL",
           "confidence": 1.0,
-          "coveredRecords": 1326,
+          "coveredRecords": 1769,
           "expectedRecords": 2149,
           "reviewStatus": "NONE",
           "validatorReviewRecommended": false
         }
+      },
+      "areaGuide": {
+        "areaIdentities": 520,
+        "namedAreaIdentities": 482,
+        "exitRecords": 946,
+        "resolvedExitRecords": 870,
+        "encounterSpeciesRecords": 1936,
+        "namedEncounterSpeciesRecords": 1936,
+        "encounterWindowGroups": 202,
+        "resolvedEncounterWindowGroups": 202,
+        "encounterLevelRecords": 1936,
+        "resolvedEncounterLevelRecords": 1936,
+        "encounterRateRecords": 1936,
+        "resolvedEncounterRateRecords": 1936,
+        "localMapCount": 520,
+        "poiBearingMapCount": 457,
+        "poiRecords": 2149,
+        "poiRecordsWithContent": 666
       }
     },
     {
@@ -12440,13 +12458,13 @@
       }
     },
     {
-      "name": "Regisâ€™ Origin (v1.0).gba",
+      "name": "Regis\u00e2\u20ac\u2122 Origin (v1.0).gba",
       "evidence": "fresh-full342-source-bound",
       "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
       "aliases": [
         {
-          "archive": "Pokemon Regisâ€™ Origin (v1.0).7z",
-          "name": "Regisâ€™ Origin (v1.0).gba",
+          "archive": "Pokemon Regis\u00e2\u20ac\u2122 Origin (v1.0).7z",
+          "name": "Regis\u00e2\u20ac\u2122 Origin (v1.0).gba",
           "console": "Nintendo - Game Boy Advance"
         }
       ],
@@ -12915,13 +12933,13 @@
       }
     },
     {
-      "name": "PokÃ©mon Hearth (v0.1.27).gba",
+      "name": "Pok\u00c3\u00a9mon Hearth (v0.1.27).gba",
       "evidence": "fresh-full342-source-bound",
       "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
       "aliases": [
         {
           "archive": "Pokemon Hearth (v0.1.27).7z",
-          "name": "PokÃ©mon Hearth (v0.1.27).gba",
+          "name": "Pok\u00c3\u00a9mon Hearth (v0.1.27).gba",
           "console": "Nintendo - Game Boy Advance"
         }
       ],
@@ -42268,13 +42286,13 @@
       }
     },
     {
-      "name": "LetÂ´s Go Pikachu (v6.0).gba",
+      "name": "Let\u00c2\u00b4s Go Pikachu (v6.0).gba",
       "evidence": "fresh-full342-source-bound",
       "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
       "aliases": [
         {
-          "archive": "Pokemon LetÂ´s Go Pikachu (v6.0).7z",
-          "name": "LetÂ´s Go Pikachu (v6.0).gba",
+          "archive": "Pokemon Let\u00c2\u00b4s Go Pikachu (v6.0).7z",
+          "name": "Let\u00c2\u00b4s Go Pikachu (v6.0).gba",
           "console": "Nintendo - Game Boy Advance"
         }
       ],
@@ -47357,7 +47375,8 @@
     "f5a76c85f596fe4276293dedc3b0387980d2baa3",
     "6853d5d6a0d464d21613cd6f1b8f1156054dad34",
     "2a9178406f782bbd66ed9ed219bf89eff7765220",
-    "eaaaaff19306cd012c70611ca7ee1a6f7349ca5a"
+    "eaaaaff19306cd012c70611ca7ee1a6f7349ca5a",
+    "ecc26c969810fa39987febb397b3846c3d6f30f9"
   ],
   "focusedGen2Relationships": {
     "inputCount": 19,
@@ -47550,5 +47569,28 @@
     },
     "unaffectedRowsRetained": 341,
     "fullCorpusRerun": false
+  },
+  "focusedPokescapeMapNames": {
+    "inputCount": 1,
+    "sourceCommit": "ecc26c969810fa39987febb397b3846c3d6f30f9",
+    "parserSchemaVersion": 95,
+    "acceptance": "2026-10-09-pokescape-map-name-acceptance.json",
+    "executionReceiptSummary": {
+      "schemaVersion": 1,
+      "sourceCommit": "ecc26c969810fa39987febb397b3846c3d6f30f9",
+      "generator": {
+        "name": "parser-cli",
+        "schemaVersion": 16,
+        "sha256": "fc9468c6b2208f5972fa81dbad34f3fd319986f889c5b596205dcabc02b24c7f"
+      },
+      "rawReportSha256": "07142e1b33d63790ffca93a58b8be56526860554dd4aa3866831ab50995e1027",
+      "inputCount": 1
+    },
+    "unaffectedRowsRetained": 341,
+    "fullCorpusRerun": false,
+    "nativeMapNames": 482,
+    "newNativeMapNames": 212,
+    "newReferencedDestinationLabels": 443,
+    "nativeWarpOrExitSemanticsNewlyAccepted": false
   }
 }
