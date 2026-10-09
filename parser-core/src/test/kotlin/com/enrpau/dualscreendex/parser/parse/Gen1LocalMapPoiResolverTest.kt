@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.catalog.LocalMap
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiTextObligation
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoiKind
@@ -166,7 +167,7 @@ class Gen1LocalMapPoiResolverTest {
         assumeTrue("set DUALDEX_NATIVE_CONTROLS for exact Gen I reference evidence", !configured.isNullOrBlank())
         val directory = java.io.File(requireNotNull(configured), "ja/$family")
         val file = requireNotNull(directory.listFiles()).single { it.isFile }
-        val rom = RomImage(file.readBytes())
+        val rom = RomImage(OriginalRomTestAccess.readAllBytes(file.toPath()))
         assertEquals(sha, rom.sha256)
         lateinit var session: com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
         val analysis = ParserOrchestrator.analyze(rom) { image, header, profile ->

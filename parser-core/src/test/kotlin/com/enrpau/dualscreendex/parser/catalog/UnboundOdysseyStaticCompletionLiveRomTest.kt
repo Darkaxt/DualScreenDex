@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.catalog
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
@@ -129,7 +130,7 @@ class UnboundOdysseyStaticCompletionLiveRomTest {
         assumeTrue("set $environmentVariable to run this live-ROM regression", !configured.isNullOrBlank())
         val path = Path.of(requireNotNull(configured))
         assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
-        return RomImage(Files.readAllBytes(path)).also { rom ->
+        return RomImage(OriginalRomTestAccess.readAllBytes(path)).also { rom ->
             assertEquals(expectedSha256, rom.sha256)
         }
     }

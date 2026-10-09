@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.dataset.abilities.analysis
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7InstructionSet
 import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7Address
 import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7DataOperation
@@ -318,7 +319,7 @@ class BattleRoleProvenanceLiveRomTest {
             val configured = System.getenv(environmentVariable)?.takeIf(String::isNotBlank)
             val path = Path.of(configured ?: fallbackPath)
             assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
-            return RomImage(Files.readAllBytes(path)).also { image ->
+            return RomImage(OriginalRomTestAccess.readAllBytes(path)).also { image ->
                 assertEquals(sha256, image.sha256)
             }
         }

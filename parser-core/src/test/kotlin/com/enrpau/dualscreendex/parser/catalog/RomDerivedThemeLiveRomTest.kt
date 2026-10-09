@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.catalog
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.io.RomImage
 import java.nio.file.Files
 import java.nio.file.Path
@@ -14,7 +15,7 @@ class RomDerivedThemeLiveRomTest {
         assumeTrue("set DUALDEX_MODERN_EMERALD_ROM to run this exact theme control", !configured.isNullOrBlank())
         val path = Path.of(requireNotNull(configured))
         assumeTrue("real ROM does not exist: $path", Files.isRegularFile(path))
-        val rom = RomImage(Files.readAllBytes(path))
+        val rom = RomImage(OriginalRomTestAccess.readAllBytes(path))
         assertEquals("21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895", rom.sha256)
 
         val actual = requireNotNull(CatalogParser.parse(rom).catalog).theme.validate()
@@ -43,8 +44,8 @@ class RomDerivedThemeLiveRomTest {
             assumeTrue("set ${control.environmentVariable} to run this exact theme control", !configured.isNullOrBlank())
             val path = Path.of(requireNotNull(configured))
             assumeTrue("real ROM does not exist: $path", Files.isRegularFile(path))
-            val firstRom = RomImage(Files.readAllBytes(path))
-            val secondRom = RomImage(Files.readAllBytes(path))
+            val firstRom = RomImage(OriginalRomTestAccess.readAllBytes(path))
+            val secondRom = RomImage(OriginalRomTestAccess.readAllBytes(path))
             assertEquals(control.sha256, firstRom.sha256)
             assertEquals(firstRom.sha256, secondRom.sha256)
 

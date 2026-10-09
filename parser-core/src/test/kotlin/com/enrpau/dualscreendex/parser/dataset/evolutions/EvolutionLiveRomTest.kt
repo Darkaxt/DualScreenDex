@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.dataset.evolutions
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.EvolutionEdge
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
@@ -82,7 +83,7 @@ class EvolutionLiveRomTest {
 
         val configured = System.getenv(control.environmentVariable)
         assumeTrue("set ${control.environmentVariable} to run this live-ROM regression", !configured.isNullOrBlank())
-        val parsed = CatalogParser.parse(RomImage(Files.readAllBytes(Path.of(requireNotNull(configured)))))
+        val parsed = CatalogParser.parse(RomImage(OriginalRomTestAccess.readAllBytes(Path.of(requireNotNull(configured)))))
         val typed = requireNotNull(parsed.layout?.resolvedDatasets?.evolutions)
         val bulbasaur = typed.rows[1] as EvolutionRowOutcome.Decoded
         val ivysaur = typed.rows[2] as EvolutionRowOutcome.Decoded
@@ -152,7 +153,7 @@ class EvolutionLiveRomTest {
         assumeTrue("set $environmentVariable to run this live-ROM regression", !configured.isNullOrBlank())
         val path = Path.of(requireNotNull(configured))
         assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
-        val rom = RomImage(Files.readAllBytes(path))
+        val rom = RomImage(OriginalRomTestAccess.readAllBytes(path))
         assertEquals(expectedSha256, rom.sha256)
         val parsed = CatalogParser.parse(rom)
         val layout = requireNotNull(parsed.layout)
@@ -195,7 +196,7 @@ class EvolutionLiveRomTest {
         )
         val path = Path.of(requireNotNull(configured))
         assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
-        val rom = RomImage(Files.readAllBytes(path))
+        val rom = RomImage(OriginalRomTestAccess.readAllBytes(path))
         assertEquals(control.sha256, rom.sha256)
 
         val first = CatalogParser.parse(rom)
@@ -241,7 +242,7 @@ class EvolutionLiveRomTest {
         assertEquals(control.edges, firstEdges.values.sumOf(List<*>::size))
         assertEquals(control.semanticSha256, evolutionSha256(firstEdges))
 
-        val second = CatalogParser.parse(RomImage(Files.readAllBytes(path)))
+        val second = CatalogParser.parse(RomImage(OriginalRomTestAccess.readAllBytes(path)))
         val secondEdges = requireNotNull(second.catalog).navigableSpecies().associate { species ->
             species.id to species.evolutionEdges.value.orEmpty()
         }

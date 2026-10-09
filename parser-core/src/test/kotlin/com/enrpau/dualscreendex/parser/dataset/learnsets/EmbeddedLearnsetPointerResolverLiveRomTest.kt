@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.dataset.learnsets
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.RomImage
@@ -19,7 +20,7 @@ class EmbeddedLearnsetPointerResolverLiveRomTest {
         assumeTrue("set DUALDEX_DREAMSTONE_ROM to run this live-ROM regression", !configured.isNullOrBlank())
         val path = Path.of(requireNotNull(configured))
         assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
-        val original = Files.readAllBytes(path)
+        val original = OriginalRomTestAccess.readAllBytes(path)
         assertEquals(EXPECTED_SHA, RomImage(original).sha256)
 
         val selected = resolve(original)

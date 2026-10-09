@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.EngineFamily
@@ -66,7 +67,7 @@ class GbTrainerAssetResolverRealControlTest {
         assumeTrue("set ${control.environmentVariable} to run this real-ROM control", !configured.isNullOrBlank())
         val path = Path.of(requireNotNull(configured))
         assumeTrue("real ROM does not exist: $path", Files.isRegularFile(path))
-        return RomImage(Files.readAllBytes(path)).also { assertEquals(control.romSha256, it.sha256) }
+        return RomImage(OriginalRomTestAccess.readAllBytes(path)).also { assertEquals(control.romSha256, it.sha256) }
     }
 
     private fun IntArray.argbSha256(): String {

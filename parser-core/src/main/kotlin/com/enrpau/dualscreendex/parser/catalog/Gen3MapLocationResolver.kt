@@ -50,14 +50,15 @@ object Gen3MapLocationResolver {
     ): Map<Int, String> {
         cancellation.throwIfCancellationRequested()
         if (codec == null) return emptyMap()
-        val resolution = resolveDetailed(rom, encounterBaseIds, references, codec, cancellation)
-        if (resolution != null) {
-            return resolution.entriesBySection.mapNotNull { (section, entry) ->
-                entry.displayName?.takeIf { section !in resolution.contextualSections }?.let { section to it }
-            }.toMap()
-        }
         val sections = resolveHeaderByBaseArea(rom, encounterBaseIds, references, cancellation).values
             .map { rom.u8(it + REGION_SECTION_OFFSET) }.toSet()
+        val entries = findRegionEntryResolution(rom, sections, codec, cancellation, references, extentLimit)
+        if (entries != null) {
+            val contextualSections = resolveContextualSections(rom, entries.root, sections, cancellation)
+            return entries.entries.mapNotNull { (section, entry) ->
+                entry.displayName?.takeIf { section !in contextualSections }?.let { section to it }
+            }.toMap()
+        }
         val names = com.enrpau.dualscreendex.parser.parse.CompiledRegionSectionNames.resolve(
             rom,
             references,
@@ -66,7 +67,7 @@ object Gen3MapLocationResolver {
             cancellation,
             extentLimit,
         )
-        val contextualSections = findRegionEntryResolution(rom, sections, codec, cancellation, references)?.let { entries ->
+        val contextualSections = findRegionEntryResolution(rom, sections, codec, cancellation, references, extentLimit)?.let { entries ->
             resolveContextualSections(rom, entries.root, sections, cancellation)
         }.orEmpty()
         return names - contextualSections
@@ -832,11 +833,12 @@ object Gen3MapLocationResolver {
         codec: PokemonTextCodec?,
         cancellation: ParserCancellationToken,
         references: GbaReferenceIndex? = null,
+        extentLimit: Long = com.enrpau.dualscreendex.parser.analysis.ResolutionLimits().maxDatasetExtentBytes,
     ): RegionEntryResolution? {
         cancellation.throwIfCancellationRequested()
         if (sectionIds.isEmpty()) return null
         if (references != null) {
-            val compiled = CompiledGen3RegionEntryTable.discover(rom, references, cancellation)
+            val compiled = CompiledGen3RegionEntryTable.discover(rom, references, cancellation, extentLimit)
             if (compiled.rejected) return null
             if (compiled.tables.isNotEmpty()) {
                 val table = compiled.tables.singleOrNull() ?: return null

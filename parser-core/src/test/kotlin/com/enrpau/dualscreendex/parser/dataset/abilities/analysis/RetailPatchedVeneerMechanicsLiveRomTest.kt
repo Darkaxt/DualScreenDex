@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.dataset.abilities.analysis
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7Address
 import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7DecodeResult
@@ -62,7 +63,7 @@ class RetailPatchedVeneerMechanicsLiveRomTest {
             "D:/Temp/dualdex-expanded-corpus/roms/0020-520ba69bb172/Blazing Emerald (v1.6).gba",
         )
         assumeTrue("Blazing Emerald control does not exist: $path", Files.isRegularFile(path))
-        return RomImage(Files.readAllBytes(path)).also {
+        return RomImage(OriginalRomTestAccess.readAllBytes(path)).also {
             assertEquals("2ff14043118132e9816fac3f20b3a85011b3e8ac5361a0499264dbebe4f096dc", it.sha256)
         }
     }

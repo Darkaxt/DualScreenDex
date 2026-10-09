@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.catalog
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.language.LanguageResolutionStatus
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
@@ -23,7 +24,7 @@ class CatalogReferenceLiveRomTest {
         assumeTrue("set DUALDEX_RADICAL_RED_ROM to run this live-ROM regression", !configuredPath.isNullOrBlank())
         val path = Path.of(requireNotNull(configuredPath))
         assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
-        val rom = RomImage(Files.readAllBytes(path))
+        val rom = RomImage(OriginalRomTestAccess.readAllBytes(path))
         assertEquals("679d112cdfe699c2793d82c7e7999ac9dfca9e222ad5a85d4f8f1e457cd0283f", rom.sha256)
 
         val parsed = CatalogParser.parse(rom)
@@ -102,7 +103,7 @@ class CatalogReferenceLiveRomTest {
         assumeTrue("set DUALDEX_DREAMS_ROM to run this live-ROM regression", !configuredPath.isNullOrBlank())
         val path = Path.of(requireNotNull(configuredPath))
         assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
-        val rom = RomImage(Files.readAllBytes(path))
+        val rom = RomImage(OriginalRomTestAccess.readAllBytes(path))
         assertEquals("ad73b864873f17add4f931315d3162b792b19c65133c7a6819a85866b1afa403", rom.sha256)
 
         val parsed = CatalogParser.parse(rom)
@@ -142,7 +143,7 @@ class CatalogReferenceLiveRomTest {
         assumeTrue("set $environmentVariable to run this live-ROM regression", !configuredPath.isNullOrBlank())
         val path = Path.of(requireNotNull(configuredPath))
         assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
-        val rom = RomImage(Files.readAllBytes(path))
+        val rom = RomImage(OriginalRomTestAccess.readAllBytes(path))
         assertEquals(expectedSha256, rom.sha256)
         val parsed = CatalogParser.parse(rom)
         assertNotNull(parsed.catalog)

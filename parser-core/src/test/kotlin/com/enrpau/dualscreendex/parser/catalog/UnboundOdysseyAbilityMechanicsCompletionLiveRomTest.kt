@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.catalog
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.RomCapability
@@ -142,7 +143,7 @@ class UnboundOdysseyAbilityMechanicsCompletionLiveRomTest {
     private fun parse(path: String, sha256: String): ParsedCatalog {
         val romPath = Path.of(path)
         assumeTrue("live ROM does not exist: $romPath", Files.isRegularFile(romPath))
-        val rom = RomImage(Files.readAllBytes(romPath))
+        val rom = RomImage(OriginalRomTestAccess.readAllBytes(romPath))
         assertEquals(sha256, rom.sha256)
         return requireNotNull(CatalogParser.parse(rom).catalog)
     }

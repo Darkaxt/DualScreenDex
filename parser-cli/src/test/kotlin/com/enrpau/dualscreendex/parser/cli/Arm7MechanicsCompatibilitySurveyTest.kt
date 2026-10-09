@@ -104,7 +104,7 @@ class Arm7MechanicsCompatibilitySurveyTest {
     ): SurveyRow {
         val path = Path.of(manifest.string("ExtractedPath"))
         val expectedSha = manifest.string("RomSha256").lowercase()
-        val bytes = Files.readAllBytes(path)
+        val bytes = OriginalRomTestAccess.readAllBytes(path)
         val firstRom = RomImage(bytes)
         val secondRom = RomImage(bytes.copyOf())
         assertEquals(expectedSha, firstRom.sha256)

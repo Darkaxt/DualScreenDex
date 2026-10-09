@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.dataset.types
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.RecordMaterializers
 import com.enrpau.dualscreendex.parser.io.RomImage
@@ -43,7 +44,7 @@ class TypeChartLiveRomTest {
         assumeTrue("set $environmentVariable to run this live-ROM regression", !configured.isNullOrBlank())
         val path = Path.of(requireNotNull(configured))
         assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
-        val rom = RomImage(Files.readAllBytes(path))
+        val rom = RomImage(OriginalRomTestAccess.readAllBytes(path))
         assertEquals(expectedSha256, rom.sha256)
 
         val parsed = CatalogParser.parse(rom)

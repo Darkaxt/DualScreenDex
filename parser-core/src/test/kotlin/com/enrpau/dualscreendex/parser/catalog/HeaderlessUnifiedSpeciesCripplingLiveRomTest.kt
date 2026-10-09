@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.catalog
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.EngineFamily
@@ -22,7 +23,7 @@ class HeaderlessUnifiedSpeciesCripplingLiveRomTest {
         assumeTrue("set DUALDEX_CRIPPLING_ROM to run this live-ROM regression", !configured.isNullOrBlank())
         val path = Path.of(requireNotNull(configured))
         assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
-        val rom = RomImage(Files.readAllBytes(path))
+        val rom = RomImage(OriginalRomTestAccess.readAllBytes(path))
         assertEquals("79882b5e276f6c0386fe7c4d5cce122c56ff969d694ffc530b1a534ab57d25cb", rom.sha256)
 
         val analysis = ParserOrchestrator.analyze(rom)

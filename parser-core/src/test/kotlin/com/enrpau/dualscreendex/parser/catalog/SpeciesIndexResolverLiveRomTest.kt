@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.catalog
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.model.SelectionStatus
@@ -43,7 +44,7 @@ class SpeciesIndexResolverLiveRomTest {
         assumeTrue("set $environmentVariable to run this live-ROM regression", !configuredPath.isNullOrBlank())
         val path = Path.of(requireNotNull(configuredPath))
         assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
-        val rom = RomImage(Files.readAllBytes(path))
+        val rom = RomImage(OriginalRomTestAccess.readAllBytes(path))
         assertEquals(expectedSha256, rom.sha256)
 
         val analysis = ParserOrchestrator.analyze(rom)

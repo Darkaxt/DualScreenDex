@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.dataset.natures
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.analysis.GbaReferenceIndex
 import com.enrpau.dualscreendex.parser.analysis.GbaReferenceIndexFactory
 import com.enrpau.dualscreendex.parser.analysis.ParserCancellationException
@@ -71,7 +72,7 @@ class Gen3NatureResolverLiveRomTest {
         controls.forEach { control ->
             val path = Path.of(control.path)
             assumeTrue("missing ${control.path}", Files.isRegularFile(path))
-            val rom = Files.newInputStream(path).use(RomImage::from)
+            val rom = OriginalRomTestAccess.read { Files.newInputStream(path).use(RomImage::from) }
             assertEquals(control.sha256, rom.sha256)
 
             val result = Gen3NatureResolver.resolve(
@@ -116,7 +117,7 @@ class Gen3NatureResolverLiveRomTest {
         integratedControls.forEach { control ->
             val path = Path.of(control.path)
             assumeTrue("missing ${control.path}", Files.isRegularFile(path))
-            val rom = Files.newInputStream(path).use(RomImage::from)
+            val rom = OriginalRomTestAccess.read { Files.newInputStream(path).use(RomImage::from) }
             assertEquals(control.sha256, rom.sha256)
 
             val result = Gen3NatureResolver.resolve(
@@ -160,7 +161,7 @@ class Gen3NatureResolverLiveRomTest {
     private fun assertHeldOut(control: HeldOutControl) {
         val path = Path.of(control.path)
         assumeTrue("missing ${control.path}", Files.isRegularFile(path))
-        val rom = Files.newInputStream(path).use(RomImage::from)
+        val rom = OriginalRomTestAccess.read { Files.newInputStream(path).use(RomImage::from) }
         assertEquals(control.sha256, rom.sha256)
 
         val result = Gen3NatureResolver.resolve(

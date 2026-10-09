@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.io.RomImage
@@ -50,8 +51,8 @@ class UnboundOdysseyMapCompletionLiveRomTest {
         assumeTrue("set $environmentVariable to run this real-ROM control", !configured.isNullOrBlank())
         val path = Path.of(requireNotNull(configured))
         assumeTrue("real ROM does not exist: $path", Files.isRegularFile(path))
-        val firstRom = RomImage(Files.readAllBytes(path))
-        val secondRom = RomImage(Files.readAllBytes(path))
+        val firstRom = RomImage(OriginalRomTestAccess.readAllBytes(path))
+        val secondRom = RomImage(OriginalRomTestAccess.readAllBytes(path))
         assertEquals(expectedSha256, firstRom.sha256)
         assertEquals(firstRom.sha256, secondRom.sha256)
 

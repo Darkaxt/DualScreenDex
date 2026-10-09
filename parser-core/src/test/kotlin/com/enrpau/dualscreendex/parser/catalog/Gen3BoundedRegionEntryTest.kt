@@ -142,6 +142,105 @@ class Gen3BoundedRegionEntryTest {
         assertEquals(3, checks)
     }
 
+    @Test
+    fun namesKeepNonEncounterSectionsWhenOneEncounterSectionIsOutsideTheBound() {
+        listOf(0x600 to 0x200, 0x900 to 0x280).forEach { (root, consumer) ->
+            val fixture = completeHeadersFixture(root, consumer)
+            val rom = RomImage(fixture.bytes)
+            val geometry = requireNotNull(Gen3MapLocationResolver.resolveDetailed(
+                rom, setOf(0, 3), fixture.references, PokemonTextCodec.gbaEnglish,
+            ))
+            assertEquals(setOf(0), geometry.entriesBySection.keys)
+            assertEquals(mapOf(0 to 0, 3 to 3), geometry.sectionByBaseArea)
+            assertEquals(mapOf(0 to "Alpha", 1 to "Beta", 2 to "Gamma"),
+                Gen3MapLocationResolver.resolveNamesBySection(
+                    rom, setOf(0, 3), fixture.references, PokemonTextCodec.gbaEnglish,
+                ))
+        }
+    }
+
+    @Test
+    fun completeNameJoinsRespectTheRequestedExtentBudget() {
+        val fixture = completeHeadersFixture(0x600, 0x200)
+        assertEquals(emptyMap<Int, String>(), Gen3MapLocationResolver.resolveNamesBySection(
+            RomImage(fixture.bytes), setOf(0, 3), fixture.references, PokemonTextCodec.gbaEnglish,
+            extentLimit = 23,
+        ))
+    }
+
+    @Test
+    fun completeNameJoinsRejectCompetingNativeTables() {
+        val fixture = completeHeadersFixture(0x600, 0x200)
+        repeat(3) { entry(fixture.bytes, 0x900, it) }
+        consumer(fixture.bytes, 0x280, 0x900)
+        assertEquals(emptyMap<Int, String>(), Gen3MapLocationResolver.resolveNamesBySection(
+            RomImage(fixture.bytes), setOf(0, 3), references(0x600 to 0x204, 0x900 to 0x284),
+            PokemonTextCodec.gbaEnglish,
+        ))
+    }
+
+    @Test
+    fun completeNameJoinsRejectIncompleteReferencesAndConflictingBounds() {
+        val fixture = completeHeadersFixture(0x600, 0x200)
+        listOf(
+            GbaReferenceIndex.countsOnlyForTesting(mapOf(0x600 to 1)),
+            references(0x600 to 0x208),
+            GbaReferenceIndex.fromTargets(
+                mapOf(0x600 to GbaTargetReferenceEvidence(17, emptyList(), 17, 16, "site budget exceeded")),
+                limitTargets = 32,
+            ),
+        ).forEach { incomplete ->
+            assertEquals(emptyMap<Int, String>(), Gen3MapLocationResolver.resolveNamesBySection(
+                RomImage(fixture.bytes), setOf(0, 3), incomplete, PokemonTextCodec.gbaEnglish,
+            ))
+        }
+        consumer(fixture.bytes, 0x280, 0x600, last = 3)
+        assertEquals(emptyMap<Int, String>(), Gen3MapLocationResolver.resolveNamesBySection(
+            RomImage(fixture.bytes), setOf(0, 3), references(0x600 to 0x204, 0x600 to 0x284),
+            PokemonTextCodec.gbaEnglish,
+        ))
+    }
+
+    @Test
+    fun malformedNonEncounterNamesCannotExpandTheNameJoin() {
+        val fixture = completeHeadersFixture(0x600, 0x200)
+        putPointer(fixture.bytes, 0x600 + 8 + 4, 0x1FFF)
+        assertEquals(emptyMap<Int, String>(), Gen3MapLocationResolver.resolveNamesBySection(
+            RomImage(fixture.bytes), setOf(0, 3), fixture.references, PokemonTextCodec.gbaEnglish,
+        ))
+        assertEquals(setOf(0), requireNotNull(Gen3MapLocationResolver.resolveDetailed(
+            RomImage(fixture.bytes), setOf(0, 3), fixture.references, PokemonTextCodec.gbaEnglish,
+        )).entriesBySection.keys)
+    }
+
+    @Test
+    fun sparseHeadersKeepTheRequiredMapFallbackAndExcludeReadableOutsideRows() {
+        val fixture = fixture(0x600, 0x200)
+        entry(fixture.bytes, 0x600, 3)
+        assertEquals(mapOf(0 to "Alpha"), Gen3MapLocationResolver.resolveNamesBySection(
+            RomImage(fixture.bytes), setOf(0, 3), fixture.references, PokemonTextCodec.gbaEnglish,
+        ))
+    }
+
+    @Test
+    fun completeNameJoinCancellationPropagates() {
+        val fixture = completeHeadersFixture(0x600, 0x200)
+        var checks = 0
+        assertThrows(ParserCancellationException::class.java) {
+            Gen3MapLocationResolver.resolveNamesBySection(
+                RomImage(fixture.bytes), setOf(0, 3), fixture.references, PokemonTextCodec.gbaEnglish,
+                ParserCancellationToken { if (++checks == 25) throw ParserCancellationException() },
+            )
+        }
+        assertEquals(25, checks)
+    }
+
+    private fun completeHeadersFixture(root: Int, at: Int): Fixture = fixture(root, at).also {
+        // The compiled root follows the complete four-pointer group, independently of encounters.
+        putPointer(it.bytes, 0x50, 0x250)
+        putPointer(it.bytes, 0x250, 0x240)
+    }
+
     private data class Fixture(val bytes: ByteArray, val references: GbaReferenceIndex)
 
     private fun fixture(root: Int, at: Int): Fixture {

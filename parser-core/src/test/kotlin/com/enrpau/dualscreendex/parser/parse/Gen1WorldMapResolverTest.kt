@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.RomImage
@@ -30,7 +31,7 @@ class Gen1WorldMapResolverTest {
     private fun sourceBytes(env: String): ByteArray {
         val configured = System.getenv(env)
         assumeTrue("set $env to run this source-derived rejection control", !configured.isNullOrBlank())
-        return Files.readAllBytes(Path.of(requireNotNull(configured)))
+        return OriginalRomTestAccess.readAllBytes(Path.of(requireNotNull(configured)))
     }
 
     private companion object {

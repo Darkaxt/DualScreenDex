@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.catalog
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.RomCapability
@@ -177,7 +178,7 @@ class CatalogWorldMapMaterializationRealControlTest {
         assumeTrue("set $environmentVariable to run this real-ROM control", !configured.isNullOrBlank())
         val path = Path.of(requireNotNull(configured))
         assumeTrue("real ROM does not exist: $path", Files.isRegularFile(path))
-        val rom = RomImage(Files.readAllBytes(path))
+        val rom = RomImage(OriginalRomTestAccess.readAllBytes(path))
         assertEquals(expectedRomSha, rom.sha256)
 
         val parsed = CatalogParser.parse(rom)
@@ -227,7 +228,7 @@ class CatalogWorldMapMaterializationRealControlTest {
         assumeTrue("set $environmentVariable to run this real-ROM control", !configured.isNullOrBlank())
         val path = Path.of(requireNotNull(configured))
         assumeTrue("real ROM does not exist: $path", Files.isRegularFile(path))
-        val rom = RomImage(Files.readAllBytes(path))
+        val rom = RomImage(OriginalRomTestAccess.readAllBytes(path))
         assertEquals(expectedRomSha, rom.sha256)
 
         val catalog = requireNotNull(CatalogParser.parse(rom).catalog)

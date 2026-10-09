@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.catalog
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.dataset.evolutions.EvolutionRowOutcome
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
@@ -21,7 +22,7 @@ class PublishedUnifiedSpeciesLiveRomTest {
         assumeTrue("set DUALDEX_ROGUE_EX_ROM to run this live-ROM regression", !configured.isNullOrBlank())
         val path = Path.of(requireNotNull(configured))
         assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
-        val rom = RomImage(Files.readAllBytes(path))
+        val rom = RomImage(OriginalRomTestAccess.readAllBytes(path))
         assertEquals("111b0008bcec519c59a02de57895a924fee5d3633c8b8fbb394a497153778ca3", rom.sha256)
 
         val parsed = CatalogParser.parse(rom)

@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.dataset.moves
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.MoveRecord
 import com.enrpau.dualscreendex.parser.catalog.defaultTextProjection
@@ -111,7 +112,7 @@ class MoveDetailsLiveRomTest {
         val configured = System.getenv("DUALDEX_CELIA_ROM")
         assumeTrue("set DUALDEX_CELIA_ROM to run this live-ROM regression", !configured.isNullOrBlank())
         val path = Path.of(requireNotNull(configured))
-        val bytes = Files.readAllBytes(path)
+        val bytes = OriginalRomTestAccess.readAllBytes(path)
         assertEquals(
             "81ac9b9d4e7bdd3bf06ed53954d784118a743372906c6c6fc62b3cbc19587148",
             MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { byte ->
@@ -222,7 +223,7 @@ class MoveDetailsLiveRomTest {
         assumeTrue("set $environmentVariable to run this live-ROM regression", !configured.isNullOrBlank())
         val path = Path.of(requireNotNull(configured))
         assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
-        val rom = RomImage(Files.readAllBytes(path))
+        val rom = RomImage(OriginalRomTestAccess.readAllBytes(path))
         assertEquals(expectedSha256, rom.sha256)
         val parsed = CatalogParser.parse(rom)
         assertNotNull(parsed.layout)

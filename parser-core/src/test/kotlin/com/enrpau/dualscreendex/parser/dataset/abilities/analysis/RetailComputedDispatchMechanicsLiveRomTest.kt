@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.dataset.abilities.analysis
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7InstructionSet
 import com.enrpau.dualscreendex.parser.dataset.moves.ResolvedMoveDetailsLayout
@@ -136,7 +137,7 @@ class RetailComputedDispatchMechanicsLiveRomTest {
             "D:/Temp/dualdex-expanded-corpus/roms/0033-ae1f81f2f6ea/Clover (v1.3.3).gba",
         )
         assumeTrue("Clover control does not exist: $path", Files.isRegularFile(path))
-        return RomImage(Files.readAllBytes(path)).also {
+        return RomImage(OriginalRomTestAccess.readAllBytes(path)).also {
             assertEquals("42f99abd548934d77999ac3eb563fb9bc70a34701d37a262b21b882a43a8bdd9", it.sha256)
         }
     }

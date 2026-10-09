@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.CatalogTextProjection
@@ -349,7 +350,7 @@ class Gen2WorldMapHackRealControlTest {
     private fun bronze2Bytes(): ByteArray {
         val configured = System.getenv("DUALDEX_BRONZE2_ROM")
         assumeTrue("set DUALDEX_BRONZE2_ROM to run this real control", !configured.isNullOrBlank())
-        return Files.readAllBytes(Path.of(requireNotNull(configured)))
+        return OriginalRomTestAccess.readAllBytes(Path.of(requireNotNull(configured)))
     }
 
     private fun realRom(env: String, expectedSha: String): RomImage {
@@ -357,7 +358,7 @@ class Gen2WorldMapHackRealControlTest {
         assumeTrue("set $env to run this real control", !configured.isNullOrBlank())
         val path = Path.of(requireNotNull(configured))
         assumeTrue("real control ROM does not exist: $path", Files.isRegularFile(path))
-        return RomImage(Files.readAllBytes(path)).also { assertEquals(expectedSha, it.sha256) }
+        return RomImage(OriginalRomTestAccess.readAllBytes(path)).also { assertEquals(expectedSha, it.sha256) }
     }
 
     private fun findOneThresholdClassifier(bytes: ByteArray): ClassifierOffsets {

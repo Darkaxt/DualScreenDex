@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.dataset.abilities.analysis
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7ControlEffect
 import com.enrpau.dualscreendex.parser.analysis.arm7.Arm7DecodeResult
@@ -168,7 +169,7 @@ class RetailBattleMechanicsResolverLiveRomTest {
         fun load(): RomImage {
             val romPath = Path.of(path)
             assumeTrue("live ROM does not exist: $romPath", Files.isRegularFile(romPath))
-            return RomImage(Files.readAllBytes(romPath)).also { assertEquals(sha256, it.sha256) }
+            return RomImage(OriginalRomTestAccess.readAllBytes(romPath)).also { assertEquals(sha256, it.sha256) }
         }
     }
 }

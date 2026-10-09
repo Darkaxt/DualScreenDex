@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.analysis.GbaReferenceIndex
 import com.enrpau.dualscreendex.parser.analysis.GbaReferenceIndexFactory
 import com.enrpau.dualscreendex.parser.analysis.GbaTargetReferenceEvidence
@@ -69,7 +70,7 @@ class HeaderlessUnifiedMoveResolverLiveRomTest {
         assumeTrue("set DUALDEX_DREAMSTONE_ROM to run this live-ROM regression", !configured.isNullOrBlank())
         val path = Path.of(requireNotNull(configured))
         assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
-        val original = Files.readAllBytes(path)
+        val original = OriginalRomTestAccess.readAllBytes(path)
         assertEquals(EXPECTED_SHA, RomImage(original).sha256)
 
         val originalRom = RomImage(original)

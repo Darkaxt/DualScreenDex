@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.sprite.GbaDecodeContract
 import com.enrpau.dualscreendex.parser.sprite.GbaRomCompression
@@ -65,7 +66,7 @@ class GbaWorldMapTableRealControlTest {
         assumeTrue("set DUALDEX_BATTLE_THEATER_ROM to run this control", !configured.isNullOrBlank())
         val path = Path.of(requireNotNull(configured))
         assumeTrue("real ROM does not exist: $path", Files.isRegularFile(path))
-        return RomImage(Files.readAllBytes(path)).also { assertEquals(BATTLE_THEATER_SHA, it.sha256) }
+        return RomImage(OriginalRomTestAccess.readAllBytes(path)).also { assertEquals(BATTLE_THEATER_SHA, it.sha256) }
     }
 
     private fun sha256(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256")

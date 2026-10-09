@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.catalog
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.EngineFamily
@@ -58,7 +59,7 @@ class Gen1CompiledTablesLiveRomTest {
         assumeTrue("set DUALDEX_RED_PLUS_PLUS_ROM to run this live-ROM control", !configured.isNullOrBlank())
         val path = Path.of(requireNotNull(configured))
         assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
-        val rom = RomImage(Files.readAllBytes(path))
+        val rom = RomImage(OriginalRomTestAccess.readAllBytes(path))
         assertEquals("f244f8c31ff3dfa907b6730fce410ba96f74bc1f920bb318c7065288fa13fc3b", rom.sha256)
         assertEquals(55, Gen1CompiledMachineResolver.resolve(rom, moveCount = 253)?.count)
         val descriptions = Gen1CompiledDescriptionResolver.resolve(
@@ -113,7 +114,7 @@ class Gen1CompiledTablesLiveRomTest {
         assumeTrue("set $environment to run this live-ROM control", !configured.isNullOrBlank())
         val path = Path.of(requireNotNull(configured))
         assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
-        val rom = RomImage(Files.readAllBytes(path))
+        val rom = RomImage(OriginalRomTestAccess.readAllBytes(path))
         assertEquals(sha256, rom.sha256)
         moveCount?.let { expectedMoves ->
             assertEquals(expectedMoves, Gen1CompiledMoveResolver.resolve(rom)?.moveNames?.count)
@@ -197,7 +198,7 @@ class Gen1CompiledTablesLiveRomTest {
         assumeTrue("set ${control.environmentVariable} to run this live-ROM control", !configured.isNullOrBlank())
         val path = Path.of(requireNotNull(configured))
         assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
-        val rom = RomImage(Files.readAllBytes(path))
+        val rom = RomImage(OriginalRomTestAccess.readAllBytes(path))
         assertEquals(control.sha256, rom.sha256)
         assertEquals(
             control.machineCount,

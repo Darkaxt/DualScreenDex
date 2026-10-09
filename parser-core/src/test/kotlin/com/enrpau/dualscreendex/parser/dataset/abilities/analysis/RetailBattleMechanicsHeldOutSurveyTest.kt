@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.dataset.abilities.analysis
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.RomImage
@@ -81,7 +82,7 @@ class RetailBattleMechanicsHeldOutSurveyTest {
         fun load(): RomImage {
             val romPath = Path.of(path)
             assumeTrue("held-out ROM does not exist: $romPath", Files.isRegularFile(romPath))
-            return RomImage(Files.readAllBytes(romPath)).also { assertEquals(sha256, it.sha256) }
+            return RomImage(OriginalRomTestAccess.readAllBytes(romPath)).also { assertEquals(sha256, it.sha256) }
         }
     }
 }

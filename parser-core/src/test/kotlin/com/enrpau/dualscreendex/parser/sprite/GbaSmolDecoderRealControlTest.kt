@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.sprite
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.io.RomImage
 import java.nio.file.Files
 import java.nio.file.Path
@@ -13,7 +14,7 @@ class GbaSmolDecoderRealControlTest {
     fun battleTheaterTilemapsMatchTheirSourceProducts() {
         val romPath = configuredPath("DUALDEX_BATTLE_THEATER_ROM")
         val sourceRoot = configuredPath("DUALDEX_BATTLE_THEATER_SOURCE")
-        val rom = RomImage(Files.readAllBytes(romPath))
+        val rom = RomImage(OriginalRomTestAccess.readAllBytes(romPath))
         assertEquals(BATTLE_THEATER_SHA, rom.sha256)
 
         listOf(

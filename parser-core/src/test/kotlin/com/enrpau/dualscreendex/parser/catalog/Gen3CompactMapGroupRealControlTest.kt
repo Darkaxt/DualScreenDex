@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.catalog
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.RomCapability
@@ -21,7 +22,7 @@ class Gen3CompactMapGroupRealControlTest {
             .toMap()
 
         controls.forEach { control ->
-            val rom = RomImage(Files.readAllBytes(rows.getValue(control.index)))
+            val rom = RomImage(OriginalRomTestAccess.readAllBytes(rows.getValue(control.index)))
             assertEquals(control.romSha256, rom.sha256)
             val catalog = requireNotNull(CatalogParser.parse(rom).catalog)
             assertEquals(CapabilityStatus.AVAILABLE, catalog.capabilities.getValue(RomCapability.WORLD_MAP).status)

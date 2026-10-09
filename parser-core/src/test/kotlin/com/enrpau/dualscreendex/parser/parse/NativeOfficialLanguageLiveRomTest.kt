@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.language.LanguageResolutionStatus
 import com.enrpau.dualscreendex.parser.model.EngineFamily
@@ -23,7 +24,7 @@ class NativeOfficialLanguageLiveRomTest(
         assumeTrue("set DUALDEX_NATIVE_CONTROLS for the bounded nine-control gate", !configured.isNullOrBlank())
         val directory = Path.of(requireNotNull(configured)).resolve(folder)
         val path = Files.list(directory).use { paths -> paths.filter { Files.isRegularFile(it) }.toList().single() }
-        val rom = RomImage(Files.readAllBytes(path))
+        val rom = RomImage(OriginalRomTestAccess.readAllBytes(path))
         assertEquals(sha, rom.sha256)
         val result = ParserOrchestrator.analyze(rom)
         val probe = result.probes.single { it.family == family }

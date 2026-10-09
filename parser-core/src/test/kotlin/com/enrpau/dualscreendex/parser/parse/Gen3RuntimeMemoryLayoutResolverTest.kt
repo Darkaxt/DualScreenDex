@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.catalog.CatalogGameClockSchedule
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagAbi
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagPocket
@@ -188,7 +189,7 @@ class Gen3RuntimeMemoryLayoutResolverTest {
                 battleUiAbi = CatalogGen3BattleUiAbi(0x0200141C, 0x02001864, 0x02001868, 0x020015C4),
             ),
             Gen3RuntimeMemoryLayoutResolver.resolve(
-                RomImage(Files.readAllBytes(path)),
+                RomImage(OriginalRomTestAccess.readAllBytes(path)),
                 EngineFamily.EMERALD,
             ),
         )

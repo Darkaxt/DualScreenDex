@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3BagPocket
 import com.enrpau.dualscreendex.parser.catalog.CatalogGen3TextEncoding
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
@@ -34,7 +35,7 @@ class Gen3PlayerRuntimeLayoutResolverRealControlTest {
             val path = Path.of(configuredPath)
             assumeTrue("real official $label ROM does not exist: $path", Files.isRegularFile(path))
 
-            val parsed = CatalogParser.parse(RomImage(Files.readAllBytes(path)))
+            val parsed = CatalogParser.parse(RomImage(OriginalRomTestAccess.readAllBytes(path)))
             assertEquals(expectedSha, parsed.analysis.sha256)
             val runtime = requireNotNull(requireNotNull(parsed.catalog).runtimeMetadata.gen3RuntimeMemoryLayout)
 
@@ -82,7 +83,7 @@ class Gen3PlayerRuntimeLayoutResolverRealControlTest {
         )
         assumeTrue("real Modern Emerald ROM does not exist: $path", Files.isRegularFile(path))
 
-        val rom = RomImage(Files.readAllBytes(path))
+        val rom = RomImage(OriginalRomTestAccess.readAllBytes(path))
         assertEquals(MODERN_EMERALD_SHA256, rom.sha256)
         val runtime = requireNotNull(Gen3RuntimeMemoryLayoutResolver.resolve(rom, EngineFamily.EMERALD))
 
@@ -108,7 +109,7 @@ class Gen3PlayerRuntimeLayoutResolverRealControlTest {
         )
         assumeTrue("real Unbound ROM does not exist: $path", Files.isRegularFile(path))
 
-        val rom = RomImage(Files.readAllBytes(path))
+        val rom = RomImage(OriginalRomTestAccess.readAllBytes(path))
         assertEquals(UNBOUND_SHA256, rom.sha256)
         val runtime = requireNotNull(Gen3RuntimeMemoryLayoutResolver.resolve(rom, EngineFamily.FIRERED_LEAFGREEN))
 
@@ -133,7 +134,7 @@ class Gen3PlayerRuntimeLayoutResolverRealControlTest {
         )
         assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
 
-        val parsed = CatalogParser.parse(RomImage(Files.readAllBytes(path)))
+        val parsed = CatalogParser.parse(RomImage(OriginalRomTestAccess.readAllBytes(path)))
         assertEquals(OFFICIAL_FIRERED_SHA256, parsed.analysis.sha256)
         val runtime = requireNotNull(requireNotNull(parsed.catalog).runtimeMetadata.gen3RuntimeMemoryLayout)
 
@@ -166,7 +167,7 @@ class Gen3PlayerRuntimeLayoutResolverRealControlTest {
         )
         assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
 
-        val parsed = CatalogParser.parse(RomImage(Files.readAllBytes(path)))
+        val parsed = CatalogParser.parse(RomImage(OriginalRomTestAccess.readAllBytes(path)))
         assertEquals(OFFICIAL_LEAFGREEN_SHA256, parsed.analysis.sha256)
         val runtime = requireNotNull(requireNotNull(parsed.catalog).runtimeMetadata.gen3RuntimeMemoryLayout)
 
@@ -187,7 +188,7 @@ class Gen3PlayerRuntimeLayoutResolverRealControlTest {
         )
         assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
 
-        val parsed = CatalogParser.parse(RomImage(Files.readAllBytes(path)))
+        val parsed = CatalogParser.parse(RomImage(OriginalRomTestAccess.readAllBytes(path)))
         assertEquals(OFFICIAL_EMERALD_SHA256, parsed.analysis.sha256)
         val runtime = requireNotNull(requireNotNull(parsed.catalog).runtimeMetadata.gen3RuntimeMemoryLayout)
 
@@ -257,7 +258,7 @@ class Gen3PlayerRuntimeLayoutResolverRealControlTest {
         )
         assumeTrue("real Odyssey ROM does not exist: $path", Files.isRegularFile(path))
 
-        val parsed = CatalogParser.parse(RomImage(Files.readAllBytes(path)))
+        val parsed = CatalogParser.parse(RomImage(OriginalRomTestAccess.readAllBytes(path)))
         assertEquals(ODYSSEY_SHA256, parsed.analysis.sha256)
         val runtime = requireNotNull(requireNotNull(parsed.catalog).runtimeMetadata.gen3RuntimeMemoryLayout)
 

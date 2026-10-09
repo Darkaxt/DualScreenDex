@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.catalog.MoveCategory
 import com.enrpau.dualscreendex.parser.catalog.RecordMaterializers
@@ -79,7 +80,7 @@ class Gen2CompiledHelperRealControlTest {
     private fun verifyHelpers(environment: String, expectedSha: String, maximumBank: Int) {
         val configured = System.getenv(environment)
         assumeTrue("set $environment to run this real helper control", !configured.isNullOrBlank())
-        val rom = RomImage(Files.readAllBytes(Path.of(requireNotNull(configured))))
+        val rom = RomImage(OriginalRomTestAccess.readAllBytes(Path.of(requireNotNull(configured))))
         assertEquals(expectedSha, rom.sha256)
         val copySites = (0 until minOf(0x4000, rom.size) - 3).mapNotNull { offset ->
             GbCompiledFarCopy.resolve(rom, offset)?.let { offset to it }

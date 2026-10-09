@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.dataset.abilities
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.catalog.AbilityRecord
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
@@ -30,7 +31,7 @@ class AbilityNameLiveRomTest {
         val activeIds = requireNotNull(System.getenv("DUALDEX_NATIVE_ABILITY_ACTIVE_IDS")) { "supply independently retained numeric ability IDs" }
             .split(',').map(String::toInt).toSet()
         paths.forEachIndexed { ordinal, path ->
-            val rom = RomImage(Files.readAllBytes(Path.of(path)))
+            val rom = RomImage(OriginalRomTestAccess.readAllBytes(Path.of(path)))
             val session = RomAnalysisSession(rom, RomHeaderReader.read(rom))
             val codec = if (ordinal == 0) com.enrpau.dualscreendex.parser.text.JapanesePokemonTextCodecs.gen3RubySapphire else com.enrpau.dualscreendex.parser.text.JapanesePokemonTextCodecs.gen3Later
             val index = requireNotNull(session.gbaReferenceIndex)
@@ -426,7 +427,7 @@ class AbilityNameLiveRomTest {
         assumeTrue("set $environmentVariable to run this live-ROM regression", !configured.isNullOrBlank())
         val path = Path.of(requireNotNull(configured))
         assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
-        return RomImage(Files.readAllBytes(path)).also { assertEquals(expectedSha256, it.sha256) }
+        return RomImage(OriginalRomTestAccess.readAllBytes(path)).also { assertEquals(expectedSha256, it.sha256) }
     }
 
     private fun missingAbilityReferences(catalog: ParsedCatalog): Int = catalog.speciesById.values.sumOf { species ->

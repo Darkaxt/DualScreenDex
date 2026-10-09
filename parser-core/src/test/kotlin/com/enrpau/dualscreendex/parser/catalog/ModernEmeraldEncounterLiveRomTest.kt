@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.catalog
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.RomCapability
@@ -17,7 +18,7 @@ class ModernEmeraldEncounterLiveRomTest {
         assumeTrue("set DUALDEX_MODERN_EMERALD_ROM to run this live-ROM regression", !configured.isNullOrBlank())
         val path = Path.of(requireNotNull(configured))
         assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
-        val parsed = CatalogParser.parse(RomImage(Files.readAllBytes(path)))
+        val parsed = CatalogParser.parse(RomImage(OriginalRomTestAccess.readAllBytes(path)))
         assertEquals(
             "21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895",
             parsed.analysis.sha256,
@@ -112,7 +113,7 @@ class ModernEmeraldEncounterLiveRomTest {
         assumeTrue("set DUALDEX_BLAZED_GLAZED_ROM to run this live-ROM regression", !configured.isNullOrBlank())
         val path = Path.of(requireNotNull(configured))
         assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
-        val parsed = CatalogParser.parse(RomImage(Files.readAllBytes(path)))
+        val parsed = CatalogParser.parse(RomImage(OriginalRomTestAccess.readAllBytes(path)))
         assertEquals(
             "0b55d44bfd32a350202c0878754cfcacbbaee128de3b59297ee669b69269199f",
             parsed.analysis.sha256,

@@ -12,7 +12,9 @@ class RomSourceLoaderRealArchiveTest {
         val zip = configuredPath("DUALDEX_UNBOUND_ZIP")
         val sevenZip = configuredPath("DUALDEX_UNBOUND_7Z")
 
-        val loaded = listOf(RomSourceLoader.load(raw), RomSourceLoader.load(zip), RomSourceLoader.load(sevenZip))
+        val loaded = OriginalRomTestAccess.read {
+            listOf(RomSourceLoader.load(raw), RomSourceLoader.load(zip), RomSourceLoader.load(sevenZip))
+        }
 
         assertEquals(setOf(EXPECTED_SHA256), loaded.map { it.rom.sha256 }.toSet())
         assertEquals(setOf(EXPECTED_CRC32), loaded.map { it.rom.crc32 }.toSet())

@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.catalog
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.EngineFamily
@@ -56,7 +57,7 @@ class EncounterSpeciesClosureLiveRomTest {
         assumeTrue("set $environmentVariable to run this live-ROM regression", !configured.isNullOrBlank())
         val path = Path.of(requireNotNull(configured))
         assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
-        val parsed = CatalogParser.parse(RomImage(Files.readAllBytes(path)))
+        val parsed = CatalogParser.parse(RomImage(OriginalRomTestAccess.readAllBytes(path)))
 
         assertEquals(sha256, parsed.analysis.sha256)
         assertEquals(family, parsed.analysis.selectedFamily)

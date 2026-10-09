@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import java.nio.ByteBuffer
@@ -38,7 +39,7 @@ class Gen3TrainerAssetResolverRealControlTest {
             assumeTrue("set ${control.environmentVariable} to run this live-ROM regression", !configured.isNullOrBlank())
             val path = Path.of(requireNotNull(configured))
             assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
-            val rom = RomImage(Files.readAllBytes(path))
+            val rom = RomImage(OriginalRomTestAccess.readAllBytes(path))
             assertEquals(control.sha256, rom.sha256.lowercase())
 
             val catalog = requireNotNull(Gen3TrainerAssetResolver.resolve(rom, EngineFamily.FIRERED_LEAFGREEN))
@@ -65,7 +66,7 @@ class Gen3TrainerAssetResolverRealControlTest {
 
         val catalog = requireNotNull(
             Gen3TrainerAssetResolver.resolve(
-                RomImage(Files.readAllBytes(path)),
+                RomImage(OriginalRomTestAccess.readAllBytes(path)),
                 EngineFamily.EMERALD,
             ),
         )
@@ -104,7 +105,7 @@ class Gen3TrainerAssetResolverRealControlTest {
         val path = Path.of(requireNotNull(configured))
         assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
 
-        val rom = RomImage(Files.readAllBytes(path))
+        val rom = RomImage(OriginalRomTestAccess.readAllBytes(path))
         assertEquals(MODERN_EMERALD_SHA256, rom.sha256.lowercase())
         val catalog = requireNotNull(Gen3TrainerAssetResolver.resolve(rom, EngineFamily.EMERALD))
 

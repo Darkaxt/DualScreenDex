@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.family
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.detect.RomHeaderReader
 import com.enrpau.dualscreendex.parser.io.RomImage
@@ -378,7 +379,7 @@ class FamilyProbeCoordinatorTest {
         assumeTrue("set DUALDEX_CLOUD_WHITE_2_ROM to run this live regression", !configured.isNullOrBlank())
         val path = Path.of(requireNotNull(configured))
         assumeTrue("Cloud White 2 ROM does not exist: $path", Files.isRegularFile(path))
-        val rom = RomImage(Files.readAllBytes(path))
+        val rom = RomImage(OriginalRomTestAccess.readAllBytes(path))
         assertEquals("6d9075a559c289eee4f336c925b46fdba55f34c6baa0576626d4a3b71513d879", rom.sha256)
         val session = RomAnalysisSession(rom, RomHeaderReader.read(rom))
         val definition = EngineFamilyDefinitions.byFamily.getValue(EngineFamily.FIRERED_LEAFGREEN)

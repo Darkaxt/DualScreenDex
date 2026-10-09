@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.catalog
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.dataset.learnsets.LearnsetRowOutcome
 import com.enrpau.dualscreendex.parser.model.EngineFamily
@@ -24,7 +25,7 @@ class HeaderlessUnifiedSpeciesLiveRomTest {
         assumeTrue("set DUALDEX_DREAMSTONE_ROM to run this live-ROM regression", !configured.isNullOrBlank())
         val path = Path.of(requireNotNull(configured))
         assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
-        val rom = RomImage(Files.readAllBytes(path))
+        val rom = RomImage(OriginalRomTestAccess.readAllBytes(path))
         assertEquals("ac31df9cc158823861294b17bd4e66857deab2a53dd81620ddcf6fc03a6a4220", rom.sha256)
 
         val analysis = ParserOrchestrator.analyze(rom)
@@ -219,7 +220,7 @@ class HeaderlessUnifiedSpeciesLiveRomTest {
         assertEquals("Pounds the foe with forelegs or tail.", text.moveDescription(1))
         assertEquals("Malignant Chain", text.moveName(847))
 
-        val second = CatalogParser.parse(RomImage(Files.readAllBytes(path)))
+        val second = CatalogParser.parse(RomImage(OriginalRomTestAccess.readAllBytes(path)))
         val secondRows = requireNotNull(second.layout?.resolvedDatasets?.learnsets?.primary)
             .layout.rows.filterIsInstance<LearnsetRowOutcome.Decoded>()
         assertEquals(learnsetSha256(decodedLearnsets), learnsetSha256(secondRows))
@@ -236,7 +237,7 @@ class HeaderlessUnifiedSpeciesLiveRomTest {
         assumeTrue("set DUALDEX_DREAMSTONE_ROM to run this live-ROM regression", !configured.isNullOrBlank())
         val path = Path.of(requireNotNull(configured))
         assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
-        val bytes = Files.readAllBytes(path)
+        val bytes = OriginalRomTestAccess.readAllBytes(path)
         repeat(400) { id ->
             val field = 0x7B0160 + (id + 1) * 260 + 76
             bytes.fill(0, field, field + 4)
@@ -269,7 +270,7 @@ class HeaderlessUnifiedSpeciesLiveRomTest {
         assumeTrue("set DUALDEX_DREAMSTONE_ROM to run this live-ROM regression", !configured.isNullOrBlank())
         val path = Path.of(requireNotNull(configured))
         assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
-        val bytes = Files.readAllBytes(path)
+        val bytes = OriginalRomTestAccess.readAllBytes(path)
         repeat(80) { index ->
             val field = 0xE65E98 + (index + 1) * 28 + 20
             bytes.fill(0, field, field + 4)
@@ -299,7 +300,7 @@ class HeaderlessUnifiedSpeciesLiveRomTest {
         assumeTrue("set DUALDEX_DREAMSTONE_ROM to run this live-ROM regression", !configured.isNullOrBlank())
         val path = Path.of(requireNotNull(configured))
         assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
-        val original = Files.readAllBytes(path)
+        val original = OriginalRomTestAccess.readAllBytes(path)
 
         val malformedTeachable = original.copyOf().apply {
             fill(0xFF.toByte(), 0x7B0160 + 260 + 152, 0x7B0160 + 260 + 156)

@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.catalog.EncounterMaterializer
 import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
@@ -82,7 +83,7 @@ class Gen2WorldMapRealControlTest {
         assumeTrue("set ${control.env} to run this source-built control", !configured.isNullOrBlank())
         val path = Path.of(requireNotNull(configured))
         assumeTrue("source-built ROM does not exist: $path", Files.isRegularFile(path))
-        return RomImage(Files.readAllBytes(path)).also { assertEquals(control.romSha256, it.sha256) }
+        return RomImage(OriginalRomTestAccess.readAllBytes(path)).also { assertEquals(control.romSha256, it.sha256) }
     }
 
     private fun locationFingerprint(catalog: WorldMapCatalog): String {

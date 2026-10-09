@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.catalog
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.RomCapability
@@ -228,7 +229,7 @@ class AbilityMechanicsMaterializerLiveRomTest {
         fun load(): LoadedControl {
             val romPath = Path.of(path)
             assumeTrue("live ROM does not exist: $romPath", Files.isRegularFile(romPath))
-            val rom = RomImage(Files.readAllBytes(romPath))
+            val rom = RomImage(OriginalRomTestAccess.readAllBytes(romPath))
             assertEquals(sha256, rom.sha256)
             val parse = ParserOrchestrator.analyze(rom)
             val layout = parse.probes.single { it.family == parse.selectedFamily }.resolvedLayout

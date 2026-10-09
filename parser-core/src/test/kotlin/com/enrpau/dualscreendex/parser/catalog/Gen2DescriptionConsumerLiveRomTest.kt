@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.catalog
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import java.nio.file.Files
@@ -69,7 +70,7 @@ class Gen2DescriptionConsumerLiveRomTest {
                 "set ${control.environmentVariable} to run this live-ROM regression",
                 !configured.isNullOrBlank(),
             )
-            val rom = RomImage(Files.readAllBytes(Path.of(configured)))
+            val rom = RomImage(OriginalRomTestAccess.readAllBytes(Path.of(configured)))
             assertEquals(control.sha256, rom.sha256)
 
             val catalog = requireNotNull(CatalogParser.parse(rom).catalog)

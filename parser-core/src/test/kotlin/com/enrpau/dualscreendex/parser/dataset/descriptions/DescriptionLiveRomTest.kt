@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.dataset.descriptions
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.DescriptionRecord
 import com.enrpau.dualscreendex.parser.catalog.defaultTextProjection
@@ -24,7 +25,7 @@ class DescriptionLiveRomTest {
         assumeTrue("set DUALDEX_CELIA_ROM to run this live-ROM regression", !configured.isNullOrBlank())
         val path = Path.of(requireNotNull(configured))
         assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
-        val rom = RomImage(Files.readAllBytes(path))
+        val rom = RomImage(OriginalRomTestAccess.readAllBytes(path))
         assertEquals(
             "81ac9b9d4e7bdd3bf06ed53954d784118a743372906c6c6fc62b3cbc19587148",
             rom.sha256,
@@ -140,7 +141,7 @@ class DescriptionLiveRomTest {
         assumeTrue("set $environmentVariable to run this live-ROM regression", !configured.isNullOrBlank())
         val path = Path.of(requireNotNull(configured))
         assumeTrue("live ROM does not exist: $path", Files.isRegularFile(path))
-        val rom = RomImage(Files.readAllBytes(path))
+        val rom = RomImage(OriginalRomTestAccess.readAllBytes(path))
         assertEquals(expectedSha256, rom.sha256)
         val parsed = CatalogParser.parse(rom)
         val layout = requireNotNull(parsed.layout)

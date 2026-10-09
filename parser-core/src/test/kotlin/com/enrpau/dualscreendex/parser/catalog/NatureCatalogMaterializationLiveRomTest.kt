@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.catalog
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
 import com.enrpau.dualscreendex.parser.model.RomCapability
@@ -41,7 +42,7 @@ class NatureCatalogMaterializationLiveRomTest {
             val path = Files.list(control.directory).use { files ->
                 files.filter(Files::isRegularFile).toList().single()
             }
-            val rom = Files.newInputStream(path).use(RomImage::from)
+            val rom = OriginalRomTestAccess.read { Files.newInputStream(path).use(RomImage::from) }
             assertEquals(control.sha256, rom.sha256)
             val catalog = requireNotNull(CatalogParser.parse(rom).catalog)
 
@@ -64,7 +65,7 @@ class NatureCatalogMaterializationLiveRomTest {
     private fun assertMaterialized(control: Control) {
         val path = Path.of(control.path)
         assumeTrue("missing ${control.path}", Files.isRegularFile(path))
-        val rom = Files.newInputStream(path).use(RomImage::from)
+        val rom = OriginalRomTestAccess.read { Files.newInputStream(path).use(RomImage::from) }
         assertEquals(control.sha256, rom.sha256)
 
         val parsed = CatalogParser.parse(rom)

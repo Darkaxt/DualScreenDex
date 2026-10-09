@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.io.OriginalRomTestAccess
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.catalog.CatalogParser
 import com.enrpau.dualscreendex.parser.catalog.CatalogTextProjection
@@ -166,7 +167,7 @@ class Gen3LocalMapResolverRealControlTest {
         assumeTrue("set ${control.environmentVariable} to run this real-ROM control", !configured.isNullOrBlank())
         val path = Path.of(requireNotNull(configured))
         assumeTrue("real ROM does not exist: $path", Files.isRegularFile(path))
-        return RomImage(Files.readAllBytes(path)).also {
+        return RomImage(OriginalRomTestAccess.readAllBytes(path)).also {
             assertEquals(control.romSha256, it.sha256)
         }
     }
