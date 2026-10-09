@@ -11,7 +11,11 @@ internal object CompiledGen3RegionEntryTable {
         fun contains(section: Int): Boolean = section in 0 until count
     }
 
-    data class Discovery(val tables: List<Table>, val rejected: Boolean = false)
+    data class Discovery(
+        val tables: List<Table>,
+        val rejected: Boolean = false,
+        val blankNameTables: Set<Table> = emptySet(),
+    )
 
     fun discover(
         rom: RomImage,
@@ -22,6 +26,8 @@ internal object CompiledGen3RegionEntryTable {
         cancellation.throwIfCancellationRequested()
         if (references.overflowed) return Discovery(emptyList(), rejected = true)
         val tables = linkedSetOf<Table>()
+        val blankNameTables = linkedSetOf<Table>()
+        val unprovedBlankNameTables = linkedSetOf<Table>()
         var offset = 0
         while (offset.toLong() + CONSUMER_BYTES <= rom.size.toLong()) {
             if (offset % CANCELLATION_INTERVAL_BYTES == 0) cancellation.throwIfCancellationRequested()
@@ -34,11 +40,13 @@ internal object CompiledGen3RegionEntryTable {
                     bytes > extentLimit || table.root.toLong() + bytes > rom.size.toLong()
                 ) return Discovery(emptyList(), rejected = true)
                 tables += table
+                if (CompiledGen3BlankNameConsumer.proves(rom, offset, table)) blankNameTables += table
+                else if (CompiledGen3BlankNameConsumer.isNomination(rom, offset)) unprovedBlankNameTables += table
                 if (tables.size > MAX_TABLES) return Discovery(emptyList(), rejected = true)
             }
             offset += 2
         }
-        return Discovery(tables.toList())
+        return Discovery(tables.toList(), blankNameTables = blankNameTables - unprovedBlankNameTables)
     }
 
     private fun prove(rom: RomImage, at: Int): Table? {

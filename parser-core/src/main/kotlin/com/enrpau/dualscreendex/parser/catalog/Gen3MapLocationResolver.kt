@@ -73,6 +73,19 @@ object Gen3MapLocationResolver {
         return names - contextualSections
     }
 
+    internal fun resolveBlankNameSections(
+        rom: RomImage,
+        references: GbaReferenceIndex,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
+        extentLimit: Long = com.enrpau.dualscreendex.parser.analysis.ResolutionLimits().maxDatasetExtentBytes,
+    ): Set<Int> {
+        val discovery = CompiledGen3RegionEntryTable.discover(rom, references, cancellation, extentLimit)
+        if (discovery.rejected) return emptySet()
+        val table = discovery.tables.singleOrNull() ?: return emptySet()
+        if (table !in discovery.blankNameTables) return emptySet()
+        return (table.count..255).toSet()
+    }
+
     internal fun resolveDetailed(
         rom: RomImage,
         encounterBaseIds: Set<Int>,
@@ -279,9 +292,11 @@ object Gen3MapLocationResolver {
                 repeat(warpCount) { index ->
                     cancellation.throwIfCancellationRequested()
                     val warp = warps + index * WARP_EVENT_BYTES
-                    val destination = (rom.u8(warp + WARP_EVENT_GROUP_OFFSET) shl 8) or
-                        rom.u8(warp + WARP_EVENT_MAP_OFFSET)
-                    if (destination in knownMaps) destinations += destination
+                    val map = rom.u8(warp + WARP_EVENT_MAP_OFFSET)
+                    if (map != DYNAMIC_WARP_MAP) {
+                        val destination = (rom.u8(warp + WARP_EVENT_GROUP_OFFSET) shl 8) or map
+                        if (destination in knownMaps) destinations += destination
+                    }
                 }
             }
         }
@@ -1032,8 +1047,9 @@ object Gen3MapLocationResolver {
     private const val MAP_EVENTS_WARP_COUNT_OFFSET = 1
     private const val MAP_EVENTS_WARPS_OFFSET = 8
     private const val WARP_EVENT_BYTES = 8
-    private const val WARP_EVENT_GROUP_OFFSET = 5
+    private const val WARP_EVENT_GROUP_OFFSET = 7
     private const val WARP_EVENT_MAP_OFFSET = 6
+    private const val DYNAMIC_WARP_MAP = 0x7F
     private const val MAP_CONNECTIONS_BYTES = 8
     private const val MAP_CONNECTIONS_ENTRIES_OFFSET = 4
     private const val MAP_CONNECTION_BYTES = 12

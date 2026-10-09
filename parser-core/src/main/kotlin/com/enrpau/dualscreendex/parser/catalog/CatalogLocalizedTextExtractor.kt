@@ -73,7 +73,8 @@ internal object CatalogLocalizedTextExtractor {
             nature.name?.takeIf(String::isNotBlank)?.let { id to CatalogField.available(it) }
         }.toMap(linkedMapOf())
         val itemNames = extractItemNames(captureBallsById, localMaps)
-        val areaNames = runtimeMetadata.areaNamesByBaseId.mapNotNull { (id, name) ->
+        val nativeBlankBaseAreaIds = localMaps.nativeBlankBaseAreaIds
+        val areaNames = runtimeMetadata.areaNamesByBaseId.filterKeys { it !in nativeBlankBaseAreaIds }.mapNotNull { (id, name) ->
             name.takeIf(String::isNotBlank)?.let { id to CatalogField.available(it) }
         }.toMap(linkedMapOf())
         val localMapNames = authorizedMap(capabilities[RomCapability.LOCAL_MAP]) {
@@ -322,8 +323,11 @@ internal object CatalogLocalizedTextExtractor {
         val namesByBaseId = candidates.mapNotNull { (baseAreaId, values) ->
             values.distinct().singleOrNull()?.let { baseAreaId to it }
         }.toMap()
+        val nativeBlankBaseAreaIds = localMaps.nativeBlankBaseAreaIds
         return encounterAreas.mapNotNull { area ->
-            namesByBaseId[area.id / 10]?.let { area.id to CatalogField.available(it) }
+            val baseAreaId = area.id / 10
+            if (baseAreaId in nativeBlankBaseAreaIds) return@mapNotNull null
+            namesByBaseId[baseAreaId]?.let { area.id to CatalogField.available(it) }
         }.toMap(linkedMapOf())
     }
 
@@ -382,6 +386,7 @@ internal object CatalogLocalizedTextExtractor {
             addAll(captureBallsById.keys)
             addAll(localMaps.pois.mapNotNull { it.item?.itemId })
         }
+        val nativeBlankBaseAreaIds = localMaps.nativeBlankBaseAreaIds
         return mapOf(
             LocalizedTextCapability.SPECIES_NAMES to speciesById.size,
             LocalizedTextCapability.SPECIES_DESCRIPTIONS to speciesById.count { (id, record) ->
@@ -400,11 +405,12 @@ internal object CatalogLocalizedTextExtractor {
             LocalizedTextCapability.TYPE_NAMES to typesById.size,
             LocalizedTextCapability.NATURE_NAMES to naturesById.size,
             LocalizedTextCapability.ITEM_NAMES to itemIds.size,
-            LocalizedTextCapability.AREA_NAMES to (runtimeMetadata.areaBaseIds + runtimeMetadata.areaNamesByBaseId.keys).size,
+            LocalizedTextCapability.AREA_NAMES to
+                ((runtimeMetadata.areaBaseIds + runtimeMetadata.areaNamesByBaseId.keys) - nativeBlankBaseAreaIds).size,
             LocalizedTextCapability.LOCAL_MAP_NAMES to localMaps.staticNameRequiredMapKeys.size,
             LocalizedTextCapability.WORLD_REGION_NAMES to worldMaps.staticNameRequiredRegionKeys.size,
             LocalizedTextCapability.WORLD_LOCATION_NAMES to worldMaps.regions.sumOf { it.locations.size },
-            LocalizedTextCapability.ENCOUNTER_AREA_NAMES to encounterAreas.size,
+            LocalizedTextCapability.ENCOUNTER_AREA_NAMES to encounterAreas.count { it.id / 10 !in nativeBlankBaseAreaIds },
             LocalizedTextCapability.POI_TEXT to localMaps.pois.size,
         )
     }

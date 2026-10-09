@@ -279,7 +279,9 @@ class CatalogLanguageOverlay(
             addAll(catalog.localMaps.pois.mapNotNull { it.item?.itemId })
         }
         requireSubset(itemNames.keys, itemIds, "item name", "item")
-        requireSubset(areaNames.keys, catalog.runtimeMetadata.areaBaseIds, "area name", "area")
+        val nativeBlankBaseAreaIds = catalog.localMaps.nativeBlankBaseAreaIds
+        val staticAreaIds = catalog.runtimeMetadata.areaBaseIds - nativeBlankBaseAreaIds
+        requireSubset(areaNames.keys, staticAreaIds, "area name", "name-required area")
         val staticLocalMapKeys = catalog.localMaps.staticNameRequiredMapKeys
         requireSubset(localMapNames.keys, staticLocalMapKeys, "local-map name", "static-name-required map")
         val staticWorldRegionKeys = catalog.worldMaps.staticNameRequiredRegionKeys
@@ -293,7 +295,9 @@ class CatalogLanguageOverlay(
             region.locations.map { WorldLocationKey(region.key, it.key) }
         }
         requireSubset(worldLocationNames.keys, worldLocationKeys, "world-location name", "location")
-        requireSubset(encounterAreaNames.keys, catalog.encounterAreas.mapTo(hashSetOf(), EncounterArea::id), "encounter name", "area")
+        val staticEncounterAreaIds = catalog.encounterAreas.filter { it.id / 10 !in nativeBlankBaseAreaIds }
+            .mapTo(hashSetOf(), EncounterArea::id)
+        requireSubset(encounterAreaNames.keys, staticEncounterAreaIds, "encounter name", "name-required area")
         val authoritativeEncounterAreaNames = CatalogLocalizedTextExtractor.resolveEncounterAreaNames(
             catalog.encounterAreas,
             areaNames,
@@ -341,11 +345,12 @@ class CatalogLanguageOverlay(
         requireExpected(LocalizedTextCapability.TYPE_NAMES, catalog.typesById.size)
         requireExpected(LocalizedTextCapability.NATURE_NAMES, catalog.naturesById.size)
         requireExpected(LocalizedTextCapability.ITEM_NAMES, itemIds.size)
-        requireExpected(LocalizedTextCapability.AREA_NAMES, catalog.runtimeMetadata.areaBaseIds.size)
+        requireExpected(LocalizedTextCapability.AREA_NAMES, staticAreaIds.size)
         requireExpected(LocalizedTextCapability.LOCAL_MAP_NAMES, staticLocalMapKeys.size)
         requireExpected(LocalizedTextCapability.WORLD_REGION_NAMES, staticWorldRegionKeys.size)
         requireExpected(LocalizedTextCapability.WORLD_LOCATION_NAMES, worldLocationKeys.size)
-        requireExpected(LocalizedTextCapability.ENCOUNTER_AREA_NAMES, catalog.encounterAreas.size)
+        requireExpected(LocalizedTextCapability.ENCOUNTER_AREA_NAMES,
+            catalog.encounterAreas.count { it.id / 10 !in nativeBlankBaseAreaIds })
         requireExpected(LocalizedTextCapability.POI_TEXT, catalog.localMaps.pois.size)
     }
 

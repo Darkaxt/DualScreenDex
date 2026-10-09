@@ -715,6 +715,12 @@ data class LocalMapCatalog(
     val contextDependentMapKeys: Set<String>
         get() = maps.filter { it.nameDisposition == LocalMapNameDisposition.CONTEXT_DEPENDENT }
             .mapTo(linkedSetOf(), LocalMap::key)
+    val nativeBlankMapKeys: Set<String>
+        get() = maps.filter { it.nameDisposition == LocalMapNameDisposition.NATIVE_BLANK }
+            .mapTo(linkedSetOf(), LocalMap::key)
+    val nativeBlankBaseAreaIds: Set<Int>
+        get() = maps.filter { it.nameDisposition == LocalMapNameDisposition.NATIVE_BLANK }
+            .mapTo(linkedSetOf(), LocalMap::baseAreaId)
 
     init {
         validate()
@@ -742,8 +748,8 @@ data class LocalMapCatalog(
         timedAssets.values.forEach(TimedIndexedMapAsset::validate)
         maps.forEach { map ->
             requireNotNull(map.nameDisposition) { "local maps require a name disposition" }
-            require(map.nameDisposition != LocalMapNameDisposition.CONTEXT_DEPENDENT || map.displayName == null) {
-                "context-dependent local maps cannot carry fixed display names"
+            require(map.nameDisposition == LocalMapNameDisposition.STATIC_NAME_REQUIRED || map.displayName == null) {
+                "non-static local maps cannot carry fixed display names"
             }
             require(map.key.isNotBlank()) { "local-map keys must not be blank" }
             require(map.baseAreaId in 0..0xFFFF) { "local-map base-area IDs must fit group/map identity" }
@@ -877,10 +883,11 @@ data class LocalMapCatalog(
     }
 }
 
-/** CONTEXT_DEPENDENT requires positive producer evidence; absent text is not evidence. */
+/** Non-static dispositions require positive producer evidence; absent text is not evidence. */
 enum class LocalMapNameDisposition {
     STATIC_NAME_REQUIRED,
     CONTEXT_DEPENDENT,
+    NATIVE_BLANK,
 }
 
 data class LocalMap(

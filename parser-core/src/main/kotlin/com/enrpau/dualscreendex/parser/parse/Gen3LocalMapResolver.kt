@@ -58,9 +58,15 @@ internal object Gen3LocalMapResolver {
             cancellation,
             session.limits.maxDatasetExtentBytes,
         )
+        val blankNameSections = Gen3MapLocationResolver.resolveBlankNameSections(
+            session.rom,
+            references,
+            cancellation,
+            session.limits.maxDatasetExtentBytes,
+        )
         cancellation.throwIfCancellationRequested()
         var selectedHeaders = completeHeaders
-        var descriptorBatch = readDescriptors(session.rom, selectedHeaders, names, cancellation)
+        var descriptorBatch = readDescriptors(session.rom, selectedHeaders, names, cancellation, blankNameSections)
         if (descriptorBatch.descriptors.sumOf { it.pixelCount.toLong() } > MAX_TOTAL_PIXELS) {
             val reachableHeaders = Gen3MapLocationResolver.resolveReachableHeaderByBaseArea(
                 session.rom,
@@ -76,7 +82,7 @@ internal object Gen3LocalMapResolver {
                 )
             }
             selectedHeaders = reachableHeaders
-            descriptorBatch = readDescriptors(session.rom, selectedHeaders, names, cancellation)
+            descriptorBatch = readDescriptors(session.rom, selectedHeaders, names, cancellation, blankNameSections)
         }
         val descriptors = descriptorBatch.descriptors
         val skippedReasons = descriptorBatch.skippedReasons
@@ -217,15 +223,20 @@ internal object Gen3LocalMapResolver {
         headers: Map<Int, Int>,
         names: Map<Int, String>,
         cancellation: ParserCancellationToken,
+        blankNameSections: Set<Int>,
     ): DescriptorBatch {
         val descriptors = mutableListOf<MapDescriptor>()
         val skippedReasons = mutableListOf<String>()
         headers.toSortedMap().forEach { (baseAreaId, header) ->
             cancellation.throwIfCancellationRequested()
             runCatching { readDescriptor(rom, baseAreaId, header, names) }
-                .onSuccess {
+                .onSuccess { descriptor ->
                     cancellation.throwIfCancellationRequested()
-                    descriptors += it
+                    descriptors += if (rom.u8(header + MAP_SECTION_OFFSET) in blankNameSections &&
+                        descriptor.nameDisposition == LocalMapNameDisposition.STATIC_NAME_REQUIRED
+                    ) {
+                        descriptor.copy(displayName = null, nameDisposition = LocalMapNameDisposition.NATIVE_BLANK)
+                    } else descriptor
                 }
                 .onFailure { failure ->
                     if (failure is CancellationException) throw failure

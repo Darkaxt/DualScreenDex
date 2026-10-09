@@ -60,8 +60,13 @@ class CatalogTextProjection private constructor(
             ?.displayName
     }
 
-    fun areaName(baseAreaId: Int): String? = text(overlay?.areaNames?.get(baseAreaId)?.value) {
-        catalog.runtimeMetadata.areaNamesByBaseId[baseAreaId]
+    private val nativeBlankBaseAreaIds = catalog.localMaps.nativeBlankBaseAreaIds
+
+    fun areaName(baseAreaId: Int): String? {
+        if (baseAreaId in nativeBlankBaseAreaIds) return null
+        return text(overlay?.areaNames?.get(baseAreaId)?.value) {
+            catalog.runtimeMetadata.areaNamesByBaseId[baseAreaId]
+        }
     }
 
     fun localMapName(key: String): String? {
@@ -83,8 +88,11 @@ class CatalogTextProjection private constructor(
             ?.displayName
     }
 
-    fun encounterAreaName(id: Int): String? = text(overlay?.encounterAreaNames?.get(id)?.value) {
-        catalog.encounterAreas.firstOrNull { it.id == id }?.name?.value
+    fun encounterAreaName(id: Int): String? {
+        if (id / 10 in nativeBlankBaseAreaIds) return null
+        return text(overlay?.encounterAreaNames?.get(id)?.value) {
+            catalog.encounterAreas.firstOrNull { it.id == id }?.name?.value
+        }
     }
 
     private val poisByKey = catalog.localMaps.pois.associateBy(LocalMapPoi::key)
