@@ -463,7 +463,25 @@
     "One input only;341other rows/history/342identities preserved. No original identity, native labels/assets, corpus/device/Android/APK/signing/release authority."
   ],
   "closure": {
-    "status": "PUBLICATION_AND_CLEANUP_PENDING",
+    "status": "BOUNDED_NATIVE_NAMES_PUBLICATION_AND_CLEANUP_COMPLETE",
+    "acceptanceCommit": "1d92157ca23ab2938bb4cb7b7eb3a87a0ec451b5",
+    "compactMembersReverified": 338,
+    "compactBytes": 2776683,
+    "historicalMembersReverified": 454,
+    "signedMembersInspected": 4136,
+    "inspectionPages": 43,
+    "membersDeleted": 4136,
+    "filesDeleted": 3557,
+    "directoriesDeleted": 579,
+    "logicalBytesDeleted": 121891092,
+    "exactRootsAbsent": 6,
+    "residuals": 0,
+    "errors": 0,
+    "warnings": 0,
+    "gradleMutexAcquiredForCleanup": false,
+    "sourceStashProtectedInputCorpusPreserved": true,
+    "completeHostInactivityClaim": false,
+    "volumeChangeAttributed": false,
     "parentAndRomStatus": "IN_PROGRESS",
     "remainingMapTextStatus": "IN_PROGRESS"
   }
