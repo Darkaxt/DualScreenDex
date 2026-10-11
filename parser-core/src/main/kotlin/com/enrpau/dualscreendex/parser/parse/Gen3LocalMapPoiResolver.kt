@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.catalog.LocalMap
 import com.enrpau.dualscreendex.parser.catalog.LocalMapNameDisposition
 import com.enrpau.dualscreendex.parser.catalog.LocalMapPoi
@@ -20,18 +21,22 @@ internal object Gen3LocalMapPoiResolver {
         maps: List<LocalMap>,
         family: EngineFamily,
         codec: PokemonTextCodec?,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
     ): Resolution {
         val mapsByBaseArea = maps.associateBy(LocalMap::baseAreaId)
         val pois = mutableListOf<LocalMapPoi>()
         val skipped = mutableListOf<String>()
         mapsByBaseArea.toSortedMap().forEach { (baseAreaId, map) ->
+            cancellation.throwIfCancellationRequested()
             val header = headers[baseAreaId] ?: return@forEach
-            runCatching { readMapEvents(rom, header, map, mapsByBaseArea, family, codec) }
+            runCatching { readMapEvents(rom, header, map, mapsByBaseArea, family, codec, cancellation) }
                 .onSuccess(pois::addAll)
                 .onFailure { failure ->
+                    if (failure is java.util.concurrent.CancellationException) throw failure
                     skipped += "map 0x${baseAreaId.hex4()} POIs: ${failure.message}"
                 }
         }
+        cancellation.throwIfCancellationRequested()
         return Resolution(pois, skipped)
     }
 
@@ -42,6 +47,7 @@ internal object Gen3LocalMapPoiResolver {
         mapsByBaseArea: Map<Int, LocalMap>,
         family: EngineFamily,
         codec: PokemonTextCodec?,
+        cancellation: ParserCancellationToken,
     ): List<LocalMapPoi> {
         val events = rom.gbaPointer(header + MAP_EVENTS_OFFSET) ?: return emptyList()
         val objectCount = rom.u8(events + OBJECT_COUNT_OFFSET)
@@ -142,6 +148,7 @@ internal object Gen3LocalMapPoiResolver {
                 )
             }
             backgroundRecords.forEach { background ->
+                cancellation.throwIfCancellationRequested()
                 if (background.kind == BG_EVENT_HIDDEN_ITEM) {
                     val hiddenFlagIndex = when (family) {
                         EngineFamily.FIRERED_LEAFGREEN -> rom.u8(background.offset + 10)
@@ -171,7 +178,7 @@ internal object Gen3LocalMapPoiResolver {
                         rom.u8(script) == SCR_OP_LOCK_ALL && rom.u8(script + 1) == SCR_OP_CHECK_PLAYER_GENDER
                     val structurallyDirect = script != null && findLinearSignMessage(rom, script, family) != null
                     val signHeadline = if (script != null && codec != null) {
-                        readSignHeadline(rom, script, family, codec)
+                        readSignHeadline(rom, script, family, codec, cancellation)
                     } else {
                         null
                     }
@@ -180,7 +187,7 @@ internal object Gen3LocalMapPoiResolver {
                         !isSign -> LocalMapPoiTextObligation.UNRESOLVED
                         signHeadline?.contextual == true -> LocalMapPoiTextObligation.CONTEXTUAL_TEXT
                         genderConditioned -> LocalMapPoiTextObligation.GENDERED_DIRECT_TEXT
-                        structurallyDirect -> LocalMapPoiTextObligation.DIRECT_TEXT
+                        structurallyDirect || signHeadline?.invariant == true -> LocalMapPoiTextObligation.DIRECT_TEXT
                         else -> LocalMapPoiTextObligation.UNRESOLVED
                     }
                     add(
@@ -216,6 +223,7 @@ internal object Gen3LocalMapPoiResolver {
         script: Int,
         family: EngineFamily,
         codec: PokemonTextCodec,
+        cancellation: ParserCancellationToken,
     ): SignHeadline? =
         readLinearSignHeadline(rom, script, family, codec)?.let { headline ->
             SignHeadline(
@@ -223,6 +231,13 @@ internal object Gen3LocalMapPoiResolver {
                 contextual = headline.contextual,
             )
         } ?: readGenderConditionedSignHeadline(rom, script, codec)
+            ?: if (family == EngineFamily.EMERALD) {
+                Gen3InvariantSignHeadlineResolver.resolve(rom, script, cancellation) { text ->
+                    readTextHeadline(rom, text, codec)?.takeUnless { it.contextual }?.displayName
+                }?.let { SignHeadline(displayName = it, invariant = true) }
+            } else {
+                null
+            }
 
     private fun readGenderConditionedSignHeadline(
         rom: RomImage,
@@ -558,6 +573,7 @@ internal object Gen3LocalMapPoiResolver {
         val displayName: String? = null,
         val byTrainerGender: Map<Int, String> = emptyMap(),
         val contextual: Boolean = false,
+        val invariant: Boolean = false,
     )
 
     private data class DecodedSignHeadline(

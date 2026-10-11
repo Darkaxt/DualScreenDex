@@ -179,6 +179,7 @@ internal object Gen3LocalMapResolver {
             maps,
             family,
             codec,
+            cancellation,
         )
         cancellation.throwIfCancellationRequested()
         val catalog = LocalMapCatalog(
