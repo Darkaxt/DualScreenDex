@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "date": "2026-10-03",
-  "verifiedDate": "2026-10-09",
-  "evidenceMode": "full342-baseline-with-focused-gen2-relationships-gen3-wide-core-and-pokescape-map-moves-dex-move-text-type-names-species-categories-ability-text-item-names-bounded-map-names",
+  "verifiedDate": "2026-10-11",
+  "evidenceMode": "full342-baseline-with-focused-gen2-relationships-gen3-wide-core-and-pokescape-map-moves-dex-move-text-type-names-species-categories-ability-text-item-names-bounded-map-names-native-blank-names-braille-poi",
   "corpusInputDigestSha256": "733e36785fa9a5b71bc4121343a6b6d2cbd27e43e08b3fddc2e2870bac1a0561",
   "summary": {
     "inputCount": 342,
@@ -5907,8 +5907,8 @@
     },
     {
       "name": "Pokescape (v1.0.4).gba",
-      "evidence": "focused-pokescape-native-bounded-map-names-and-unchanged-reference-projections-source-bound",
-      "sourceCommit": "ecc26c969810fa39987febb397b3846c3d6f30f9",
+      "evidence": "focused-pokescape-native-blank-name-applicability-and-braille-poi-source-profile-bound",
+      "sourceCommit": "28d123e6af33e1fecc85c92f8cb98eef7b2c2762",
       "aliases": [
         {
           "archive": "Pokemon Pokescape (v1.0.4).7z",
@@ -6106,8 +6106,8 @@
         "referenceErrors": 0,
         "sqliteReopenEqualityVerified": true,
         "logicalDigestVersion": 1,
-        "beforeCatalogSha256": "aae4394d40b51168409ac0ded6df4d61a1f9f768fc0b7c8ce473cd54ef383190",
-        "afterCatalogSha256": "aae4394d40b51168409ac0ded6df4d61a1f9f768fc0b7c8ce473cd54ef383190"
+        "beforeCatalogSha256": "74783c0b5ed13eccf36a2804fa3a669011d823945ce644802b1ba250310990eb",
+        "afterCatalogSha256": "74783c0b5ed13eccf36a2804fa3a669011d823945ce644802b1ba250310990eb"
       },
       "localizedCapabilities": {
         "SPECIES_NAMES": {
@@ -6199,10 +6199,10 @@
           "validatorReviewRecommended": false
         },
         "LOCAL_MAP_NAMES": {
-          "status": "PARTIAL",
+          "status": "AVAILABLE",
           "confidence": 1.0,
           "coveredRecords": 482,
-          "expectedRecords": 484,
+          "expectedRecords": 482,
           "reviewStatus": "NONE",
           "validatorReviewRecommended": false
         },
@@ -6223,17 +6223,17 @@
           "validatorReviewRecommended": false
         },
         "ENCOUNTER_AREA_NAMES": {
-          "status": "PARTIAL",
+          "status": "AVAILABLE",
           "confidence": 1.0,
           "coveredRecords": 201,
-          "expectedRecords": 202,
+          "expectedRecords": 201,
           "reviewStatus": "NONE",
           "validatorReviewRecommended": false
         },
         "POI_TEXT": {
           "status": "PARTIAL",
           "confidence": 1.0,
-          "coveredRecords": 1769,
+          "coveredRecords": 1803,
           "expectedRecords": 2149,
           "reviewStatus": "NONE",
           "validatorReviewRecommended": false
@@ -6255,7 +6255,7 @@
         "localMapCount": 520,
         "poiBearingMapCount": 457,
         "poiRecords": 2149,
-        "poiRecordsWithContent": 666
+        "poiRecordsWithContent": 700
       }
     },
     {
@@ -47376,7 +47376,8 @@
     "6853d5d6a0d464d21613cd6f1b8f1156054dad34",
     "2a9178406f782bbd66ed9ed219bf89eff7765220",
     "eaaaaff19306cd012c70611ca7ee1a6f7349ca5a",
-    "ecc26c969810fa39987febb397b3846c3d6f30f9"
+    "ecc26c969810fa39987febb397b3846c3d6f30f9",
+    "28d123e6af33e1fecc85c92f8cb98eef7b2c2762"
   ],
   "focusedGen2Relationships": {
     "inputCount": 19,
@@ -47592,5 +47593,36 @@
     "newNativeMapNames": 212,
     "newReferencedDestinationLabels": 443,
     "nativeWarpOrExitSemanticsNewlyAccepted": false
+  },
+  "focusedPokescapeNativeBrailleNames": {
+    "inputCount": 1,
+    "implementationSourceCommit": "28d123e6af33e1fecc85c92f8cb98eef7b2c2762",
+    "acceptedPackageSourceCommit": "0b00cd4d2fc39fbbd44cc45463f4895383fc4721",
+    "acceptedPackageSourceProfileSha256": "18c55b7d4aa96c8fdc779ea6eae12aa907bf40929fa2104e398e56be92550648",
+    "acceptedSourceBuildPins": 606,
+    "implementationSourceBuildPinsStillEqual": 605,
+    "generatedHostSourcePinsStillEqual": 594,
+    "onlyPostAcceptancePinChange": "Chronological remaining-text execution ledger; tested Kotlin/build inputs unchanged.",
+    "sourceProfileMeaning": "Accepted exact unpublished candidate97 pins, not a clean-tree run at the subsequently published implementation commit.",
+    "parserSchemaVersion": 97,
+    "sqlSchemaVersion": 2,
+    "acceptance": "2026-10-11-pokescape-native-braille-name-acceptance.json",
+    "unaffectedRowsRetained": 341,
+    "fullCorpusRerun": false,
+    "localNameCoverage": [
+      482,
+      482
+    ],
+    "encounterNameCoverage": [
+      201,
+      201
+    ],
+    "poiTextCoverage": [
+      1803,
+      2149
+    ],
+    "newPoiLabels": 34,
+    "correctedExistingPoiLabels": 9,
+    "nativeWarpSceneOrContextApplicabilityNewlyAccepted": false
   }
 }
