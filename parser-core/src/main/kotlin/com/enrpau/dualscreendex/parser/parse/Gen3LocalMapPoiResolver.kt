@@ -24,12 +24,15 @@ internal object Gen3LocalMapPoiResolver {
         cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
     ): Resolution {
         val mapsByBaseArea = maps.associateBy(LocalMap::baseAreaId)
+        val backgroundContract by lazy {
+            if (family == EngineFamily.EMERALD) Gen3BackgroundEventContractResolver.resolve(rom, cancellation) else null
+        }
         val pois = mutableListOf<LocalMapPoi>()
         val skipped = mutableListOf<String>()
         mapsByBaseArea.toSortedMap().forEach { (baseAreaId, map) ->
             cancellation.throwIfCancellationRequested()
             val header = headers[baseAreaId] ?: return@forEach
-            runCatching { readMapEvents(rom, header, map, mapsByBaseArea, family, codec, cancellation) }
+            runCatching { readMapEvents(rom, header, map, mapsByBaseArea, family, codec, cancellation) { backgroundContract } }
                 .onSuccess(pois::addAll)
                 .onFailure { failure ->
                     if (failure is java.util.concurrent.CancellationException) throw failure
@@ -48,6 +51,7 @@ internal object Gen3LocalMapPoiResolver {
         family: EngineFamily,
         codec: PokemonTextCodec?,
         cancellation: ParserCancellationToken,
+        backgroundContract: () -> Gen3BackgroundEventContractResolver.Contract?,
     ): List<LocalMapPoi> {
         val events = rom.gbaPointer(header + MAP_EVENTS_OFFSET) ?: return emptyList()
         val objectCount = rom.u8(events + OBJECT_COUNT_OFFSET)
@@ -149,7 +153,12 @@ internal object Gen3LocalMapPoiResolver {
             }
             backgroundRecords.forEach { background ->
                 cancellation.throwIfCancellationRequested()
-                if (background.kind == BG_EVENT_HIDDEN_ITEM) {
+                val nullUnion = rom.u32le(background.offset + 8) == 0L
+                val contract = if (family == EngineFamily.EMERALD &&
+                    (nullUnion || background.kind == BG_EVENT_HIDDEN_ITEM)
+                ) backgroundContract() else null
+                val defaultScript = contract?.defaultScript?.takeIf { nullUnion }
+                if (background.kind == BG_EVENT_HIDDEN_ITEM && (family != EngineFamily.EMERALD || !nullUnion)) {
                     val hiddenFlagIndex = when (family) {
                         EngineFamily.FIRERED_LEAFGREEN -> rom.u8(background.offset + 10)
                         else -> rom.u16le(background.offset + 10)
@@ -166,14 +175,18 @@ internal object Gen3LocalMapPoiResolver {
                             organicVisibility = LocalMapPoiOrganicVisibility.PROXIMITY_SILHOUETTE,
                             item = LocalMapPoiItem(
                                 itemId = rom.u16le(background.offset + 8),
-                                collectionFlagId = HIDDEN_ITEMS_FLAG_START + hiddenFlagIndex,
+                                collectionFlagId = if (family == EngineFamily.EMERALD) {
+                                    contract?.let { (it.hiddenFlagStart + hiddenFlagIndex) and 0xffff }
+                                } else {
+                                    HIDDEN_ITEMS_FLAG_START + hiddenFlagIndex
+                                },
                             ),
                         ),
                     )
                 } else {
                     val destination = backgroundWarps[background.index]
-                    val isSign = background.kind in BG_EVENT_SIGN_KINDS
-                    val script = if (isSign) rom.gbaPointer(background.offset + 8) else null
+                    val isSign = background.kind in BG_EVENT_SIGN_KINDS || defaultScript != null
+                    val script = defaultScript ?: if (isSign) rom.gbaPointer(background.offset + 8) else null
                     val genderConditioned = script != null && script.toLong() + 2 <= rom.size &&
                         rom.u8(script) == SCR_OP_LOCK_ALL && rom.u8(script + 1) == SCR_OP_CHECK_PLAYER_GENDER
                     val structurallyDirect = script != null && findLinearSignMessage(rom, script, family) != null
@@ -183,7 +196,8 @@ internal object Gen3LocalMapPoiResolver {
                         null
                     }
                     val obligation = when {
-                        background.kind == BG_EVENT_SECRET_BASE -> LocalMapPoiTextObligation.NO_TEXT
+                        background.kind == BG_EVENT_SECRET_BASE && family != EngineFamily.EMERALD ->
+                            LocalMapPoiTextObligation.NO_TEXT
                         !isSign -> LocalMapPoiTextObligation.UNRESOLVED
                         signHeadline?.contextual == true -> LocalMapPoiTextObligation.CONTEXTUAL_TEXT
                         genderConditioned -> LocalMapPoiTextObligation.GENDERED_DIRECT_TEXT
