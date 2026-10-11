@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "date": "2026-10-03",
-  "verifiedDate": "2026-10-11",
-  "evidenceMode": "full342-baseline-with-focused-gen2-relationships-gen3-wide-core-and-pokescape-map-moves-dex-move-text-type-names-species-categories-ability-text-item-names-bounded-map-names-native-blank-names-braille-poi-native-invariant-headlines",
+  "verifiedDate": "2026-10-12",
+  "evidenceMode": "full342-baseline-with-focused-gen2-relationships-gen3-wide-core-and-pokescape-map-moves-dex-move-text-type-names-species-categories-ability-text-item-names-bounded-map-names-native-blank-names-braille-poi-native-invariant-headlines-compiled-background-flags",
   "corpusInputDigestSha256": "733e36785fa9a5b71bc4121343a6b6d2cbd27e43e08b3fddc2e2870bac1a0561",
   "summary": {
     "inputCount": 342,
@@ -5907,8 +5907,8 @@
     },
     {
       "name": "Pokescape (v1.0.4).gba",
-      "evidence": "focused-pokescape-native-all-path-invariant-first-headlines",
-      "sourceCommit": "8f072dd6448d7778acd8c65627ca426cd979a7ba",
+      "evidence": "focused-pokescape-native-static-background-flags",
+      "sourceCommit": "2043cd5253fed14a4e9a7a8909e9d5619491987e",
       "aliases": [
         {
           "archive": "Pokemon Pokescape (v1.0.4).7z",
@@ -6106,8 +6106,8 @@
         "referenceErrors": 0,
         "sqliteReopenEqualityVerified": true,
         "logicalDigestVersion": 1,
-        "beforeCatalogSha256": "f2df88c05c2432d199f789264a7492bb2c1d56cd3e7fb7da0d520006f5df1edc",
-        "afterCatalogSha256": "f2df88c05c2432d199f789264a7492bb2c1d56cd3e7fb7da0d520006f5df1edc"
+        "beforeCatalogSha256": "1c0fbc0282b6d59031dfa6f08bc2fbcbf73211ac649ed315fa1164df17d7b20c",
+        "afterCatalogSha256": "1c0fbc0282b6d59031dfa6f08bc2fbcbf73211ac649ed315fa1164df17d7b20c"
       },
       "localizedCapabilities": {
         "SPECIES_NAMES": {
@@ -47378,7 +47378,8 @@
     "eaaaaff19306cd012c70611ca7ee1a6f7349ca5a",
     "ecc26c969810fa39987febb397b3846c3d6f30f9",
     "28d123e6af33e1fecc85c92f8cb98eef7b2c2762",
-    "8f072dd6448d7778acd8c65627ca426cd979a7ba"
+    "8f072dd6448d7778acd8c65627ca426cd979a7ba",
+    "2043cd5253fed14a4e9a7a8909e9d5619491987e"
   ],
   "focusedGen2Relationships": {
     "inputCount": 19,
@@ -47645,5 +47646,27 @@
     ],
     "remainingPoiObligations": 325,
     "nativeTaskWindowLivenessAccepted": false
+  },
+  "focusedPokescapeCompiledBackgroundFlags": {
+    "inputCount": 1,
+    "implementationSourceCommit": "2043cd5253fed14a4e9a7a8909e9d5619491987e",
+    "acceptedPackageSourceCommit": "2043cd5253fed14a4e9a7a8909e9d5619491987e",
+    "acceptedPackageSourceProfileSha256": "e5d2855ffd7c041c1189341a9558a26d80d1284e326e4e8d9caac345cf366983",
+    "acceptedSourceBuildPins": 609,
+    "sourceProfileMeaning": "Clean published parser99 source; four installed module class maps and13 runtime jars bound to the guarded host integration. Later chronological documentation is not a new parser-package run.",
+    "parserSchemaVersion": 99,
+    "sqlSchemaVersion": 2,
+    "acceptance": "2026-10-12-pokescape-compiled-background-acceptance.json",
+    "unaffectedRowsRetained": 341,
+    "fullCorpusRerun": false,
+    "hiddenFlagCorrections": 112,
+    "withdrawnUnprovedNoTextClaims": 75,
+    "newPoiLabels": 0,
+    "poiTextCoverage": [
+      1824,
+      2149
+    ],
+    "remainingPoiObligations": 325,
+    "actualRuntimeStorageOrSecretLivenessAccepted": false
   }
 }
