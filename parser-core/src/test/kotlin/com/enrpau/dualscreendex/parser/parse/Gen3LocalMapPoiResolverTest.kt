@@ -152,34 +152,30 @@ class Gen3LocalMapPoiResolverTest {
 
     @Test
     fun decodesDirectMessageAndBrailleMessageForms() {
-        for (scriptWriter in listOf<(ByteArray) -> Unit>(
-            { bytes ->
-                bytes[SCRIPT] = 0x69
-                bytes[SCRIPT + 1] = 0x67
-                putPointer(bytes, SCRIPT + 2, TEXT)
-                bytes[SCRIPT + 6] = 0x66
-            },
-            { bytes ->
-                bytes[SCRIPT] = 0x69
-                bytes[SCRIPT + 1] = 0x78
-                putPointer(bytes, SCRIPT + 2, TEXT)
-                bytes[SCRIPT + 6] = 0x6d
-                bytes[SCRIPT + 7] = 0xda.toByte()
-            },
-        )) {
+        for (braille in listOf(false, true)) {
             val bytes = singleSignFixture(SCRIPT)
-            scriptWriter(bytes)
-            byteArrayOf(0x01, 0x02, 0xff.toByte()).copyInto(bytes, TEXT)
+            bytes[SCRIPT] = 0x69
+            bytes[SCRIPT + 1] = if (braille) 0x78 else 0x67
+            putPointer(bytes, SCRIPT + 2, TEXT)
+            bytes[SCRIPT + 6] = if (braille) 0x6d else 0x66
+            bytes[SCRIPT + 7] = 0xda.toByte()
+            val body = if (braille) {
+                // Emerald skips six window-format bytes and selects braille cells.
+                byteArrayOf(0, 0, 0, 0, 0, 0, 0x01, 0x05, 0xff.toByte())
+            } else {
+                byteArrayOf(0x01, 0x02, 0xff.toByte())
+            }
+            body.copyInto(bytes, TEXT)
 
             val poi = resolveSingleSign(bytes, EngineFamily.EMERALD)
 
             assertEquals(LocalMapPoiTextObligation.DIRECT_TEXT, poi.textObligation)
-            assertEquals("あい", poi.displayName)
+            assertEquals(if (braille) "⠁⠃" else "あい", poi.displayName)
         }
     }
 
     @Test
-    fun decodesBrailleAfterWaitButtonAcrossFamilies() {
+    fun unqualifiedBrailleFormatsKeepIdentityWithoutInventingOrdinaryText() {
         for ((family, nextOpcode) in listOf(
             EngineFamily.RUBY_SAPPHIRE to 0x73,
             EngineFamily.FIRERED_LEAFGREEN to 0x6b,
@@ -194,8 +190,9 @@ class Gen3LocalMapPoiResolverTest {
 
             val poi = resolveSingleSign(bytes, family)
 
+            assertEquals("local/1/bg/0", poi.key)
             assertEquals(LocalMapPoiTextObligation.DIRECT_TEXT, poi.textObligation)
-            assertEquals("あい", poi.displayName)
+            assertNull(poi.displayName)
         }
     }
 

@@ -285,7 +285,8 @@ internal object Gen3LocalMapPoiResolver {
         family: EngineFamily,
         codec: PokemonTextCodec,
     ): DecodedSignHeadline? = findLinearSignMessage(rom, script, family)?.let { message ->
-        readTextHeadline(rom, message.text, codec)
+        if (message.braille && family != EngineFamily.EMERALD) return@let null
+        readTextHeadline(rom, message.text, codec, message.braille)
     }
 
     private fun findLinearSignMessage(rom: RomImage, script: Int, family: EngineFamily): MessageReference? {
@@ -396,10 +397,10 @@ internal object Gen3LocalMapPoiResolver {
         isSimpleSignScript(rom, script) -> MessageReference(requireNotNull(rom.gbaPointer(script + 2)))
         script.toLong() + MESSAGE_BYTES <= rom.size.toLong() &&
             rom.u8(script) == SCR_OP_MESSAGE && rom.u8(script + 5) == SCR_OP_WAIT_MESSAGE ->
-            rom.gbaPointer(script + 1)?.let(::MessageReference)
+            rom.gbaPointer(script + 1)?.let { MessageReference(it) }
         script.toLong() + BRAILLE_MESSAGE_BYTES <= rom.size.toLong() &&
             rom.u8(script) == SCR_OP_BRAILLE_MESSAGE && rom.u8(script + 5) == SCR_OP_WAIT_BUTTON_PRESS ->
-            rom.gbaPointer(script + 1)?.let(::MessageReference)
+            rom.gbaPointer(script + 1)?.let { MessageReference(it, braille = true) }
         else -> null
     }
 
@@ -430,13 +431,20 @@ internal object Gen3LocalMapPoiResolver {
         rom: RomImage,
         text: Int,
         codec: PokemonTextCodec,
+        braille: Boolean = false,
     ): DecodedSignHeadline? {
-        val available = minOf(MAX_SIGN_TEXT_BYTES, rom.size - text)
+        // Emerald's braille window format precedes the separate 64-cell alphabet.
+        val start = text.toLong() + if (braille) BRAILLE_WINDOW_FORMAT_BYTES else 0
+        val available = minOf(MAX_SIGN_TEXT_BYTES.toLong(), rom.size.toLong() - start).toInt()
         if (available <= 0) return null
-        return decodeSignHeadline(rom.slice(text, available), codec)
+        return decodeSignHeadline(rom.slice(start.toInt(), available), codec, braille)
     }
 
-    private fun decodeSignHeadline(raw: ByteArray, codec: PokemonTextCodec): DecodedSignHeadline? {
+    private fun decodeSignHeadline(
+        raw: ByteArray,
+        codec: PokemonTextCodec,
+        braille: Boolean,
+    ): DecodedSignHeadline? {
         val rom = RomImage(raw)
         val output = StringBuilder()
         var cursor = 0
@@ -454,6 +462,20 @@ internal object Gen3LocalMapPoiResolver {
                 contextual = true
                 output.append("{RUNTIME}")
                 cursor += 2
+                continue
+            }
+            if (braille) {
+                if (byte !in 0 until BRAILLE_CELL_COUNT) return null
+                output.append(if (byte == 0) ' ' else brailleCell(byte))
+                cursor++
+                continue
+            }
+            if (byte == EXTENDED_CONTROL_BEGIN && cursor + 1 < rom.size &&
+                rom.u8(cursor + 1) == EXTENDED_CONTROL_CLEAR_TO
+            ) {
+                if (cursor + CLEAR_TO_CONTROL_BYTES > rom.size) return null
+                output.append(' ')
+                cursor += CLEAR_TO_CONTROL_BYTES
                 continue
             }
             val token = codec.decodeToken(rom, cursor, rom.size)
@@ -474,9 +496,17 @@ internal object Gen3LocalMapPoiResolver {
             }
         }
         if (!terminated) return null
+        val minimumChars = if (braille) 1 else MIN_SIGN_HEADLINE_CHARS
         val displayName = output.toString().replace(WHITESPACE, " ").trim()
-            .takeIf { it.length >= MIN_SIGN_HEADLINE_CHARS } ?: return null
+            .takeIf { it.length >= minimumChars } ?: return null
         return DecodedSignHeadline(displayName, contextual)
+    }
+
+    private fun brailleCell(byte: Int): Char {
+        // Native cells number dots across rows; Unicode numbers down columns.
+        val dots = (byte and 0x01) or ((byte and 0x04) shr 1) or ((byte and 0x10) shr 2) or
+            ((byte and 0x02) shl 2) or ((byte and 0x08) shl 1) or (byte and 0x20)
+        return (UNICODE_BRAILLE_START + dots).toChar()
     }
 
     private fun readVisibleItemId(rom: RomImage, script: Int): Int? {
@@ -522,7 +552,7 @@ internal object Gen3LocalMapPoiResolver {
         val kind: Int,
     )
 
-    private data class MessageReference(val text: Int)
+    private data class MessageReference(val text: Int, val braille: Boolean = false)
 
     private data class SignHeadline(
         val displayName: String? = null,
@@ -597,6 +627,12 @@ internal object Gen3LocalMapPoiResolver {
     private const val SIMPLE_MSGBOX_BYTES = 8
     private const val MESSAGE_BYTES = 6
     private const val BRAILLE_MESSAGE_BYTES = 6
+    private const val BRAILLE_WINDOW_FORMAT_BYTES = 6
+    private const val BRAILLE_CELL_COUNT = 64
+    private const val UNICODE_BRAILLE_START = 0x2800
+    private const val EXTENDED_CONTROL_BEGIN = 0xFC
+    private const val EXTENDED_CONTROL_CLEAR_TO = 0x13
+    private const val CLEAR_TO_CONTROL_BYTES = 3
     private const val SET_VAR_BYTES = 5
     private const val SPECIAL_BYTES = 3
     private const val CALL_BYTES = 5
