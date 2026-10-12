@@ -587,8 +587,9 @@ object CatalogMaterializer {
             MoveDescriptionMaterializer.materialize(rom, layout, cancellation = cancellation)
         }
         val moveAcquisitions = runCatching {
-            MoveAcquisitionMaterializer.materialize(rom, layout)
+            MoveAcquisitionMaterializer.materialize(rom, layout, cancellation)
         }.getOrElse {
+            if (it is CancellationException) throw it
             MoveAcquisitionMaterialization(emptyMap(), emptyMap())
         }
         cancellation.throwIfCancellationRequested()

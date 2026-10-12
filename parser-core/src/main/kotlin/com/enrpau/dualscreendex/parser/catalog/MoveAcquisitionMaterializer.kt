@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.catalog
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.CapabilityEvidence
 import com.enrpau.dualscreendex.parser.model.CapabilityStatus
@@ -18,11 +19,24 @@ data class MoveAcquisitionMaterialization(
 object MoveAcquisitionMaterializer {
     private const val EGG_SPECIES_OFFSET = 20_000
 
-    fun materialize(rom: RomImage, layout: ResolvedRomLayout): MoveAcquisitionMaterialization {
+    fun materialize(
+        rom: RomImage,
+        layout: ResolvedRomLayout,
+        cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
+    ): MoveAcquisitionMaterialization {
+        cancellation.throwIfCancellationRequested()
         if (layout.pokeemeraldExpansion != null) return expansionAcquisitions(rom, layout)
+        val compiled = if (layout.generation == 3 && layout.headerlessUnifiedSpecies == null) {
+            CompiledItemMoveAcquisitions(rom, layout, cancellation).resolve()
+        } else null
+        val compiledMachines = compiled?.data?.let {
+            Candidate(it.offset, if (it.failedSpecies.isEmpty()) 1.0 else
+                it.acquisitions.size.toDouble() / (it.acquisitions.size + it.failedSpecies.size),
+                it.acquisitions, it.failedSpecies)
+        }
         val bySpecies = linkedMapOf<Int, MutableList<MoveAcquisition>>()
         val evidence = linkedMapOf<MoveAcquisitionMethod, CapabilityEvidence>()
-        val gbaReferences = if (layout.generation == 3) referencedTargets(rom) else emptyMap()
+        val gbaReferences = if (layout.generation == 3 && compiled == null) referencedTargets(rom, cancellation) else emptyMap()
         val legacy = when (layout.generation) {
             1 -> LegacyAcquisitions(machine = embeddedGenOneMachines(rom, layout))
             2 -> embeddedGenTwoAcquisitions(rom, layout)
@@ -33,7 +47,9 @@ object MoveAcquisitionMaterializer {
             headerlessUnifiedAcquisitions(rom, layout, fieldOffset, MoveAcquisitionMethod.MACHINE)
         }
 
-        val machines = if (layout.generation <= 2) {
+        val machines = if (compiled != null) {
+            compiledMachines
+        } else if (layout.generation <= 2) {
             legacy.machine
         } else if (headerlessMoves?.teachablePointerOffset != null) {
             embeddedMachines
@@ -48,12 +64,16 @@ object MoveAcquisitionMaterializer {
         evidence[MoveAcquisitionMethod.MACHINE] = evidence(
             RomCapability.MACHINE_MOVES,
             machines,
-            if (embeddedMachines != null) {
+            if (compiled != null) {
+                compiled.reason
+            } else if (embeddedMachines != null) {
                 "decoded compiled-authorized unified teachable-move lists; machine and tutor provenance is combined"
             } else {
                 "validated ROM machine-move list and species compatibility flags"
             },
-            if (headerlessMoves?.teachablePointerOffset != null) {
+            if (compiled != null) {
+                compiled.reason
+            } else if (headerlessMoves?.teachablePointerOffset != null) {
                 "compiled-authorized unified teachable-move lists failed structural materialization"
             } else {
                 "machine-move list and compatibility flags were not jointly resolved"
@@ -88,7 +108,7 @@ object MoveAcquisitionMaterializer {
 
         val tutors = when (layout.generation) {
             2 -> legacy.tutor
-            3 -> referencedTutorPair(rom, layout, gbaReferences, machines?.sourceOffset)
+            3 -> if (compiled != null) null else referencedTutorPair(rom, layout, gbaReferences, machines?.sourceOffset)
             else -> null
         }
         val tutorNotApplicable = layout.generation == 1 || layout.family == EngineFamily.GOLD_SILVER ||
@@ -98,8 +118,9 @@ object MoveAcquisitionMaterializer {
             RomCapability.TUTOR_MOVES,
             tutors,
             "validated referenced ROM tutor-move list and species compatibility flags",
-            if (tutorNotApplicable) "a separate tutor-compatibility table is not part of this engine" else "tutor move list and compatibility flags were not jointly resolved",
-            if (tutorNotApplicable) CapabilityStatus.NOT_APPLICABLE else CapabilityStatus.NOT_FOUND,
+            if (compiled != null) "shared compiled eligibility does not establish tutor sources or source IDs"
+            else if (tutorNotApplicable) "a separate tutor-compatibility table is not part of this engine" else "tutor move list and compatibility flags were not jointly resolved",
+            if (compiled == null && tutorNotApplicable) CapabilityStatus.NOT_APPLICABLE else CapabilityStatus.NOT_FOUND,
         )
 
         return MoveAcquisitionMaterialization(
@@ -1058,10 +1079,11 @@ object MoveAcquisitionMaterializer {
         }
     }
 
-    private fun referencedTargets(rom: RomImage): Map<Int, List<Int>> {
+    private fun referencedTargets(rom: RomImage, cancellation: ParserCancellationToken): Map<Int, List<Int>> {
         val output = linkedMapOf<Int, MutableList<Int>>()
         var offset = 0
         while (offset + 4 <= rom.size) {
+            if (offset and 4095 == 0) cancellation.throwIfCancellationRequested()
             rom.gbaPointer(offset)?.let { target -> output.getOrPut(target) { mutableListOf() } += offset }
             offset += 4
         }
