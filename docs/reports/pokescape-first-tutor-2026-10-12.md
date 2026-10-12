@@ -1,6 +1,6 @@
 # Pokescape: sequential compiled tutor sources
 
-The sequential entry evidence below records parser101–109.
+The sequential entry evidence below records parser101–110.
 
 **Verified subset; complete tutor catalog and whole-ROM compatibility remain IN_PROGRESS.**
 
@@ -12,7 +12,7 @@ The sequential entry evidence below records parser101–109.
 - Removing only the new tutor links/capability exactly restores accepted parser100, inheriting its100-through93 acceptance chain.
 - Catalog digest: `e0d871bc2ca969375b04dc510f279c7970beb70d03e0de9b8af934902b8adbae`.
 
-The initial local-script nomination decoded Explosion153, but missed the earlier remote-helper Swagger source. The full-ROM run exposed that difference; the exact earlier script was then manually decoded and independently verified before acceptance. Explosion's135-species column is separately proved but is **not yet materialized** by the first-only reader.
+The initial local-script nomination decoded Explosion153, but missed the earlier remote-helper Swagger source. The full-ROM run exposed that difference; the exact earlier script was then manually decoded and independently verified before acceptance. Explosion's135-species column was separately proved but was **not yet materialized at parser101** by the first-only reader; it is accepted as the tenth entry below.
 
 Inline review also exposed an over-broad dispatch-branch check. A generated mutation RED demonstrates the error; the final guard requires the native action-scaling branch. The actual retained native branch satisfies that stricter condition, so this narrowing preserves the accepted first source and its complete column rather than requiring another original-ROM run.
 
@@ -81,5 +81,13 @@ TUTOR is **PARTIAL**, with full source coverage unknown. This establishes static
 - One actual parser109/SQL2 run matches every source/species pair: Double-Edge530 stored/529 navigable links; input0 is non-navigable. Prior tutors are unchanged. Total4927 stored/4921 navigable links; exactly530 species change.
 - All18 SQLite sections pass integrity/reopen/canonical checks. MACHINE/EGG,16 other sections and the English overlay remain unchanged;93961 references pass.
 - Removing only Double-Edge links and restoring prior TUTOR evidence exactly recovers parser108 and its108-through93 acceptance chain. Catalog digest: `55b8befa1151ff3055acb0f9c059180490804b6804c58ddb501ea8be403eea66`.
+
+## Tenth entry: Explosion153
+
+- Manual selected-variable write/CALL decoding and two native script executions establish **Explosion, move/source input153** through the same verified helper. All1236 native membership inputs yield135 eligible species, agreeing with the initial independent nomination.
+- The focused tenth-source regression fails at three relocations, then passes after increasing the generic bound by one. **41 focused tests pass**, checking all ten native columns, duplicates, overrides, eleventh-source omission and existing acquisitions.
+- One actual parser110/SQL2 run matches every source/species pair: Explosion135 stored/navigable links. Prior tutors are unchanged. Total5062 stored/5056 navigable links; exactly135 species change.
+- All18 SQLite sections pass integrity/reopen/canonical checks. MACHINE/EGG,16 other sections and the English overlay remain unchanged;94096 references pass.
+- Removing only Explosion links and restoring prior TUTOR evidence exactly recovers parser109 and its109-through93 acceptance chain. Catalog digest: `204e9665238d9277fe5f86898a73709fd7b4b4ca040468284b4bcf1e0c4fe642`.
 
 Complete source coverage remains unknown. Next: manually decode the next distinct physical source, then extend support by one entry. Active scratch is retained for the continuing work and historical consumers; cleanup is not claimed complete.
