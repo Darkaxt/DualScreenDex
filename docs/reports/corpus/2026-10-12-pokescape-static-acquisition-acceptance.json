@@ -131,7 +131,17 @@
     "341 unrelated historical rows and342 identities/aliases/source history preserved, not reevaluated; no fresh corpus, device, APK, signing or release."
   ],
   "closure": {
-    "status": "PUBLISHED_RUNTIME_VERIFIED_CLEANUP_PENDING",
+    "status": "PUBLISHED_RUNTIME_VERIFIED_EXACT_OUTPUT_CLEANUP_APPLIED",
+    "deletedMembers": 47,
+    "deletedLogicalBytes": 145377769,
+    "exactScratchRootAbsent": true,
+    "retainedSourcePinsReverified": 613,
+    "retainedCatalogReopened": true,
+    "earlierAcquisitionScratchPreservedForHistoricalLoaders": true,
+    "partialTickets": 0,
+    "residualRoots": 0,
+    "warnings": 0,
+    "errors": 0,
     "parentAndRomStatus": "IN_PROGRESS",
     "publicReleaseCreated": false
   }
