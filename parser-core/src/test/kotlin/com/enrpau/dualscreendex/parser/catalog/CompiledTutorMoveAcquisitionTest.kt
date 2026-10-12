@@ -25,12 +25,29 @@ class CompiledTutorMoveAcquisitionTest {
     @Test
     fun addsOnlyTheNextDistinctSourceAfterSkippingRepeatedMoveInputs() {
         val f = TutorFixture(0)
-        for (offset in listOf(16, 32, 48)) f.bytes.copyInto(f.bytes, f.script + offset, f.script, f.script + 10)
+        for (offset in listOf(16, 32)) f.bytes.copyInto(f.bytes, f.script + offset, f.script, f.script + 10)
         f.u16(f.script + 35, 301)
-        f.u16(f.script + 51, 9)
         val result = f.materialize()
         assertEquals(listOf(tutor(7), tutor(301)), result.acquisitionsBySpecies[3].orEmpty().filter { it.method == MoveAcquisitionMethod.TUTOR })
         assertEquals(CapabilityStatus.PARTIAL, result.evidence.getValue(MoveAcquisitionMethod.TUTOR).status)
+    }
+
+    @Test
+    fun addsOnlyTheThirdDistinctSourceAndLeavesTheFourthUnresolved() {
+        for (origin in listOf(0, 0x4000, 0x8000)) {
+            val f = TutorFixture(origin)
+            for (offset in listOf(16, 32, 48, 64)) f.bytes.copyInto(f.bytes, f.script + offset, f.script, f.script + 10)
+            f.u16(f.script + 35, 301)
+            f.u16(f.script + 51, 9)
+            f.u16(f.script + 67, 10)
+            val result = f.materialize()
+            assertEquals(listOf(tutor(7), tutor(301), tutor(9)), result.acquisitionsBySpecies[3].orEmpty().filter { it.method == MoveAcquisitionMethod.TUTOR })
+            assertEquals(listOf(tutor(7), tutor(301)), result.acquisitionsBySpecies[4].orEmpty().filter { it.method == MoveAcquisitionMethod.TUTOR })
+            assertEquals(listOf(tutor(9)), result.acquisitionsBySpecies[5].orEmpty().filter { it.method == MoveAcquisitionMethod.TUTOR })
+            val evidence = result.evidence.getValue(MoveAcquisitionMethod.TUTOR)
+            assertEquals(CapabilityStatus.PARTIAL, evidence.status)
+            assertNull(evidence.expectedRecords)
+        }
     }
 
     @Test

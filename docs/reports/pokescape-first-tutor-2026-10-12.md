@@ -1,6 +1,6 @@
 # Pokescape: sequential compiled tutor sources
 
-The first-source evidence below records parser101. The second-entry extension records parser102.
+The sequential entry evidence below records parser101–103.
 
 **Verified subset; complete tutor catalog and whole-ROM compatibility remain IN_PROGRESS.**
 
@@ -25,5 +25,13 @@ TUTOR is **PARTIAL**, with full source coverage unknown. This establishes static
 - One actual parser102/SQL2 run matches both columns exactly: Swagger1009 stored/1008 navigable; Rollout210 stored/navigable. Total1219 stored/1218 navigable tutor links; exactly210 species change.
 - All18 SQLite sections pass integrity/reopen/canonical checks. MACHINE25765 navigable links, EGG3665 links,16 other sections and the complete English overlay remain unchanged;90253 structural/localized references pass.
 - Removing only Rollout links and restoring prior TUTOR evidence exactly recovers parser101 and its101-through93 acceptance chain. Catalog digest: `35d638cdb6999510ecb7f52edb3308ac71a5eb3a361f0df52bc62f0df247d313`.
+
+## Third entry: Fury Cutter210
+
+- Manual selected-variable write/CALL decoding identifies **Fury Cutter, move/source input210**, through the same verified helper. Two native script executions and all1236 native membership inputs verify206 eligible species.
+- A generated third-source regression fails at three relocations, then passes after the narrow source-bound increase to three. **39 focused tests pass**, covering all three complete native columns, duplicates, fourth-source omission and existing acquisitions.
+- One actual parser103/SQL2 run matches every source/species pair: Fury Cutter206 stored/205 navigable links; input0 is non-navigable. Swagger/Rollout are unchanged. Total1425 stored/1423 navigable tutor links; exactly206 species change.
+- All18 SQLite sections pass integrity/reopen/canonical checks. MACHINE/EGG,16 other sections and the complete English overlay remain unchanged;90459 references pass.
+- Removing only Fury Cutter links and restoring prior TUTOR evidence exactly recovers parser102 and its102-through93 acceptance chain. Catalog digest: `6530e815e77c197b877384f82886bf0d48de2f05cdb5768822b5df719bcc7b29`.
 
 Complete source coverage remains unknown. Next: manually decode the next distinct physical source, then extend support by one entry. Active scratch is retained for the continuing work and historical consumers; cleanup is not claimed complete.
