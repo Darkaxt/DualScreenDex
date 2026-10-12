@@ -23,6 +23,17 @@ class CompiledTutorMoveAcquisitionTest {
     }
 
     @Test
+    fun addsOnlyTheNextDistinctSourceAfterSkippingRepeatedMoveInputs() {
+        val f = TutorFixture(0)
+        for (offset in listOf(16, 32, 48)) f.bytes.copyInto(f.bytes, f.script + offset, f.script, f.script + 10)
+        f.u16(f.script + 35, 301)
+        f.u16(f.script + 51, 9)
+        val result = f.materialize()
+        assertEquals(listOf(tutor(7), tutor(301)), result.acquisitionsBySpecies[3].orEmpty().filter { it.method == MoveAcquisitionMethod.TUTOR })
+        assertEquals(CapabilityStatus.PARTIAL, result.evidence.getValue(MoveAcquisitionMethod.TUTOR).status)
+    }
+
+    @Test
     fun acceptsOtherMoveInputsAndVariableSlotsWithoutRetailOrdinals() {
         for (move in listOf(9, 301)) {
             val f = TutorFixture(0x4000)
@@ -36,12 +47,12 @@ class CompiledTutorMoveAcquisitionTest {
     }
 
     @Test
-    fun retainsOnlyTheFirstSourceAndLeavesTotalCoverageUnknown() {
+    fun retainsBoundedSourcesAndLeavesTotalCoverageUnknown() {
         val f = TutorFixture(0)
         f.bytes.copyInto(f.bytes, f.script + 16, f.script, f.script + 10)
         f.u16(f.script + 19, 301)
         val result = f.materialize()
-        assertEquals(listOf(tutor(7)), result.acquisitionsBySpecies[3].orEmpty().filter { it.method == MoveAcquisitionMethod.TUTOR })
+        assertEquals(listOf(tutor(7), tutor(301)), result.acquisitionsBySpecies[3].orEmpty().filter { it.method == MoveAcquisitionMethod.TUTOR })
         assertNull(result.evidence.getValue(MoveAcquisitionMethod.TUTOR).incompleteRecords)
     }
 
@@ -96,12 +107,13 @@ class CompiledTutorMoveAcquisitionTest {
             itemNameAuthority = com.enrpau.dualscreendex.parser.model.GbaItemNameAuthority.Available(values[4], values[5], values[6], values[6], null,
                 com.enrpau.dualscreendex.parser.model.GbaItemNameProvenance.COMPILED_CONSUMER))
         val result = MoveAcquisitionMaterializer.materialize(RomImage(bytes), layout)
-        val expected = lines.single { it[0] == "tutor" }
-        val move = expected[1].toInt()
-        val expectedSpecies = expected[2].split(',').map(String::toInt).toSet()
+        val expectedSources = lines.filter { it[0] == "tutor" }.map { row ->
+            row[1].toInt() to row[2].split(',').map(String::toInt).toSet()
+        }
         for (species in 0 until values[0]) {
             val actual = result.acquisitionsBySpecies[species].orEmpty().filter { it.method == MoveAcquisitionMethod.TUTOR }
-            assertEquals("native species input $species", if (species in expectedSpecies) listOf(tutor(move)) else emptyList<MoveAcquisition>(), actual)
+            val expected = expectedSources.mapNotNull { (move, eligible) -> tutor(move).takeIf { species in eligible } }
+            assertEquals("native species input $species", expected, actual)
         }
         for (row in lines.filter { it[0] == "machine" }) {
             val actual = result.acquisitionsBySpecies[row[1].toInt()].orEmpty().filter { it.method == MoveAcquisitionMethod.MACHINE }

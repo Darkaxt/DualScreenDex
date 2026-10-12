@@ -4,14 +4,14 @@ import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.ResolvedRomLayout
 
-/** One script-bound source. Shared eligibility alone never authorizes tutor provenance. */
+/** Incrementally bounded script sources. Shared eligibility never authorizes tutor provenance. */
 internal class CompiledTutorMoveAcquisitions(
     private val rom: RomImage,
     private val layout: ResolvedRomLayout,
     private val shared: CompiledItemMoveAcquisitions.Data,
     private val cancellation: ParserCancellationToken,
 ) {
-    data class Data(val offset: Int, val acquisitions: Map<Int, List<MoveAcquisition>>, val failedSpecies: Set<Int>)
+    data class Data(val offset: Int, val acquisitions: Map<Int, List<MoveAcquisition>>, val failedSpecies: Set<Int>, val sourceCount: Int)
     private data class Workflow(val party: Long, val selected: Long)
     private data class Commands(val variables: Int, val specials: Int)
     private data class Menu(val initializer: Int, val callback: Int, val action: Int)
@@ -35,7 +35,7 @@ internal class CompiledTutorMoveAcquisitions(
         } ?: return null
         if (linked.isEmpty()) return null
         if (menus.isEmpty()) return null
-        var first: Pair<Int, Int>? = null
+        val sources = linkedMapOf<Int, Int>()
         // SETVAR u16,u16; CALL pointer. The called helper delivers the source before any
         // opaque script operation. No nearby SPECIAL search or retail tutor ordinal.
         rom.visitMatches(byteArrayOf(0x16), onCheck = cancellation::throwIfCancellationRequested) { at ->
@@ -52,16 +52,17 @@ internal class CompiledTutorMoveAcquisitions(
             val move = rom.u16le(at + 3)
             val count = layout.moveCount ?: return@visitMatches false
             if (move !in 1 until count || move >= 0x8000) { exhausted = true; return@visitMatches false }
-            first = at to move
-            false // Deliberately incremental: complete source-catalog coverage is unknown.
+            sources.putIfAbsent(move, at)
+            sources.size < MAX_SOURCES // Complete source-catalog coverage remains unknown.
         }
-        if (exhausted) return null
-        val (source, move) = first ?: return null
+        if (exhausted || sources.isEmpty()) return null
         val rows = shared.acquisitions.keys.associateWith { species ->
             cancellation.throwIfCancellationRequested()
-            if (shared.allows(species, move)) listOf(MoveAcquisition(move, MoveAcquisitionMethod.TUTOR, move)) else emptyList()
+            sources.keys.mapNotNull { move ->
+                MoveAcquisition(move, MoveAcquisitionMethod.TUTOR, move).takeIf { shared.allows(species, move) }
+            }
         }
-        return Data(source, rows, shared.failedSpecies)
+        return Data(sources.values.first(), rows, shared.failedSpecies, sources.size)
     }
 
     private fun workflow(at: Int): Workflow? {
@@ -253,5 +254,6 @@ internal class CompiledTutorMoveAcquisitions(
     private companion object {
         const val MAX_WORK = 1_000_000
         const val MAX_CANDIDATES = 64
+        const val MAX_SOURCES = 2
     }
 }

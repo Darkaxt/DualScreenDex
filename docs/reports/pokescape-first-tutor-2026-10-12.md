@@ -1,4 +1,6 @@
-# Pokescape: first compiled tutor source
+# Pokescape: sequential compiled tutor sources
+
+The first-source evidence below records parser101. The second-entry extension records parser102.
 
 **Verified subset; complete tutor catalog and whole-ROM compatibility remain IN_PROGRESS.**
 
@@ -14,4 +16,14 @@ The initial local-script nomination decoded Explosion153, but missed the earlier
 
 Inline review also exposed an over-broad dispatch-branch check. A generated mutation RED demonstrates the error; the final guard requires the native action-scaling branch. The actual retained native branch satisfies that stricter condition, so this narrowing preserves the accepted first source and its complete column rather than requiring another original-ROM run.
 
-TUTOR is **PARTIAL**, with full source coverage unknown. This establishes static source/membership parsing, not gameplay availability, full setter effects, device validation or release acceptance. Private original locators, raw bytes and generated catalogs remain outside Git. Next: decode the next physical source, then extend support by one entry.
+TUTOR is **PARTIAL**, with full source coverage unknown. This establishes static source/membership parsing, not gameplay availability, full setter effects, device validation or release acceptance. Private original locators, raw bytes and generated catalogs remain outside Git.
+
+## Second entry: Rollout205
+
+- Manual selected-variable write/CALL decoding and the same verified tutor helper identify **Rollout, move/source input205**. Two native script executions and all1236 native membership inputs independently verify its210 eligible species.
+- Functional second-entry RED precedes increasing the generic reader bound from one to two distinct inputs. Duplicate sources are skipped; a third distinct input remains omitted. **38 focused tests pass**, including both complete native columns and existing acquisition preservation.
+- One actual parser102/SQL2 run matches both columns exactly: Swagger1009 stored/1008 navigable; Rollout210 stored/navigable. Total1219 stored/1218 navigable tutor links; exactly210 species change.
+- All18 SQLite sections pass integrity/reopen/canonical checks. MACHINE25765 navigable links, EGG3665 links,16 other sections and the complete English overlay remain unchanged;90253 structural/localized references pass.
+- Removing only Rollout links and restoring prior TUTOR evidence exactly recovers parser101 and its101-through93 acceptance chain. Catalog digest: `35d638cdb6999510ecb7f52edb3308ac71a5eb3a361f0df52bc62f0df247d313`.
+
+Complete source coverage remains unknown. Next: manually decode the next distinct physical source, then extend support by one entry. Active scratch is retained for the continuing work and historical consumers; cleanup is not claimed complete.

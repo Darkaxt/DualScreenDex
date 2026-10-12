@@ -125,7 +125,7 @@ object MoveAcquisitionMaterializer {
             offset = compiledTutors.offset,
             count = compiledTutors.acquisitions.values.sumOf { it.size },
             status = CapabilityStatus.PARTIAL,
-            reasons = listOf("first compiled script-bound tutor source; source IDs are native selected-move inputs; complete source coverage is unresolved"),
+            reasons = listOf("${compiledTutors.sourceCount} compiled script-bound tutor sources; source IDs are native selected-move inputs; complete source coverage is unresolved"),
         ) else evidence(
             RomCapability.TUTOR_MOVES,
             tutors,
