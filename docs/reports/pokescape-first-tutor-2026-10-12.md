@@ -1,6 +1,6 @@
 # Pokescape: sequential compiled tutor sources
 
-The sequential entry evidence below records parser101–105.
+The sequential entry evidence below records parser101–106.
 
 **Verified subset; complete tutor catalog and whole-ROM compatibility remain IN_PROGRESS.**
 
@@ -49,5 +49,13 @@ TUTOR is **PARTIAL**, with full source coverage unknown. This establishes static
 - One actual parser105/SQL2 run matches every source/species pair: Metronome89 stored/navigable links. Prior tutors are unchanged. Total1966 stored/1963 navigable links; exactly89 species change.
 - All18 SQLite sections pass integrity/reopen/canonical checks. MACHINE/EGG,16 other sections and the English overlay remain unchanged;91000 references pass.
 - Removing only Metronome links and restoring prior TUTOR evidence exactly recovers parser104 and its104-through93 acceptance chain. Catalog digest: `e6848598a9375e6dfa30a7d7686ed2dc8103c911b053d14c371fc8d03cf8c924`.
+
+## Sixth entry: Sleep Talk214
+
+- Manual selected-variable write/CALL decoding and two native script executions establish **Sleep Talk, move/source input214** through the same verified helper. All1236 native membership inputs yield1129 eligible species.
+- The focused sixth-source regression fails at three relocations, then passes after increasing the generic bound by one. **41 focused tests pass**, checking all six native columns, duplicates, overrides, seventh-source omission and existing acquisitions.
+- One actual parser106/SQL2 run matches every source/species pair: Sleep Talk1129 stored/1128 navigable links; input0 is non-navigable. Prior tutors are unchanged. Total3095 stored/3091 navigable links; exactly1129 species change.
+- All18 SQLite sections pass integrity/reopen/canonical checks. MACHINE/EGG,16 other sections and the English overlay remain unchanged;92129 references pass.
+- Removing only Sleep Talk links and restoring prior TUTOR evidence exactly recovers parser105 and its105-through93 acceptance chain. Catalog digest: `5f38a82ab3f09c2b9f5ec1f2a577581365aa3f0e38b6240e6c3c47f2b98074e5`.
 
 Complete source coverage remains unknown. Next: manually decode the next distinct physical source, then extend support by one entry. Active scratch is retained for the continuing work and historical consumers; cleanup is not claimed complete.
