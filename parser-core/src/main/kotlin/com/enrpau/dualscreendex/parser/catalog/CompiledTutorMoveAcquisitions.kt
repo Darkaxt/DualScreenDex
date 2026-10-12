@@ -254,6 +254,6 @@ internal class CompiledTutorMoveAcquisitions(
     private companion object {
         const val MAX_WORK = 1_000_000
         const val MAX_CANDIDATES = 64
-        const val MAX_SOURCES = 3
+        const val MAX_SOURCES = 4
     }
 }

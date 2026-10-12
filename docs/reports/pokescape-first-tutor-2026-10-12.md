@@ -1,6 +1,6 @@
 # Pokescape: sequential compiled tutor sources
 
-The sequential entry evidence below records parser101–103.
+The sequential entry evidence below records parser101–104.
 
 **Verified subset; complete tutor catalog and whole-ROM compatibility remain IN_PROGRESS.**
 
@@ -33,5 +33,13 @@ TUTOR is **PARTIAL**, with full source coverage unknown. This establishes static
 - One actual parser103/SQL2 run matches every source/species pair: Fury Cutter206 stored/205 navigable links; input0 is non-navigable. Swagger/Rollout are unchanged. Total1425 stored/1423 navigable tutor links; exactly206 species change.
 - All18 SQLite sections pass integrity/reopen/canonical checks. MACHINE/EGG,16 other sections and the complete English overlay remain unchanged;90459 references pass.
 - Removing only Fury Cutter links and restoring prior TUTOR evidence exactly recovers parser102 and its102-through93 acceptance chain. Catalog digest: `6530e815e77c197b877384f82886bf0d48de2f05cdb5768822b5df719bcc7b29`.
+
+## Fourth entry: Mimic102
+
+- Manual selected-variable write/CALL decoding and two native script executions establish **Mimic, move/source input102** through the same verified helper. All1236 native membership inputs yield452 eligible species.
+- The focused fourth-source regression fails at three relocations, then passes after increasing the generic bound by one. **40 focused tests pass**, checking all four native columns, duplicates, overrides, fifth-source omission and existing acquisitions.
+- One actual parser104/SQL2 run matches every source/species pair: Mimic452 stored/451 navigable links; input0 is non-navigable. Prior tutors are unchanged. Total1877 stored/1874 navigable links; exactly452 species change.
+- All18 SQLite sections pass integrity/reopen/canonical checks. MACHINE/EGG,16 other sections and the English overlay remain unchanged;90911 references pass.
+- Removing only Mimic links and restoring prior TUTOR evidence exactly recovers parser103 and its103-through93 acceptance chain. Catalog digest: `87f0b6cb0770f4527cafb4fbe4f3de39c16421387395612e0300037f768665ed`.
 
 Complete source coverage remains unknown. Next: manually decode the next distinct physical source, then extend support by one entry. Active scratch is retained for the continuing work and historical consumers; cleanup is not claimed complete.
