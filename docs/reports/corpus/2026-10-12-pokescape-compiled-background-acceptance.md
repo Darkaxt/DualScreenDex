@@ -21,4 +21,12 @@ All18 SQLite sections/integrity/close/reopen, **95,087 references**, independent
 
 **325 POI obligations remain:**219 unresolved,100 preliminary contextual and six blank-map destinations. No denominator reduction, native blankness or two default-label gains is claimed. Actual save-object domains, opaque secret/helper/task/window liveness, native geometry/warp/scene/context/content, mechanics0/298, applicable machine/tutor and other parent gaps remain required.
 
-Weighted95.83% is not whole-ROM compatibility. The requested release remains pending; no release/tag/APK/signing/device/emulator/ADB, upstream interaction, agents, Workflow or full-corpus rerun occurred. Compact proof/reverification and exact consumer-aware transactional cleanup follow; cleanup is not yet claimed complete.
+Weighted95.83% is not whole-ROM compatibility. The requested release remains pending; no release/tag/APK/signing/device/emulator/ADB, upstream interaction, agents, Workflow or full-corpus rerun occurred.
+
+## Retained consumers and selected output cleanup
+
+Subsequent compact consumer migration retains43 verified members/49,524,007bytes,264,584 sparse native bytes/730 records and818 exact reverse operations from parser99 through93. Current report/SQLite, receipts and complete reversals were reverified before cleanup; historical consumed admissions and failures remain unchanged. Future work uses the retained baseline rather than replaying old mains or depending on deleted scratch databases.
+
+The installed transactional helper inspected and applied exact output tickets: **1405 members/206,507,266 logical file bytes deleted**,32 selected roots absent, zero partial tickets/residuals/errors/warnings. Current18-section baseline and sparse native-byte consumers load after removal. Cleanup acquired no Gradle gate and opened no original or parser. Logical deletion is not an exclusive drive-free-space increase: concurrent volume activity prevents that attribution.
+
+Seven uncertain JVM artifacts—perfdata, daemon logs and an extracted native library—remain preserved pending concrete lifecycle evidence. Current module classes, installed CLI and project cache remain intentional incremental consumers for the ongoing same-ROM integration; source/stash, originals, corpora and required private proof are preserved. **Selected batch-output cleanup is complete, not whole-task cleanup, current-ROM acceptance or a release.**

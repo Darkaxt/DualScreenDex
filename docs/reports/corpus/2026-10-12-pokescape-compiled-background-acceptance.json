@@ -466,6 +466,22 @@
     "parentAndRomStatus": "IN_PROGRESS",
     "remainingMapTextStatus": "IN_PROGRESS",
     "publicReleaseCreated": false,
-    "cleanup": "Pending compact/reverified concrete baseline/package consumers and exact transactional review."
+    "cleanup": "Selected batch outputs cleaned after retained consumer migration and reverification; ongoing incremental runtime consumers and seven uncertain JVM artifacts preserved.",
+    "retainedProofMembers": 43,
+    "retainedProofBytes": 49524007,
+    "exactReverseOperations": 818,
+    "cleanupDeletedMembers": 1405,
+    "cleanupLogicalDeletedBytes": 206507266,
+    "cleanupSelectedRootsAbsent": 32,
+    "cleanupPartialTickets": 0,
+    "cleanupResiduals": 0,
+    "cleanupErrors": 0,
+    "cleanupWarnings": 0,
+    "cleanupGradleGateAcquired": false,
+    "wholeTaskCleanupClaimed": false,
+    "exclusiveVolumeIncreaseClaimed": false,
+    "preservedRuntimeArtifacts": 7,
+    "preservationReason": "JVM perfdata, daemon logs and an extracted native library lack concrete lifecycle disposal evidence. Current module classes, installed CLI and project cache support ongoing same-ROM integration. Maintained source/stash, originals, corpora and intentional private proof remain preserved.",
+    "postCleanupConsumersVerified": "Retained current18-section baseline and264584 sparse native bytes/730 records load after the32 selected roots are removed; no historical consumed main replay, additional original read or parser execution."
   }
 }
