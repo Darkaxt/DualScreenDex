@@ -66,19 +66,20 @@ class CompiledTutorMoveAcquisitionTest {
     }
 
     @Test
-    fun addsOnlyTheSixthDistinctSourceAndLeavesTheSeventhUnresolved() {
+    fun addsOnlyTheSeventhDistinctSourceAndLeavesTheEighthUnresolved() {
         for (origin in listOf(0, 0x4000, 0x8000)) {
             val f = TutorFixture(origin)
-            for (offset in listOf(16, 32, 48, 64, 80, 96, 112)) f.bytes.copyInto(f.bytes, f.script + offset, f.script, f.script + 10)
+            for (offset in listOf(16, 32, 48, 64, 80, 96, 112, 128)) f.bytes.copyInto(f.bytes, f.script + offset, f.script, f.script + 10)
             f.u16(f.script + 35, 301)
             f.u16(f.script + 51, 9)
             f.u16(f.script + 67, 10)
             f.u16(f.script + 83, 11)
             f.u16(f.script + 99, 12)
             f.u16(f.script + 115, 13)
+            f.u16(f.script + 131, 14)
             val result = f.materialize()
             assertEquals(listOf(tutor(7), tutor(301), tutor(9)), result.acquisitionsBySpecies[3].orEmpty().filter { it.method == MoveAcquisitionMethod.TUTOR })
-            assertEquals(listOf(tutor(7), tutor(301), tutor(10), tutor(11), tutor(12)), result.acquisitionsBySpecies[4].orEmpty().filter { it.method == MoveAcquisitionMethod.TUTOR })
+            assertEquals(listOf(tutor(7), tutor(301), tutor(10), tutor(11), tutor(12), tutor(13)), result.acquisitionsBySpecies[4].orEmpty().filter { it.method == MoveAcquisitionMethod.TUTOR })
             assertEquals(CapabilityStatus.PARTIAL, result.evidence.getValue(MoveAcquisitionMethod.TUTOR).status)
             assertNull(result.evidence.getValue(MoveAcquisitionMethod.TUTOR).expectedRecords)
         }
@@ -181,7 +182,7 @@ class CompiledTutorMoveAcquisitionTest {
         val base = CompiledItemMoveAcquisitionTest.Fixture(origin)
         val bytes = base.bytes.copyOf(origin + 0x8000)
         val script = origin + 0x4000
-        val helper = origin + 0x4080
+        val helper = origin + 0x40D0
         val workflow = origin + 0x4100
         val chooser = origin + 0x4200
         val initializer = origin + 0x4300
