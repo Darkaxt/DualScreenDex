@@ -12,7 +12,20 @@ internal class CompiledItemMoveAcquisitions(
     private val cancellation: ParserCancellationToken,
 ) {
     data class Result(val data: Data? = null, val reason: String)
-    data class Data(val offset: Int, val acquisitions: Map<Int, List<MoveAcquisition>>, val failedSpecies: Set<Int>)
+    data class Data(
+        val offset: Int,
+        val acquisitions: Map<Int, List<MoveAcquisition>>,
+        val failedSpecies: Set<Int>,
+        val predicate: CompiledU16MoveEligibility,
+        val wrapperEntries: Set<Int>,
+        val eligibleMoves: Map<Int, Set<Int>>,
+    ) {
+        fun allows(species: Int, move: Int): Boolean = when (species) {
+            predicate.rejectedSpecies -> false
+            predicate.overriddenSpecies -> predicate.overrideAllows(move)
+            else -> move in eligibleMoves[species].orEmpty()
+        }
+    }
     private data class ItemProjection(val guardField: Int, val guard: Int, val moveField: Int)
     private var work = 0
     private var exhausted = false
@@ -87,6 +100,7 @@ internal class CompiledItemMoveAcquisitions(
         val rows = linkedMapOf<Int, List<MoveAcquisition>>()
         val failed = linkedSetOf<Int>()
         val cached = mutableMapOf<Int, Set<Int>?>()
+        val eligibleMoves = linkedMapOf<Int, Set<Int>>()
         repeat(speciesCount) { species ->
             cancellation.throwIfCancellationRequested()
             val allowed: (Int) -> Boolean = when (species) {
@@ -103,6 +117,7 @@ internal class CompiledItemMoveAcquisitions(
                         failed += species
                         return@repeat
                     }
+                    eligibleMoves[species] = values
                     values::contains
                 }
             }
@@ -112,7 +127,9 @@ internal class CompiledItemMoveAcquisitions(
             }
         }
         if (exhausted) return Result(reason = "compiled teaching row work budget exhausted")
-        return Result(Data(predicate.table, rows, failed), "compiled item-backed static move eligibility; source IDs are native item IDs")
+        return Result(Data(predicate.table, rows, failed, predicate,
+            predicates.filterValues { predicate.sameContract(it) }.keys, eligibleMoves),
+            "compiled item-backed static move eligibility; source IDs are native item IDs")
     }
 
     private fun readRow(pointer: Int, moveCount: Int): Set<Int>? {

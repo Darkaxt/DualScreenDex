@@ -106,15 +106,27 @@ object MoveAcquisitionMaterializer {
             if (layout.generation == 1) CapabilityStatus.NOT_APPLICABLE else CapabilityStatus.NOT_FOUND,
         )
 
+        val compiledTutors = compiled?.data?.let {
+            CompiledTutorMoveAcquisitions(rom, layout, it, cancellation).resolve()
+        }
         val tutors = when (layout.generation) {
             2 -> legacy.tutor
-            3 -> if (compiled != null) null else referencedTutorPair(rom, layout, gbaReferences, machines?.sourceOffset)
+            3 -> if (compiled != null) compiledTutors?.let { Candidate(it.offset, 0.0, it.acquisitions, it.failedSpecies) }
+                else referencedTutorPair(rom, layout, gbaReferences, machines?.sourceOffset)
             else -> null
         }
         val tutorNotApplicable = layout.generation == 1 || layout.family == EngineFamily.GOLD_SILVER ||
             layout.family == EngineFamily.RUBY_SAPPHIRE
         merge(bySpecies, tutors?.acquisitions.orEmpty())
-        evidence[MoveAcquisitionMethod.TUTOR] = evidence(
+        evidence[MoveAcquisitionMethod.TUTOR] = if (compiledTutors != null) CapabilityEvidence(
+            capability = RomCapability.TUTOR_MOVES,
+            compatible = true,
+            confidence = 0.0,
+            offset = compiledTutors.offset,
+            count = compiledTutors.acquisitions.values.sumOf { it.size },
+            status = CapabilityStatus.PARTIAL,
+            reasons = listOf("first compiled script-bound tutor source; source IDs are native selected-move inputs; complete source coverage is unresolved"),
+        ) else evidence(
             RomCapability.TUTOR_MOVES,
             tutors,
             "validated referenced ROM tutor-move list and species compatibility flags",
