@@ -50,17 +50,34 @@ class CompiledTutorMoveAcquisitionTest {
     }
 
     @Test
-    fun addsOnlyTheFourthDistinctSourceAndLeavesTheFifthUnresolved() {
+    fun addsTheFourthDistinctSourceWithNativeOverrideMembership() {
         for (origin in listOf(0, 0x4000, 0x8000)) {
             val f = TutorFixture(origin)
-            for (offset in listOf(16, 32, 48, 64, 80)) f.bytes.copyInto(f.bytes, f.script + offset, f.script, f.script + 10)
+            for (offset in listOf(16, 32, 48, 64)) f.bytes.copyInto(f.bytes, f.script + offset, f.script, f.script + 10)
+            f.u16(f.script + 35, 301)
+            f.u16(f.script + 51, 9)
+            f.u16(f.script + 67, 10)
+            val result = f.materialize()
+            assertEquals(listOf(tutor(7), tutor(301), tutor(9)), result.acquisitionsBySpecies[3].orEmpty().filter { it.method == MoveAcquisitionMethod.TUTOR })
+            assertEquals(listOf(tutor(7), tutor(301), tutor(10)), result.acquisitionsBySpecies[4].orEmpty().filter { it.method == MoveAcquisitionMethod.TUTOR })
+            assertEquals(CapabilityStatus.PARTIAL, result.evidence.getValue(MoveAcquisitionMethod.TUTOR).status)
+            assertNull(result.evidence.getValue(MoveAcquisitionMethod.TUTOR).expectedRecords)
+        }
+    }
+
+    @Test
+    fun addsOnlyTheFifthDistinctSourceAndLeavesTheSixthUnresolved() {
+        for (origin in listOf(0, 0x4000, 0x8000)) {
+            val f = TutorFixture(origin)
+            for (offset in listOf(16, 32, 48, 64, 80, 96)) f.bytes.copyInto(f.bytes, f.script + offset, f.script, f.script + 10)
             f.u16(f.script + 35, 301)
             f.u16(f.script + 51, 9)
             f.u16(f.script + 67, 10)
             f.u16(f.script + 83, 11)
+            f.u16(f.script + 99, 12)
             val result = f.materialize()
             assertEquals(listOf(tutor(7), tutor(301), tutor(9)), result.acquisitionsBySpecies[3].orEmpty().filter { it.method == MoveAcquisitionMethod.TUTOR })
-            assertEquals(listOf(tutor(7), tutor(301), tutor(10)), result.acquisitionsBySpecies[4].orEmpty().filter { it.method == MoveAcquisitionMethod.TUTOR })
+            assertEquals(listOf(tutor(7), tutor(301), tutor(10), tutor(11)), result.acquisitionsBySpecies[4].orEmpty().filter { it.method == MoveAcquisitionMethod.TUTOR })
             assertEquals(CapabilityStatus.PARTIAL, result.evidence.getValue(MoveAcquisitionMethod.TUTOR).status)
             assertNull(result.evidence.getValue(MoveAcquisitionMethod.TUTOR).expectedRecords)
         }
