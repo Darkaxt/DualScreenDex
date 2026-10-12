@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-12",
+  "status": "ACCEPTED_HOST_STATIC_ITEM_BACKED_ACQUISITIONS_CLEAN_PUBLISHED",
+  "sourceCommit": "c9513eb217370ac107780ade456dce8af060cda9",
+  "parserSchemaVersion": 100,
+  "sqlSchemaVersion": 2,
+  "inputCount": 1,
+  "executionReceiptSummary": {
+    "schemaVersion": 1,
+    "sourceCommit": "c9513eb217370ac107780ade456dce8af060cda9",
+    "generator": {
+      "name": "parser-cli",
+      "schemaVersion": 16,
+      "sha256": "1632a56b344fafefe074f60467a7358ba1d0dcc142fd3c39fd79a07c00aa3515"
+    },
+    "rawReportSha256": "11ba7a7755becc8380d30152cc40bfd9481b09e6a38523cd2d10062ee65fa085",
+    "inputCount": 1
+  },
+  "history": {
+    "inputCount": 1,
+    "implementationSourceCommit": "c9513eb217370ac107780ade456dce8af060cda9",
+    "acceptedPackageSourceCommit": "c9513eb217370ac107780ade456dce8af060cda9",
+    "acceptedPackageSourceProfileSha256": "674000343cc7cf02d1025ac913b4198df9693c7e81265efcc157d28aa54fac1b",
+    "acceptedSourceBuildPins": 613,
+    "sourceProfileMeaning": "Clean published parser179 HEAD blobs; unchanged host-tested four module class maps/13 installed runtime jars. Native178 transferred only after full18-section payload/source/class/original equality; timing-only report fields normalized.",
+    "parserSchemaVersion": 100,
+    "sqlSchemaVersion": 2,
+    "acceptance": "2026-10-12-pokescape-static-acquisition-acceptance.json",
+    "executionReceiptSummary": {
+      "schemaVersion": 1,
+      "sourceCommit": "c9513eb217370ac107780ade456dce8af060cda9",
+      "generator": {
+        "name": "parser-cli",
+        "schemaVersion": 16,
+        "sha256": "1632a56b344fafefe074f60467a7358ba1d0dcc142fd3c39fd79a07c00aa3515"
+      },
+      "rawReportSha256": "11ba7a7755becc8380d30152cc40bfd9481b09e6a38523cd2d10062ee65fa085",
+      "inputCount": 1
+    },
+    "unaffectedRowsRetained": 341,
+    "fullCorpusRerun": false,
+    "nativeStaticSourceRecords": 58,
+    "storedMachineMoveLinks": 25787,
+    "navigableMachineMoveLinks": 25765,
+    "tutorMoveLinks": 0,
+    "firstThreeItemBackedLinks": [
+      22,
+      22,
+      25
+    ],
+    "tutorAbsenceAccepted": false,
+    "gameplayAvailabilityOrSetterAccepted": false
+  },
+  "verification": {
+    "independentCatalogSha256": "dee6abf927a1559bcb1e7eb7f8575cb2d64b763468627880fa7e92ff0334d274",
+    "reverseDigests": {
+      "99": "1c0fbc0282b6d59031dfa6f08bc2fbcbf73211ac649ed315fa1164df17d7b20c",
+      "98": "f2df88c05c2432d199f789264a7492bb2c1d56cd3e7fb7da0d520006f5df1edc",
+      "97": "74783c0b5ed13eccf36a2804fa3a669011d823945ce644802b1ba250310990eb",
+      "96": "695d644f0bd510c8ec1795355e7a66fa32c6d6881ed333590cb4fa9b6e6893c7",
+      "95": "aae4394d40b51168409ac0ded6df4d61a1f9f768fc0b7c8ce473cd54ef383190",
+      "94": "3d16d40eb1e0668a182533f94c8eed522b313a1831018afc58422326394634cc",
+      "93": "bc0cb845fcc558441479ca366a7871b982b14b2809a12f3823b36abe71324bd4"
+    },
+    "wholeSQLiteSections": 18,
+    "sqliteReopenEquality": true,
+    "unchangedCompleteSections": 16,
+    "wholeEnglishOverlayPreserved": true,
+    "compiledClassBindingsEqual": true,
+    "allNonDocumentSourcePinsEqual": true,
+    "structuralReferencesChecked": 81308,
+    "localizedReferencesChecked": 7726,
+    "nativeMembershipCasesInherited": 71688,
+    "nativeSourceRecordsCheckedInherited": 799,
+    "positiveNativeSources": 58,
+    "storedMachineMoveLinks": 25787,
+    "machineMoveLinks": 25765,
+    "nonNavigableMachineLinks": 22,
+    "firstThreeItemBackedLinks": [
+      22,
+      22,
+      25
+    ],
+    "tutorMoveLinks": 0,
+    "eggMoveLinks": 3665,
+    "compatibilityPercent": 91.67,
+    "reportTimingFieldsExcluded": [
+      "durationMillis",
+      "persistence.writeMillis",
+      "persistence.reopenMillis"
+    ]
+  },
+  "hostVerification": {
+    "executed": 2438,
+    "guardedSkips": 243,
+    "failures": 0,
+    "errors": 0,
+    "acquisitionTests": 11,
+    "relocations": 3,
+    "gateAcquired": true,
+    "maxWorkers": 2,
+    "parallel": false,
+    "observedGradleHeapGiB": 3,
+    "requestedKotlinHeapGiB": 3,
+    "configuredTestForks": 1,
+    "configuredTestHeapMiB": 512,
+    "hostTestsRerunForPackage": false,
+    "hostClassAndNonDocumentInputEqualityVerified": true
+  },
+  "preservedFailures": {
+    "parser171": "Rejected incorrect source operand roles; preserved, not replayed.",
+    "native175": "Stored-versus-navigable aggregate assertion after matching rows; preserved, not replayed.",
+    "retainedOnly180": "Report timing equality assertion; zero originals/parsers, preserved before prospective normalization."
+  },
+  "scopeAccounting": {
+    "acceptedPreview174OriginalReads": 1,
+    "acceptedPreview174ParserExecutions": 1,
+    "acceptedNative178OriginalReads": 1,
+    "acceptedNative178ParserExecutions": 0,
+    "published179OriginalReads": 1,
+    "published179ParserExecutions": 1,
+    "published181OriginalReads": 0,
+    "published181ParserExecutions": 0,
+    "diagnosisAndRejectedScopesExcludedFromThisAcceptedScopeCount": true
+  },
+  "limitations": [
+    "Static item-backed eligibility and native item source IDs only; no complete static tutor catalog, native tutor absence, gameplay availability, ingress, actor liveness or full setter.",
+    "Weighted score decreases95.83% to91.67% by withdrawing unsupported tutor claims; not whole-ROM compatibility.",
+    "325 POI obligations, mechanics0/298 and other parent deficits remain mandatory.",
+    "341 unrelated historical rows and342 identities/aliases/source history preserved, not reevaluated; no fresh corpus, device, APK, signing or release."
+  ],
+  "closure": {
+    "status": "PUBLISHED_RUNTIME_VERIFIED_CLEANUP_PENDING",
+    "parentAndRomStatus": "IN_PROGRESS",
+    "publicReleaseCreated": false
+  }
+}

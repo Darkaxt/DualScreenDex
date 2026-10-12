@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "date": "2026-10-03",
   "verifiedDate": "2026-10-12",
-  "evidenceMode": "full342-baseline-with-focused-gen2-relationships-gen3-wide-core-and-pokescape-map-moves-dex-move-text-type-names-species-categories-ability-text-item-names-bounded-map-names-native-blank-names-braille-poi-native-invariant-headlines-compiled-background-flags",
+  "evidenceMode": "full342-baseline-with-focused-gen2-relationships-gen3-wide-core-and-pokescape-map-moves-dex-move-text-type-names-species-categories-ability-text-item-names-bounded-map-names-native-blank-names-braille-poi-native-invariant-headlines-compiled-background-flags-native-static-item-acquisitions",
   "corpusInputDigestSha256": "733e36785fa9a5b71bc4121343a6b6d2cbd27e43e08b3fddc2e2870bac1a0561",
   "summary": {
     "inputCount": 342,
@@ -5907,8 +5907,8 @@
     },
     {
       "name": "Pokescape (v1.0.4).gba",
-      "evidence": "focused-pokescape-native-static-background-flags",
-      "sourceCommit": "2043cd5253fed14a4e9a7a8909e9d5619491987e",
+      "evidence": "focused-pokescape-native-static-item-backed-acquisitions-clean-published",
+      "sourceCommit": "c9513eb217370ac107780ade456dce8af060cda9",
       "aliases": [
         {
           "archive": "Pokemon Pokescape (v1.0.4).7z",
@@ -5919,7 +5919,7 @@
       "generation": 3,
       "family": "EMERALD",
       "languageCount": 1,
-      "compatibilityPercent": 95.83,
+      "compatibilityPercent": 91.67,
       "capabilities": {
         "SPECIES_CATALOG": {
           "status": "AVAILABLE",
@@ -5989,17 +5989,14 @@
         },
         "MACHINE_MOVES": {
           "status": "AVAILABLE",
-          "confidence": 0.7372991295614328,
+          "confidence": 1.0,
           "coveredRecords": 1236,
           "expectedRecords": 1236,
           "incompleteRecords": 0
         },
         "TUTOR_MOVES": {
-          "status": "AVAILABLE",
-          "confidence": 0.9030420711974111,
-          "coveredRecords": 1236,
-          "expectedRecords": 1236,
-          "incompleteRecords": 0
+          "status": "NOT_FOUND",
+          "confidence": 0.0
         },
         "ABILITIES": {
           "status": "AVAILABLE",
@@ -6083,8 +6080,8 @@
         "movesWithDetails": 828,
         "movesWithDescriptions": 828,
         "eggMoveLinks": 3665,
-        "machineMoveLinks": 28223,
-        "tutorMoveLinks": 3617,
+        "machineMoveLinks": 25765,
+        "tutorMoveLinks": 0,
         "types": 18,
         "namedTypes": 18,
         "typesWithSemanticRoles": 18,
@@ -6106,8 +6103,8 @@
         "referenceErrors": 0,
         "sqliteReopenEqualityVerified": true,
         "logicalDigestVersion": 1,
-        "beforeCatalogSha256": "1c0fbc0282b6d59031dfa6f08bc2fbcbf73211ac649ed315fa1164df17d7b20c",
-        "afterCatalogSha256": "1c0fbc0282b6d59031dfa6f08bc2fbcbf73211ac649ed315fa1164df17d7b20c"
+        "beforeCatalogSha256": "dee6abf927a1559bcb1e7eb7f8575cb2d64b763468627880fa7e92ff0334d274",
+        "afterCatalogSha256": "dee6abf927a1559bcb1e7eb7f8575cb2d64b763468627880fa7e92ff0334d274"
       },
       "localizedCapabilities": {
         "SPECIES_NAMES": {
@@ -47379,7 +47376,8 @@
     "ecc26c969810fa39987febb397b3846c3d6f30f9",
     "28d123e6af33e1fecc85c92f8cb98eef7b2c2762",
     "8f072dd6448d7778acd8c65627ca426cd979a7ba",
-    "2043cd5253fed14a4e9a7a8909e9d5619491987e"
+    "2043cd5253fed14a4e9a7a8909e9d5619491987e",
+    "c9513eb217370ac107780ade456dce8af060cda9"
   ],
   "focusedGen2Relationships": {
     "inputCount": 19,
@@ -47668,5 +47666,40 @@
     ],
     "remainingPoiObligations": 325,
     "actualRuntimeStorageOrSecretLivenessAccepted": false
+  },
+  "focusedPokescapeStaticItemAcquisitions": {
+    "inputCount": 1,
+    "implementationSourceCommit": "c9513eb217370ac107780ade456dce8af060cda9",
+    "acceptedPackageSourceCommit": "c9513eb217370ac107780ade456dce8af060cda9",
+    "acceptedPackageSourceProfileSha256": "674000343cc7cf02d1025ac913b4198df9693c7e81265efcc157d28aa54fac1b",
+    "acceptedSourceBuildPins": 613,
+    "sourceProfileMeaning": "Clean published parser179 HEAD blobs; unchanged host-tested four module class maps/13 installed runtime jars. Native178 transferred only after full18-section payload/source/class/original equality; timing-only report fields normalized.",
+    "parserSchemaVersion": 100,
+    "sqlSchemaVersion": 2,
+    "acceptance": "2026-10-12-pokescape-static-acquisition-acceptance.json",
+    "executionReceiptSummary": {
+      "schemaVersion": 1,
+      "sourceCommit": "c9513eb217370ac107780ade456dce8af060cda9",
+      "generator": {
+        "name": "parser-cli",
+        "schemaVersion": 16,
+        "sha256": "1632a56b344fafefe074f60467a7358ba1d0dcc142fd3c39fd79a07c00aa3515"
+      },
+      "rawReportSha256": "11ba7a7755becc8380d30152cc40bfd9481b09e6a38523cd2d10062ee65fa085",
+      "inputCount": 1
+    },
+    "unaffectedRowsRetained": 341,
+    "fullCorpusRerun": false,
+    "nativeStaticSourceRecords": 58,
+    "storedMachineMoveLinks": 25787,
+    "navigableMachineMoveLinks": 25765,
+    "tutorMoveLinks": 0,
+    "firstThreeItemBackedLinks": [
+      22,
+      22,
+      25
+    ],
+    "tutorAbsenceAccepted": false,
+    "gameplayAvailabilityOrSetterAccepted": false
   }
 }
