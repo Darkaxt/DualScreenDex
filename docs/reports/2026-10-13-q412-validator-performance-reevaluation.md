@@ -55,4 +55,6 @@ Allocation weights estimate churn over the whole CLI, not live heap. Zero sample
 
 ## Scope and delivery
 
-Retain compact private build/qualification/admission/consumption/package/profile proof; keep original locators, input hashes, raw recordings and machine-specific diagnostics out of public Git. Publish the coherent implementation/test/report checkpoint to the existing fork feature branch, then ticket the exact task-owned scratch root for cleanup. Compatibility expansion stays paused. No title-scanner or serialization optimization, tutor decoding, corpus execution, Android/device testing, signing or upstream interaction is included.
+Implementation, generated tests and measured report were published to the existing fork feature branch at `a65140a1`. Compact private proof was retained and reopened/hash-verified before cleanup; original locators, input hashes, raw recordings and machine-specific diagnostics remain outside public Git. The exact scratch ticket deleted 117 members / 252,958,079 logical bytes with zero warnings/errors; the task scratch root is absent. Maintained source, originals, protected stash, retained proof and unrelated outputs remain preserved.
+
+Compatibility expansion stays paused. No title-scanner or serialization optimization, tutor decoding, corpus execution, Android/device testing, signing, release or upstream interaction is included.

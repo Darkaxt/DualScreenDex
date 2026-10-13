@@ -1,6 +1,6 @@
 # Q4.12 candidate-validation performance optimization
 
-**Status: IN_PROGRESS. Authorization: already_authorized.** User requested feature preservation and implementation/performance reevaluation after the [performance QA](../../reports/2026-10-13-pokescape-parser-performance-qa.md). One outcome: reduce Q4.12 validator allocation/cost without changing supported data. No tutor expansion, title-scanner optimization, corpus or device work.
+**Status: COMPLETE (bounded optimization/reevaluation only). Authorization: already_authorized.** User requested feature preservation and implementation/performance reevaluation after the [performance QA](../../reports/2026-10-13-pokescape-parser-performance-qa.md). One outcome: reduce Q4.12 validator allocation/cost without changing supported data. No tutor expansion, title-scanner optimization, corpus or device work.
 
 | ID | Required acceptance |
 |---|---|
@@ -11,7 +11,7 @@
 
 ## Compact stage / reconciliation
 
-One ACTIVE integrated stage covers QP-01–04: establish generated RED → implement primitive validator → focused equivalence/regression GREEN → pin before/after packages → reviewed performance/current-catalog acceptance → publish/report/cleanup. No component acceptance or unrelated optimization.
+One completed integrated stage covers QP-01–04: establish generated RED → implement primitive validator → focused equivalence/regression GREEN → pin before/after packages → reviewed performance/current-catalog acceptance → publish/report/cleanup. No component acceptance or unrelated optimization.
 
 QP-01 implementation is present with unchanged guards, thresholds and evidence. QP-02: original implementation produced the expected allocation RED (12,961,536 bytes for1,024 rejected candidates; four correctness tests passed); primitive implementation passed all145 focused tests, including3,103 generated exact-evidence comparisons and the allocation guard below1MiB. Both builds acquired the shared gate with two workers/no parallel, requested Gradle/Kotlin3GiB, one512MiB test fork and no memory failure; Kotlin strategy stayed project-default.
 
@@ -19,4 +19,6 @@ Package qualification binds one production source and one executable class chang
 
 QP-03 satisfied: four separately MAIN-reviewed counterbalanced runs exit0, reproduce the exact accepted parser110 catalog and18-section write/reopen equality. Median parser107.906s→76.3095s (-29.3%); whole-CLI CPU -18.8%; sampled allocation churn -47.6%. Peak working set +6.4% and peak commit +2.7%: no peak-memory reduction claim. See the [fresh reevaluation](../../reports/2026-10-13-q412-validator-performance-reevaluation.md) for per-run evidence and limits.
 
-QP-04 inline source/test/harness review found no remaining behavior or scope defect. Compact private proof:62 members/14,970,942 bytes, reopened and SHA-verified; originals were not copied. Source/stash and other owners remain preserved. Current blockers: coherent checkpoint publication and exact ticketed scratch cleanup/final delivery reconciliation remain pending. Tracked deferrals:0. Compatibility work stays paused; this stage remains ACTIVE through delivery.
+QP-04 satisfied: inline source/test/harness review found no remaining behavior or scope defect. Compact private proof: 62 members/14,970,942 bytes, reopened and SHA-verified; originals were not copied. Implementation/tests/measured report were smart-synced and pushed to the existing fork feature branch at `a65140a1`. Every one of the 117 signed scratch-manifest members was inspected; the exact ticket applied with 252,958,079 logical bytes deleted, zero exclusions/warnings/errors, and the task scratch root verified absent. Cleanup never acquired the Gradle mutex. Source, protected stash, original inputs, retained proofs and other owners remain preserved. All three background watchdogs were canceled on their operations' completion.
+
+Final reconciliation: QP-01–04 satisfied; blockers = 0; tracked_deferrals = 0. No further production change occurred after GREEN or package qualification, so document closure does not invalidate that evidence or require another build/parser run. This closes only the authorized single optimization and reevaluation. Compatibility expansion stays paused; no tutor/title/serialization/corpus/device work or release is claimed.
