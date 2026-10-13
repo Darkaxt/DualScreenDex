@@ -23,14 +23,17 @@ internal object CompiledGbaLegacyFieldMapTitle {
     }
 
     private fun layout(r: Reader, owner: Int): Layout? = when {
-        r.ops(owner, 0xB500, 0xB081, 0x2080, 0x04C0, 0x2100, 0x8001, 0x3010, 0x8001,
-            0x3002, 0x8001, 0x3002, 0x8001, 0x3002, 0x8001, 0x3002, 0x8001,
-            0x3002, 0x8001, 0x3002, 0x8001, 0x3002, 0x8001) -> Layout.COMPACT
-        r.ops(owner, 0xB510, 0xB081, 0x2080, 0x04C0, 0x2100, 0x8001, 0x3010, 0x8001,
-            0x3002, 0x8001, 0x3002, 0x8001, 0x3002, 0x8001, 0x3002, 0x8001,
-            0x3002, 0x8001, 0x3002, 0x8001, 0x3002, 0x8001) -> Layout.WESTERN
+        r.pattern(owner, COMPACT_OWNER_PATTERN) -> Layout.COMPACT
+        r.pattern(owner, WESTERN_OWNER_PATTERN) -> Layout.WESTERN
         else -> null
     }
+
+    private val COMPACT_OWNER_PATTERN = intArrayOf(
+        0xB500, 0xB081, 0x2080, 0x04C0, 0x2100, 0x8001, 0x3010, 0x8001,
+        0x3002, 0x8001, 0x3002, 0x8001, 0x3002, 0x8001, 0x3002, 0x8001,
+        0x3002, 0x8001, 0x3002, 0x8001, 0x3002, 0x8001,
+    )
+    private val WESTERN_OWNER_PATTERN = COMPACT_OWNER_PATTERN.copyOf().apply { this[0] = 0xB510 }
 
     private fun loaderConnected(r: Reader, owner: Int, selectedLoader: Int): Boolean {
         val entry = r.call(owner + 0x38) ?: return false
@@ -192,6 +195,8 @@ internal object CompiledGbaLegacyFieldMapTitle {
     internal class Reader(val rom: RomImage) {
         fun range(at: Int, size: Int): Boolean = at >= 0 && at.toLong() + size <= rom.size
         fun ops(at: Int, vararg values: Int): Boolean = range(at, values.size * 2) &&
+            values.indices.all { rom.u16le(at + it * 2) == values[it] }
+        fun pattern(at: Int, values: IntArray): Boolean = range(at, values.size * 2) &&
             values.indices.all { rom.u16le(at + it * 2) == values[it] }
         fun literal(site: Int, register: Int): Long? {
             if (!range(site, 2)) return null
