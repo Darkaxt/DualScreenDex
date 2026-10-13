@@ -1046,20 +1046,30 @@ object TableValidators {
         typeCount: Int,
         elementSize: Int,
     ): ValidationEvidence? {
-        if (elementSize !in setOf(2, 4) || offset % elementSize != 0 || offset !in 0 until rom.size) return null
+        if ((elementSize != 2 && elementSize != 4) || offset % elementSize != 0 || offset !in 0 until rom.size) return null
         val values = typeCount * typeCount
         if (offset.toLong() + values.toLong() * elementSize > rom.size) return null
-        val matrix = (0 until values).map { index ->
-            when (elementSize) {
+        var neutral = 0
+        var common = 0
+        var distinct = 0
+        var first = -1L
+        var second = -1L
+        for (index in 0 until values) {
+            val value = when (elementSize) {
                 2 -> rom.u16le(offset + index * elementSize).toLong()
                 else -> rom.u32le(offset + index * elementSize)
             }
+            if (value > Q412_MAXIMUM) return null
+            if (value == Q412_ONE) neutral++
+            if (isCommonQ412Multiplier(value)) common++
+            // Only the three-distinct-values threshold matters; unsigned cells cannot equal -1.
+            if (distinct < 3 && value != first && value != second) {
+                if (distinct == 0) first = value else if (distinct == 1) second = value
+                distinct++
+            }
         }
-        if (matrix.any { it > Q412_MAXIMUM }) return null
-        val neutral = matrix.count { it == Q412_ONE }
-        val common = matrix.count { it in COMMON_Q412_MULTIPLIERS }
         val nonNeutral = values - neutral
-        if (neutral * 5 < values * 2 || nonNeutral < typeCount || matrix.toSet().size < 3 || common * 10 < values * 9) return null
+        if (neutral * 5 < values * 2 || nonNeutral < typeCount || distinct < 3 || common * 10 < values * 9) return null
         return ValidationEvidence(
             compatible = true,
             validRecords = values,
@@ -1133,7 +1143,7 @@ object TableValidators {
     private const val Q412_HALF = 2048
     private const val Q412_DOUBLE = 8192
     private const val Q412_MAXIMUM = 0xFFFFL
-    private val COMMON_Q412_MULTIPLIERS = setOf(
+    private fun isCommonQ412Multiplier(value: Long): Boolean = when (value) {
         0L,
         512L, // 1/8
         819L, // 1/5
@@ -1147,8 +1157,9 @@ object TableValidators {
         12288L,
         16384L,
         20480L,
-        32768L,
-    )
+        32768L -> true
+        else -> false
+    }
 
     private inline fun safely(
         offset: Int,
