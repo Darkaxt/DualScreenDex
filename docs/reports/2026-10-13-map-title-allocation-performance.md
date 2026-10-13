@@ -37,4 +37,6 @@ Parser timing excludes ROM loading/report/database work; whole-process CPU/memor
 
 ## Delivery boundary
 
-Retain compact reopened/hash-verified private source/package/qualification/admission/consumption/test/profile proof. Publish the coherent implementation/tests/report to the existing fork feature branch, then apply only the exact reviewed scratch ticket. No original copy, corpus, new compatibility decoding, storage/serialization optimization, Android/device work, signing, release or upstream interaction is included. Compatibility expansion stays paused.
+Implementation/tests/spec/report published as `aeaa77ff` to the existing fork feature branch after smart-sync. Compact private proof retains62 reopened/hash-verified members plus two separately pinned generated-diagnostic members, including historical failed qualification and immutable admissions/consumptions. Exact installed-helper scratch cleanup completed: **117 members,250,261,002 logical bytes**, zero exclusions/warnings/errors; scratch root absent. No Gradle mutex was used for cleanup. Source, stash, originals, previous Q4.12 proof and unrelated owners remain preserved.
+
+The bounded allocation-only task is complete. No original copy, corpus, new compatibility decoding, storage/serialization optimization, Android/device work, signing, release or upstream interaction was included. Compatibility expansion stays paused. The adverse CPU result remains explicit and unresolved; completion does not establish a throughput improvement.

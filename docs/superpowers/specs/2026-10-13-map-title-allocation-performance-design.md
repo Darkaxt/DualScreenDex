@@ -1,6 +1,6 @@
 # Legacy map-title scanner allocation optimization
 
-**Status: IN_PROGRESS. Authorization: already_authorized.** The user approved the recommended next bounded target after post-Q4.12 profiles showed 3.62 GiB of allocation weight per run at `CompiledGbaLegacyFieldMapTitle.layout`. This is one optimization, not authorization for storage, serialization, tutor or corpus work.
+**Status: COMPLETE for this bounded allocation-only task. Authorization: already_authorized.** The user approved the recommended next bounded target after post-Q4.12 profiles showed 3.62 GiB of allocation weight per run at `CompiledGbaLegacyFieldMapTitle.layout`. This is one optimization, not authorization for storage, serialization, tutor or corpus work.
 
 | ID | Required acceptance |
 |---|---|
@@ -11,7 +11,7 @@
 
 ## Integrated stage
 
-One ACTIVE stage: generated RED and baseline packaging → complete narrow pattern-reuse patch → focused GREEN → qualified same-output performance comparison → review/publication/proof/cleanup. Reuse the existing benchmark method rather than invent a broader laboratory. Existing Q4.12 behavior and schema110/SQL2 stay unchanged.
+One integrated stage COMPLETE: generated RED and baseline packaging → complete narrow pattern-reuse patch → focused GREEN → qualified same-output performance comparison → review/publication/proof/cleanup. No active stage remains. Reused the existing benchmark method rather than inventing a broader laboratory. Existing Q4.12 behavior and schema110/SQL2 stay unchanged.
 
 MT-01 pattern reuse is implemented; all original opcode values and range semantics remain. Baseline packaging is frozen at the published parent. MT-02 observed the expected allocation RED: 1,409,560 bytes for 4,096 rejected candidates, while all four generated correctness tests passed. The shared Gradle gate was acquired with two workers/no parallel, requested Gradle/Kotlin3GiB, one512MiB test fork, verified single-use daemon exit and no memory failure. Thread title was unavailable and not invented.
 
@@ -23,4 +23,6 @@ MT-03 measured acceptance: median parser57.052s →57.213s (+0.3%), whole-CLI wa
 
 Stage-closure/final refactoring assessment: inspected the complete production delta and generated oracle/test coverage. Cached private patterns have one owner and no mutation/exposure path after initialization. The identical `Reader.ops`/`pattern` predicates deliberately preserve the old vararg path and independent oracle while avoiding spread copies for cached patterns; this small duplication does not obstruct current acceptance or a known required dependency. No material design-debt finding, mandatory consolidation or additional scope. Reuse this unchanged assessment at final reconciliation.
 
-MT-04 inline review covers exact opcode/range equivalence, unchanged downstream authority/cancellation, generated RED/GREEN, package pins and honest report interpretation. Compact reopened/hash-verified private proof is retained. Publication and exact ticketed cleanup remain pending. Blockers: delivery only. Tracked deferrals: 0. Compatibility expansion stays paused.
+MT-04 inline review covers exact opcode/range equivalence, unchanged downstream authority/cancellation, generated RED/GREEN, package pins and honest report interpretation. Implementation/tests/spec/report were smart-synced and published as `aeaa77ff` to the existing fork feature branch. Compact private proof:62 original pinned members plus two generated-diagnostic members reopened/hash-verified; historical failed normalization and consumed reservations remain unchanged. Exact installed-helper cleanup completed:117 reviewed/ticketed members,250,261,002 logical bytes deleted, zero exclusions/warnings/errors; scratch root absent. No Gradle gate was used for cleanup. Source, protected stash, originals, previous Q4.12 proof and other owners are preserved.
+
+Final reconciliation: MT-01–04 satisfied for the bounded allocation-only outcome; blockers=0, tracked_deferrals=0. Reuse the unchanged stage-closure refactoring assessment above. No parsing speedup or CPU non-regression claim is made. Compatibility expansion remains paused; no storage/serialization, tutor, corpus, device, signing or release work is authorized by this closure.
