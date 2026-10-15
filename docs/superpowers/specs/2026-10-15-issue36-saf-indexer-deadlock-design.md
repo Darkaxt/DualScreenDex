@@ -1,0 +1,23 @@
+# Issue 36: SAF game-index traversal deadlock
+
+**Status: IN_PROGRESS.** Scope: the linked game-indexing defect. The user subsequently explicitly requested feedback on issue36, closure when resolved, and a published release mentioning the bug. Use the established protected GitHub signing/release pipeline, with a narrow hotfix baseline rather than unfinished parser work. Pokescape's independent sequential parser work remains IN_PROGRESS in its own worktree. No local device/ADB/emulator testing, original ROM access, or signing-material inspection is authorized.
+
+## Diagnosis
+
+The relevant files are identical in v1.2.1 and current fork/master. `DocumentTreeAccess.forEachChild` invokes visitors while its provider's single-threaded supervisor is executing the directory query. The indexer's visitor calls `AndroidRomSourceLoader.load`, which submits another operation to that same supervisor and waits. The queued read cannot run until the waiting directory operation returns. The existing timeout can therefore fail a healthy local provider. Cached entries avoid opening the ROM, explaining why the first uncached scan is essential regression coverage. This establishes a code defect, not a completed reproduction on the reporter's device.
+
+## Acceptance
+
+- **I36-01:** Finish and close a bounded directory snapshot inside the existing provider read operation, then invoke visitors on the caller after that operation returns. A visitor may synchronously read the same provider without self-deadlocking. Do not add threads, inline-reentrant provider work, retries, or longer timeouts.
+- **I36-02:** Preserve traversal directory/file/node quotas, result retention, cancellation, exception propagation, provider recovery, and previous-index transactional behavior. Do not return a partial listing on failure.
+- **I36-03:** Verify a same-provider uncached-read regression, worker/cursor-lifetime boundary, empty results, snapshot failure, visitor failure, quota exhaustion and existing storage/index recovery tests. Use the installed serial Gradle gate and its default low-memory profile. No parser/corpus runs are needed or authorized for this app-only fix.
+- **I36-04:** Review the complete patch, smart-sync before a coherent verified fork commit, and publish a protected-GitHub-signed release mentioning issue36. Verify the exact APK/package/version/signer/checksums before closing the issue with its release link. Do not claim local-device acceptance. Preserve unrelated Pokescape work and clean task-owned expendable outputs through their proper lifecycle.
+- **I36-05:** Exercise the actual Android indexer/provider path in the existing packaged GitHub acceptance suite, using only generated GBA/ZIP data: uncached scans from exact/nested folders, cached rescans, and quota failure before any file callback. No ROM-specific exception or commercial input is permitted.
+
+## Execution and reconciliation
+
+1. Reproduce the current nested-worker placement through a narrow extraction of the existing traversal operation; run the focused regression RED.
+2. Move the visitor across the provider boundary, use a quota-bounded directory snapshot, and run grouped storage/index GREEN.
+3. Review, reconcile I36-01–05, smart-sync/publish the isolated fix and signed hotfix release, close issue36 with the release link, then resume the existing Pokescape stage.
+
+Current: the faithful provider-callback extraction's focused RED executes one test and fails with `SafProviderOperationTimeout`, reproducing the uncached same-provider call chain. Grouped GREEN reports44 tests,42 passed,zero failures/errors and two intentionally unconfigured original-ROM controls skipped; all seven new snapshot regressions pass. Android instrumentation sources compile, but their three generated-only provider cases have not yet executed. Both installed-gate runs acquire the shared mutex and verify two workers/no parallel,3GiB Gradle/requested3GiB Kotlin, a single512MiB test fork, fail-fast, no memory failure and post-build daemon exit. The session title is unavailable and was not invented. Inline review verifies cursor closure before callbacks, quota charging before retention, original exception/cancellation propagation and no late visitor after a timed-out snapshot. Closure refactoring assessment: no material accumulated debt; the small snapshot boundary centralizes the lifecycle rule without new threads, reentrant provider execution or changed retry policy. Root-cause feedback is posted on issue36. I36-01–03 are host-verified; I36-04/05 remain active for source-bound GitHub packaged acceptance, protected signing, exact artifact verification and issue closure. No local-device result or new APK is claimed.
