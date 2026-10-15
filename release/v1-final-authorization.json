@@ -1,11 +1,11 @@
 {
   "schema": 2,
-  "versionName": "1.2.1",
-  "sourceCandidateTag": "v1.2.1-rc.2",
-  "sourceCandidateCommit": "d2fedab79b01ed11e80dbc2363d7e31cf5ed417b",
-  "sourceCandidateTree": "c7bb950985f4b83c6c26589b117c11b55d32068c",
-  "candidateProvenanceSha256": "2FECBD15AF8AD129AC4F49DE52E755CE3DC05722778E1581C0A937380872A7FF",
-  "githubSignedCandidateSha256": "00D4F1D516F7E9A2DCA72C7A38B81CF1852D46BEE049476FE97D29E6ACA697C7",
+  "versionName": "1.2.2",
+  "sourceCandidateTag": "v1.2.2-rc.1",
+  "sourceCandidateCommit": "02f1e8bc01b9749608b4ab7c6a922520b929d0e1",
+  "sourceCandidateTree": "6fe037d9b84a8509a8ef9725c6ecddc5fb1af099",
+  "candidateProvenanceSha256": "69CCBE37AAEB765F1B9FFC5519DF2B12D2EB894B3033143D8CED89729B974689",
+  "githubSignedCandidateSha256": "86AABA392EA505B6BF28997F61BAACF192C95CF20CF4228AE3AA66EB18FA5EED",
   "validatedSignerSha256": "C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA",
   "validationMode": "automated-passive-catalog",
   "userAuthorizedAutomatedPromotion": true,
@@ -17,5 +17,5 @@
   "releaseCiValidated": true,
   "avdValidated": false,
   "thorValidated": false,
-  "authorizedDate": "2026-10-04"
+  "authorizedDate": "2026-10-15"
 }
