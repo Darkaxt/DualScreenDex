@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "candidateTag": "v1.2.2-rc.1",
+  "apkSha256": "86AABA392EA505B6BF28997F61BAACF192C95CF20CF4228AE3AA66EB18FA5EED",
+  "sourceCommit": "02f1e8bc01b9749608b4ab7c6a922520b929d0e1",
+  "validationMode": "automated-passive-catalog",
+  "automatedValidationWorkflowRunUrl": "https://github.com/Darkaxt/DualScreenDex/actions/runs/38741549070",
+  "releaseWorkflowRunUrl": "https://github.com/Darkaxt/DualScreenDex/actions/runs/38741724988",
+  "userAuthorizedAutomatedPromotion": true,
+  "authorizationBasis": "The user explicitly requested a published release mentioning issue36 and closure after resolution. This app-only hotfix changes SAF operation orchestration, not gameplay decoding or projection. No local device validation is claimed.",
+  "gameplayRuntimeChanged": false,
+  "catalogPersistenceValidated": true,
+  "runtimeApiValidated": true,
+  "webPresentationValidated": true,
+  "releaseCiValidated": true,
+  "avdValidated": false,
+  "thorValidated": false,
+  "controlEvidenceReuse": {
+    "baselineTag": "v1.2.1",
+    "baselineCommit": "f7b75f830269523e430482bc617aa090a4a88ed5",
+    "evidencePath": "docs/reports/candidate-promotions/v1.2.1-rc.2.json",
+    "evidenceSha256": "78D1EF7821F0C53B6713FB49CFA620EF78077FF5CBDB6657A4A96ADC2EB03B39",
+    "method": "Exact Git object equality from baseline to candidate for every listed production module and build input. The five original-ROM controls below are inherited for those unchanged paths, not freshly executed. Current candidate CI reruns module, persistence, API and browser checks; current release CI additionally executes the changed Android SAF provider workflow using generated GBA and ZIP fixtures.",
+    "unchangedPaths": ["parser-core", "parser-cli", "catalog-store", "save-core", "save-cli", "battle-memory", "companion-core", "companion-server", "companion-simulator", "companion-web", "retroarch-session", "gradle", "build.gradle.kts", "settings.gradle.kts", "gradle.properties", "app/build.gradle.kts"],
+    "newOriginalReads": 0,
+    "newParserExecutions": 0
+  },
+  "packagedAndroid": {
+    "sourceCommit": "02f1e8bc01b9749608b4ab7c6a922520b929d0e1",
+    "workflowRunUrl": "https://github.com/Darkaxt/DualScreenDex/actions/runs/38741724988",
+    "evidenceArtifactDigest": "sha256:a2d6d362d072b8f8d73b324bfbebee0d1a261375b02ddfd7ec95a11a4cf789f0",
+    "providerRegressionTests": 3,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "cases": ["indexesUncachedGbaAndZipThroughTheRealAndroidProviderPath", "repeatedScanReusesUnchangedSourceMetadataWithoutOpeningItAgain", "oversizedDirectoryFailsBeforeAnyRomCallbackRuns"]
+  },
+  "controls": [
+    {"romSha256": "46f98da1861e0db3c79702c20c0330836ab13fc739a857df94e9a5d9f6def37b", "catalogPersistenceValidated": true, "runtimeApiValidated": true, "webPresentationValidated": true},
+    {"romSha256": "469d08907d0ef474d174d87d84d25e108b86ca481131b41fa291bd8aae97c29b", "catalogPersistenceValidated": true, "runtimeApiValidated": true, "webPresentationValidated": true},
+    {"romSha256": "8a7f102ec2f04572bb0bcf95e44279ea5f3e113f73ce217f499c514c14dbd4a4", "catalogPersistenceValidated": true, "runtimeApiValidated": true, "webPresentationValidated": true},
+    {"romSha256": "568e0d2ea2fa7291f3ba4cedb9a6a92da68ebf6304c5a704abdcbab507b4f44f", "catalogPersistenceValidated": true, "runtimeApiValidated": true, "webPresentationValidated": true},
+    {"romSha256": "aa37a347d7b97c69f5e2d9e1112aa21b441d4d3faffd807596e4b4cda1d2086a", "catalogPersistenceValidated": true, "runtimeApiValidated": true, "webPresentationValidated": true}
+  ]
+}
