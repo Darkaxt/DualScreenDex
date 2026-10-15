@@ -126,6 +126,16 @@ class SafProviderOperationSupervisor(
         }
     }
 
+    internal fun <T> visitReadSnapshot(
+        onTimeout: () -> Unit = {},
+        snapshot: () -> List<T>,
+        visitor: (T) -> Unit,
+    ) {
+        // Visitors may synchronously open another document on this same provider.
+        val results = await(onTimeout = onTimeout, operation = snapshot)
+        results.forEach(visitor)
+    }
+
     override fun close() {
         val executors = synchronized(lock) {
             buildList {
