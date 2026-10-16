@@ -1,6 +1,6 @@
 # Pokescape: sequential compiled tutor sources
 
-The sequential entry evidence below records parser101–127.
+The sequential entry evidence below records parser101–128.
 
 **Verified subset; complete tutor catalog and whole-ROM compatibility remain IN_PROGRESS.**
 
@@ -221,5 +221,13 @@ TUTOR is **PARTIAL**, with full source coverage unknown. This establishes static
 - Actual RED observes1035 omitted links (345 per relocation) and omitted seventeenth generated confirmation. Only generic confirmation capacity16→17 and parser126→127 change; direct capacity10, helper/value joins, work/extent/cancellation guards and SQL2 remain unchanged. All48 focused tests pass without failures/errors/skips, including all seventeen positive baselines and eighteenth-confirmation omission.
 - One separately reviewed original/serial parser exits0. Independent acceptance checks all33372 memberships across27 sources,11295 stored/11283 navigable tutor links,345 changed species,18 reopened sections and100329 structural/localized references. MACHINE25765/EGG3665,16 other sections and the English overlay are preserved. Removing only244 and restoring TUTOR evidence exactly restores parser126 and its126-through93 chain.
 - Catalog digest: `4dc3526518ec3a14b8ada6e4fca7a60bb36dc095536a79c7114ee1d6289c1ed3`. Functional commit `aadf83f6` is published; all13 tested jars retain identical executable/resource contents, with only the CLI source-commit manifest changed. Exact consumers and22 evidence members, including original preparation-failure evidence, are retained. Ticketed cleanup deletes31 members/53513506 logical bytes with zero errors/warnings/exclusions; the root is absent, and18-section/all33372-membership/exact126-reversal checks pass after deletion.
+
+## Twenty-eighth entry: Ice Punch8
+
+- Manual decoding establishes **Ice Punch, move/source input8**, price48, through the accepted confirmation helper. One separately reviewed static admission retains46 bytes. Independent retained-data transcription yields **201 eligible/navigable species among1236**, calibrated against all twenty-seven prior columns without new CPU/native execution.
+- The prospective fixture producer binds the actual source and historical relocation transformation, correcting only the proved overlapping END byte in each shifted fixture. Every other prior byte, tutor column and machine pair is preserved; historical outputs remain unchanged.
+- Actual RED observes603 omitted links (201 per relocation) and omitted eighteenth generated confirmation. Only generic confirmation capacity17→18 and parser127→128 change; direct capacity10, helper/value joins, work/extent/cancellation guards and SQL2 remain unchanged. All48 focused tests pass without failures/errors/skips, including all eighteen positive baselines and nineteenth-confirmation omission.
+- One separately reviewed original/serial parser exits0. Independent acceptance checks all34608 memberships across28 sources,11496 stored/11484 navigable tutor links,201 changed species,18 reopened sections and100530 structural/localized references. MACHINE25765/EGG3665,16 other sections and the English overlay are preserved. Removing only8 and restoring TUTOR evidence exactly restores parser127 and its127-through93 chain.
+- Catalog digest: `8d1ee9d906635df5fbe5da5d872cfd01dc3978de1c0037f94af29307de960aa9`. Published-runtime binding, compact retention and exact cleanup remain delivery blockers; no whole-ROM completion is claimed.
 
 TUTOR remains **PARTIAL**, with complete source coverage unknown. This accepts a static catalog-source/membership subset, not full source-domain closure, gameplay/setter behavior, whole-ROM compatibility, device testing or release acceptance. Next: manually decode the next distinct entry without resuming renderer/task reconstruction.
