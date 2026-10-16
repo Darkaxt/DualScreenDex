@@ -1,6 +1,6 @@
 # Pokescape: sequential compiled tutor sources
 
-The sequential entry evidence below records parser101–118.
+The sequential entry evidence below records parser101–119.
 
 **Verified subset; complete tutor catalog and whole-ROM compatibility remain IN_PROGRESS.**
 
@@ -157,5 +157,12 @@ TUTOR is **PARTIAL**, with full source coverage unknown. This establishes static
 - One separately MAIN-reviewed parser118 run and independent persisted comparison match **all22,248 source/species memberships**. Exactly242 species change. Total **6984 stored /6977 navigable** tutors, in physical order135,69,138,5,25,34,157,68 followed by the prior ten direct sources.
 - All18 SQLite sections pass integrity/reopen/canonical checks; **96,018 structural/localized references** pass. MACHINE25765 navigable links, EGG3665 links,16 other sections and the full English overlay remain unchanged. Removing only68 and restoring TUTOR evidence exactly recovers parser117 and its inherited117-through93 chain.
 - Catalog digest: `9573f71cac545e9e026df380a935dbbef7fa491f44c344acae2d977f3178c9eb`. Functional commit `4536b2e5` is published. All executable/resource entries across13 runtime jars match the tested package; only the CLI source-commit manifest changes. Exact SQLite/report consumers and original RED/GREEN evidence are retained privately. Ticketed cleanup deletes29 exact members/52371512 logical bytes with zero errors/warnings/exclusions; the task root is absent. All18-section/eighteen-column/117-reversal checks pass again after deletion.
+
+## Nineteenth entry: Thunder Wave86
+
+- Manual decoding establishes **Thunder Wave, move/source input86**, price48, through the accepted confirmation helper. One separately reviewed static admission retains46 source/name/anchor/mapping bytes. Independent retained-data transcription yields **355 eligible species among1236**, calibrated against all eighteen prior columns without new CPU/native execution; all355 new links are navigable.
+- Functional RED records355 missing links at each of three relocations (1065 total) and the omitted ninth generated confirmation, with prior column/machine preservation. Only the generic confirmation bound changes8→9; direct bound10 and all validation guards remain unchanged. Parser119/SQL2. **All48 focused tests pass with zero failures/errors/skips**, including nineteen-column equality, tenth-confirmation omission, renamed variables, positive-baselined malformed-helper rejection, RAM boundaries and foreign routes.
+- One separately MAIN-reviewed parser119 run and independent comparison match **all23,484 source/species memberships**:355 changed species, **7339 stored /7332 navigable** tutors. All18 SQLite sections reopen exactly; **96,373 structural/localized references** pass. MACHINE25765/EGG3665,16 other sections and the full English overlay remain unchanged. Removing only86 and restoring TUTOR evidence exactly recovers parser118 and its inherited118-through93 chain.
+- Catalog digest: `dedddb196a5a52ba81ed5cc9c8e79ad9237078383b888465c734e1dd363a7c01`. Publication, exact published-runtime binding, compact retention and cleanup remain delivery checks.
 
 TUTOR remains **PARTIAL**, with complete source coverage unknown. This accepts a static catalog-source/membership subset, not full source-domain closure, gameplay/setter behavior, whole-ROM compatibility, device testing or release acceptance. Next: manually decode the next distinct entry without resuming renderer/task reconstruction.

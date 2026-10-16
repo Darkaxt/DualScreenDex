@@ -458,6 +458,6 @@ internal class CompiledTutorMoveAcquisitions(
         const val MAX_WORK = 1_000_000
         const val MAX_CANDIDATES = 64
         const val MAX_SOURCES = 10
-        const val MAX_CONFIRMATION_SOURCES = 8
+        const val MAX_CONFIRMATION_SOURCES = 9
     }
 }
