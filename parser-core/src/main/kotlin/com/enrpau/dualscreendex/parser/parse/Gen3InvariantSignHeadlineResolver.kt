@@ -31,6 +31,10 @@ internal object Gen3InvariantSignHeadlineResolver {
                     if (!rom.contains(cursor, 3)) return null
                     follow(cursor + 3)
                 }
+                COMPARE_VAR_TO_VALUE -> {
+                    if (!rom.contains(cursor, 5) || rom.u16le(cursor + 1) !in ORDINARY_VARIABLE_IDS) return null
+                    follow(cursor + 5)
+                }
                 GOTO -> {
                     if (!rom.contains(cursor, 5)) return null
                     follow(rom.gbaPointer(cursor + 1) ?: return null)
@@ -38,7 +42,7 @@ internal object Gen3InvariantSignHeadlineResolver {
                 GOTO_IF -> {
                     if (!rom.contains(cursor, 6) || rom.u8(cursor + 1) !in 0..5) return null
                     val target = rom.gbaPointer(cursor + 2) ?: return null
-                    // Do not select a live flag state: every outcome must have a valid headline.
+                    // Do not select live flag/variable values: every outcome must have a valid headline.
                     follow(cursor + 6)
                     follow(target)
                 }
@@ -79,6 +83,7 @@ internal object Gen3InvariantSignHeadlineResolver {
 
     private const val LOCK_ALL = 0x69
     private const val CHECK_FLAG = 0x2B
+    private const val COMPARE_VAR_TO_VALUE = 0x21
     private const val GOTO = 0x05
     private const val GOTO_IF = 0x06
     private const val LOAD_WORD = 0x0F
@@ -86,5 +91,6 @@ internal object Gen3InvariantSignHeadlineResolver {
     private const val BRAILLE_MESSAGE = 0x78
     private const val WAIT_BUTTON_PRESS = 0x6D
     private val MESSAGE_STANDARD_IDS = 3..5
+    private val ORDINARY_VARIABLE_IDS = 0x4000..0x40FF
     private const val MAX_STATES = 128
 }
