@@ -89,12 +89,12 @@ class CompiledTutorConfirmationAcquisitionTest {
     }
 
     @Test
-    fun decodesTwelveConfirmationSourcesWithoutExpandingTheDirectSourceBound() {
+    fun decodesThirteenConfirmationSourcesWithoutExpandingTheDirectSourceBound() {
         for (origin in listOf(0, 0x4000, 0x8000)) {
             val fixture = ConfirmationFixture(origin)
             val actual = fixture.f.materialize()
             val tutors = actual.acquisitionsBySpecies.getValue(4).filter { it.method == MoveAcquisitionMethod.TUTOR }
-            assertEquals(listOf(7, 301, 10, 11, 12, 13, 14, 15, 16, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39), tutors.map { it.moveId })
+            assertEquals(listOf(7, 301, 10, 11, 12, 13, 14, 15, 16, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41), tutors.map { it.moveId })
             assertEquals(tutors.map { it.moveId }, tutors.map { it.sourceId })
             assertEquals(CapabilityStatus.PARTIAL, actual.evidence.getValue(MoveAcquisitionMethod.TUTOR).status)
         }
@@ -117,8 +117,9 @@ class CompiledTutorConfirmationAcquisitionTest {
             assertTrue(expected.acquisitionsBySpecies.getValue(4).any { it.method == MoveAcquisitionMethod.TUTOR && it.moveId == 35 })
             assertTrue(expected.acquisitionsBySpecies.getValue(4).any { it.method == MoveAcquisitionMethod.TUTOR && it.moveId == 37 })
             assertTrue(expected.acquisitionsBySpecies.getValue(4).any { it.method == MoveAcquisitionMethod.TUTOR && it.moveId == 39 })
+            assertTrue(expected.acquisitionsBySpecies.getValue(4).any { it.method == MoveAcquisitionMethod.TUTOR && it.moveId == 41 })
             with(fixture.f) {
-                for (site in listOf(fixture.source, fixture.source + 16, fixture.source + 32, fixture.source + 48, fixture.source + 64, fixture.source + 80, fixture.source + 96, fixture.source + 112, fixture.source + 128, fixture.source + 144, fixture.source + 160, fixture.source + 176)) {
+                for (site in listOf(fixture.source, fixture.source + 16, fixture.source + 32, fixture.source + 48, fixture.source + 64, fixture.source + 80, fixture.source + 96, fixture.source + 112, fixture.source + 128, fixture.source + 144, fixture.source + 160, fixture.source + 176, fixture.source + 192)) {
                     u16(site + 1, 0x8010)
                     u16(site - 4, 0x8011)
                 }
@@ -153,6 +154,7 @@ class CompiledTutorConfirmationAcquisitionTest {
             assertTrue(expected.getValue(4).any { it.method == MoveAcquisitionMethod.TUTOR && it.moveId == 35 })
             assertTrue(expected.getValue(4).any { it.method == MoveAcquisitionMethod.TUTOR && it.moveId == 37 })
             assertTrue(expected.getValue(4).any { it.method == MoveAcquisitionMethod.TUTOR && it.moveId == 39 })
+            assertTrue(expected.getValue(4).any { it.method == MoveAcquisitionMethod.TUTOR && it.moveId == 41 })
             for (output in listOf(0x0203FFF3L, 0x03007FF3L)) {
                 fixture.f.u32(fixture.formatter + 24, output)
                 assertEquals(expected, fixture.f.materialize().acquisitionsBySpecies)
@@ -176,8 +178,9 @@ class CompiledTutorConfirmationAcquisitionTest {
             assertTrue(accepted.getValue(4).any { it.method == MoveAcquisitionMethod.TUTOR && it.moveId == 35 })
             assertTrue(accepted.getValue(4).any { it.method == MoveAcquisitionMethod.TUTOR && it.moveId == 37 })
             assertTrue(accepted.getValue(4).any { it.method == MoveAcquisitionMethod.TUTOR && it.moveId == 39 })
+            assertTrue(accepted.getValue(4).any { it.method == MoveAcquisitionMethod.TUTOR && it.moveId == 41 })
             val expected = accepted.mapValues { (_, row) ->
-                row.filterNot { it.method == MoveAcquisitionMethod.TUTOR && it.moveId in listOf(17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39) }
+                row.filterNot { it.method == MoveAcquisitionMethod.TUTOR && it.moveId in listOf(17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41) }
             }
             for (failure in 0..24) {
                 val fixture = ConfirmationFixture(origin)
@@ -245,7 +248,7 @@ class CompiledTutorConfirmationAcquisitionTest {
                 bytes[source - 5] = 0x16; u16(source - 4, 0x8008); u16(source - 2, 16)
                 bytes[source] = 0x16; u16(source + 1, 0x8005); u16(source + 3, 17)
                 bytes[source + 5] = 5; pointer(source + 6, helper)
-                for ((index, move) in listOf(19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41).withIndex()) {
+                for ((index, move) in listOf(19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 43).withIndex()) {
                     bytes.copyInto(bytes, source + 11 + index * 16, source - 5, source + 10)
                     u16(source + 19 + index * 16, move)
                 }
@@ -267,7 +270,7 @@ class CompiledTutorConfirmationAcquisitionTest {
                 words(formatter + 6, 0x880A, 0x210D, 0x4351)
                 literal(formatter + 12, 2, formatter + 32, 0x08000000L + base.names)
                 words(formatter + 14, 0x1889); bl(formatter + 16, origin + 0x6600); words(formatter + 20, 0xBC01, 0x4700)
-                for (move in listOf(17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41)) bytes[base.names + move * 13 + 12] = 0xFF.toByte()
+                for (move in listOf(17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 43)) bytes[base.names + move * 13 + 12] = 0xFF.toByte()
                 words(origin + 0x6600, 0xB500, 0x1C03, 0xE002, 0x701A, 0x3301, 0x3101, 0x780A, 0x1C10, 0x28FF, 0xD1F8, 0x20FF, 0x7018, 0x1C18, 0xBC02, 0x4708)
                 literal(wallet, 0, wallet + 12, 0x03002000); words(wallet + 2, 0x6800)
                 literal(wallet + 4, 1, wallet + 16, 0x100); words(wallet + 6, 0x1840, 0x8800, 0x4770)
@@ -408,7 +411,7 @@ class CompiledTutorConfirmationAcquisitionTest {
             val expected = rows.filter { it[0] == "tutor" }.map { row ->
                 row[1].toInt() to row[2].split(',').map(String::toInt).toSet()
             }
-            assertEquals(22, expected.size)
+            assertEquals(23, expected.size)
             var missingAtShift = 0
             val result = MoveAcquisitionMaterializer.materialize(RomImage(bytes), layout)
             for (species in 0 until values[0]) {
