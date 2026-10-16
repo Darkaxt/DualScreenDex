@@ -1,6 +1,6 @@
 # Pokescape: sequential compiled tutor sources
 
-The sequential entry evidence below records parser101–126.
+The sequential entry evidence below records parser101–127.
 
 **Verified subset; complete tutor catalog and whole-ROM compatibility remain IN_PROGRESS.**
 
@@ -213,5 +213,13 @@ TUTOR is **PARTIAL**, with full source coverage unknown. This establishes static
 - The generated source block is relocated into explicitly checked unused space before testing, avoiding helper overlap without changing authority. Actual RED observes2211 omitted links (737 per relocation) and omitted sixteenth generated confirmation. Only generic confirmation capacity15→16 and parser125→126 change; direct capacity10, helper/value joins, work/extent/cancellation guards and SQL2 remain unchanged. All48 focused tests pass without failures/errors/skips. Positive rejection/rename/bank-end baselines include all sixteen confirmations; an eligible seventeenth remains omitted.
 - One separately reviewed original/serial parser exits0. Independent acceptance checks all32136 memberships across26 sources,10950 stored/10938 navigable tutor links,737 changed species,18 reopened sections and99984 structural/localized references. MACHINE25765/EGG3665,16 other sections and the English overlay are preserved. Removing only203 and restoring TUTOR evidence exactly restores parser125 and its125-through93 chain.
 - Catalog digest: `c6b660bf69d04ca904e9e014881173d4e165ea98774453b41258088796b5bc76`. Functional commit `c6f87bb5` is published; all13 tested jars retain identical executable/resource contents, with only the CLI source-commit manifest changed. Exact consumers and20 evidence members are retained. Ticketed cleanup deletes29 members/52430201 logical bytes with zero errors/warnings/exclusions; the root is absent, and18-section/all32136-membership/exact125-reversal checks pass after deletion.
+
+## Twenty-seventh entry: Psych Up244
+
+- Manual decoding establishes **Psych Up, move/source input244**, price48, through the accepted confirmation helper. One separately reviewed static admission retains46 bytes. Independent retained-data transcription yields **345 eligible/navigable species among1236**, calibrated against all twenty-six prior columns without new CPU/native execution.
+- Control preparation catches a historical pointer-relocation heuristic changing an overlapping END byte. The failure and partial output are retained. A prospective fixture producer verifies and restores exactly that one byte in each shifted image; every other prior byte, tutor column and machine pair is preserved. This corrects test scaffolding, not production parsing or historical results.
+- Actual RED observes1035 omitted links (345 per relocation) and omitted seventeenth generated confirmation. Only generic confirmation capacity16→17 and parser126→127 change; direct capacity10, helper/value joins, work/extent/cancellation guards and SQL2 remain unchanged. All48 focused tests pass without failures/errors/skips, including all seventeen positive baselines and eighteenth-confirmation omission.
+- One separately reviewed original/serial parser exits0. Independent acceptance checks all33372 memberships across27 sources,11295 stored/11283 navigable tutor links,345 changed species,18 reopened sections and100329 structural/localized references. MACHINE25765/EGG3665,16 other sections and the English overlay are preserved. Removing only244 and restoring TUTOR evidence exactly restores parser126 and its126-through93 chain.
+- Catalog digest: `4dc3526518ec3a14b8ada6e4fca7a60bb36dc095536a79c7114ee1d6289c1ed3`. Coherent publication, exact published-runtime binding, compact consumers and ticketed cleanup remain delivery work; no completion of those steps is claimed yet.
 
 TUTOR remains **PARTIAL**, with complete source coverage unknown. This accepts a static catalog-source/membership subset, not full source-domain closure, gameplay/setter behavior, whole-ROM compatibility, device testing or release acceptance. Next: manually decode the next distinct entry without resuming renderer/task reconstruction.
