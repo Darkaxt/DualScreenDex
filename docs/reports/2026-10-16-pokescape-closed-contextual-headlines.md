@@ -19,6 +19,12 @@ The generic Emerald graph keeps its existing instruction grammar and128-state bo
 
 The accepted preview names its baseline HEAD plus exact unpublished source/class/runtime pins; it is not represented as a clean-tree run at a later commit. Published-package executable/resource comparison and exact scratch cleanup remain pending at this report's initial publication checkpoint. No original ROM, raw native payload, private path or native headline is included here.
 
+## Publication and consumer closure
+
+Implementation `c38688c1` is published to the fork feature branch. The separately gated published CLI build exits0 with daemon exit verified; all thirteen jars have exactly the tested executable/resource contents. Only the CLI source-commit manifest changes. This transfers the exact tested runtime, not a new parser execution at the publication commit.
+
+Compact proof and current catalog consumers retain49,475,455 bytes. Exact reviewed cleanup removes645 registered generated members; the helper reports56,439,413 deleted bytes, including directory accounting, not an exclusive volume-space increase. The selected scratch root is absent, with no partial ticket, errors or warnings. After removal, all eighteen catalog sections reopen,100,939 references pass, the exact eleven-field parser130 restoration passes, and all thirty tutor columns/11,905 stored links remain intact. No original, parser, native/game or device execution occurs during this closure. Current source/classes/installed CLI remain intentional consumers for continuing work.
+
 ## Remaining work
 
 This closes eleven conservative classifications, not all325 outstanding POI/native validation obligations, full gameplay branch reachability, tutor-source completeness, mechanics0/298 or whole-ROM compatibility. No percentage gain, denominator reduction, opaque UI/task liveness, fresh evaluation of unrelated ROMs or post100% QA completion is claimed. Continue the same ROM's required manual decoding after publication/proof/cleanup.
