@@ -18,4 +18,12 @@ Compact proof retains/reverifies49,938,673 bytes of consumers, exact source and 
 
 This closes three conservative classifications, not the remaining325 POI/native validation obligations, full gameplay reachability, global tutor-source completeness, mechanics0/298 or whole-ROM compatibility. Continue the same ROM after publication/proof/cleanup; post100% QA agents are not yet due.
 
+## Published-package and cleanup closure
+
+Functional implementation `9c7aa000` is published to the fork feature branch. The published CLI package passes the shared gate/profile/daemon-exit checks; all thirteen jars have exactly the tested executable/resource contents, with only the CLI source-commit manifest changed. No target parser or test rerun follows from packaging.
+
+All135 signed generated cleanup members are inspected across two pages and deleted through the reviewed exact ticket:54,037,773 logical file bytes, selected root absent, zero partial tickets/errors/warnings. Five exact scratch consumers and all48 compact proof members are checked before removal; required logs are retained compactly. A read-only schema mismatch fails before ticketing and is corrected using the saved review, not a deletion retry. No Gradle mutex, original read or exclusive volume-space gain is claimed.
+
+After removal, portable consumers successfully reopen all eighteen sections, verify100,939 references, all thirty tutor columns/11,905 stored links and exact three-field131 restoration. This closes the selected batch's publication/proof/cleanup only; unchanged scoped design-debt assessment requires no optional consolidation. Current classes and installed CLI remain intentional next-batch consumers. Pokescape and the parent goal remain IN_PROGRESS.
+
 See the [specification](../superpowers/specs/2026-10-09-pokescape-remaining-map-text-design.md) and [execution ledger](../superpowers/plans/2026-10-09-pokescape-remaining-map-text-plan.md).
