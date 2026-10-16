@@ -1,6 +1,6 @@
 # Pokescape: sequential compiled tutor sources
 
-The sequential entry evidence below records parser101–123.
+The sequential entry evidence below records parser101–124.
 
 **Verified subset; complete tutor catalog and whole-ROM compatibility remain IN_PROGRESS.**
 
@@ -192,5 +192,12 @@ TUTOR is **PARTIAL**, with full source coverage unknown. This establishes static
 - Actual RED observes1413 omitted links (471 per relocation) and omitted thirteenth generated confirmation. Only generic confirmation capacity12→13 and parser122→123 change; direct capacity10, helper/value joins, work/extent/cancellation guards and SQL2 remain unchanged. All48 focused tests pass with no failures/errors/skips. Non-vacuous rejection/rename/bank-end baselines include all thirteen confirmations; an eligible fourteenth remains omitted.
 - One separately reviewed original/serial parser exits0. Independent acceptance checks all28428 memberships across23 sources,9455 stored/9444 navigable tutor links,471 changed species,18 reopened sections and98489 structural/localized references. MACHINE25765/EGG3665,16 other sections and the English overlay are preserved. Removing only189 and restoring TUTOR evidence exactly restores parser122 and its122-through93 chain.
 - Catalog digest: `8d8aaf710bf78951e8441bc48fc9d7fe0e96ea7397183bc43004cf7a29833094`. Functional commit `085494c0` is published; all13 tested jars retain identical executable/resource contents, with only the CLI source-commit manifest changed. Exact consumers and20 evidence members are retained. Ticketed cleanup deletes29 members/52409419 logical bytes with zero errors/warnings/exclusions; the root is absent, and18-section/all28428-membership/exact122-reversal checks pass after deletion.
+
+## Twenty-fourth entry: Swift129
+
+- Manual decoding establishes **Swift, move/source input129**, price24, through the accepted confirmation helper. One separately reviewed static admission retains46 bytes. Independent retained-data transcription yields **399 eligible/navigable species among1236**, calibrated against all twenty-three prior columns without new CPU/native execution.
+- Actual RED observes1197 omitted links (399 per relocation) and omitted fourteenth generated confirmation. Only generic confirmation capacity13→14 and parser123→124 change; direct capacity10, helper/value joins, work/extent/cancellation guards and SQL2 remain unchanged. All48 focused tests pass with no failures/errors/skips. Positive rejection/rename/bank-end baselines include all fourteen confirmations; an eligible fifteenth remains omitted.
+- One separately reviewed original/serial parser exits0. Independent acceptance checks all29664 memberships across24 sources,9854 stored/9843 navigable tutor links,399 changed species,18 reopened sections and98888 structural/localized references. MACHINE25765/EGG3665,16 other sections and the English overlay are preserved. Removing only129 and restoring TUTOR evidence exactly restores parser123 and its123-through93 chain.
+- Catalog digest: `9dc3f1656eaf5096465e7d722fe035ad3c2a1a27d12fba31b3a3b5cfb4312daf`. Publication, published-runtime binding, compact proof and exact cleanup remain delivery checks.
 
 TUTOR remains **PARTIAL**, with complete source coverage unknown. This accepts a static catalog-source/membership subset, not full source-domain closure, gameplay/setter behavior, whole-ROM compatibility, device testing or release acceptance. Next: manually decode the next distinct entry without resuming renderer/task reconstruction.
