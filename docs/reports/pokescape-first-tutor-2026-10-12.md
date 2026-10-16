@@ -1,6 +1,6 @@
 # Pokescape: sequential compiled tutor sources
 
-The sequential entry evidence below records parser101–112.
+The sequential entry evidence below records parser101–113.
 
 **Verified subset; complete tutor catalog and whole-ROM compatibility remain IN_PROGRESS.**
 
@@ -109,4 +109,13 @@ TUTOR is **PARTIAL**, with full source coverage unknown. This establishes static
 - All18 SQLite sections pass integrity/reopen/canonical checks; **94,288 structural/localized references** pass. MACHINE25765 navigable links, EGG3665 links,16 other sections and the complete English overlay remain unchanged. Removing only69 and restoring prior TUTOR evidence exactly recovers parser111 and its inherited111-through93 chain.
 - Catalog digest: `94312f4f2ff470bb7eb6c6ac0aa402e3aed0748a1632055a10f4229c0ed5249e`. Functional commit `9a69278e` is published. Final packaging exactly matches all executable/resource contents across13 tested jars; only the CLI source-commit manifest changes. Compact exact consumers and all original RED/skip/GREEN evidence are retained privately. Ticketed cleanup deletes33 exact members/52356196 logical bytes with zero errors, warnings or exclusions; the task root is absent. The18-section/all-column/111-reversal checks pass again after deletion.
 
-TUTOR remains **PARTIAL**, with complete source coverage unknown. This accepts a static catalog-source/membership subset, not full source-domain closure, gameplay/setter behavior, whole-ROM compatibility, device testing or release acceptance. Next: manually decode the next distinct entry without resuming renderer/task reconstruction.
+## Thirteenth entry: Dream Eater138
+
+- Manual decoding establishes **Dream Eater, move/source input138**, price24, through the same accepted confirmation helper. A fresh, separately reviewed bounded static admission retains the complete source record, existing anchors/mapping and actual13-byte name record (46 bytes total). No public ordinal, guessed name bytes or new CPU execution supplies authority.
+- Independent transcription of the previously verified compiled scalar/u16-list semantics yields **246 eligible species among1236**, calibrated against all twelve accepted columns. Functional RED records246 missing links at each of three relocations (738 total) and the missing third generated confirmation; all prior columns and machine pairs pass.
+- Only the generic confirmation bound changes2→3; the direct bound remains10. Parser behavior revision113, SQL2. **All48 focused tests pass with zero failures/errors/skips**, including three relocated thirteen-column controls, fourth-confirmation omission, renamed variables, non-vacuous malformed-helper rejection for all three accepted confirmations, RAM bounds and foreign acquisition routes.
+- One separately MAIN-reviewed parser113 run and independent persisted comparison match **all16,068 source/species memberships**. Exactly246 species change; Dream Eater's246 links are all navigable. Total **5500 stored /5494 navigable** tutors, in physical source order135,69,138 followed by the prior ten direct sources.
+- All18 SQLite sections pass integrity/reopen/canonical checks; **94,534 structural/localized references** pass. MACHINE25765 navigable links, EGG3665 links,16 other sections and the full English overlay remain unchanged. Removing only138 and restoring prior TUTOR evidence exactly recovers parser112 and its inherited112-through93 chain.
+- Catalog digest: `0ab0d26fd92a360178580d67ca38eff2ea1357a01b67f90ccca1986021ef869b`. Tested source/runtime pins and original RED/GREEN evidence are retained privately; published-package binding and exact cleanup remain the delivery steps.
+
+TUTOR remains **PARTIAL**, with complete source coverage unknown. This accepts a static catalog-source/membership subset, not full source-domain closure, gameplay/setter behavior, whole-ROM compatibility, device testing or release acceptance. Next: close this entry's publication/proof/cleanup, then manually decode the next distinct entry without resuming renderer/task reconstruction.
