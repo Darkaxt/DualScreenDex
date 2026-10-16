@@ -81,12 +81,20 @@ class LegacyMapTitleAllocationTest {
         assertTrue(bean.isThreadAllocatedMemorySupported)
         bean.isThreadAllocatedMemoryEnabled = true
         val reader = CompiledGbaLegacyFieldMapTitle.Reader(RomImage(ByteArray(256)))
-        repeat(1024) { assertNull(actual(reader, 0)) }
+        // Warm both consumers beyond tiered compilation, independently of suite ordering.
+        repeat(32_768) {
+            assertNull(actual(reader, 0))
+            assertNull(original(reader, 0))
+        }
         val thread = Thread.currentThread().id
         val before = bean.getThreadAllocatedBytes(thread)
         repeat(4096) { assertNull(actual(reader, 0)) }
         val allocated = bean.getThreadAllocatedBytes(thread) - before
-        println("Rejected legacy map-title candidates allocated $allocated bytes for4096 calls")
+        val originalBefore = bean.getThreadAllocatedBytes(thread)
+        repeat(4096) { assertNull(original(reader, 0)) }
+        val originalAllocated = bean.getThreadAllocatedBytes(thread) - originalBefore
+        println("Rejected legacy map-title candidates allocated $allocated bytes for4096 calls; original allocated $originalAllocated")
+        assertTrue("Original allocating control did not exceed the limit: $originalAllocated", originalAllocated >= 4096 * 64)
         assertTrue("Rejected candidates allocated $allocated bytes", allocated < 4096 * 64)
     }
 

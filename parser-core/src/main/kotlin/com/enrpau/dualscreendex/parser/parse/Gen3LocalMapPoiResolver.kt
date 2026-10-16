@@ -248,7 +248,13 @@ internal object Gen3LocalMapPoiResolver {
             ?: if (family == EngineFamily.EMERALD) {
                 Gen3InvariantSignHeadlineResolver.resolve(rom, script, cancellation) { text ->
                     readTextHeadline(rom, text, codec)?.takeUnless { it.contextual }?.displayName
-                }?.let { SignHeadline(displayName = it, invariant = true) }
+                }?.let { headline ->
+                    SignHeadline(
+                        displayName = headline.displayName,
+                        contextual = headline.contextual,
+                        invariant = !headline.contextual,
+                    )
+                }
             } else {
                 null
             }

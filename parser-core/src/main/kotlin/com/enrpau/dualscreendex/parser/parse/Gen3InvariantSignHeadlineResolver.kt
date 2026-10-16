@@ -9,10 +9,11 @@ internal object Gen3InvariantSignHeadlineResolver {
         script: Int,
         cancellation: ParserCancellationToken = ParserCancellationToken.NONE,
         readHeadline: (Int) -> String?,
-    ): String? {
+    ): Headline? {
         val pending = ArrayDeque<State>()
         pending.addLast(State(script))
         var headline: String? = null
+        var contextual = false
         var processed = 0
         while (pending.isNotEmpty()) {
             cancellation.throwIfCancellationRequested()
@@ -37,7 +38,7 @@ internal object Gen3InvariantSignHeadlineResolver {
                 GOTO_IF -> {
                     if (!rom.contains(cursor, 6) || rom.u8(cursor + 1) !in 0..5) return null
                     val target = rom.gbaPointer(cursor + 2) ?: return null
-                    // Do not select a live flag state: both outcomes must agree.
+                    // Do not select a live flag state: every outcome must have a valid headline.
                     follow(cursor + 6)
                     follow(target)
                 }
@@ -49,15 +50,17 @@ internal object Gen3InvariantSignHeadlineResolver {
                     if (!rom.contains(cursor, 2) || rom.u8(cursor + 1) !in MESSAGE_STANDARD_IDS) return null
                     val text = state.text ?: return null
                     val candidate = readHeadline(text) ?: return null
-                    if (headline != null && headline != candidate) return null
+                    if (headline != null && headline != candidate) contextual = true
                     headline = candidate
                 }
                 else -> return null
             }
         }
         cancellation.throwIfCancellationRequested()
-        return headline
+        return headline?.let { Headline(displayName = it.takeUnless { contextual }, contextual = contextual) }
     }
+
+    data class Headline(val displayName: String?, val contextual: Boolean)
 
     private fun RomImage.contains(offset: Int, length: Int): Boolean =
         offset >= 0 && offset.toLong() + length <= size.toLong()

@@ -34,10 +34,66 @@ class Gen3InvariantPoiHeadlineTest {
     }
 
     @Test
-    fun differentFirstHeadlinesAreNotReplacedWithAnArbitraryBranchLabel() {
-        val fixture = fixture(0)
-        fixture.bytes[fixture.otherText + 1] = 0xbd.toByte()
-        assertUnavailable(fixture)
+    fun differentFirstHeadlinesAreClassifiedAsContextualWithoutChoosingABranchLabel() {
+        for (origin in listOf(0, 0x2000)) for (standard in 3..5) {
+            val fixture = fixture(origin, standard)
+            fixture.bytes[fixture.otherText + 1] = 0xbd.toByte()
+            val poi = fixture.resolve()
+            assertEquals("local/1/bg/0", poi.key)
+            assertEquals(LocalMapPoiTextObligation.CONTEXTUAL_TEXT, poi.textObligation)
+            assertNull(poi.displayName)
+        }
+    }
+
+    @Test
+    fun differingHeadlinesDoNotHideALaterInvalidPath() {
+        for (damage in listOf("opaque", "cycle", "instruction", "text", "runtime", "budget", "buffer", "comparison")) {
+            val fixture = differingThreeWayFixture()
+            val last = fixture.script + 10
+            when (damage) {
+                "opaque" -> fixture.bytes[last] = 0x25
+                "cycle" -> {
+                    fixture.bytes[last] = 5
+                    fixture.pointer(last + 1, fixture.script)
+                }
+                "instruction" -> {
+                    fixture.bytes[last] = 5
+                    fixture.pointer(last + 1, fixture.bytes.size - 3)
+                    fixture.bytes[fixture.bytes.size - 3] = 15
+                }
+                "text" -> {
+                    fixture.pointer(last + 2, fixture.bytes.lastIndex)
+                    fixture.bytes[fixture.bytes.lastIndex] = 0xbb.toByte()
+                }
+                "runtime" -> {
+                    fixture.pointer(last + 2, fixture.text + 32)
+                    byteArrayOf(0xfd.toByte(), 2, 0xff.toByte()).copyInto(fixture.bytes, fixture.text + 32)
+                }
+                "budget" -> fixture.bytes.fill(0x69, last, last + 129)
+                "buffer" -> {
+                    fixture.bytes[last] = 9
+                    fixture.bytes[last + 1] = 3
+                }
+                "comparison" -> {
+                    fixture.bytes[last] = 6
+                    fixture.bytes[last + 1] = 6
+                }
+            }
+            assertUnavailable(fixture)
+        }
+    }
+
+    @Test(expected = ParserCancellationException::class)
+    fun cancellationAfterDifferingHeadlinesIsNotTurnedIntoAContextualResult() {
+        val fixture = differingThreeWayFixture()
+        var reads = 0
+        Gen3InvariantSignHeadlineResolver.resolve(
+            RomImage(fixture.bytes), fixture.script,
+            ParserCancellationToken { if (reads == 2) throw ParserCancellationException() },
+        ) { text ->
+            reads++
+            if (text == fixture.text) "AB" else "AC"
+        }
     }
 
     @Test
@@ -167,6 +223,15 @@ class Gen3InvariantPoiHeadlineTest {
         assertEquals("local/1/bg/0", poi.key)
         assertEquals(LocalMapPoiTextObligation.UNRESOLVED, poi.textObligation)
         assertNull(poi.displayName)
+    }
+
+    private fun differingThreeWayFixture(): Fixture = fixture(0).apply {
+        bytes[otherText + 1] = 0xbd.toByte()
+        bytes[branch] = 6
+        bytes[branch + 1] = 1
+        pointer(branch + 2, branch + 32)
+        message(branch + 6, text, 3)
+        message(branch + 32, otherText, 3)
     }
 
     private fun fixture(origin: Int, standard: Int = 3): Fixture = Fixture(ByteArray(origin + 0x1000), origin).apply {
