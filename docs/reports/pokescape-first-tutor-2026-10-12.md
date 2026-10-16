@@ -1,6 +1,6 @@
 # Pokescape: sequential compiled tutor sources
 
-The sequential entry evidence below records parser101–111.
+The sequential entry evidence below records parser101–112.
 
 **Verified subset; complete tutor catalog and whole-ROM compatibility remain IN_PROGRESS.**
 
@@ -99,4 +99,14 @@ TUTOR is **PARTIAL**, with full source coverage unknown. This establishes static
 - All18 SQLite sections pass integrity/reopen/canonical checks; **94,104 structural/localized references** pass. MACHINE25765 navigable links, EGG3665 links,16 other sections and the complete English overlay remain unchanged. Restoring prior TUTOR evidence and removing only135 exactly recovers parser110 and its inherited110-through93 acceptance chain.
 - Catalog digest: `ded8d3466ba22311bf1abd4993cc8fa6c4868d06148f4c8b83aefd1767af533a`. Functional commit `a26e21af` is published; final packaging matches all executable/resource contents across13 tested runtime jars, with only the CLI source-commit manifest changed. Compact exact consumers and failed evidence are retained privately. Ticketed cleanup removes971 exact members/169135651 logical bytes with zero errors; the scratch root is absent, and the retained18-section/all-column/reversal checks pass again after deletion.
 
-TUTOR remains **PARTIAL**, with complete source coverage unknown. This accepts a static catalog-source/membership subset, not full source-domain closure, gameplay/setter behavior, whole-ROM compatibility, device testing or release acceptance. Next: manually decode the next distinct entry without resuming renderer/task reconstruction.
+## Twelfth entry: Seismic Toss69
+
+- Manual decoding establishes **Seismic Toss, move/source input69**, price24, through the same accepted confirmation helper. A qualified, separately reviewed static nomination retains one complete source record; a separate13-byte name dependency supplies actual compiled bytes, not invented fixture content. Public Lounge7 source nominates order only and is not compiled identity/eligibility authority.
+- Independent transcription of previously exhaustively verified compiled scalar/list semantics yields **184 eligible species among1236**, calibrated exactly against all eleven prior columns. These are retained-data comparisons, **not new native executions**.
+- Functional RED omits the second generated confirmation source and exactly184 new links at each of three relocations (552 total), while all prior columns/machine pairs pass. Increasing only the generic confirmation bound from one to two leaves the direct bound10 unchanged; parser behavior revision112, SQL schema2. Generated tests keep a third confirmation omitted and reject malformed shared-helper joins for both accepted confirmations.
+- **All48 distinct focused cases pass.** The grouped run passes47 and skips one historical direct-control test because its input was not configured; only that skipped case is rerun with the exact retained control and passes. Both original results remain preserved. No skipped result is relabelled as a pass.
+- The separately MAIN-reviewed one-ROM parser112 run and independent persisted comparison match **all14,832 source/species memberships**. Seismic Toss contributes184 stored/navigable links; exactly184 species change. Total **5254 stored /5248 navigable** tutors, in physical source order135,69 followed by the previous ten direct sources.
+- All18 SQLite sections pass integrity/reopen/canonical checks; **94,288 structural/localized references** pass. MACHINE25765 navigable links, EGG3665 links,16 other sections and the complete English overlay remain unchanged. Removing only69 and restoring prior TUTOR evidence exactly recovers parser111 and its inherited111-through93 chain.
+- Catalog digest: `94312f4f2ff470bb7eb6c6ac0aa402e3aed0748a1632055a10f4229c0ed5249e`. Exact tested source/runtime pins are retained privately; published-package binding and ticketed scratch cleanup remain the current delivery steps.
+
+TUTOR remains **PARTIAL**, with complete source coverage unknown. This accepts a static catalog-source/membership subset, not full source-domain closure, gameplay/setter behavior, whole-ROM compatibility, device testing or release acceptance. Next: close this entry's publication/proof/cleanup, then manually decode the next distinct entry without resuming renderer/task reconstruction.
