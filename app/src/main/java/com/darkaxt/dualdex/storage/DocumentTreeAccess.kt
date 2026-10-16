@@ -70,12 +70,10 @@ class DocumentTreeAccess(
             val directory = queue.removeFirst()
             if (!operation.claimDirectory(directory.uri.toString())) continue
             operation.budget.visitDirectory()
-            forEachChild(directory) { child ->
+            forEachChild(directory, operation) { child ->
                 if (child.mimeType == DocumentsContract.Document.MIME_TYPE_DIR) {
-                    operation.budget.enqueueNode()
                     queue.addLast(child)
                 } else {
-                    operation.budget.visitFile()
                     visitor(child, operation)
                 }
             }
@@ -86,11 +84,7 @@ class DocumentTreeAccess(
         parent: TreeDocument,
         operation: StorageTraversalOperation = StorageTraversalOperation(),
     ): List<TreeDocument> = buildList {
-        forEachChild(parent) { child ->
-            if (child.mimeType == DocumentsContract.Document.MIME_TYPE_DIR) operation.budget.enqueueNode()
-            else operation.budget.visitFile()
-            add(child)
-        }
+        forEachChild(parent, operation) { child -> add(child) }
     }
 
     fun read(
@@ -140,29 +134,43 @@ class DocumentTreeAccess(
         }
     }
 
-    private fun forEachChild(parent: TreeDocument, visitor: (TreeDocument) -> Unit) {
+    private fun forEachChild(
+        parent: TreeDocument,
+        operation: StorageTraversalOperation,
+        visitor: (TreeDocument) -> Unit,
+    ) {
         val uri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, parent.documentId)
-        providerOperation { cancellation ->
-            SafProviderResults.requireValue(
-                resolver.query(uri, PROJECTION, null, null, null, cancellation),
-                "SAF provider did not return child documents",
-            ).use { cursor ->
-                while (cursor.moveToNext()) {
-                    val id = cursor.getString(0)
-                    visitor(
-                        TreeDocument(
-                            DocumentsContract.buildDocumentUriUsingTree(treeUri, id),
-                            id,
-                            cursor.getString(1),
-                            cursor.getString(2),
-                            cursor.getInt(3),
-                            cursor.getLong(4),
-                            cursor.getLong(5),
-                        ),
-                    )
+        val cancellation = CancellationSignal()
+        provider.visitReadSnapshot(
+            onTimeout = cancellation::cancel,
+            snapshot = {
+                SafProviderResults.requireValue(
+                    resolver.query(uri, PROJECTION, null, null, null, cancellation),
+                    "SAF provider did not return child documents",
+                ).use { cursor ->
+                    buildList {
+                        while (cursor.moveToNext()) {
+                            val mimeType = cursor.getString(2)
+                            if (mimeType == DocumentsContract.Document.MIME_TYPE_DIR) operation.budget.enqueueNode()
+                            else operation.budget.visitFile()
+                            val id = cursor.getString(0)
+                            add(
+                                TreeDocument(
+                                    DocumentsContract.buildDocumentUriUsingTree(treeUri, id),
+                                    id,
+                                    cursor.getString(1),
+                                    mimeType,
+                                    cursor.getInt(3),
+                                    cursor.getLong(4),
+                                    cursor.getLong(5),
+                                ),
+                            )
+                        }
+                    }
                 }
-            }
-        }
+            },
+            visitor = visitor,
+        )
     }
 
     private fun readDocument(uri: Uri): TreeDocument = providerOperation { cancellation ->

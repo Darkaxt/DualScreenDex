@@ -13,7 +13,7 @@ internal class CompiledTutorMoveAcquisitions(
 ) {
     data class Data(val offset: Int, val acquisitions: Map<Int, List<MoveAcquisition>>, val failedSpecies: Set<Int>, val sourceCount: Int)
     private data class Workflow(val party: Long, val selected: Long)
-    private data class Commands(val variables: Int, val specials: Int)
+    private data class Commands(val table: Int, val variables: Int, val specials: Int)
     private data class Menu(val initializer: Int, val callback: Int, val action: Int)
     private var work = 0
     private var exhausted = false
@@ -36,24 +36,32 @@ internal class CompiledTutorMoveAcquisitions(
         if (linked.isEmpty()) return null
         if (menus.isEmpty()) return null
         val sources = linkedMapOf<Int, Int>()
-        // SETVAR u16,u16; CALL pointer. The called helper delivers the source before any
-        // opaque script operation. No nearby SPECIAL search or retail tutor ordinal.
+        var directSources = 0
+        var confirmationSources = 0
+        // The immediate helper and the bounded confirmation helper are separate contracts.
+        // A GOTO or a nearby chooser alone is never teaching-source authority.
         rom.visitMatches(byteArrayOf(0x16), onCheck = cancellation::throwIfCancellationRequested) { at ->
             if (!tick() || at > rom.size - 10) return@visitMatches !exhausted
             val variable = rom.u16le(at + 1)
-            if (variable < 0x8000 || value(commands.variables.toLong() + (variable - 0x8000) * 4L) != flow.selected || rom.u8(at + 5) != 4)
+            if (variable < 0x8000 || variableAddress(commands, variable) != flow.selected)
                 return@visitMatches !exhausted
+            val opcode = rom.u8(at + 5)
+            if (opcode != 4 && opcode != 5 || opcode == 4 && directSources >= MAX_SOURCES ||
+                opcode == 5 && confirmationSources >= MAX_CONFIRMATION_SOURCES) return@visitMatches true
             val helper = pointer(at + 6, thumb = false) ?: return@visitMatches true
-            if (helper > rom.size - 7 || rom.u8(helper) != 0x25 ||
-                !byteMatches(helper + 3, 0x27, 0x6A, 0x5A, 3)) return@visitMatches true
-            val special = rom.u16le(helper + 1)
-            val chooser = pointer(commands.specials.toLong() + special * 4L, thumb = true)
-            if (chooser !in menus) return@visitMatches true
             val move = rom.u16le(at + 3)
+            val accepted = if (opcode == 4) {
+                helper <= rom.size - 7 && rom.u8(helper) == 0x25 &&
+                    byteMatches(helper + 3, 0x27, 0x6A, 0x5A, 3) &&
+                    pointer(commands.specials.toLong() + rom.u16le(helper + 1) * 4L, true) in menus
+            } else confirmation(at, helper, move, commands, flow, menus.keys)
+            if (!accepted) return@visitMatches !exhausted
             val count = layout.moveCount ?: return@visitMatches false
             if (move !in 1 until count || move >= 0x8000) { exhausted = true; return@visitMatches false }
-            sources.putIfAbsent(move, at)
-            sources.size < MAX_SOURCES // Complete source-catalog coverage remains unknown.
+            if (sources.putIfAbsent(move, at) == null) {
+                if (opcode == 4) directSources++ else confirmationSources++
+            }
+            sources.size < MAX_SOURCES + MAX_CONFIRMATION_SOURCES // Total coverage remains unknown.
         }
         if (exhausted || sources.isEmpty()) return null
         val rows = shared.acquisitions.keys.associateWith { species ->
@@ -64,6 +72,201 @@ internal class CompiledTutorMoveAcquisitions(
         }
         return Data(sources.values.first(), rows, shared.failedSpecies, sources.size)
     }
+
+    private fun confirmation(source: Int, helper: Int, move: Int, commands: Commands, flow: Workflow, menus: Set<Int>): Boolean {
+        if (source < 5 || helper > rom.size - 105 || !byteMatches(source - 5, 0x16)) return false
+        val price = rom.u16le(source - 4)
+        val priceAddress = variableAddress(commands, price) ?: return false
+        if (priceAddress == flow.selected || rom.u16le(source - 2) >= 0x8000) return false
+        // Complete command boundaries, including both rejection branches and the post-teach
+        // payment. No scanning across operands, following cycles or accepting extra effects.
+        val boundaries = intArrayOf(0, 3, 7, 13, 15, 20, 26, 31, 36, 42, 48, 50, 55, 56, 62, 64, 66, 69, 72, 75, 76, 81, 87, 93, 95, 100, 103, 104)
+        val opcodes = intArrayOf(0x25, 0x83, 0x0F, 9, 0x21, 6, 0x26, 0x22, 6, 0x0F, 9, 5, 2, 0x0F, 9, 0x97, 0x25, 0x25, 0x25, 0x27, 0x21, 6, 0x0F, 9, 0x19, 0x25, 0x6C, 2)
+        if (boundaries.indices.any { rom.u8(helper + boundaries[it]) != opcodes[it] }) return false
+        if (rom.u8(helper + 4) != 1 || rom.u16le(helper + 5) != price ||
+            rom.u8(helper + 14) != 5 || listOf(49, 63, 94).any { rom.u8(helper + it) != 4 } ||
+            rom.u16le(helper + 18) != 0 || rom.u16le(helper + 79) != 0 ||
+            rom.u8(helper + 21) != 1 || rom.u8(helper + 37) != 4 || rom.u8(helper + 82) != 1 ||
+            pointer(helper + 38, false) != helper + 56 || rom.u8(helper + 65) != 1) return false
+        val result = rom.u16le(helper + 16)
+        val walletVariable = rom.u16le(helper + 27)
+        val paymentVariable = rom.u16le(helper + 96)
+        val resultAddress = variableAddress(commands, result) ?: return false
+        val paymentAddress = variableAddress(commands, paymentVariable) ?: return false
+        if (resultAddress == flow.selected || paymentAddress == flow.selected ||
+            resultAddress == priceAddress || paymentAddress == priceAddress ||
+            walletVariable !in 0x4000..0x7FFF || rom.u16le(helper + 32) != walletVariable ||
+            rom.u16le(helper + 34) != price || rom.u16le(helper + 77) != result ||
+            rom.u16le(helper + 98) != price) return false
+        val rejection = pointer(helper + 22, false) ?: return false
+        if (pointer(helper + 51, false) != rejection || rejection in helper until helper + 105 ||
+            pointer(helper + 83, false) in listOf(null, helper + 56, helper + 72)) return false
+        for (offset in intArrayOf(7, 42, 56, 87)) {
+            if (rom.u8(helper + offset + 1) != 0 || pointer(helper + offset + 2, false) == null) return false
+        }
+        fun special(offset: Int) = pointer(commands.specials.toLong() + rom.u16le(helper + offset + 1) * 4L, true)
+        val formatter = special(0) ?: return false
+        val wallet = pointer(commands.specials.toLong() + rom.u16le(helper + 29) * 4L, true) ?: return false
+        val firstClose = special(66) ?: return false
+        val secondClose = special(69) ?: return false
+        if (special(72) !in menus || special(100) == null || firstClose == secondClose ||
+            !confirmationCommands(commands, flow.selected) || !moveNameFormatter(formatter, move, flow.selected) ||
+            !matches(wallet + 2, 0x6800) || !matches(wallet + 6, 0x1840, 0x8800, 0x4770) ||
+            !ram(wallet, 0, 4) || literal(wallet + 4, 1)?.let { it in 0..0xFFFF } != true) return false
+        val first = windowCloser(firstClose, flow.selected) ?: return false
+        val second = windowCloser(secondClose, flow.selected) ?: return false
+        return first.first != second.first && first.second == second.second
+    }
+
+    private fun confirmationCommands(commands: Commands, selected: Long): Boolean {
+        fun command(opcode: Int) = pointer(commands.table.toLong() + opcode * 4L, true)
+        val caller = command(4) ?: return false
+        val reader = bl(caller + 4) ?: return false
+        val jump = command(5) ?: return false
+        if (!matches(jump, 0xB510, 0x1C04) || bl(jump + 4) != reader ||
+            !matches(jump + 8, 0x1C01, 0x1C20) ||
+            bl(jump + 12)?.let { matches(it, 0x6081, 0x4770) } != true ||
+            !matches(jump + 16, 0x2000, 0xBC10, 0xBC02, 0x4708)) return false
+        val standard = command(9) ?: return false
+        if (!matches(standard, 0xB500, 0x1C02, 0x6890, 0x7801, 0x3001, 0x6090, 0x0089) ||
+            word(standard + 16) != 0x1809 ||
+            !matches(standard + 20, 0x4281, 0xD203, 0x6809, 0x1C10) ||
+            bl(standard + 28) != bl(caller + 12) || !matches(standard + 32, 0x2000, 0xBC02, 0x4708)) return false
+        val standards = romLiteral(standard + 14, 0) ?: return false
+        val end = romLiteral(standard + 18, 0) ?: return false
+        if (standards.toLong() + 6 * 4 > end) return false
+        val message = pointer(standards.toLong() + 4 * 4, false) ?: return false
+        val question = pointer(standards.toLong() + 5 * 4, false) ?: return false
+        if (!byteMatches(message, 0x67, 0, 0, 0, 0, 0x66, 0x6D, 3) ||
+            !byteMatches(question, 0x67, 0, 0, 0, 0, 0x66, 0x6E) ||
+            !byteMatches(question + 9, 3)) return false
+        // These are the engine's presentation boundary, like linkedMenu's UI calls.
+        // Native value producers and destinations remain separately linked below.
+        val setter = command(0x16) ?: return false
+        val half = bl(setter + 4) ?: return false
+        val getter = bl(setter + 12) ?: return false
+        val specialVar = command(0x26) ?: return false
+        if (!matches(specialVar, 0xB570, 0x1C05) || bl(specialVar + 4) != half ||
+            !matches(specialVar + 8, 0x0400, 0x0C00) || bl(specialVar + 12) != getter ||
+            word(specialVar + 16) != 0x1C06 || word(specialVar + 20) != 0x1C28 || bl(specialVar + 22) != half ||
+            !matches(specialVar + 26, 0x0400, 0x0B80, 0x1900, 0x6800) ||
+            romLiteral(specialVar + 18, 4) != commands.specials ||
+            bl(specialVar + 34)?.let { word(it) } != 0x4700 ||
+            !matches(specialVar + 38, 0x8030, 0x2000, 0xBC70, 0xBC02, 0x4708)) return false
+        val branch = command(6) ?: return false
+        if (!matches(branch, 0xB530, 0x1C05, 0x68A8, 0x7804, 0x3001, 0x60A8, 0x1C28) ||
+            bl(branch + 14) != reader || word(branch + 18) != 0x1C02 ||
+            !matches(branch + 22, 0x0060, 0x1900, 0x78AB, 0x18C0, 0x1840, 0x7800, 0x2801, 0xD103, 0x1C28, 0x1C11) ||
+            bl(branch + 42) != bl(jump + 12) || !matches(branch + 46, 0x2000, 0xBC30, 0xBC02, 0x4708)) return false
+        val conditions = romLiteral(branch + 20, 1) ?: return false
+        if (!byteMatches(conditions + 3, 0, 1, 0) || !byteMatches(conditions + 12, 0, 1, 1)) return false
+        val compareValue = command(0x21) ?: return false
+        val compareVariables = command(0x22) ?: return false
+        val compare = bl(compareValue + 32) ?: return false
+        if (!matches(compare, 0xB500, 0x0400, 0x0C00, 0x0409, 0x0C09, 0x4288, 0xD201,
+                0x2000, 0xE004, 0x4288, 0xD001, 0x2002, 0xE000, 0x2001, 0xBC02, 0x4708) ||
+            !matches(compareValue, 0xB530, 0x1C04) || bl(compareValue + 4) != half ||
+            !matches(compareValue + 8, 0x0400, 0x0C00) || bl(compareValue + 12) != getter ||
+            !matches(compareValue + 16, 0x8805, 0x1C20) || bl(compareValue + 20) != half ||
+            !matches(compareValue + 24, 0x1C01, 0x0409, 0x0C09, 0x1C28) ||
+            !matches(compareValue + 36, 0x70A0, 0x2000, 0xBC30, 0xBC02, 0x4708) ||
+            !matches(compareVariables, 0xB530, 0x1C04) || bl(compareVariables + 4) != half ||
+            !matches(compareVariables + 8, 0x0400, 0x0C00) || bl(compareVariables + 12) != getter ||
+            !matches(compareVariables + 16, 0x1C05, 0x1C20) || bl(compareVariables + 20) != half ||
+            !matches(compareVariables + 24, 0x0400, 0x0C00) || bl(compareVariables + 28) != getter ||
+            !matches(compareVariables + 32, 0x882A, 0x8801, 0x1C10) || bl(compareVariables + 38) != compare ||
+            !matches(compareVariables + 42, 0x70A0, 0x2000, 0xBC30, 0xBC02, 0x4708)) return false
+        val load = command(0x0F) ?: return false
+        if (!matches(load, 0xB530, 0x1C04, 0x68A0, 0x7805, 0x3001, 0x60A0, 0x1C20) ||
+            bl(load + 14) != reader || !matches(load + 18, 0x00AD, 0x3464, 0x1964, 0x6020, 0x2000, 0xBC30, 0xBC02, 0x4708)) return false
+        val number = command(0x83) ?: return false
+        val valueGetter = bl(number + 18) ?: return false
+        if (!matches(number, 0xB530, 0x6881, 0x780D, 0x3101, 0x6081) || bl(number + 10) != half ||
+            !matches(number + 14, 0x0400, 0x0C00) ||
+            !matches(valueGetter, 0xB510, 0x0400, 0x0C04, 0x1C20) || bl(valueGetter + 8) != getter ||
+            !matches(valueGetter + 12, 0x2800, 0xD001, 0x8800, 0xE000, 0x1C20, 0xBC10, 0xBC02, 0x4708) ||
+            !matches(number + 22, 0x1C04, 0x0424, 0x0C24, 0x1C20) || bl(number + 30) == null ||
+            !matches(number + 34, 0x1C03, 0x061B, 0x0E1B) ||
+            !matches(number + 42, 0x00AD, 0x182D, 0x6828, 0x1C21, 0x2200) || bl(number + 52) == null ||
+            !matches(number + 56, 0x2000, 0xBC30, 0xBC02, 0x4708)) return false
+        val buffers = romLiteral(number + 40, 0) ?: return false
+        val output = value(buffers.toLong() + 4) ?: return false
+        if (output !in 0x02000000L..0x0203FFF9L && output !in 0x03000000L..0x03007FF9L ||
+            output < selected + 2 && selected < output + 6) return false
+        val fade = command(0x97) ?: return false
+        return matches(fade, 0xB510, 0x1C04, 0x68A1, 0x7808, 0x3101, 0x60A1, 0x2100) &&
+            bl(fade + 14) != null && codePointer(literal(fade + 18, 1)) != null &&
+            word(fade + 20) == 0x1C20 && bl(fade + 22)?.let { dialogueCommands(commands, reader, it) } == true &&
+            matches(fade + 26, 0x2001, 0xBC10, 0xBC02, 0x4708)
+    }
+
+    private fun dialogueCommands(commands: Commands, reader: Int, setup: Int): Boolean {
+        fun command(opcode: Int) = pointer(commands.table.toLong() + opcode * 4L, true)
+        if (!matches(setup, 0x2202, 0x7042, 0x6041, 0x4770)) return false
+        val message = command(0x67) ?: return false
+        if (!matches(message, 0xB510, 0x1C04) || bl(message + 4) != reader ||
+            !matches(message + 8, 0x2800, 0xD100, 0x6E60) || bl(message + 14) == null ||
+            !matches(message + 18, 0x2000, 0xBC10, 0xBC02, 0x4708)) return false
+        for (opcode in intArrayOf(0x66, 0x6D)) {
+            val wait = command(opcode) ?: return false
+            if (word(wait) != 0xB500 || bl(wait + 4) != setup ||
+                !matches(wait + 8, 0x2001, 0xBC02, 0x4708)) return false
+            val poll = codePointer(literal(wait + 2, 1)) ?: return false
+            if (word(poll) != 0xB500 || !ram(poll + 2, 0, 4)) return false
+            if (opcode == 0x66) {
+                if (!matches(poll + 4, 0x7800, 0x2800, 0xD004, 0x2000, 0xE003) ||
+                    !matches(poll + 20, 0x2001, 0xBC02, 0x4708)) return false
+            } else if (!matches(poll + 4, 0x8DC1, 0x2001, 0x4008, 0x2800, 0xD108,
+                    0x2002, 0x4008, 0x2800, 0xD104, 0x2000, 0xE003) ||
+                !matches(poll + 32, 0x2001, 0xBC02, 0x4708)) return false
+        }
+        val question = command(0x6E) ?: return false
+        if (!matches(question, 0xB500, 0x6882, 0x7813, 0x3201, 0x6082, 0x7811, 0x3201, 0x6082, 0x1C18) ||
+            bl(question + 18) == null || !matches(question + 22, 0x0600, 0x0E00, 0x2801, 0xD001, 0x2000, 0xE002) ||
+            bl(question + 34) == null || !matches(question + 38, 0x2001, 0xBC02, 0x4708)) return false
+        val returning = command(3) ?: return false
+        if (word(returning) != 0xB500 || !matches(returning + 6, 0x2000, 0xBC02, 0x4708)) return false
+        val restore = bl(returning + 2) ?: return false
+        if (!matches(restore, 0xB510, 0x1C04) || !matches(restore + 8, 0x60A0, 0xBC10, 0xBC01, 0x4700)) return false
+        val pop = bl(restore + 4) ?: return false
+        return matches(pop, 0xB500, 0x1C02, 0x7810, 0x2800, 0xD008, 0x3801, 0x7010,
+            0x7811, 0x0089, 0x1C10, 0x300C, 0x1840, 0x6800, 0xE000, 0x2000, 0xBC02, 0x4708)
+    }
+
+    private fun moveNameFormatter(at: Int, move: Int, selected: Long): Boolean {
+        val names = layout.tables.moveNames ?: return false
+        val stride = names.stride ?: names.recordSize
+        val count = layout.moveCount ?: return false
+        if (stride !in 1..255 || move !in 1 until count ||
+            !matches(at, 0xB500) || literal(at + 4, 1) != selected ||
+            !matches(at + 6, 0x880A, 0x2100 or stride, 0x4351) ||
+            literal(at + 12, 2) != 0x08000000L + names.offset ||
+            word(at + 14) != 0x1889 || !matches(at + 20, 0xBC01, 0x4700) || !ram(at + 2, 0, 1)) return false
+        val output = literal(at + 2, 0) ?: return false
+        if (output !in 0x02000000L..(0x02040000L - stride) &&
+            output !in 0x03000000L..(0x03008000L - stride) ||
+            output < selected + 2 && selected < output + stride) return false
+        val name = names.offset.toLong() + move.toLong() * stride
+        if (name !in 0..rom.size.toLong() - stride || (0 until stride).none { rom.u8(name.toInt() + it) == 0xFF }) return false
+        val copy = bl(at + 16) ?: return false
+        return matches(copy, 0xB500, 0x1C03, 0xE002, 0x701A, 0x3301, 0x3101, 0x780A,
+            0x1C10, 0x28FF, 0xD1F8, 0x20FF, 0x7018, 0x1C18, 0xBC02, 0x4708)
+    }
+
+    private fun windowCloser(at: Int, selected: Long): Pair<Long, Pair<Int, Int>>? {
+        if (!matches(at, 0xB510) || !ram(at + 2, 4, 1) || !matches(at + 4, 0x7820, 0x2101) ||
+            word(at + 12) != 0x7820 || !matches(at + 18, 0xBC10, 0xBC01, 0x4700)) return null
+        val window = literal(at + 2, 4) ?: return null
+        if (window in selected until selected + 2) return null
+        val clear = bl(at + 8) ?: return null
+        val remove = bl(at + 14) ?: return null
+        return (window to (clear to remove)).takeIf { clear != remove }
+    }
+
+    private fun variableAddress(commands: Commands, variable: Int): Long? =
+        if (variable in 0x8000..0xFFFF) value(commands.variables.toLong() + (variable - 0x8000) * 4L)
+            ?.takeIf { it and 1L == 0L && (it in 0x02000000L..0x0203FFFEL || it in 0x03000000L..0x03007FFEL) }
+        else null
 
     private fun workflow(at: Int): Workflow? {
         val names = layout.tables.moveNames ?: return null
@@ -106,7 +309,7 @@ internal class CompiledTutorMoveAcquisitions(
                     !matches(special + 20, 0x2000, 0xBC02, 0x4708) ||
                     bl(special + 16)?.let { word(it) } != 0x4700) continue
                 val specials = romLiteral(special + 8, 1) ?: continue
-                contracts += Commands(variables, specials)
+                contracts += Commands(table, variables, specials)
             }
         }
         return contracts.singleOrNull().takeUnless { exhausted }
@@ -255,5 +458,6 @@ internal class CompiledTutorMoveAcquisitions(
         const val MAX_WORK = 1_000_000
         const val MAX_CANDIDATES = 64
         const val MAX_SOURCES = 10
+        const val MAX_CONFIRMATION_SOURCES = 1
     }
 }

@@ -1,6 +1,6 @@
 # Pokescape: sequential compiled tutor sources
 
-The sequential entry evidence below records parser101–110.
+The sequential entry evidence below records parser101–111.
 
 **Verified subset; complete tutor catalog and whole-ROM compatibility remain IN_PROGRESS.**
 
@@ -90,4 +90,13 @@ TUTOR is **PARTIAL**, with full source coverage unknown. This establishes static
 - All18 SQLite sections pass integrity/reopen/canonical checks. MACHINE/EGG,16 other sections and the English overlay remain unchanged;94096 references pass.
 - Removing only Explosion links and restoring prior TUTOR evidence exactly recovers parser109 and its109-through93 acceptance chain. Catalog digest: `204e9665238d9277fe5f86898a73709fd7b4b4ca040468284b4bcf1e0c4fe642`.
 
-Complete source coverage remains unknown. Next: manually decode the next distinct physical source, then extend support by one entry. Active scratch is retained for the continuing work and historical consumers; cleanup is not claimed complete.
+## Eleventh entry: Soft-Boiled135
+
+- Manual decoding establishes **Soft-Boiled, move/source input135**, through a price/selected-variable assignment and **GOTO confirmation helper**, not the prior immediate CALL contract. The compiled command handlers, variable mappings, finite confirmation branches, move-name consumer, read-only wallet getter and shared chooser/eligibility join supply authority; public-source ordinals and display text do not. Presentation callees use the existing reader's explicit UI boundary, not a claim of whole-game rendering or startup correctness.
+- The prior ten-direct-source bound stays unchanged; a separate one-confirmation-source bound admits this entry. Functional relocated RED precedes implementation. **48 focused tests pass**, including three relocated eleven-column controls, 25 changed-value/branch/native-join adversaries at each relocation, ten unverified-helper preservation variants, renamed variables, second-confirmation omission, full-bank buffer bounds and foreign acquisition routes. The optional retained fixture supplies one absent post-teaching dispatch dependency as explicitly generated scaffolding, not native authority; private fixture locators remain external to maintained source.
+- Earlier failed fixture runs remain failures: an omitted post-teaching dispatch cell and a generated implicit-receiver collision were diagnosed separately; vacuous negative assertions are not counted as coverage. A reproduced cross-bank name-buffer alias prompted the final full-extent guard and boundary regression tests before final acceptance.
+- The final separately reviewed one-ROM parser111/SQL2 run and retained independent comparison match **all 13,596 source/species membership cases**. Soft-Boiled contributes **eight stored/navigable links**, with exactly eight species changed. Total **5070 stored /5064 navigable** tutor links. This source occurs physically before the ten previously accepted sources; removing only135 restores their exact ordering and lists.
+- All18 SQLite sections pass integrity/reopen/canonical checks; **94,104 structural/localized references** pass. MACHINE25765 navigable links, EGG3665 links,16 other sections and the complete English overlay remain unchanged. Restoring prior TUTOR evidence and removing only135 exactly recovers parser110 and its inherited110-through93 acceptance chain.
+- Catalog digest: `ded8d3466ba22311bf1abd4993cc8fa6c4868d06148f4c8b83aefd1767af533a`. Exact tested source/class/runtime pins and immutable admissions/receipts are retained privately; publication-time package equivalence and consumer-safe cleanup are recorded in the authoritative specification when completed.
+
+TUTOR remains **PARTIAL**, with complete source coverage unknown. This accepts a static catalog-source/membership subset, not full source-domain closure, gameplay/setter behavior, whole-ROM compatibility, device testing or release acceptance. Next: complete publication/proof/cleanup, then manually decode the next distinct entry without resuming renderer/task reconstruction.
