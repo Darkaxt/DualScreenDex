@@ -1,6 +1,6 @@
 # Pokescape: sequential compiled tutor sources
 
-The sequential entry evidence below records parser101–117.
+The sequential entry evidence below records parser101–118.
 
 **Verified subset; complete tutor catalog and whole-ROM compatibility remain IN_PROGRESS.**
 
@@ -150,4 +150,12 @@ TUTOR is **PARTIAL**, with full source coverage unknown. This establishes static
 - All18 SQLite sections pass integrity/reopen/canonical checks; **95,776 structural/localized references** pass. MACHINE25765 navigable links, EGG3665 links,16 other sections and the full English overlay remain unchanged. Removing only157 and restoring TUTOR evidence exactly recovers parser116 and its inherited116-through93 chain.
 - Catalog digest: `6ce083468deadeb4655aa316c427b180a1b513c4c26ec81ad2497a7e85513807`. Functional commit `6770557c` is published. All executable/resource entries across13 runtime jars match the tested package; only the CLI source-commit manifest changes. Exact SQLite/report consumers and original RED/GREEN evidence are retained privately. Ticketed cleanup deletes31 exact members/52370011 logical bytes with zero errors/warnings/exclusions; the task root is absent. All18-section/seventeen-column/116-reversal checks pass again after deletion.
 
-TUTOR remains **PARTIAL**, with complete source coverage unknown. This accepts a static catalog-source/membership subset, not full source-domain closure, gameplay/setter behavior, whole-ROM compatibility, device testing or release acceptance. Next: manually decode the next distinct entry without resuming renderer/task reconstruction.
+## Eighteenth entry: Counter68
+
+- Manual decoding establishes **Counter, move/source input68**, price48, through the same accepted confirmation helper. A fresh separately reviewed static admission retains46 source/name/anchor/mapping bytes. Independent retained-data transcription yields **242 eligible species among1236**, calibrated against all seventeen prior columns without new CPU/native execution; all242 new links are navigable.
+- Functional RED records242 missing links at each of three relocations (726 total) and the missing eighth generated confirmation, with prior column/machine assertions passing. Only the generic confirmation bound changes7→8; direct bound10 is unchanged. Parser behavior revision118, SQL2. **All48 focused tests pass with zero failures/errors/skips**, including eighteen-column equality, ninth-confirmation omission, renamed variables, non-vacuous malformed shared-helper rejection for all eight confirmations, full-bank buffer limits and foreign acquisition preservation.
+- One separately MAIN-reviewed parser118 run and independent persisted comparison match **all22,248 source/species memberships**. Exactly242 species change. Total **6984 stored /6977 navigable** tutors, in physical order135,69,138,5,25,34,157,68 followed by the prior ten direct sources.
+- All18 SQLite sections pass integrity/reopen/canonical checks; **96,018 structural/localized references** pass. MACHINE25765 navigable links, EGG3665 links,16 other sections and the full English overlay remain unchanged. Removing only68 and restoring TUTOR evidence exactly recovers parser117 and its inherited117-through93 chain.
+- Catalog digest: `9573f71cac545e9e026df380a935dbbef7fa491f44c344acae2d977f3178c9eb`. Published-runtime binding, compact retention and exact cleanup remain pending delivery checks.
+
+TUTOR remains **PARTIAL**, with complete source coverage unknown. This accepts a static catalog-source/membership subset, not full source-domain closure, gameplay/setter behavior, whole-ROM compatibility, device testing or release acceptance. Next: finish delivery closure, then manually decode the next distinct entry without resuming renderer/task reconstruction.
