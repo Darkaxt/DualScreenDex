@@ -18,4 +18,12 @@ Compact642 retains/reverifies50,242,149 bytes of portable consumers, exact previ
 
 These are conservative classifications, not completion of the325 broader POI/native-validation obligations, natural-gameplay reachability, actual save-object validity, opaque liveness, global tutor-source completeness, mechanics0/298 or whole-ROM compatibility. Continue the same ROM after publication/proof/cleanup; post100% QA agents are not yet due.
 
+## Published-package and cleanup closure
+
+Functional implementation `94df12ba` is published to the fork feature branch. Package643 passes the shared gate/profile/post-build daemon checks. All thirteen jars have exactly the tested executable/resource contents; only the CLI source-commit manifest changes. Packaging repeats no tests, original read or target parser execution.
+
+All148 signed generated members are inspected across two pages. Preflight reverifies84 compact proof members and matches twelve scratch consumers to retained copies before the separate ticket/application. Cleanup644 removes148 members/53,541,644 logical file bytes, with zero exclusions/partial tickets/errors/warnings. Required logs and initial partial diagnostic files are retained compactly. No Gradle mutex, universal process-inactivity or exclusive volume-space gain is claimed.
+
+Portable645 after removal reopens all eighteen sections, verifies100,939 references, all eight individually accepted owner chains, thirty tutor columns/11,905 stored links and exact eight-field132 restoration. The selected root is absent and all84 compact members rehash. This closes the bounded batch's publication/proof/cleanup, not Pokescape support. The unchanged scoped debt assessment requires no consolidation. Continue the same-ROM manual-entry sequence; current classes/installed CLI remain intentional consumers.
+
 See the [specification](../superpowers/specs/2026-10-09-pokescape-remaining-map-text-design.md) and [execution ledger](../superpowers/plans/2026-10-09-pokescape-remaining-map-text-plan.md).
