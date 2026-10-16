@@ -81,7 +81,7 @@ class LegacyMapTitleAllocationTest {
         assertTrue(bean.isThreadAllocatedMemorySupported)
         bean.isThreadAllocatedMemoryEnabled = true
         val reader = CompiledGbaLegacyFieldMapTitle.Reader(RomImage(ByteArray(256)))
-        // Warm both consumers beyond tiered compilation, independently of suite ordering.
+        // Warm both consumers; the production path must not rely on iterator elision.
         repeat(32_768) {
             assertNull(actual(reader, 0))
             assertNull(original(reader, 0))

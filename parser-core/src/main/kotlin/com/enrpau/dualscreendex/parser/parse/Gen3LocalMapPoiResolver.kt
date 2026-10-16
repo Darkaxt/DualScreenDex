@@ -246,8 +246,8 @@ internal object Gen3LocalMapPoiResolver {
             )
         } ?: readGenderConditionedSignHeadline(rom, script, codec)
             ?: if (family == EngineFamily.EMERALD) {
-                Gen3InvariantSignHeadlineResolver.resolve(rom, script, cancellation) { text ->
-                    readTextHeadline(rom, text, codec)?.takeUnless { it.contextual }?.displayName
+                Gen3InvariantSignHeadlineResolver.resolve(rom, script, cancellation) { text, braille ->
+                    readTextHeadline(rom, text, codec, braille)?.takeUnless { it.contextual }?.displayName
                 }?.let { headline ->
                     SignHeadline(
                         displayName = headline.displayName,

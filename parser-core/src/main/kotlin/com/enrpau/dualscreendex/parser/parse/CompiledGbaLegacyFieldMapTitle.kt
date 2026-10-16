@@ -196,8 +196,15 @@ internal object CompiledGbaLegacyFieldMapTitle {
         fun range(at: Int, size: Int): Boolean = at >= 0 && at.toLong() + size <= rom.size
         fun ops(at: Int, vararg values: Int): Boolean = range(at, values.size * 2) &&
             values.indices.all { rom.u16le(at + it * 2) == values[it] }
-        fun pattern(at: Int, values: IntArray): Boolean = range(at, values.size * 2) &&
-            values.indices.all { rom.u16le(at + it * 2) == values[it] }
+        fun pattern(at: Int, values: IntArray): Boolean {
+            if (!range(at, values.size * 2)) return false
+            var index = 0
+            while (index < values.size) {
+                if (rom.u16le(at + index * 2) != values[index]) return false
+                index++
+            }
+            return true
+        }
         fun literal(site: Int, register: Int): Long? {
             if (!range(site, 2)) return null
             val op = rom.u16le(site)

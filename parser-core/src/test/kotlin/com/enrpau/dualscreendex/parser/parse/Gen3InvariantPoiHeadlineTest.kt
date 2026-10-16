@@ -90,7 +90,7 @@ class Gen3InvariantPoiHeadlineTest {
         Gen3InvariantSignHeadlineResolver.resolve(
             RomImage(fixture.bytes), fixture.script,
             ParserCancellationToken { if (reads == 2) throw ParserCancellationException() },
-        ) { text ->
+        ) { text, _ ->
             reads++
             if (text == fixture.text) "AB" else "AC"
         }
@@ -210,7 +210,7 @@ class Gen3InvariantPoiHeadlineTest {
         val bytes = byteArrayOf(9, 3)
         for (root in listOf(-1, 0, bytes.size)) {
             var reads = 0
-            assertNull(Gen3InvariantSignHeadlineResolver.resolve(RomImage(bytes), root) {
+            assertNull(Gen3InvariantSignHeadlineResolver.resolve(RomImage(bytes), root) { _, _ ->
                 reads++
                 "AB"
             })
