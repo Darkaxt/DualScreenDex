@@ -125,7 +125,14 @@ class CompiledAbilityFamilyIntegrationTest {
     }
 
     @Test fun completeMaterializerKeepsNativeEdgesAndPublishesOnlyOwnedLocalizedText() {
-        val fixture = CompiledAbilityTextFixture()
+        assertOwnedMaterialization(CompiledAbilityTextFixture())
+        val multiplied = CompiledAbilityTextFixture(multipliedNames = true, nameWidth = 13)
+        multiplied.addCopiedNameConsumer()
+        multiplied.addHighRegisterDescriptionConsumer()
+        assertOwnedMaterialization(multiplied)
+    }
+
+    private fun assertOwnedMaterialization(fixture: CompiledAbilityTextFixture) {
         putGbaPointer(fixture.bytes, fixture.descriptions.offset.toInt() + 2 * 4, -0x08000000)
         val result = semantic(fixture)
         val selected = layout(fixture, result)
@@ -187,7 +194,7 @@ class CompiledAbilityFamilyIntegrationTest {
             codec.language, codec.id, codec.version, LocalizedTableLayout(speciesNames = names),
             emptyList(), LanguageResolutionStatus.RESOLVED)), LanguageResolutionStatus.RESOLVED)
         val evidence = ValidationEvidence(true, 4, 4, 1.0, emptyList())
-        val abilityTable = TableLayout(fixture.names.offset.toInt(), 20, 17)
+        val abilityTable = TableLayout(fixture.names.offset.toInt(), 20, fixture.names.nameWidth)
         val core = CoreDatasetsPhaseResult.Resolved(
             ProfileTables(speciesNames = names, baseStats = fixture.core, abilities = abilityTable),
             4, 1, 1, evidence, evidence, evidence, evidence,

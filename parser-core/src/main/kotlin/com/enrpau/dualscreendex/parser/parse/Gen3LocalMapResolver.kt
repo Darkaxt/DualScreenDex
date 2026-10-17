@@ -95,6 +95,17 @@ internal object Gen3LocalMapResolver {
         val assetKeyByTimed = linkedMapOf<TimedIndexedMapAsset, String>()
         var encodedBytes = 0L
         var uniquePixels = 0L
+        fun reserveAsset(pixelCount: Int, assetBytes: Long) {
+            require(uniquePixels + pixelCount <= MAX_TOTAL_PIXELS) {
+                "raster-pixels budget: retained $uniquePixels plus $pixelCount exceeds $MAX_TOTAL_PIXELS"
+            }
+            require(encodedBytes + assetBytes <= MAX_ENCODED_BYTES) {
+                "encoded-assets budget: retained $encodedBytes plus $assetBytes exceeds $MAX_ENCODED_BYTES"
+            }
+            // A rejected asset consumes neither budget and cannot discard previously retained maps.
+            uniquePixels += pixelCount
+            encodedBytes += assetBytes
+        }
         descriptors.forEach { descriptor ->
             cancellation.throwIfCancellationRequested()
             runCatching {
@@ -114,20 +125,7 @@ internal object Gen3LocalMapResolver {
                         paletteModel = requireNotNull(lightingModel),
                     )
                     assetKeyByTimed[asset] ?: descriptor.assetKey.also { newAssetKey ->
-                        uniquePixels += descriptor.pixelCount
-                        if (uniquePixels > MAX_TOTAL_PIXELS) {
-                            return LocalMapResolution.BudgetExceeded(
-                                "raster-pixels",
-                                "resolved $uniquePixels unique local-map pixels (limit $MAX_TOTAL_PIXELS)",
-                            )
-                        }
-                        encodedBytes += compressed.size + TIMED_PALETTE_BYTES
-                        if (encodedBytes > MAX_ENCODED_BYTES) {
-                            return LocalMapResolution.BudgetExceeded(
-                                "encoded-assets",
-                                "unique local-map assets exceed $MAX_ENCODED_BYTES bytes",
-                            )
-                        }
+                        reserveAsset(descriptor.pixelCount, compressed.size.toLong() + TIMED_PALETTE_BYTES)
                         assetKeyByTimed[asset] = newAssetKey
                         timedAssets[newAssetKey] = asset
                     }
@@ -135,20 +133,7 @@ internal object Gen3LocalMapResolver {
                     val asset = PngMapAsset(PngEncoder.encode(raster.toRgbaSprite(cancellation), cancellation))
                     cancellation.throwIfCancellationRequested()
                     assetKeyByPng[asset] ?: descriptor.assetKey.also { newAssetKey ->
-                        uniquePixels += descriptor.pixelCount
-                        if (uniquePixels > MAX_TOTAL_PIXELS) {
-                            return LocalMapResolution.BudgetExceeded(
-                                "raster-pixels",
-                                "resolved $uniquePixels unique local-map pixels (limit $MAX_TOTAL_PIXELS)",
-                            )
-                        }
-                        encodedBytes += asset.bytes.size
-                        if (encodedBytes > MAX_ENCODED_BYTES) {
-                            return LocalMapResolution.BudgetExceeded(
-                                "encoded-assets",
-                                "unique local-map assets exceed $MAX_ENCODED_BYTES bytes",
-                            )
-                        }
+                        reserveAsset(descriptor.pixelCount, asset.bytes.size.toLong())
                         assetKeyByPng[asset] = newAssetKey
                         assets[newAssetKey] = asset
                     }
@@ -196,15 +181,15 @@ internal object Gen3LocalMapResolver {
                 "resolved ${maps.size} local maps from a compiled gMapGroups consumer",
                 "rendered ${assets.size + timedAssets.size} unique bounded ${format.label} 16x16 metatile rasters " +
                     "from ROM tilesets and palettes",
-            ) + if (scenes.isNotEmpty()) {
+            ) + (if (scenes.isNotEmpty()) {
                 listOf("placed ${scenes.sumOf { it.placements.size }} maps in ${scenes.size} connection-derived scenes")
             } else {
                 emptyList()
-            } + if (lightingModel != null) {
+            }) + (if (lightingModel != null) {
                 listOf("retained ${timedAssets.size} source-backed natural-light maps as indexed timed rasters")
             } else {
                 emptyList()
-            } + if (codec == null) {
+            }) + (if (codec == null) {
                 listOf(
                     "resolved ${poiResolution.pois.size} bounded structural local-map POIs; " +
                         "omitted localized Gen III map and POI names because no ROM text codec was authoritative",
@@ -213,7 +198,7 @@ internal object Gen3LocalMapResolver {
                 listOf("resolved ${poiResolution.pois.size} bounded local-map POIs from typed MapEvents records")
             } else {
                 emptyList()
-            } + skippedReasons + poiResolution.skippedReasons,
+            }) + skippedReasons + poiResolution.skippedReasons,
             skippedMaps = skippedReasons.size,
             partialSubsystemFailures = poiResolution.skippedReasons.size,
         )

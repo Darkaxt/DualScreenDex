@@ -18,10 +18,12 @@ internal class CompiledAbilityTextFixture(
     signedComparisonTrap: Boolean = false,
     emptyGetterPop: Boolean = false,
     private val localArguments: Boolean = false,
+    private val multipliedNames: Boolean = false,
+    nameWidth: Int = 17,
 ) {
     val bytes = ByteArray(0x18000) { 0xFF.toByte() }
     val core = TableLayout(coreOffset, 4, 36)
-    val names = AbilityNameTableLayout(0x8007 + relocation, 20, 17)
+    val names = AbilityNameTableLayout(0x8007 + relocation, 20, nameWidth)
     val descriptions = AbilityDescriptionTableLayout(
         ((names.offset.toInt() + names.count.toInt() * names.stride + 3) and -4), 20,
     )
@@ -89,7 +91,8 @@ internal class CompiledAbilityTextFixture(
         }
 
         val name = accessor(nameEntry)
-        name.shift(1, 4, 4); name.add(1, 1, 4)
+        if (multipliedNames) { name.op(0x2100 or nameWidth); name.op(0x4361) }
+        else { name.shift(1, 4, 4); name.add(1, 1, 4) }
         nameRootLoad = name.literal(2, names.offset.toInt())
         name.add(1, 1, 2); name.bl(0x1100 + relocation); name.returnFromAccessor(localArguments); name.finish()
         val description = accessor(descriptionEntry)
@@ -157,6 +160,36 @@ internal class CompiledAbilityTextFixture(
         else { code.op(0x2000 or width); code.op(0x4341) }
         code.literal(2, names.offset.toInt()); code.add(1, 1, 2)
         code.returnFromAccessor(); code.finish()
+    }
+
+    fun addCopiedNameConsumer(
+        width: Int = names.nameWidth,
+        scaleRegister: Int = 1,
+        product: Int = 2,
+        index: Int = 4,
+        rootRegister: Int = 1,
+    ): List<Int> {
+        val code = Thumb(0x2C00 + relocation)
+        code.op(0xB510)
+        val sites = mutableListOf(code.op(0x2000 or (scaleRegister shl 8) or width))
+        sites += code.op(0x1C00 or (index shl 3) or product)
+        sites += code.op(0x4340 or (scaleRegister shl 3) or product)
+        sites += code.literal(rootRegister, names.offset.toInt())
+        sites += code.op(0x1800 or (rootRegister shl 6) or (product shl 3) or product)
+        code.returnFromAccessor(); code.finish()
+        return sites
+    }
+
+    fun addHighRegisterDescriptionConsumer(highRegister: Int = 8): List<Int> {
+        require(highRegister in 8..15)
+        val code = Thumb(0x2A00 + relocation)
+        val sites = mutableListOf(code.literal(0, descriptions.offset.toInt()))
+        sites += code.op(0x4600 or ((highRegister and 8) shl 4) or (highRegister and 7))
+        sites += code.shift(0, 4, 2)
+        sites += code.op(0x4400 or (highRegister shl 3))
+        sites += code.op(0x6800)
+        code.op(0x4770); code.finish()
+        return sites
     }
 
     private fun accessor(entry: Int): Thumb = Thumb(entry).apply {

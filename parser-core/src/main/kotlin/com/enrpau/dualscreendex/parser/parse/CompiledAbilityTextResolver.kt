@@ -129,13 +129,30 @@ object CompiledAbilityTextResolver {
     private fun pointerIndexConsumer(session: RomAnalysisSession, site: Int): Boolean {
         val rom = session.rom
         if (site < 0 || site.toLong() + 8 > rom.size) return false
-        val root = rom.u16le(site); val shift = rom.u16le(site + 2)
+        val root = rom.u16le(site)
+        if (root and 0xF800 != 0x4800) return false
+        val base = (root ushr 8) and 7
+        val relay = rom.u16le(site + 2)
+        if (relay and 0xFF00 == 0x4600) {
+            if (site.toLong() + 10 > rom.size) return false
+            val saved = (relay and 7) or ((relay ushr 4) and 8)
+            val shift = rom.u16le(site + 4)
+            val add = rom.u16le(site + 6)
+            val load = rom.u16le(site + 8)
+            val product = shift and 7
+            // Preserve the root in a non-machine-state high register before reusing its low register.
+            return (relay ushr 3) and 15 == base && saved in 8..12 &&
+                shift and 0xF800 == 0 && (shift ushr 6) and 31 == 2 && (shift ushr 3) and 7 != base &&
+                add and 0xFF00 == 0x4400 && ((add and 7) or ((add ushr 4) and 8)) == product &&
+                (add ushr 3) and 15 == saved && load and 0xF800 == 0x6800 &&
+                (load ushr 6) and 31 == 0 && (load ushr 3) and 7 == product
+        }
+        val shift = relay
         val add = rom.u16le(site + 4); val load = rom.u16le(site + 6)
-        if (root and 0xF800 != 0x4800 || shift and 0xF800 != 0 ||
-            (shift ushr 6) and 31 != 2 || add and 0xFE00 != 0x1800 ||
+        if (shift and 0xF800 != 0 || (shift ushr 6) and 31 != 2 || add and 0xFE00 != 0x1800 ||
             load and 0xF800 != 0x6800 || (load ushr 6) and 31 != 0
         ) return false
-        val base = (root ushr 8) and 7; val product = shift and 7
+        val product = shift and 7
         return base != product && add and 7 == product &&
             setOf((add ushr 3) and 7, (add ushr 6) and 7) == setOf(base, product) &&
             (load ushr 3) and 7 == product

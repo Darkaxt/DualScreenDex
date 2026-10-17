@@ -143,15 +143,23 @@ private fun compiledFixedStrideConsumer(rom: RomImage, rootLoadSite: Int): Int? 
             setOf((add ushr 3) and 7, (add ushr 6) and 7) == setOf(product, base)
         ) return 1 shl shift
     }
-    if (move and 0xF800 != 0x2000 || multiply and 0xFFC0 != 0x4340 ||
+    val copiedIndex = move and 0xFFC0 == 0x1C00
+    val scaleMove = if (copiedIndex) {
+        if (rootLoadSite < 6) return null
+        rom.u16le(rootLoadSite - 6)
+    } else move
+    if (scaleMove and 0xF800 != 0x2000 || multiply and 0xFFC0 != 0x4340 ||
         rootLoad and 0xF800 != 0x4800 || add and 0xFE00 != 0x1800
     ) return null
 
-    val scaleRegister = (move ushr 8) and 0x7
-    val scale = move and 0xFF
+    val scaleRegister = (scaleMove ushr 8) and 0x7
+    val scale = scaleMove and 0xFF
     val multiplyResult = multiply and 0x7
     val multiplyOther = (multiply ushr 3) and 0x7
     if (scale == 0 || scaleRegister != multiplyResult && scaleRegister != multiplyOther) return null
+    if (copiedIndex && (move and 7 != multiplyResult || scaleRegister == multiplyResult ||
+        scaleRegister == (move ushr 3) and 7 || multiplyOther != scaleRegister || add and 7 != multiplyResult)
+    ) return null
 
     val rootRegister = (rootLoad ushr 8) and 0x7
     val addFirst = (add ushr 3) and 0x7

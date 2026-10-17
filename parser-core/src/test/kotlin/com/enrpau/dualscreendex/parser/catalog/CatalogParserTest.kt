@@ -21,6 +21,7 @@ import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.language.resolvedLanguageManifest
 import com.enrpau.dualscreendex.parser.language.textUnavailableLanguageManifests
 import com.enrpau.dualscreendex.parser.model.EngineFamily
+import com.enrpau.dualscreendex.parser.model.Gen3LearnsetTableLayout
 import com.enrpau.dualscreendex.parser.model.ParseResult
 import com.enrpau.dualscreendex.parser.model.Platform
 import com.enrpau.dualscreendex.parser.model.PokeemeraldExpansionMetadata
@@ -48,6 +49,87 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CatalogParserTest {
+    @Test
+    fun rulesetsJoinThePublishedSpeciesDomainBeforeClosingReferencedMoves() {
+        val bytes = ByteArray(0x2000)
+        val stride = 180
+        for (id in listOf(1, 3)) {
+            val base = id * stride
+            repeat(6) { bytes[base + it] = (40 + it).toByte() }
+            bytes[base + 6] = 1; bytes[base + 7] = 2
+            encodeGbaText(bytes, base + 44, "NATIVE")
+            putU16(bytes, base + 60, 25) // Distinct native IDs may share a Dex number.
+        }
+        val primary = mapOf(
+            0 to listOf(LearnsetEntry(1, 90)),
+            1 to listOf(LearnsetEntry(1, 1), LearnsetEntry(5, 2)),
+            2 to listOf(LearnsetEntry(1, 91)),
+            3 to listOf(LearnsetEntry(3, 2)),
+            4 to emptyList(),
+        )
+        val alternate = primary.mapValues { (id, entries) ->
+            when (id) {
+                0 -> listOf(LearnsetEntry(1, 92))
+                2 -> listOf(LearnsetEntry(1, 93))
+                3 -> listOf(LearnsetEntry(2, 1), LearnsetEntry(7, 2))
+                else -> entries.reversed()
+            }
+        }
+        listOf(primary, alternate).forEachIndexed { index, rows ->
+            rows.forEach { (id, entries) ->
+                val target = 0x1000 + index * 0x200 + id * 0x20
+                putGbaPointer(bytes, 0x800 + index * 0x20 + id * 4, target)
+                entries.forEachIndexed { entryIndex, entry ->
+                    putU16(bytes, target + entryIndex * 4, entry.moveId)
+                    putU16(bytes, target + entryIndex * 4 + 2, entry.level)
+                }
+                putU16(bytes, target + entries.size * 4, 0xFFFF)
+            }
+        }
+        val metadata = PokeemeraldExpansionMetadata(
+            0x204, 1, 15, 3, stride, 44, 13, 31, 60, 62, 64, 76, 88, 96,
+            24, 21, 148, 152, 156, 160, 64, 28, 20, 20,
+        )
+        val tables = listOf(0x800, 0x820).map { TableLayout(it, 5, 4, stride = 4) }
+        val layout = ResolvedRomLayout(
+            EngineFamily.EMERALD, 3, Platform.GBA, 5, 100,
+            ProfileTables(
+                speciesNames = TableLayout(44, 5, 13, stride = stride),
+                baseStats = TableLayout(0, 5, stride, stride = stride),
+                learnsets = tables.first(),
+            ),
+            learnsetTables = tables.map { Gen3LearnsetTableLayout(it, 1.0, 1) },
+            pokeemeraldExpansion = metadata,
+            languageManifest = resolvedLanguageManifest(PokemonTextCodec.gbaEnglish),
+        )
+        val rom = RomImage(bytes)
+        val analysis = ParseResult(
+            RomHeader(Platform.GBA, "RULESET JOIN"), rom.sha256, rom.crc32, rom.size,
+            SelectionStatus.SELECTED, EngineFamily.EMERALD, null, 20, emptyList(), emptyList(),
+        )
+        val physical = LearnsetRulesetMaterializer.materialize(rom, layout, primary)
+        assertEquals(2, physical.size)
+        assertTrue(physical.all { it.entriesBySpecies.keys == (0..4).toSet() })
+        assertTrue(physical.all { it.entriesBySpecies.getValue(2).isNotEmpty() })
+
+        val catalog = CatalogMaterializer.materialize(rom, analysis, layout)
+
+        assertEquals(setOf(1, 3), catalog.speciesById.keys)
+        assertEquals(2, catalog.learnsetRulesets.size)
+        catalog.learnsetRulesets.forEach { ruleset ->
+            val expected = if (ruleset.sourceOffset == 0x800) primary else alternate
+            assertEquals(expected.filterKeys { it in catalog.speciesById }, ruleset.entriesBySpecies)
+        }
+        assertEquals(physical.map { ruleset ->
+            ruleset.copy(entriesBySpecies = ruleset.entriesBySpecies.filterKeys { it in catalog.speciesById })
+        }, catalog.learnsetRulesets)
+        assertTrue(catalog.movesById.keys.none { it in 90..93 })
+        assertTrue(catalog.diagnostics.contains(
+            "learnset rulesets: omitted 6 physical-table rows outside the published species domain",
+        ))
+        assertEquals(listOf(25, 25), catalog.speciesById.values.map { it.dexNumber.value })
+    }
+
     @Test
     fun itemNameResolverReceivesUniqueFinalIdsOnceAndUnavailableIsTerminal() {
         val (rom, analysis, layout) = moveDescriptionCallerFixture()

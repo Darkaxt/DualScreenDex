@@ -579,7 +579,12 @@ object CatalogMaterializer {
         publishProgress(CatalogMaterializationProgress(CatalogMaterializationPhase.RELATIONSHIPS, 3, 5, relationshipCatalog))
 
         beginWork(CatalogWorkModule.MOVE_DATA)
-        val learnsetRulesets = LearnsetRulesetMaterializer.materialize(rom, layout, learnsets)
+        val rawLearnsetRulesets = LearnsetRulesetMaterializer.materialize(rom, layout, learnsets)
+        val learnsetRulesets = rawLearnsetRulesets.map { ruleset ->
+            ruleset.copy(entriesBySpecies = ruleset.entriesBySpecies.filterKeys { it in relationshipSpecies })
+        }
+        val unjoinedLearnsetRows = rawLearnsetRulesets.sumOf { it.entriesBySpecies.size } -
+            learnsetRulesets.sumOf { it.entriesBySpecies.size }
         // A session resolver owns its terminal absence/conflict/budget result, including null.
         val moveDescriptions = if (resolveMoveDescriptions != null) {
             resolveMoveDescriptions(layout)
@@ -1005,6 +1010,9 @@ object CatalogMaterializer {
                             "confidence=${"%.3f".format(java.util.Locale.ROOT, it.confidence)} " +
                             "abilities=${it.mechanicsByAbility.size}",
                     )
+                }
+                if (unjoinedLearnsetRows > 0) {
+                    add("learnset rulesets: omitted $unjoinedLearnsetRows physical-table rows outside the published species domain")
                 }
                 learnsetRulesets.forEach {
                     add(

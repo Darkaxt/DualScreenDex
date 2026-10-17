@@ -38,6 +38,8 @@ internal class CompiledAbilityAccessor(private val rom: RomImage, private val bu
                     val register = (op ushr 8) and 7
                     registers[register] = added(registers[register], Constant((op and 255).toLong()))
                 }
+                op and 0xFFC0 == 0x4340 -> registers[op and 7] =
+                    multiplied(registers[op and 7], registers[(op ushr 3) and 7])
                 op and 0xFF00 == 0x4600 -> {
                     val destination = (op and 7) or ((op ushr 4) and 8)
                     if (destination in setOf(13, 15)) return null
@@ -128,6 +130,22 @@ internal class CompiledAbilityAccessor(private val rom: RomImage, private val bu
             is Constant -> Constant(if (right) value.value ushr amount else (value.value shl amount) and 0xFFFFFFFFL)
             is Id -> coefficient(value.scale)?.let { value.copy(scale = it) } ?: Unknown
             is Input -> coefficient(value.scale)?.let { value.copy(scale = it) } ?: Unknown
+            else -> Unknown
+        }
+    }
+
+    private fun multiplied(left: Value, right: Value): Value {
+        if (left is Constant && right is Constant) return Constant((left.value * right.value) and 0xFFFFFFFFL)
+        val factor = (left as? Constant) ?: (right as? Constant) ?: return Unknown
+        if (factor.value !in 1..65536) return Unknown
+        val value = if (left is Constant) right else left
+        return when (value) {
+            is Id -> if (value.scale in 1..65536) {
+                (value.scale * factor.value).takeIf { it in 1..65536 }?.let { value.copy(scale = it) } ?: Unknown
+            } else Unknown
+            is Input -> if (value.scale in 1..65536) {
+                (value.scale * factor.value).takeIf { it in 1..65536 }?.let { value.copy(scale = it) } ?: Unknown
+            } else Unknown
             else -> Unknown
         }
     }

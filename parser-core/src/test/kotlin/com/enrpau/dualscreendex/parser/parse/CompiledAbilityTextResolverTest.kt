@@ -52,6 +52,63 @@ class CompiledAbilityTextResolverTest {
         }
     }
 
+    @Test fun multipliedNameStrideAndHighRegisterDescriptionRelayKeepTheOwnedContract() {
+        for (relocation in listOf(0, 0x400)) {
+            for (width in listOf(13, 17, 23)) {
+                for (highRegister in listOf<Int?>(null, 8, 9, 10, 11, 12)) {
+                    val fixture = CompiledAbilityTextFixture(relocation, multipliedNames = true, nameWidth = width)
+                    highRegister?.let { fixture.addHighRegisterDescriptionConsumer(it) }
+                    val outcome = resolve(fixture)
+                    assertEquals("Resolved", outcome.javaClass.simpleName)
+                    val binding = property(outcome, "Binding")
+                    assertEquals(width, property(property(binding, "Names"), "NameWidth"))
+                    assertEquals(listOf(7, 12), readSlots(property(binding, "SpeciesSlots"), fixture, 3))
+                }
+            }
+        }
+    }
+
+    @Test fun copiedNativeIndexPreservesTheConstantMultiplierAndCompleteReferenceAgreement() {
+        for (relocation in listOf(0, 0x400)) {
+            for (registers in listOf(listOf(1, 2, 4, 1), listOf(7, 0, 4, 6), listOf(0, 3, 2, 5))) {
+                val fixture = CompiledAbilityTextFixture(relocation, multipliedNames = true, nameWidth = 13)
+                fixture.addCopiedNameConsumer(scaleRegister = registers[0], product = registers[1],
+                    index = registers[2], rootRegister = registers[3])
+                fixture.addHighRegisterDescriptionConsumer()
+                assertEquals("Resolved", resolve(fixture).javaClass.simpleName)
+            }
+        }
+    }
+
+    @Test fun copiedNameIndexCannotOverwriteTheScaleOrTheProductRoot() {
+        for (mutation in listOf(0 to 0x2100, 1 to 0x1C21, 1 to 0x1C0A, 1 to 0x1C62,
+            2 to 0x4352, 3 to 0x4A00, 4 to 0x1889)) {
+            val fixture = CompiledAbilityTextFixture()
+            val sites = fixture.addCopiedNameConsumer()
+            val operation = if (mutation.first == 3) {
+                mutation.second or (RomImage(fixture.bytes).u16le(sites[3]) and 255)
+            } else mutation.second
+            fixture.half(sites[mutation.first], operation)
+            assertEquals("Unavailable", resolve(fixture).javaClass.simpleName)
+        }
+    }
+
+    @Test fun multiplyingTwoNativeIdsCannotEstablishANameStride() {
+        val fixture = CompiledAbilityTextFixture(multipliedNames = true, nameWidth = 13)
+        fixture.half(fixture.nameRootLoad - 4, 0x1C21)
+        assertEquals("Unavailable", resolve(fixture).javaClass.simpleName)
+    }
+
+    @Test fun highRegisterDescriptionRelayRejectsWrongScaleClobbersAndMachineStateRegisters() {
+        for (mutation in listOf(1 to 0x4685, 1 to 0x4686, 1 to 0x4687, 1 to 0x4688,
+            2 to 0x0060, 2 to 0x0080, 2 to 0x00A4, 3 to 0x4441, 4 to 0x6840, 4 to 0x8800)) {
+            val fixture = CompiledAbilityTextFixture()
+            val sites = fixture.addHighRegisterDescriptionConsumer()
+            fixture.half(sites[mutation.first], mutation.second)
+            assertEquals("Unavailable", resolve(fixture).javaClass.simpleName)
+        }
+    }
+
     @Test fun cachedHiddenAndFirstNonzeroFallbacksRetainOnlyTheProvedFields() {
         val fixture = CompiledAbilityTextFixture(cachedFallback = true)
         assertEquals("Resolved", resolve(fixture).javaClass.simpleName)
