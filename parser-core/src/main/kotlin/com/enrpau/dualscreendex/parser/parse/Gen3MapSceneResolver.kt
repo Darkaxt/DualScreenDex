@@ -1,11 +1,37 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.catalog.LocalMap
 import com.enrpau.dualscreendex.parser.catalog.LocalMapScene
 import com.enrpau.dualscreendex.parser.io.RomImage
 
 /** Builds fail-closed Local-map scenes from compiled Gen III cardinal connections. */
 internal object Gen3MapSceneResolver {
+    /** Admission hint only; scene placement still independently rejects contradictory geometry. */
+    fun cardinallyConnectedMapIds(
+        rom: RomImage,
+        headers: Map<Int, Int>,
+        cancellation: ParserCancellationToken,
+    ): Set<Int> {
+        cancellation.throwIfCancellationRequested()
+        val connectionsById = headers.mapValues { (_, header) ->
+            cancellation.throwIfCancellationRequested()
+            readConnections(rom, header)
+        }
+        return buildSet {
+            connectionsById.forEach { (sourceId, connections) ->
+                cancellation.throwIfCancellationRequested()
+                connections?.forEach { connection ->
+                    if (connection.destinationId != sourceId && connectionsById[connection.destinationId] != null) {
+                        add(sourceId)
+                        add(connection.destinationId)
+                    }
+                }
+            }
+            cancellation.throwIfCancellationRequested()
+        }
+    }
+
     fun resolve(
         rom: RomImage,
         headers: Map<Int, Int>,

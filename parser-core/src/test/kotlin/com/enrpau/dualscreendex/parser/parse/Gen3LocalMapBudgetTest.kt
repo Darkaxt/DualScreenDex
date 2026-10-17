@@ -17,18 +17,43 @@ class Gen3LocalMapBudgetTest {
 
     @Test fun staticAndTimedAssetsShareTheSameRetainedBudgets() = assertRetainedMaps(mixedLighting = true)
 
-    private fun assertRetainedMaps(mixedLighting: Boolean) {
-        val session = RomAnalysisSession(RomImage(fixture(mixedLighting)), RomHeader(Platform.GBA, "SYNTHETIC MAP BUDGET"))
+    @Test fun encounterAndConnectedMapsTakePriorityOverGraphOnlyRasters() =
+        assertRetainedMaps(mixedLighting = false, prioritizeNavigation = true)
+
+    @Test fun navigationPriorityAlsoAppliesToMixedStaticAndTimedRasters() =
+        assertRetainedMaps(mixedLighting = true, prioritizeNavigation = true)
+
+    @Test
+    fun nonOversubscribedMapsKeepNativeOrderAndAliasOwnership() {
+        val bytes = fixture(mixedLighting = false, connectedMaps = true)
+        repeat(MAP_COUNT) { index ->
+            word(bytes, 0x4000 + index * 0x20, 1)
+            word(bytes, 0x4004 + index * 0x20, 1)
+        }
+        val session = RomAnalysisSession(RomImage(bytes), RomHeader(Platform.GBA, "SYNTHETIC MAP BUDGET"))
+        val result = Gen3LocalMapResolver.resolve(session, setOf(63), EngineFamily.EMERALD, null)
+            as LocalMapResolution.Resolved
+        val catalog = result.catalog.validate()
+
+        assertEquals((0 until MAP_COUNT).toList(), catalog.maps.map { it.baseAreaId })
+        assertEquals(0, result.skippedMaps)
+        assertEquals("local/0000/map", catalog.maps.first().imageAssetKey)
+        assertEquals(catalog.maps.first().imageAssetKey, catalog.maps.last().imageAssetKey)
+    }
+
+    private fun assertRetainedMaps(mixedLighting: Boolean, prioritizeNavigation: Boolean = false) {
+        val session = RomAnalysisSession(RomImage(fixture(mixedLighting, prioritizeNavigation)), RomHeader(Platform.GBA, "SYNTHETIC MAP BUDGET"))
         val reached = Gen3MapLocationResolver.resolveReachableHeaderByBaseArea(
             session.rom, setOf(0), requireNotNull(session.gbaReferenceIndex), ParserCancellationToken.NONE,
         )
         assertEquals((0 until MAP_COUNT).toSet(), reached.keys)
 
-        val outcome = Gen3LocalMapResolver.resolve(session, setOf(0), EngineFamily.EMERALD, null)
+        val encounters = if (prioritizeNavigation) setOf(0, 62) else setOf(0)
+        val outcome = Gen3LocalMapResolver.resolve(session, encounters, EngineFamily.EMERALD, null)
         assertTrue(outcome.toString(), outcome is LocalMapResolution.Resolved)
         val result = outcome as LocalMapResolution.Resolved
         val catalog = result.catalog.validate()
-        val retained = (0 until 51).toList() + 63
+        val retained = if (prioritizeNavigation) (0 until 48).toList() + (60..63) else (0 until 51).toList() + 63
         assertEquals(retained, catalog.maps.map { it.baseAreaId })
         assertEquals(12, result.skippedMaps)
         assertEquals(12, result.reasons.count { it.contains("raster-pixels") })
@@ -51,7 +76,7 @@ class Gen3LocalMapBudgetTest {
     }
 
     /** Generated pointer graph, canonical tilesets and fabricated pixels only; no external inputs. */
-    private fun fixture(mixedLighting: Boolean): ByteArray = ByteArray(0x140000).also { bytes ->
+    private fun fixture(mixedLighting: Boolean, connectedMaps: Boolean = false): ByteArray = ByteArray(0x140000).also { bytes ->
         intArrayOf(0x4B03, 0x0400, 0x0B80, 0x58C3, 0x0409, 0x0B89, 0x58C8, 0x4770)
             .forEachIndexed { index, op -> half(bytes, 0x400 + index * 2, op) }
         pointer(bytes, 0x410, 0x900)
@@ -75,6 +100,17 @@ class Gen3LocalMapBudgetTest {
             bytes[warp + 5] = 13 // Destination warp index is not the destination map group.
             bytes[warp + 6] = ((index + 1) % MAP_COUNT).toByte()
             half(bytes, cells, if (index == 63) 1 else index + 1)
+        }
+        if (connectedMaps) {
+            for (index in 60..61) {
+                val connections = 0xA200 + index * 0x20
+                val entry = connections + 8
+                pointer(bytes, 0x1000 + index * 0x40 + 12, connections)
+                word(bytes, connections, 1)
+                pointer(bytes, connections + 4, entry)
+                word(bytes, entry, if (index == 60) 4 else 3)
+                bytes[entry + 9] = (if (index == 60) 61 else 60).toByte()
+            }
         }
         listOf(0xA000, 0xA020).forEachIndexed { index, tileset ->
             bytes[tileset + 1] = index.toByte()

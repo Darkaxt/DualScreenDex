@@ -2,7 +2,7 @@
 
 Status: IN_PROGRESS. Authorization: already_authorized by the user's October16 request to switch focus, validate the full corpus, fix the reported issue and publish a release; regressions must be fixed first.
 
-This explicit scheduling revision parks the unfinished Pokescape-only continuation. It does not declare Pokescape or the all-ROM100% parent complete, erase their criteria or authorize live device testing. Previously accepted bounded parser134 work remains protected.
+The October16 scheduling revision initially parked the unfinished Pokescape-only continuation. On October17 the user explicitly dropped that planned continuation in favor of an Unbound-focused follow-up release after the current release. Neither change claims Pokescape or the all-ROM100% parent complete, removes existing support, or authorizes live device testing. Previously accepted bounded parser134 work remains protected.
 
 ## Requirements
 
@@ -14,5 +14,6 @@ This explicit scheduling revision parks the unfinished Pokescape-only continuati
 | CR-04 | Publish a new monotonically versioned release only after applicable host/web/release-policy/build gates and source-bound compatibility evidence pass. Production signing stays exclusively in the GitHub protected environment with pinned certificate and downloaded artifact/provenance verification. Do not replace old release assets or weaken promotion/acceptance policies. |
 | CR-05 | Work serially; use the installed Windows Gradle gate, bounded resources and durable background watchdogs. No agents/Workflows or physical device/emulator/ADB testing without separate authority. If required packaged Android acceptance reaches that gate, request the specific permission rather than bypass it. |
 | CR-06 | Smart-sync fork/master immediately before every commit, preserve unrelated work/stash and publish meaningful changes without force. Retain necessary private proof and consumers; use exact reviewed cleanup tickets without a Gradle cleanup gate. Reconcile all release requirements before claiming completion. |
+| CR-07 | After this corpus/issue33 release, drop the planned Pokescape-specific continuation and prioritize Unbound because of its popularity. Investigate its remaining issues, implement and verify fixes, then publish a separate follow-up release under the same QA, signing, privacy and device-authorization safeguards. The confirmed Unbound regression remains part of CR-02 in the current release. |
 
 The existing all-ROM completion requirement remains unfinished outside this release's regression scope. A validated release need not claim every optional module or ROM has100% compatibility. Release authority is new; no live-device authorization is inferred.

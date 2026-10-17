@@ -84,7 +84,23 @@ internal object Gen3LocalMapResolver {
             selectedHeaders = reachableHeaders
             descriptorBatch = readDescriptors(session.rom, selectedHeaders, names, cancellation, blankNameSections)
         }
-        val descriptors = descriptorBatch.descriptors
+        val descriptors = descriptorBatch.descriptors.let { descriptors ->
+            if (descriptors.sumOf { it.pixelCount.toLong() } <= MAX_TOTAL_PIXELS) {
+                descriptors
+            } else {
+                val connectedIds = Gen3MapSceneResolver.cardinallyConnectedMapIds(
+                    session.rom, selectedHeaders, cancellation,
+                )
+                // Spend bounded raster storage on encounter and cardinal-navigation maps before graph-only interiors.
+                descriptors.sortedWith(compareBy<MapDescriptor> {
+                    when (it.baseAreaId) {
+                        in encounterBaseIds -> 0
+                        in connectedIds -> 1
+                        else -> 2
+                    }
+                }.thenBy { it.baseAreaId })
+            }
+        }
         val skippedReasons = descriptorBatch.skippedReasons
         val lightingModel = Gen3MapLightingResolver.resolve(session.rom)
         val tilesets = mutableMapOf<Int, TilesetData>()
@@ -149,6 +165,7 @@ internal object Gen3LocalMapResolver {
             return LocalMapResolution.Unavailable("render", "no local map could be rendered from resolved map headers")
         }
         cancellation.throwIfCancellationRequested()
+        maps.sortBy(LocalMap::baseAreaId)
         val scenes = runCatching {
             Gen3MapSceneResolver.resolve(session.rom, selectedHeaders, maps).also {
                 cancellation.throwIfCancellationRequested()

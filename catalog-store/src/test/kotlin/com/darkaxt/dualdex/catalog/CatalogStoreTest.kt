@@ -696,6 +696,31 @@ class CatalogStoreTest {
         assertStaleSignRevisionRejected(64)
 
     @Test
+    fun revision137NativeOrderMapBudgetCachesAreRejectedAndCurrentReopens() {
+        val root = newRoot().toFile()
+        val cache = CatalogCache(root, JdbcCatalogDatabaseFactory)
+        val catalog = task417MixedCatalog()
+        val source = CatalogSourceMetadata.direct("Synthetic.gba", 32768, "SYNTHETIC")
+        cache.write(catalog, source, CatalogWriteProgress.complete())
+        val file = cache.fileFor(catalog.romSha256)
+        JdbcCatalogDatabaseFactory.open(file).use { database ->
+            assertEquals(catalog, CatalogReader(database).readComplete()?.catalog)
+            database.execute("UPDATE catalog_metadata SET parser_schema_version = 137 WHERE id = 1")
+        }
+        JdbcCatalogDatabaseFactory.open(file).use { database ->
+            assertNull(CatalogReader(database).readComplete())
+        }
+        val reopened = CatalogCache(root, JdbcCatalogDatabaseFactory)
+        assertEquals(CatalogCacheDecision.MISS_INCOMPLETE_OR_INCOMPATIBLE,
+            reopened.lookupComplete(catalog.romSha256).decision)
+        reopened.write(catalog, source, CatalogWriteProgress.complete())
+        assertEquals(catalog, CatalogCache(root, JdbcCatalogDatabaseFactory).readComplete(catalog.romSha256)?.catalog)
+        assertCurrentCatalogRevision(file)
+        assertTrue(CatalogSchema.parserSchemaVersion > 137)
+        assertEquals(2, CatalogSchema.version)
+    }
+
+    @Test
     fun revision77PoiSemanticOutcomesAreRejectedAndCurrentReopensWithNativeTextAndGeometry() =
         assertStaleSignRevisionRejected(77)
 

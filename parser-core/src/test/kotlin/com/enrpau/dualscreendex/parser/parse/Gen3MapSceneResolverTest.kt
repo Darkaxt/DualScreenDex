@@ -1,5 +1,7 @@
 package com.enrpau.dualscreendex.parser.parse
 
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationException
+import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.catalog.LocalMap
 import com.enrpau.dualscreendex.parser.io.RomImage
 import org.junit.Assert.assertEquals
@@ -119,6 +121,72 @@ class Gen3MapSceneResolverTest {
         )
 
         assertTrue(scenes.isEmpty())
+    }
+
+    @Test
+    fun cardinalAdmissionHintIncludesBothEndsButNotWarpOnlyMaps() {
+        val bytes = ByteArray(0x1000)
+        writeConnection(bytes, 0x100, 0x300, 0x380, EAST, 2, 2)
+        val headers = mapOf(1 to 0x100, 2 to 0x200, 3 to 0x280)
+
+        assertEquals(setOf(1, 2), Gen3MapSceneResolver.cardinallyConnectedMapIds(
+            RomImage(bytes), headers, ParserCancellationToken.NONE,
+        ))
+    }
+
+    @Test
+    fun malformedOrNonCardinalConnectionsCannotEarnAdmissionPriority() {
+        val headers = mapOf(1 to 0x100, 2 to 0x200)
+        val invalidRecords = listOf(
+            TestConnection(5, 0, 2),
+            TestConnection(EAST, 4097, 2),
+            TestConnection(EAST, -4097, 2),
+            TestConnection(EAST, 0, 3),
+            TestConnection(EAST, 0, 1),
+        )
+        invalidRecords.forEach { connection ->
+            val bytes = ByteArray(0x1000)
+            writeConnections(bytes, 0x100, 0x300, 0x380, listOf(connection))
+            assertTrue(connection.toString(), Gen3MapSceneResolver.cardinallyConnectedMapIds(
+                RomImage(bytes), headers, ParserCancellationToken.NONE,
+            ).isEmpty())
+        }
+        listOf<(ByteArray) -> Unit>(
+            { putU32(it, 0x300, 33) },
+            { putPointer(it, 0x304, 0xFFC) },
+            { putU32(it, 0x10C, 1) },
+            { putU32(it, 0x20C, 1) },
+        ).forEach { invalidate ->
+            val bytes = ByteArray(0x1000)
+            writeConnection(bytes, 0x100, 0x300, 0x380, EAST, 0, 2)
+            invalidate(bytes)
+            assertTrue(Gen3MapSceneResolver.cardinallyConnectedMapIds(
+                RomImage(bytes), headers, ParserCancellationToken.NONE,
+            ).isEmpty())
+        }
+    }
+
+    @Test
+    fun admissionHintDoesNotBypassContradictorySceneRejection() {
+        val bytes = ByteArray(0x1000)
+        writeConnection(bytes, 0x100, 0x300, 0x380, EAST, 2, 2)
+        writeConnection(bytes, 0x200, 0x320, 0x3A0, WEST, 0, 1)
+        val headers = mapOf(1 to 0x100, 2 to 0x200)
+        val maps = listOf(localMap(1, 10, 8), localMap(2, 12, 6))
+
+        assertEquals(setOf(1, 2), Gen3MapSceneResolver.cardinallyConnectedMapIds(
+            RomImage(bytes), headers, ParserCancellationToken.NONE,
+        ))
+        assertTrue(Gen3MapSceneResolver.resolve(RomImage(bytes), headers, maps).isEmpty())
+    }
+
+    @Test(expected = ParserCancellationException::class)
+    fun cardinalAdmissionHintHonorsCancellationDuringTraversal() {
+        var checks = 0
+        Gen3MapSceneResolver.cardinallyConnectedMapIds(
+            RomImage(ByteArray(0x400)), mapOf(1 to 0x100, 2 to 0x200),
+            ParserCancellationToken { if (++checks == 3) throw ParserCancellationException() },
+        )
     }
 
     private fun localMap(baseAreaId: Int, width: Int, height: Int) = LocalMap(
