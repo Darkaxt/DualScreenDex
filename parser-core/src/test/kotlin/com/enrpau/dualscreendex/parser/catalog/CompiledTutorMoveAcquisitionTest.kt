@@ -23,6 +23,16 @@ class CompiledTutorMoveAcquisitionTest {
     }
 
     @Test
+    fun scriptBoundTutorSourcesRemainIndependentOfItemNameAvailability() {
+        val f = TutorFixture(0x4000)
+        val layout = f.base.layout.copy(itemNameAuthority = com.enrpau.dualscreendex.parser.model.GbaItemNameAuthority.Unavailable())
+        val result = MoveAcquisitionMaterializer.materialize(RomImage(f.bytes), layout)
+        assertEquals(listOf(tutor(7)), result.acquisitionsBySpecies[1].orEmpty().filter { it.method == MoveAcquisitionMethod.TUTOR })
+        assertEquals(CapabilityStatus.PARTIAL, result.evidence.getValue(MoveAcquisitionMethod.TUTOR).status)
+        assertEquals(CapabilityStatus.AVAILABLE, result.evidence.getValue(MoveAcquisitionMethod.MACHINE).status)
+    }
+
+    @Test
     fun addsOnlyTheNextDistinctSourceAfterSkippingRepeatedMoveInputs() {
         val f = TutorFixture(0)
         for (offset in listOf(16, 32)) f.bytes.copyInto(f.bytes, f.script + offset, f.script, f.script + 10)

@@ -26,7 +26,8 @@ internal class CompiledItemMoveAcquisitions(
             else -> move in eligibleMoves[species].orEmpty()
         }
     }
-    private data class ItemProjection(val guardField: Int, val guard: Int, val moveField: Int)
+    private data class ItemProjection(val root: Int, val stride: Int, val count: Int,
+                                      val guardField: Int, val guard: Int, val moveField: Int)
     private var work = 0
     private var exhausted = false
 
@@ -47,15 +48,10 @@ internal class CompiledItemMoveAcquisitions(
         }
         if (exhausted) return Result(reason = "compiled teaching code work budget exhausted")
         if (predicates.isEmpty()) return null
-        val items = layout.itemNameAuthority as? GbaItemNameAuthority.Available
-            ?: return Result(reason = "compiled teaching item domain is unresolved")
         val speciesCount = layout.speciesCount?.takeIf { it in 1..65536 }
             ?: return Result(reason = "compiled teaching species domain is unresolved")
         val moveCount = layout.moveCount?.takeIf { it in 2..65536 }
             ?: return Result(reason = "compiled teaching move domain is unresolved")
-        if (items.count !in 1..65536 || items.stride !in 2..256 ||
-            items.root < 0 || items.root.toLong() + items.count.toLong() * items.stride > rom.size)
-            return Result(reason = "compiled teaching item extent is invalid")
         val callers = nominate(intArrayOf(0xB570, 0x0600, 0x0E06)) { bl(it + 70) in predicates }
             ?: return Result(reason = "compiled item teaching caller budget exhausted")
         val contracts = linkedSetOf<Pair<CompiledU16MoveEligibility, ItemProjection>>()
@@ -63,27 +59,34 @@ internal class CompiledItemMoveAcquisitions(
             cancellation.throwIfCancellationRequested()
             val predicate = predicates[bl(entry + 70)] ?: continue
             if (!sourceCaller(entry)) return Result(reason = "compiled item teaching source join is malformed")
-            val projection = itemProjection(bl(entry + 10) ?: return Result(reason = "missing item move getter"), items)
+            val projection = itemProjection(bl(entry + 10) ?: return Result(reason = "missing item move getter"))
                 ?: return Result(reason = "compiled item teaching projection is unsupported")
             contracts += predicate to projection
         }
         if (contracts.isEmpty()) return Result(reason = "compiled teaching sources are not item-bound")
         // Independent complete consumers may agree; competing roots or projections never union.
-        val (predicate, projection) = contracts.first()
-        if (contracts.any { (p, i) -> !predicate.sameContract(p) || i != projection })
+        val (predicate, items) = contracts.first()
+        if (contracts.any { (p, i) -> !predicate.sameContract(p) || i != items })
             return Result(reason = "conflicting compiled item teaching contracts")
+        if (items.root.toLong() + items.count.toLong() * items.stride > rom.size)
+            return Result(reason = "compiled teaching item extent is invalid")
+        // The native source consumer owns item geometry, not localized names. An independent
+        // available name contract may agree, but conflicting geometry must never be overridden.
+        val namedItems = layout.itemNameAuthority as? GbaItemNameAuthority.Available
+        if (namedItems != null && (namedItems.root != items.root || namedItems.stride != items.stride || namedItems.count != items.count))
+            return Result(reason = "compiled teaching item domain conflicts with item-name authority")
         if (predicate.table.toLong() + speciesCount.toLong() * 4 > rom.size)
             return Result(reason = "compiled teaching pointer extent is invalid")
         // The selector sanitizes out-of-domain inputs to item zero. It must not authorize a raw
         // out-of-domain index through the unsanitized halfword-read arm.
-        if (rom.u8(items.root + projection.guardField) == projection.guard)
+        if (rom.u8(items.root + items.guardField) == items.guard)
             return Result(reason = "compiled item zero permits an unbounded raw move read")
         val sources = linkedMapOf<Int, Int>()
         repeat(items.count) { item ->
             cancellation.throwIfCancellationRequested()
             val at = items.root + item * items.stride
-            if (rom.u8(at + projection.guardField) == projection.guard) {
-                val move = rom.u16le(at + projection.moveField)
+            if (rom.u8(at + items.guardField) == items.guard) {
+                val move = rom.u16le(at + items.moveField)
                 if (move != 0) {
                     if (move !in 1 until moveCount) return Result(reason = "compiled item source move is outside the selected domain")
                     sources[item] = move
@@ -186,22 +189,24 @@ internal class CompiledItemMoveAcquisitions(
         return listOf(10, 28, 48, 62, 70).all { bl(at + it)?.let { target -> target !in at until at + 80 } == true }
     }
 
-    private fun itemProjection(at: Int, items: GbaItemNameAuthority.Available): ItemProjection? {
+    private fun itemProjection(at: Int): ItemProjection? {
         if (!matches(at, 0xB510, 0x0400, 0x0C04, 0x1C20) ||
             !matches(at + 12, 0x0600, 0x0E00) || word(at + 16) and 0xFF00 != 0x2800 ||
-            !matches(at + 18, 0xD109) || literal(at + 20, 1) != 0x08000000L + items.root ||
+            !matches(at + 18, 0xD109) ||
             literalSlot(at + 20) != at + 36 || word(at + 24) != 0x1900 || word(at + 28) != 0x1840 ||
             !matches(at + 32, 0xE003, 0) || !matches(at + 40, 0x2000, 0xBC10, 0xBC02, 0x4708)) return null
+        val root = literal(at + 20, 1)?.minus(0x08000000L)
+            ?.takeIf { it in 0..rom.size.toLong() - 2 && it and 1L == 0L }?.toInt() ?: return null
         val first = shift(word(at + 22), 4, 0) ?: return null
         val last = shift(word(at + 26), 0, 0) ?: return null
-        val size = (((1L shl first) + 1) shl last).takeIf { it in 2..256 }?.toInt() ?: return null
+        val size = (((1L shl first) + 1) shl last).takeIf { it in 2..256 && it and 1L == 0L }?.toInt() ?: return null
         val load = word(at + 30)
-        if (size != items.stride || load < 0 || load and 0xF83F != 0x8800) return null
+        if (load < 0 || load and 0xF83F != 0x8800) return null
         val moveField = (load ushr 6 and 31) * 2
         if (moveField > size - 2) return null
         val selector = bl(at + 8) ?: return null
         if (selector in at until at + 48 || !matches(selector, 0xB510, 0x0400, 0x0C00) ||
-            literal(selector + 6, 4) != 0x08000000L + items.root || literalSlot(selector + 6) != selector + 32 ||
+            literal(selector + 6, 4) != 0x08000000L + root || literalSlot(selector + 6) != selector + 32 ||
             !matches(selector + 12, 0x0400, 0x0C00) ||
             shift(word(selector + 16), 0, 1) != first || word(selector + 18) != 0x1809 ||
             shift(word(selector + 20), 1, 1) != last || word(selector + 22) != 0x1909 ||
@@ -214,10 +219,10 @@ internal class CompiledItemMoveAcquisitions(
         if (sanitizer in selector until selector + 36 ||
             !matches(sanitizer, 0xB500, 0x0400, 0x0C01) ||
             literalSlot(sanitizer + 6) != sanitizer + 16 ||
-            literal(sanitizer + 6, 0) != items.count.toLong() - 1 ||
             !matches(sanitizer + 8, 0x4281, 0xD803, 0x1C08, 0xE002) ||
             !matches(sanitizer + 20, 0x2000, 0xBC02, 0x4708)) return null
-        return ItemProjection(guardField, word(at + 16) and 255, moveField)
+        val maximum = literal(sanitizer + 6, 0)?.takeIf { it in 0..0xFFFFL } ?: return null
+        return ItemProjection(root, size, maximum.toInt() + 1, guardField, word(at + 16) and 255, moveField)
     }
 
     private fun word(at: Int): Int {

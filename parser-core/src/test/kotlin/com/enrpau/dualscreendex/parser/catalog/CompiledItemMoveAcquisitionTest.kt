@@ -24,6 +24,66 @@ class CompiledItemMoveAcquisitionTest {
     }
 
     @Test
+    fun nativeItemTeachingDomainDoesNotDependOnLocalizedItemNames() {
+        for (origin in listOf(0, 0x4000, 0x8000)) {
+            val f = Fixture(origin)
+            val layout = f.layout.copy(itemNameAuthority = GbaItemNameAuthority.Unavailable("unresolved names"))
+            val result = MoveAcquisitionMaterializer.materialize(RomImage(f.bytes), layout)
+            assertEquals(listOf(machine(7, 1), machine(301, 3)), result.acquisitionsBySpecies[1])
+            assertEquals(CapabilityStatus.AVAILABLE, result.evidence.getValue(MoveAcquisitionMethod.MACHINE).status)
+            assertFalse(result.evidence.getValue(MoveAcquisitionMethod.TUTOR).compatible)
+            assertEquals(layout.itemNameAuthority, GbaItemNameAuthority.Unavailable("unresolved names"))
+        }
+    }
+
+    @Test
+    fun independentItemDomainRejectsMalformedBoundsAndCompetingGeometry() {
+        for (failure in 0..7) {
+            val f = Fixture(0)
+            when (failure) {
+                0 -> f.u32(f.sanitizer + 16, 65536)
+                1 -> f.u16(f.sanitizer + 10, 0xD903)
+                2 -> f.pointer(f.selector + 32, f.items + f.stride)
+                3 -> f.pointer(f.itemGetter + 36, f.bytes.size - 8)
+                4 -> f.bytes[f.items + f.selectorField] = 3
+                5 -> f.u16(f.selector + 20, 0x0049)
+                6 -> f.u32(f.sanitizer + 16, 65535) // valid u16 bound, invalid physical extent
+                7 -> {
+                    f.pointer(f.itemGetter + 36, f.items + 1)
+                    f.pointer(f.selector + 32, f.items + 1)
+                }
+            }
+            val layout = f.layout.copy(itemNameAuthority = GbaItemNameAuthority.Unavailable())
+            val result = MoveAcquisitionMaterializer.materialize(RomImage(f.bytes), layout)
+            assertFalse("failure $failure", result.evidence.getValue(MoveAcquisitionMethod.MACHINE).compatible)
+            assertEquals(emptyMap<Int, List<MoveAcquisition>>(), result.acquisitionsBySpecies)
+        }
+    }
+
+    @Test
+    fun nativeHalfwordItemSourcesRejectOddRecordStride() {
+        val f = Fixture(0, firstShift = 6, lastShift = 0)
+        val layout = f.layout.copy(itemNameAuthority = GbaItemNameAuthority.Unavailable())
+        val result = MoveAcquisitionMaterializer.materialize(RomImage(f.bytes), layout)
+        assertFalse(result.evidence.getValue(MoveAcquisitionMethod.MACHINE).compatible)
+    }
+
+    @Test
+    fun nativeItemDomainCannotOverrideConflictingAvailableItemAuthority() {
+        for (failure in 0..2) {
+            val f = Fixture(0)
+            val items = f.layout.itemNameAuthority as GbaItemNameAuthority.Available
+            val conflict = when (failure) {
+                0 -> items.copy(root = items.root + items.stride)
+                1 -> items.copy(stride = items.stride + 2)
+                else -> items.copy(count = items.count + 1)
+            }
+            val result = MoveAcquisitionMaterializer.materialize(RomImage(f.bytes), f.layout.copy(itemNameAuthority = conflict))
+            assertFalse(result.evidence.getValue(MoveAcquisitionMethod.MACHINE).compatible)
+        }
+    }
+
+    @Test
     fun respectsScalarOverrideAndEmptyRows() {
         val f = Fixture(0)
         val result = f.materialize()
