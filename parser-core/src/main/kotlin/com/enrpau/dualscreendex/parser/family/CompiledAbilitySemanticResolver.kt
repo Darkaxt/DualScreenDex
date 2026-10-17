@@ -70,6 +70,7 @@ internal object CompiledAbilitySemanticResolver {
             compatible = true, validRecords = decoded, totalRecords = names.baseAbilityCount,
             confidence = decoded.toDouble() / names.baseAbilityCount,
             reasons = listOf("validated paired compiled ability text, bounded direct IDs and native species slots") +
+                (if (binding.staticDefaultOnly) listOf("static default ability memberships; runtime enablement and transformation branches are not modeled") else emptyList()) +
                 ((resolution as? DatasetResolution.Partial)?.reasons ?: emptyList()),
             offset = names.table.offset.toInt(), recordSize = names.table.nameWidth,
             coveredRecords = covered, expectedRecords = domain.activeAbilityIds.size,

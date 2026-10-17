@@ -57,8 +57,16 @@ object CompiledAbilityTextResolver {
             accessorCache[entry].orEmpty()
         }
         val bindings = mutableListOf<CompiledAbilityTextBinding>()
+        val cached = CompiledCachedAbilityTextResolver(session, core, budget)
         for (role in roles) {
             budget.root(); budget.step()
+            val cachedBindings = cached.resolve(role.names, role.descriptions)
+            if (cachedBindings.isNotEmpty()) {
+                // This contract accounts for every nominated description consumer, including
+                // roots whose complete nomination exceeds the ordinary reference index cap.
+                bindings += cachedBindings
+                continue
+            }
             for (root in listOf(role.names, role.descriptions)) {
                 val evidence = index.target(root)
                 if (evidence?.siteBudgetExceeded == true) throw CompiledAbilityBudgetExceeded(

@@ -115,7 +115,7 @@ internal fun compiledAbilityNameCandidates(session: RomAnalysisSession): Map<Int
     }
 }
 
-private fun compiledFixedStrideConsumer(rom: RomImage, rootLoadSite: Int): Int? {
+internal fun compiledFixedStrideConsumer(rom: RomImage, rootLoadSite: Int): Int? {
     if (rootLoadSite < 4 || rootLoadSite + 4 > rom.size) return null
     val move = rom.u16le(rootLoadSite - 4)
     val multiply = rom.u16le(rootLoadSite - 2)

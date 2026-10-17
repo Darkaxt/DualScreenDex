@@ -79,7 +79,7 @@ internal fun compiledInlineAbilityNameCount(
     }.singleOrNull()
 }
 
-private fun inlineTextStride(rom: RomImage, site: Int): Int? {
+internal fun inlineTextStride(rom: RomImage, site: Int): Int? {
     if (site < 8 || site.toLong() + 4 > rom.size) return null
     val first = rom.u16le(site - 8)
     val sum = rom.u16le(site - 6)
@@ -92,10 +92,11 @@ private fun inlineTextStride(rom: RomImage, site: Int): Int? {
         root and 0xF800 != 0x4800 || address and 0xFE00 != 0x1800
     ) return null
     val original = (first ushr 3) and 7
-    val product = first and 7
+    val firstProduct = first and 7
+    val product = sum and 7
     val base = (root ushr 8) and 7
-    if (original == product || base == product ||
-        sum and 7 != product || setOf((sum ushr 3) and 7, (sum ushr 6) and 7) != setOf(original, product) ||
+    if (original == firstProduct || original == product || base == product ||
+        setOf((sum ushr 3) and 7, (sum ushr 6) and 7) != setOf(original, firstProduct) ||
         second and 7 != product || (second ushr 3) and 7 != product ||
         subtract and 7 != product || (subtract ushr 3) and 7 != product || (subtract ushr 6) and 7 != original ||
         setOf((address ushr 3) and 7, (address ushr 6) and 7) != setOf(base, product)
