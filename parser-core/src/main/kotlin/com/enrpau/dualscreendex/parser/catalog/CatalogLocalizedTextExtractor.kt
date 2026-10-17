@@ -519,11 +519,13 @@ internal object CatalogLocalizedTextExtractor {
         }
 
     private fun CapabilityEvidence.withSharedDomain(size: Int, reason: String): CapabilityEvidence = copy(
-        compatible = size > 0 || compatible,
+        compatible = size > 0,
+        confidence = if (size > 0) confidence else 0.0,
         count = size,
         reasons = listOf(reason),
         status = when {
             size > 0 && status != CapabilityStatus.AMBIGUOUS -> CapabilityStatus.AVAILABLE
+            size == 0 && status in listOf(CapabilityStatus.AVAILABLE, CapabilityStatus.PARTIAL) -> CapabilityStatus.NOT_FOUND
             else -> status
         },
         validRecords = size.takeIf { it > 0 },
