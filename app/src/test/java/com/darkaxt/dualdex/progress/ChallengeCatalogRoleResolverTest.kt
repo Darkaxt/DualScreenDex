@@ -44,6 +44,33 @@ class ChallengeCatalogRoleResolverTest {
     }
 
     @Test
+    fun `unproven hidden item flags cannot create a collectible challenge`() {
+        val base = catalog(areaName = "Green Path")
+        val hidden = item("hidden", hidden = true, flag = null)
+        val input = base.copy(localMaps = base.localMaps.copy(pois = listOf(hidden)))
+        val bindings = ChallengeCatalogRoleResolver.resolve(input)
+
+        assertTrue(bindings.areaCollectibles.isEmpty())
+        assertEquals(listOf(hidden), input.localMaps.pois)
+    }
+
+    @Test
+    fun `proven visible items remain observable when hidden item flags are unverified`() {
+        val base = catalog(areaName = "Green Path")
+        val bindings = ChallengeCatalogRoleResolver.resolve(
+            base.copy(localMaps = base.localMaps.copy(pois = listOf(
+                item("visible", hidden = false, flag = 10),
+                item("hidden", hidden = true, flag = null),
+            ))),
+        )
+
+        assertEquals(
+            listOf(AreaCollectibleBinding("base-7", "Green Path", setOf("visible"), 7)),
+            bindings.areaCollectibles,
+        )
+    }
+
+    @Test
     fun `unnamed world location does not suppress a structurally named collectible area`() {
         val bindings = ChallengeCatalogRoleResolver.resolve(
             catalog(areaName = "Green Path", includeUnnamedWorldLocation = true),

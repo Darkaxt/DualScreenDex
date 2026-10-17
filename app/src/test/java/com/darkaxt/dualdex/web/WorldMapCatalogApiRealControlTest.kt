@@ -65,6 +65,7 @@ import org.junit.Test
 class WorldMapCatalogApiRealControlTest {
     @Test
     fun westernOfficialGen3DiagnosticFifteenControls() {
+        com.darkaxt.dualdex.testing.OriginalRomTestAccess.requireEnabled()
         // Optional Task416 semantic mode uses this SAME capture, never a second original selector.
         assumeTrue("set DUALDEX_WESTERN_GEN3_DIAGNOSTIC=1 for the fifteen-control capture; semantic mode additionally requires its pinned fixture opt-in",
             System.getenv("DUALDEX_WESTERN_GEN3_DIAGNOSTIC") != null)
@@ -73,6 +74,7 @@ class WorldMapCatalogApiRealControlTest {
 
     @Test
     fun westernOfficialGen1BaselineTenControls() {
+        com.darkaxt.dualdex.testing.OriginalRomTestAccess.requireEnabled()
         assumeTrue("set DUALDEX_WESTERN_GEN1_DIAGNOSTIC=1 for the ten-control diagnostic only",
             System.getenv("DUALDEX_WESTERN_GEN1_DIAGNOSTIC") != null)
         WesternGen1BaselineCapture.run(JdbcTestCatalogDatabaseFactory)
@@ -80,6 +82,7 @@ class WorldMapCatalogApiRealControlTest {
 
     @Test
     fun westernOfficialGen1SemanticTenControls() {
+        com.darkaxt.dualdex.testing.OriginalRomTestAccess.requireEnabled()
         val optIn = System.getenv("DUALDEX_WESTERN_GEN1_SEMANTIC_ACCEPTANCE")
         assumeTrue("set DUALDEX_WESTERN_GEN1_SEMANTIC_ACCEPTANCE=1 with separately pinned private Gen I evidence", optIn != null)
         WesternGen1SemanticCapture.run(JdbcTestCatalogDatabaseFactory)
@@ -87,6 +90,7 @@ class WorldMapCatalogApiRealControlTest {
 
     @Test
     fun westernOfficialGen2BaselineTenControls() {
+        com.darkaxt.dualdex.testing.OriginalRomTestAccess.requireEnabled()
         assumeTrue("set DUALDEX_WESTERN_MANIFEST for the ten-control diagnostic baseline",
             !System.getenv("DUALDEX_WESTERN_MANIFEST").isNullOrBlank())
         WesternGen2BaselineCapture.run(JdbcTestCatalogDatabaseFactory)
@@ -94,6 +98,7 @@ class WorldMapCatalogApiRealControlTest {
 
     @Test
     fun westernOfficialGen2SemanticTenControls() {
+        com.darkaxt.dualdex.testing.OriginalRomTestAccess.requireEnabled()
         val optIn = System.getenv("DUALDEX_WESTERN_SEMANTIC_ACCEPTANCE")
         assumeTrue("set DUALDEX_WESTERN_SEMANTIC_ACCEPTANCE=1 for the independently ratified ten-control gate", optIn != null)
         require(optIn == "1") { "Western semantic opt-in must be exactly 1" }
@@ -328,7 +333,7 @@ class WorldMapCatalogApiRealControlTest {
             itemNames = mapOf(1 to CatalogField.available("SYNTHETIC")))
         val results = westernSparseOutcomes(names, overlay.localizedCapabilities, overlay.itemNames)
         assertEquals(emptySet<String>(), results.filterValues { it.isFailure }.keys)
-        assertEquals(22, results.size)
+        assertEquals(LocalizedTextCapability.entries.size + 7, results.size)
         assertEquals(setOf(5), WesternGen2BaselineCapture.missingRequestedItemIds(setOf(1, 5), names))
         assertEquals(2, overlay.localizedCapabilities.getValue(LocalizedTextCapability.ITEM_NAMES).expectedRecords)
         assertEquals(CapabilityStatus.PARTIAL, overlay.localizedCapabilities.getValue(LocalizedTextCapability.ITEM_NAMES).status)
@@ -349,7 +354,7 @@ class WorldMapCatalogApiRealControlTest {
             (LocalizedTextCapability.ITEM_NAMES to LocalizedCapabilityState.notFound("fault-injected coverage", 2))
         val results = westernSparseOutcomes(westernSparseProducer(), states,
             mapOf(1 to CatalogField.available("WRONG SYNTHETIC")))
-        assertEquals(22, results.size)
+        assertEquals(LocalizedTextCapability.entries.size + 7, results.size)
         assertEquals(setOf("capabilities.inventory", "capability.SPECIES_NAMES.counts",
             "items.capability-covered-count", "items.available-name-parity"), results.filterValues { it.isFailure }.keys)
         assertTrue(results.getValue("capability.POI_TEXT.counts").isSuccess)
@@ -415,7 +420,7 @@ class WorldMapCatalogApiRealControlTest {
             assumeTrue("set ${control.environmentVariable} to run this exact theme control", !configured.isNullOrBlank())
             val path = Path.of(requireNotNull(configured))
             assumeTrue("real ROM does not exist: $path", Files.isRegularFile(path))
-            val rom = RomImage(Files.readAllBytes(path))
+            val rom = RomImage(com.darkaxt.dualdex.testing.OriginalRomTestAccess.read { Files.readAllBytes(path) })
             assertEquals(control.romSha256, rom.sha256)
             val catalog = requireNotNull(CatalogParser.parse(rom).catalog)
             val root = newRoot()
@@ -469,8 +474,9 @@ class WorldMapCatalogApiRealControlTest {
             localizedCapabilities = LocalizedTextCapability.entries.associateWith { capability ->
                 when (capability) {
                     LocalizedTextCapability.SPECIES_NAMES -> LocalizedCapabilityState.available(1)
-                    LocalizedTextCapability.SPECIES_DESCRIPTIONS ->
-                        LocalizedCapabilityState.notFound("fixture missing", 1)
+                    LocalizedTextCapability.SPECIES_DESCRIPTIONS,
+                    LocalizedTextCapability.SPECIES_CATEGORIES,
+                    -> LocalizedCapabilityState.notFound("fixture missing", 1)
                     else -> LocalizedCapabilityState.unavailable(
                         CapabilityStatus.NOT_APPLICABLE,
                         expectedRecords = 0,
@@ -1384,7 +1390,7 @@ class WorldMapCatalogApiRealControlTest {
                 "types=${catalog.typesById.size} semanticTypes=${catalog.typesById.values.count { it.semanticRole.value != null }} " +
                 "worldLocations=${catalog.worldMaps.regions.sumOf { it.locations.size }} localMaps=${catalog.localMaps.maps.size}")
             checks.attempt("capabilities.inventory") {
-                assertEquals(15, LocalizedTextCapability.entries.size)
+                assertEquals(16, LocalizedTextCapability.entries.size)
                 assertEquals(LocalizedTextCapability.entries.toSet(), requireNotNull(overlay).localizedCapabilities.keys)
             }
             LocalizedTextCapability.entries.forEach { capability ->

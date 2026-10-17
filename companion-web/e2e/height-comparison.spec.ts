@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { writeFile } from 'node:fs/promises';
 
 const trainerWithTransparentMargins = Buffer.from(`
 <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
@@ -27,7 +28,20 @@ const state = {
   trainerAvatarUrl: '/api/trainer-assets/trainer.png', party: [], battle: null,
 };
 
-test('visible trainer pixels represent 1.7 m and occupy 80% of the ruler', async ({ page }) => {
+test.afterEach(async ({ page }, testInfo) => {
+  if (testInfo.status === testInfo.expectedStatus) return;
+  const figures = await page.locator('.height-person').evaluateAll(elements => elements.map(element => ({
+    html: element.innerHTML,
+    image: Array.from(element.querySelectorAll('img')).map(image => ({
+      src: image.currentSrc, complete: image.complete, width: image.naturalWidth, height: image.naturalHeight,
+    })),
+  })));
+  const path = testInfo.outputPath('height-figure-state.json');
+  await writeFile(path, JSON.stringify(figures, null, 2));
+  await testInfo.attach('height-figure-state', { path, contentType: 'application/json' });
+});
+
+test('visible trainer pixels represent 1.7 m and occupy 80% of the ruler', async ({ page }, testInfo) => {
   await page.route('**/api/bootstrap', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({ catalog, state }) }));
   await page.route('**/api/state**', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify(state) }));
   await page.route('**/api/actions', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify(state) }));
@@ -47,4 +61,7 @@ test('visible trainer pixels represent 1.7 m and occupy 80% of the ruler', async
       grounded: Math.round(trainer.bottom - ruler.bottom),
     };
   })).toEqual({ heightShare: 80, aspect: 25, grounded: 0 });
+  await page.reload();
+  await expect(sprite).toBeVisible();
+  await chart.screenshot({ path: testInfo.outputPath('trimmed-height-comparison.png') });
 });

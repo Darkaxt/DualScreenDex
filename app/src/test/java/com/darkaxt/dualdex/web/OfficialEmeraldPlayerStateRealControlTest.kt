@@ -46,6 +46,9 @@ import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 class OfficialEmeraldPlayerStateRealControlTest {
+    @org.junit.Before
+    fun requireReviewedOriginalAccess() = com.darkaxt.dualdex.testing.OriginalRomTestAccess.requireEnabled()
+
     @Test
     fun officialEmeraldSurvivesPersistenceAndPublishesPrivatePlayerState() {
         val configured = System.getenv("DUALDEX_OFFICIAL_EMERALD_ROM")

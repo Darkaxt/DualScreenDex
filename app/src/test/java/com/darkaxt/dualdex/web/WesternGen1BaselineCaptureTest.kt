@@ -24,7 +24,7 @@ class WesternGen1BaselineCaptureTest {
             5 to CatalogField.notFound<String>("synthetic unavailable; not a semantic waiver"))
         val states = states(2, 1)
         val outcomes = outcomes(setOf(1, 5), names, states, mapOf(1 to CatalogField.available("SYNTHETIC")))
-        assertEquals(22, outcomes.size)
+        assertEquals(LocalizedTextCapability.entries.size + 7, outcomes.size)
         assertEquals(emptySet<String>(), outcomes.filterValues { it.isFailure }.keys)
         assertEquals(2, states.getValue(LocalizedTextCapability.ITEM_NAMES).expectedRecords)
     }
@@ -68,7 +68,7 @@ class WesternGen1BaselineCaptureTest {
         val names = mapOf(1 to CatalogField.available("SYNTHETIC"))
         val results = outcomes(setOf(1, 5), names, states(1, 1) - LocalizedTextCapability.SPECIES_NAMES,
             mapOf(1 to CatalogField.available("WRONG SYNTHETIC")))
-        assertEquals(22, results.size)
+        assertEquals(LocalizedTextCapability.entries.size + 7, results.size)
         assertEquals(setOf("capabilities.inventory", "capability.SPECIES_NAMES.counts", "items.producer-denominator",
             "items.capability-denominator", "items.available-name-parity"), results.filterValues { it.isFailure }.keys)
         assertTrue(results.getValue("capability.POI_TEXT.counts").isSuccess)
@@ -97,7 +97,7 @@ class WesternGen1BaselineCaptureTest {
             assertTrue(results.getValue("items.overlay-sparse-keys").isFailure)
             assertTrue(results.getValue("items.available-name-parity").isFailure)
         }
-        assertEquals(22, outcomes(setOf(1, 5), names, null, null).size)
+        assertEquals(LocalizedTextCapability.entries.size + 7, outcomes(setOf(1, 5), names, null, null).size)
     }
 
     @Test

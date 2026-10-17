@@ -20,6 +20,9 @@ import org.junit.Test
 
 /** Replays every retained raw mapper session through the production live-memory pipeline. */
 class MemoryDumpReplayRealControlTest {
+    @org.junit.Before
+    fun requireReviewedOriginalAccess() = com.darkaxt.dualdex.testing.OriginalRomTestAccess.requireEnabled()
+
     @Test
     fun everyRetainedMemoryDumpMapsThroughItsGenerationSpecificProductionPipeline() {
         val root = Path.of(

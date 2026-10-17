@@ -12,6 +12,9 @@ import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 class ChallengeHackControlsTest {
+    @org.junit.Before
+    fun requireReviewedOriginalAccess() = com.darkaxt.dualdex.testing.OriginalRomTestAccess.requireEnabled()
+
     @Test
     fun `source backed hacks bind from structures and reject unavailable leader and adapter roles`() {
         val templates = PortableChallengeCatalog.decodeTemplates(

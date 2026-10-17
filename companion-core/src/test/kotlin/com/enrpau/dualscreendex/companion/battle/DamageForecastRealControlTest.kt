@@ -15,6 +15,9 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 class DamageForecastRealControlTest {
+    @org.junit.Before
+    fun requireReviewedOriginalAccess() = com.enrpau.dualscreendex.companion.testing.OriginalRomTestAccess.requireEnabled()
+
     @Test
     fun `official first second and third generation forecasts consume real parsed move inputs`() {
         val controls = listOf(

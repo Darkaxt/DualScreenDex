@@ -88,7 +88,7 @@ class OfficialMatrixApiCaptureTest {
         assertTrue(Files.isRegularFile(fixture.working.resolve("$SHA.sqlite")))
     }
 
-    @Test fun capturesAllFifteenApiGroupsWithoutOverlayBackfill() {
+    @Test fun capturesAllLocalizedApiGroupsWithoutOverlayBackfill() {
         val observed = capture(fixture())
         val fields = observed.getAsJsonObject("fields")
         assertNotNull("actual API field observations are required", fields)
@@ -103,7 +103,7 @@ class OfficialMatrixApiCaptureTest {
         val measurements = observed.getAsJsonObject("measurements")
         assertNotNull("projection and type observations must be measured", measurements)
         val isolation = measurements.getAsJsonObject("projectionIsolation")
-        assertEquals(15, isolation.get("fieldsChecked").asInt)
+        assertEquals(LocalizedTextCapability.entries.size, isolation.get("fieldsChecked").asInt)
         for (key in listOf("mixedFields", "fallbackFields", "sharedTextFields")) assertEquals(0, isolation.get(key).asInt)
         val types = measurements.getAsJsonObject("typeSemantics")
         assertEquals(0, types.get("typesChecked").asInt)
@@ -117,6 +117,7 @@ class OfficialMatrixApiCaptureTest {
         val api = requireNotNull(response.catalog)
         val changed = response.copy(catalog = api.copy(
             species = api.species.map { it.copy(name = "API species", description = "API species description",
+                category = "API species category",
                 abilities = listOf(AbilityView(3, "API ability", "API ability description", emptyList()))) },
             moves = listOf(MoveView(7, "API move", null, null, null, null, null, null, null, "API move description")),
             types = listOf(TypeView(2, "API type", null, null, null)),
@@ -142,6 +143,7 @@ class OfficialMatrixApiCaptureTest {
         val fields = observed.getAsJsonObject("fields")
         val expected = mapOf(
             "SPECIES_NAMES" to ("1" to "API species"), "SPECIES_DESCRIPTIONS" to ("1" to "API species description"),
+            "SPECIES_CATEGORIES" to ("1" to "API species category"),
             "MOVE_NAMES" to ("7" to "API move"), "MOVE_DESCRIPTIONS" to ("7" to "API move description"),
             "ABILITY_NAMES" to ("3" to "API ability"), "ABILITY_DESCRIPTIONS" to ("3" to "API ability description"),
             "TYPE_NAMES" to ("2" to "API type"), "NATURE_NAMES" to ("4" to "API nature"),
@@ -192,8 +194,9 @@ class OfficialMatrixApiCaptureTest {
         val capabilities = LocalizedTextCapability.entries.associateWith {
             when (it) {
                 LocalizedTextCapability.SPECIES_NAMES -> LocalizedCapabilityState.available(2)
-                LocalizedTextCapability.SPECIES_DESCRIPTIONS ->
-                    LocalizedCapabilityState.unavailable(CapabilityStatus.NOT_FOUND, 2)
+                LocalizedTextCapability.SPECIES_DESCRIPTIONS,
+                LocalizedTextCapability.SPECIES_CATEGORIES,
+                -> LocalizedCapabilityState.unavailable(CapabilityStatus.NOT_FOUND, 2)
                 LocalizedTextCapability.ABILITY_NAMES,
                 LocalizedTextCapability.ABILITY_DESCRIPTIONS,
                 -> LocalizedCapabilityState.available(1)
@@ -223,6 +226,44 @@ class OfficialMatrixApiCaptureTest {
         assertEquals(0, isolation.get("fallbackFields").asInt)
     }
 
+    @Test fun measuresMissingAndContaminatedSpeciesCategoriesWithoutBackfill() {
+        val fixture = fixture()
+        val response = response(fixture)
+        val api = requireNotNull(response.catalog)
+        val original = fixture.catalog.localizedTextByLanguage.getValue(LanguageTag.FRENCH)
+        val overlay = CatalogLanguageOverlay(
+            language = original.language,
+            overlayVersion = original.overlayVersion,
+            speciesNames = original.speciesNames,
+            speciesCategories = mapOf(1 to CatalogField.available("Graine")),
+            localizedCapabilities = original.localizedCapabilities +
+                (LocalizedTextCapability.SPECIES_CATEGORIES to LocalizedCapabilityState.available(1)),
+        )
+        val catalog = fixture.catalog.copy(
+            localization = CatalogLocalization(fixture.catalog.languageManifest, mapOf(LanguageTag.FRENCH to overlay)),
+        )
+        for ((category, expectedMixed) in listOf("Graine" to 0, null to 1, "wrong API category" to 1)) {
+            val observed = OfficialMatrixApiObservations.observe(catalog, response.copy(
+                catalog = api.copy(species = api.species.map { it.copy(category = category) }),
+            ))
+            val fields = observed.getAsJsonObject("fields").getAsJsonObject("SPECIES_CATEGORIES")
+            assertEquals(if (category == null) 0 else 1, fields.size())
+            if (category != null) assertEquals(category, fields.get("1").asString)
+            val isolation = observed.getAsJsonObject("measurements").getAsJsonObject("projectionIsolation")
+            assertEquals(expectedMixed, isolation.get("mixedFields").asInt)
+            assertEquals(0, isolation.get("fallbackFields").asInt)
+            assertEquals(0, isolation.get("sharedTextFields").asInt)
+        }
+        val contaminated = catalog.copy(speciesById = catalog.speciesById.mapValues { (_, species) ->
+            species.copy(category = CatalogField.available("forbidden shared category"))
+        })
+        val observed = OfficialMatrixApiObservations.observe(contaminated, response.copy(
+            catalog = api.copy(species = api.species.map { it.copy(category = "Graine") }),
+        ))
+        assertEquals(1, observed.getAsJsonObject("measurements").getAsJsonObject("projectionIsolation")
+            .get("sharedTextFields").asInt)
+    }
+
     @Test fun doesNotChargeLocalMapAreaGuideLabelsToAreaNames() {
         val fixture = fixture()
         val response = response(fixture)
@@ -233,8 +274,9 @@ class OfficialMatrixApiCaptureTest {
                 LocalizedTextCapability.SPECIES_NAMES,
                 LocalizedTextCapability.LOCAL_MAP_NAMES,
                 -> LocalizedCapabilityState.available(1)
-                LocalizedTextCapability.SPECIES_DESCRIPTIONS ->
-                    LocalizedCapabilityState.unavailable(CapabilityStatus.NOT_FOUND, 1)
+                LocalizedTextCapability.SPECIES_DESCRIPTIONS,
+                LocalizedTextCapability.SPECIES_CATEGORIES,
+                -> LocalizedCapabilityState.unavailable(CapabilityStatus.NOT_FOUND, 1)
                 else -> LocalizedCapabilityState.unavailable(CapabilityStatus.NOT_APPLICABLE, 0, 1.0)
             }
         }
@@ -281,8 +323,9 @@ class OfficialMatrixApiCaptureTest {
                 LocalizedTextCapability.LOCAL_MAP_NAMES,
                 -> LocalizedCapabilityState.available(1)
                 LocalizedTextCapability.POI_TEXT -> LocalizedCapabilityState.available(2)
-                LocalizedTextCapability.SPECIES_DESCRIPTIONS ->
-                    LocalizedCapabilityState.unavailable(CapabilityStatus.NOT_FOUND, 1)
+                LocalizedTextCapability.SPECIES_DESCRIPTIONS,
+                LocalizedTextCapability.SPECIES_CATEGORIES,
+                -> LocalizedCapabilityState.unavailable(CapabilityStatus.NOT_FOUND, 1)
                 else -> LocalizedCapabilityState.unavailable(CapabilityStatus.NOT_APPLICABLE, 0, 1.0)
             }
         }
@@ -536,7 +579,9 @@ class OfficialMatrixApiCaptureTest {
             localizedCapabilities = LocalizedTextCapability.entries.associateWith {
                 when (it) {
                     LocalizedTextCapability.SPECIES_NAMES -> LocalizedCapabilityState.available(1)
-                    LocalizedTextCapability.SPECIES_DESCRIPTIONS -> LocalizedCapabilityState.unavailable(CapabilityStatus.NOT_FOUND, 1)
+                    LocalizedTextCapability.SPECIES_DESCRIPTIONS,
+                    LocalizedTextCapability.SPECIES_CATEGORIES,
+                    -> LocalizedCapabilityState.unavailable(CapabilityStatus.NOT_FOUND, 1)
                     else -> LocalizedCapabilityState.unavailable(CapabilityStatus.NOT_APPLICABLE, 0, 1.0)
                 }
             },

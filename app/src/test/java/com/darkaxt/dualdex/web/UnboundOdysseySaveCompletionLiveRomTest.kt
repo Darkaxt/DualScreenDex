@@ -31,6 +31,9 @@ import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 class UnboundOdysseySaveCompletionLiveRomTest {
+    @org.junit.Before
+    fun requireReviewedOriginalAccess() = com.darkaxt.dualdex.testing.OriginalRomTestAccess.requireEnabled()
+
     @Test
     fun odysseyPublishesACompleteTypedSaveRuntimeAbiAndDecodesAllFourteenDomains() {
         val romPath = configuredPath("DUALDEX_ODYSSEY_ROM")

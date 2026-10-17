@@ -255,8 +255,9 @@ class ProductionCompanionRuntimeLanguageTest {
                 LocalizedTextCapability.AREA_NAMES,
                 LocalizedTextCapability.ENCOUNTER_AREA_NAMES,
                 -> LocalizedCapabilityState.available(1)
-                LocalizedTextCapability.SPECIES_DESCRIPTIONS ->
-                    LocalizedCapabilityState.notFound("fixture", expectedRecords = 1)
+                LocalizedTextCapability.SPECIES_DESCRIPTIONS,
+                LocalizedTextCapability.SPECIES_CATEGORIES,
+                -> LocalizedCapabilityState.notFound("fixture", expectedRecords = 1)
                 else -> LocalizedCapabilityState.notApplicable("fixture")
             }
         },

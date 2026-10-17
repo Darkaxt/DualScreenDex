@@ -13,6 +13,9 @@ import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 class ChallengeOfficialControlsTest {
+    @org.junit.Before
+    fun requireReviewedOriginalAccess() = com.darkaxt.dualdex.testing.OriginalRomTestAccess.requireEnabled()
+
     @Test
     fun `all eleven official controls produce deterministic role bound inventories and results`() {
         val manifest = manifest()

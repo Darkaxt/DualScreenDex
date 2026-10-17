@@ -244,7 +244,7 @@ class WesternGen1SemanticCaptureTest {
             }).groupBy({ it.first }, { it.second })
             WesternGen1SemanticCapture.checkRequiredProjectedNames(raw, actual) { _, block -> block() }
             val apiStates = requireNotNull(bootstrap.language).projections.single().localizedCapabilities
-            assertEquals(15, apiStates.size)
+            assertEquals(LocalizedTextCapability.entries.size, apiStates.size)
             states.forEach { (capability, expected) ->
                 val actualState = apiStates.getValue(capability.name)
                 assertEquals(expected.status.name, actualState.status)

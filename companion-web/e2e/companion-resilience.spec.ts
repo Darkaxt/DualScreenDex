@@ -44,6 +44,53 @@ const state = {
   battle: null,
 };
 
+for (const viewport of [{ width: 1024, height: 768 }, { width: 390, height: 844 }]) {
+  test(`inactive config guidance and manual fallback remain usable at ${viewport.width}x${viewport.height}`, async ({ page }, testInfo) => {
+    await page.setViewportSize(viewport);
+    let current = {
+      ...state,
+      screen: 'SETUP',
+      catalogReady: false,
+      catalogName: null,
+      retroArch: {
+        storageGrant: 'MISSING', configGrant: 'GRANTED', romGrant: 'MISSING',
+        configState: 'VERIFIED', restartRequired: false, connection: 'DISCONNECTED',
+        systemId: null, gameBasename: null, contentCrc32: null, resolution: 'NO_CONTENT',
+        activeSource: null, savefileDirectory: null, indexedRoms: 0, message: null,
+      },
+    };
+    await page.route('**/api/bootstrap', route => route.fulfill({
+      contentType: 'application/json', body: JSON.stringify({ catalog: null, state: current }),
+    }));
+    await page.route('**/api/state**', route => route.fulfill({ status: 204 }));
+    await page.route('**/api/actions', route => {
+      expect(route.request().postDataJSON()).toEqual({ type: 'SCREEN', screen: 'POKEDEX' });
+      current = { ...current, version: current.version + 1, screen: 'POKEDEX' };
+      return route.fulfill({ contentType: 'application/json', body: JSON.stringify(current) });
+    });
+
+    await page.goto('/');
+    await expect(page.getByText(/a public copy is not automatically active/i)).toBeVisible();
+    await expect(page.getByText(/Save Current Configuration/i)).toBeVisible();
+    await expect(page.getByText('Command interface verified')).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath('inactive-config-top.png') });
+    await page.locator('.setup-content').evaluate(element => { element.scrollTop = element.scrollHeight; });
+    await expect(page.getByText(/prefer stable releases/i)).toBeInViewport();
+    await page.screenshot({ path: testInfo.outputPath('stable-fallback-bottom.png') });
+
+    for (const connection of ['MALFORMED', 'CONTENTLESS', 'PLAYING', 'PAUSED']) {
+      current = { ...current, version: current.version + 1, retroArch: { ...current.retroArch, connection } };
+      await page.reload();
+      await expect(page.getByText('Command interface verified')).toHaveCount(connection === 'MALFORMED' ? 0 : 1);
+      await expect(page.getByText(/1\.22\.2.*working command listener/i)).toHaveCount(connection === 'MALFORMED' ? 1 : 0);
+    }
+    await page.getByRole('button', { name: 'Back', exact: true }).click();
+    await expect(page.locator('.welcome-screen')).toBeVisible();
+    await expect(page.locator('.welcome-screen input[type="file"]')).toBeAttached();
+  });
+}
+
 function catalog(hash: string, speciesName: string) {
   return {
     hash,

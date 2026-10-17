@@ -279,7 +279,7 @@ internal object WesternGen1SemanticCapture {
         }
         val states = actual.projections.singleOrNull()?.localizedCapabilities
         check("capabilities.inventory") {
-            assertEquals(LocalizedTextCapability.entries.map { it.name }.toSet(), requireNotNull(states).keys); assertEquals(15, states.size)
+            assertEquals(LocalizedTextCapability.entries.map { it.name }.toSet(), requireNotNull(states).keys); assertEquals(LocalizedTextCapability.entries.size, states.size)
         }
         for (capability in LocalizedTextCapability.entries) check("capability.$capability") {
             val expected = overlay.localizedCapabilities.getValue(capability)

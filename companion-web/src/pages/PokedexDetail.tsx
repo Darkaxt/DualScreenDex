@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useRef, useState } from 'preact/hooks';
 import type { Catalog, State, StatName } from '../models';
 import { Header, identitySpriteClass, maskIdentityName, PokedexAvatar, speciesIdentityKnowledge, StatusMarks, tabPanelAttributes, Tabs, TypeChip, uniqueTypeIds } from '../components';
 import { gameplayCopy } from '../gameplayCopy';
@@ -229,8 +229,8 @@ export function opaquePixelBounds(
 
 function AlphaTrimmedHeightSprite({ src, className = '' }: { src: string; className?: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [trimmed, setTrimmed] = useState(false);
-  useEffect(() => setTrimmed(false), [src]);
+  const [trimmedSource, setTrimmedSource] = useState<string | null>(null);
+  const trimmed = trimmedSource === src;
   const trim = (image: HTMLImageElement) => {
     const canvas = canvasRef.current;
     if (!canvas || image.naturalWidth <= 0 || image.naturalHeight <= 0) return;
@@ -264,9 +264,9 @@ function AlphaTrimmedHeightSprite({ src, className = '' }: { src: string; classN
         bounds.width,
         bounds.height,
       );
-      setTrimmed(true);
+      setTrimmedSource(src);
     } catch {
-      setTrimmed(false);
+      setTrimmedSource(null);
     }
   };
   return <>

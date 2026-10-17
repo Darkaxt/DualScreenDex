@@ -12,7 +12,7 @@
     { "id": "emerald", "sha256": "a9dec84dfe7f62ab2220bafaef7479da0929d066ece16a6885f6226db19085af", "inventory": 99, "badgeCount": 8, "regionalSpecies": 386, "collectibleAreas": 96, "gymLeaders": 0, "adapters": 0 },
     { "id": "firered", "sha256": "729041b940afe031302d630fdbe57c0c145f3f7b6d9b8eca5e98678d0ca4d059", "inventory": 84, "badgeCount": 8, "regionalSpecies": 386, "collectibleAreas": 81, "gymLeaders": 0, "adapters": 0 },
     { "id": "leafgreen", "sha256": "2f978f635b9593f6ca26ec42481c53a6b39f6cddd894ad5c062c1419fac58825", "inventory": 84, "badgeCount": 8, "regionalSpecies": 386, "collectibleAreas": 81, "gymLeaders": 0, "adapters": 0 },
-    { "id": "modern-emerald", "sha256": "21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895", "inventory": 100, "badgeCount": 8, "regionalSpecies": 428, "collectibleAreas": 97, "gymLeaders": 0, "adapters": 0 },
+    { "id": "modern-emerald", "sha256": "21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895", "inventory": 89, "badgeCount": 8, "regionalSpecies": 428, "collectibleAreas": 86, "gymLeaders": 0, "adapters": 0, "collectionFlagPolicy": "Only compiled-proven flags bind challenges; 11 additional named areas contain hidden items with unverified flags. The items remain in the catalog." },
     { "id": "unbound", "sha256": "7aa25bbf568f7cfcf6ee1cf2e9e6ff637350b3d0705c2375cabb6baa7d9739f7", "inventory": 125, "badgeCount": 8, "regionalSpecies": 1266, "collectibleAreas": 122, "gymLeaders": 0, "adapters": 0 },
     { "id": "odyssey", "sha256": "44c7e3eafab19c39df7c39d54bafb78a1d9caf7c371244b6f5efb12cfd98d0d0", "inventory": 11, "badgeCount": 8, "regionalSpecies": 409, "collectibleAreas": 8, "gymLeaders": 0, "adapters": 0 }
   ]

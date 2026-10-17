@@ -11,6 +11,9 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 class DamageFormulaPolicyRealControlTest {
+    @org.junit.Before
+    fun requireReviewedOriginalAccess() = com.darkaxt.dualdex.testing.OriginalRomTestAccess.requireEnabled()
+
     @Test
     fun `official third generation controls admit the validated formula while altered hack surfaces reject it`() {
         listOf(

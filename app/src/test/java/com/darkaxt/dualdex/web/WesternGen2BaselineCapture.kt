@@ -321,7 +321,7 @@ internal object WesternGen2BaselineCapture {
                 val states = bootstrap.language?.projections?.singleOrNull()?.localizedCapabilities
                 receipt.check("api.capabilities.inventory") {
                     assertEquals(LocalizedTextCapability.entries.map { it.name }.toSet(), requireNotNull(states).keys)
-                    assertEquals(15, states.size)
+                    assertEquals(LocalizedTextCapability.entries.size, states.size)
                 }
                 for (capability in LocalizedTextCapability.entries) {
                     receipt.check("api.capability.$capability.status") {
@@ -503,7 +503,7 @@ internal object WesternGen2BaselineCapture {
     ) {
         check("capabilities.inventory") {
             assertEquals(LocalizedTextCapability.entries.toSet(), requireNotNull(states).keys)
-            assertEquals(15, states.size)
+            assertEquals(LocalizedTextCapability.entries.size, states.size)
         }
         for (capability in LocalizedTextCapability.entries) {
             check("capability.$capability.counts") {

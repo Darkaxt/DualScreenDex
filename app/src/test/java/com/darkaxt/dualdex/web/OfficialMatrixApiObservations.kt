@@ -68,6 +68,8 @@ internal object OfficialMatrixApiObservations {
             api.species.map { key(it.id) to it.name }, species.map { it.name.value })
         inspect(SPECIES_DESCRIPTIONS, overlay.speciesDescriptions.texts(), species.map { key(it.id) to text.speciesDescription(it.id) },
             api.species.map { key(it.id) to it.description }, species.map { it.description.value })
+        inspect(SPECIES_CATEGORIES, overlay.speciesCategories.texts(), species.map { key(it.id) to text.speciesCategory(it.id) },
+            api.species.map { key(it.id) to it.category }, species.map { it.category.value })
         val moves = catalog.movesById.values
         inspect(MOVE_NAMES, overlay.moveNames.texts(), moves.map { key(it.id) to text.moveName(it.id) },
             api.moves.map { key(it.id) to it.name }, moves.map { it.name.value })

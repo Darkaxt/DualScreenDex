@@ -27,6 +27,9 @@ import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 class UnifiedGameStateRealControlTest {
+    @org.junit.Before
+    fun requireReviewedOriginalAccess() = com.darkaxt.dualdex.testing.OriginalRomTestAccess.requireEnabled()
+
     @Test
     fun modernEmeraldTreeckoFlagResolvesToOneCanonicalSpecies() {
         val path = Path.of(HACK_FALLBACKS.getValue("modern-emerald"))

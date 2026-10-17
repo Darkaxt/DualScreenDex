@@ -285,7 +285,7 @@ internal object WesternGen1BaselineCapture {
                     }
                     val states = bootstrap.language?.projections?.singleOrNull()?.localizedCapabilities
                     receipt.check("api.capabilities.inventory") {
-                        assertEquals(LocalizedTextCapability.entries.map { it.name }.toSet(), requireNotNull(states).keys); assertEquals(15, states.size)
+                        assertEquals(LocalizedTextCapability.entries.map { it.name }.toSet(), requireNotNull(states).keys); assertEquals(LocalizedTextCapability.entries.size, states.size)
                     }
                     for (capability in LocalizedTextCapability.entries) {
                         receipt.check("api.capability.$capability.status") { assertEquals(requireNotNull(storedOverlay).localizedCapabilities.getValue(capability).status.name, requireNotNull(states).getValue(capability.name).status) }
@@ -340,7 +340,7 @@ internal object WesternGen1BaselineCapture {
         states: Map<LocalizedTextCapability, LocalizedCapabilityState>?, overlayNames: Map<Int, CatalogField<String>>?,
         check: (String, () -> Unit) -> Unit,
     ) {
-        check("capabilities.inventory") { assertEquals(LocalizedTextCapability.entries.toSet(), requireNotNull(states).keys); assertEquals(15, states.size) }
+        check("capabilities.inventory") { assertEquals(LocalizedTextCapability.entries.toSet(), requireNotNull(states).keys); assertEquals(LocalizedTextCapability.entries.size, states.size) }
         for (capability in LocalizedTextCapability.entries) check("capability.$capability.counts") {
             val state = requireNotNull(states?.get(capability))
             assertTrue(state.coveredRecords in 0..state.expectedRecords)

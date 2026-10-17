@@ -5,7 +5,7 @@ buildscript {
             val secureVersion = when (requested.group to requested.name) {
                 "org.bouncycastle" to "bcpkix-jdk18on",
                 "org.bouncycastle" to "bcprov-jdk18on",
-                "org.bouncycastle" to "bcutil-jdk18on" -> "1.84"
+                "org.bouncycastle" to "bcutil-jdk18on" -> "1.85"
                 "org.bitbucket.b_c" to "jose4j" -> "0.9.6"
                 "org.jdom" to "jdom2" -> "2.0.6.1"
                 "org.apache.commons" to "commons-lang3" -> "3.18.0"
@@ -48,12 +48,12 @@ allprojects {
     configurations.configureEach {
         resolutionStrategy.eachDependency {
             val secureVersion = when {
-                requested.group == "io.netty" -> "4.1.136.Final"
+                requested.group == "io.netty" -> "4.1.137.Final"
                 requested.group == "org.bouncycastle" && requested.name in setOf(
                     "bcpkix-jdk18on",
                     "bcprov-jdk18on",
                     "bcutil-jdk18on",
-                ) -> "1.84"
+                ) -> "1.85"
                 requested.group == "org.bitbucket.b_c" && requested.name == "jose4j" -> "0.9.6"
                 requested.group == "org.jdom" && requested.name == "jdom2" -> "2.0.6.1"
                 requested.group == "org.apache.commons" && requested.name == "commons-lang3" -> "3.18.0"
@@ -90,13 +90,14 @@ tasks.register("verifyJvmToolchains") {
 
 tasks.register("verifySecureBuildDependencies") {
     group = "verification"
-    description = "Verifies the resolved build and Android test toolchains against the RC29 security pins."
+    description = "Verifies the resolved build and Android test toolchains against the reviewed security pins."
 
     doLast {
         val expectedVersions = mapOf(
             "org.jetbrains.kotlin:kotlin-gradle-plugin" to setOf("2.4.20-Beta2"),
-            "org.bouncycastle:bcpkix-jdk18on" to setOf("1.84"),
-            "org.bouncycastle:bcprov-jdk18on" to setOf("1.84"),
+            "org.bouncycastle:bcpkix-jdk18on" to setOf("1.85"),
+            "org.bouncycastle:bcprov-jdk18on" to setOf("1.85"),
+            "org.bouncycastle:bcutil-jdk18on" to setOf("1.85"),
             "org.bitbucket.b_c:jose4j" to setOf("0.9.6"),
             "org.jdom:jdom2" to setOf("2.0.6.1"),
             "org.apache.commons:commons-lang3" to setOf("3.18.0"),
@@ -122,7 +123,7 @@ tasks.register("verifySecureBuildDependencies") {
 
         val violations = resolved.mapNotNull { (coordinate, version) ->
             val expected = when {
-                coordinate.startsWith("io.netty:") -> setOf("4.1.136.Final")
+                coordinate.startsWith("io.netty:") -> setOf("4.1.137.Final")
                 else -> expectedVersions[coordinate]
             } ?: return@mapNotNull null
             if (version in expected) null else "$coordinate:$version (expected ${expected.joinToString(" or ")})"

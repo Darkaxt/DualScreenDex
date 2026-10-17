@@ -13,6 +13,9 @@ import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 class AreaGuideBuilderRealControlTest {
+    @org.junit.Before
+    fun requireReviewedOriginalAccess() = com.enrpau.dualscreendex.companion.testing.OriginalRomTestAccess.requireEnabled()
+
     @Test
     fun `Modern Emerald keeps the Littleroot town sign on the map without duplicating the guide heading`() {
         val configured = System.getenv("DUALDEX_MODERN_EMERALD_ROM")

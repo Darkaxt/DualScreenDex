@@ -72,6 +72,40 @@ describe('Pokédex evolution navigation', () => {
     expect(chart.querySelector('.height-pokemon img')?.getAttribute('src')).toBe(`/api/sprites/species/5.png?catalog=${catalog.hash}`);
   });
 
+  it('keeps trimmed height artwork owned by its current source and falls back until that source loads', () => {
+    const pixels = new Uint8ClampedArray(16);
+    pixels[3] = 255;
+    const context = { drawImage: vi.fn(), getImageData: vi.fn(() => ({ data: pixels })) };
+    HTMLCanvasElement.prototype.getContext = vi.fn(() => context) as unknown as typeof HTMLCanvasElement.prototype.getContext;
+    const props = {
+      catalog: { ...catalog, species: catalog.species.map(species => ({ ...species, height: 17 })) },
+      send: vi.fn(), tab: 'ENTRY' as const, setTab: vi.fn(), openMove: vi.fn(), openAbility: vi.fn(),
+    };
+    const rendered = render(<PokedexDetail {...props} state={{ ...state, trainerAvatarUrl: '/api/trainer-assets/first.png' }} />);
+    const image = rendered.container.querySelector('.height-person img') as HTMLImageElement;
+    const canvas = rendered.container.querySelector('.height-person canvas') as HTMLCanvasElement;
+    Object.defineProperties(image, { naturalWidth: { value: 2 }, naturalHeight: { value: 2 } });
+    fireEvent.load(image);
+    expect(canvas.dataset.alphaTrimmed).toBe('true');
+    expect(canvas.hidden).toBe(false);
+    expect(image.hidden).toBe(true);
+
+    rendered.rerender(<PokedexDetail {...props} state={{ ...state, trainerAvatarUrl: '/api/trainer-assets/second.png' }} />);
+    expect(canvas.dataset.alphaTrimmed).toBe('false');
+    expect(canvas.hidden).toBe(true);
+    expect(image.hidden).toBe(false);
+    context.getImageData.mockReturnValue({ data: new Uint8ClampedArray(16) });
+    fireEvent.load(image);
+    expect(canvas.hidden).toBe(true);
+    expect(image.hidden).toBe(false);
+
+    context.getImageData.mockReturnValue({ data: pixels });
+    fireEvent.load(image);
+    expect(canvas.dataset.alphaTrimmed).toBe('true');
+    expect(canvas.hidden).toBe(false);
+    expect(image.hidden).toBe(true);
+  });
+
   it('uses a generic Pokédex Entry fallback when compatible text is unavailable', () => {
     render(<PokedexDetail
       catalog={{ ...catalog, species: catalog.species.map(species => species.id === 5 ? { ...species, description: null } : species) }}
