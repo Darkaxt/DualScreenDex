@@ -26,7 +26,7 @@ describe('RetroArch setup', () => {
     expect(screen.getByText(/Saving → SaveRAM Autosave Interval/i)).toBeTruthy();
     expect(screen.getByText(/Directory → Save Files/i)).toBeTruthy();
     expect(screen.getByText(/Save Current Configuration/i)).toBeTruthy();
-    expect(screen.getByText(/manual game loading remains available/i)).toBeTruthy();
+    expect(document.querySelector('.setup-fallback')?.textContent).toMatch(/manual game loading remains available/i);
     expect(screen.getByText(/12 games found/i)).toBeTruthy();
     expect(screen.queryByText('/storage/emulated/0/RetroArch/saves')).toBeNull();
     expect(document.querySelector('.setup-content')?.textContent).not.toMatch(/RESTART_REQUIRED|DISCONNECTED|NO_CONTENT|GRANTED/i);
@@ -117,6 +117,55 @@ describe('RetroArch setup', () => {
 
     expect(screen.getByRole('alert').textContent).toContain('No se ha podido abrir la guía');
     expect(screen.getByRole('link', { name: 'VOLVER A ABRIR LA GUÍA' }).getAttribute('href')).toBe('dualdex://guide/retry');
+  });
+
+  it('does not treat a saved public copy as the active configuration', () => {
+    render(<SetupPage state={{
+      ...state,
+      retroArch: { ...state.retroArch, configState: 'VERIFIED', restartRequired: false },
+    }} send={vi.fn()} />);
+
+    expect(screen.getByText(/a public copy is not automatically active/i)).toBeTruthy();
+    expect(screen.getByText(/Save Current Configuration/i)).toBeTruthy();
+    expect(screen.getByText(/1\.22\.2.*working command listener/i)).toBeTruthy();
+    expect(screen.getByText(/prefer stable releases/i)).toBeTruthy();
+    expect(screen.queryByText('Command interface verified')).toBeNull();
+  });
+
+  it.each(['CONTENTLESS', 'PLAYING', 'PAUSED'])('recognizes a valid %s command status independently of file discovery', (connection) => {
+    render(<SetupPage state={{
+      ...state,
+      retroArch: { ...state.retroArch, configGrant: 'MISSING', configState: 'NOT_FOUND', connection },
+    }} send={vi.fn()} />);
+
+    expect(screen.getByText('Command interface verified')).toBeTruthy();
+    expect(screen.queryByText(/1\.22\.2.*working command listener/i)).toBeNull();
+  });
+
+  it('keeps malformed command replies unverified', () => {
+    render(<SetupPage state={{
+      ...state,
+      retroArch: { ...state.retroArch, connection: 'MALFORMED' },
+    }} send={vi.fn()} />);
+
+    expect(screen.queryByText('Command interface verified')).toBeNull();
+    expect(screen.getByText(/1\.22\.2.*working command listener/i)).toBeTruthy();
+  });
+
+  it.each([
+    ['DE', 'eine öffentliche Kopie ist nicht automatisch aktiv', 'stabile Versionen bevorzugst'],
+    ['FR', 'une copie publique n’est pas automatiquement active', 'préférez les versions stables'],
+    ['IT', 'una copia pubblica non è automaticamente attiva', 'preferisci le versioni stabili'],
+    ['ES', 'una copia pública no se activa automáticamente', 'prefieres versiones estables'],
+  ] as const)('localizes inactive-config and stable-build guidance in %s', (language, copyWarning, stableWarning) => {
+    setInterfaceLanguage(language);
+    render(<SetupPage state={state} send={vi.fn()} />);
+
+    expect(screen.getByText(text => text.includes(copyWarning))).toBeTruthy();
+    expect(screen.getByText(text => text.includes(stableWarning))).toBeTruthy();
+    expect(screen.getByText(/1\.22\.2/)).toBeTruthy();
+    expect(screen.queryByText(/If you prefer stable releases/)).toBeNull();
+    expect(document.querySelector('a[href="dualdex://grant/retroarch"]')).not.toBeNull();
   });
 
   it('returns to the previous screen', () => {

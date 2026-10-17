@@ -1,7 +1,7 @@
 package com.darkaxt.dualdex.retroarch
 
 class RestartVerifier {
-    var restartRequired: Boolean = false
+    @Volatile var restartRequired: Boolean = false
         private set
     private var observedDisconnect = false
 
@@ -13,12 +13,12 @@ class RestartVerifier {
 
     @Synchronized
     fun observe(connection: RetroArchConnection): Boolean {
-        if (!restartRequired) return connection != RetroArchConnection.DISCONNECTED
+        if (!restartRequired) return connection.hasValidCommandStatus
         if (connection == RetroArchConnection.DISCONNECTED) {
             observedDisconnect = true
             return false
         }
-        if (!observedDisconnect) return false
+        if (!connection.hasValidCommandStatus || !observedDisconnect) return false
         restartRequired = false
         observedDisconnect = false
         return true

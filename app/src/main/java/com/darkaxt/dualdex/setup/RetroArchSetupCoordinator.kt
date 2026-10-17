@@ -12,6 +12,7 @@ import com.darkaxt.dualdex.retroarch.NetworkCommandTransport
 import com.darkaxt.dualdex.retroarch.RetroArchConfigInstaller
 import com.darkaxt.dualdex.retroarch.RetroArchConnection
 import com.darkaxt.dualdex.retroarch.RetroArchStatus
+import com.darkaxt.dualdex.retroarch.RetroArchSetupPolicy
 import com.darkaxt.dualdex.retroarch.RestartVerifier
 import com.darkaxt.dualdex.retroarch.RomIndexEntry
 import com.darkaxt.dualdex.retroarch.RomSessionResolver
@@ -150,31 +151,9 @@ class RetroArchSetupCoordinator(
         }
         worker.execute {
             try {
-                when (val result = RetroArchConfigInstaller.install(SafRetroArchConfigStore(context.contentResolver, uri), commandPort)) {
-                    is ConfigInstallResult.Installed -> update {
-                        restartVerifier.requireRestart(connectionOf(it.connection))
-                        it.copy(
-                            configState = "RESTART_REQUIRED",
-                            restartRequired = true,
-                            message = "Network Commands and 10-second SaveRAM autosave were written and verified. Fully restart RetroArch, then return here.",
-                        )
-                    }
-                    ConfigInstallResult.AlreadyConfigured -> update {
-                        restartVerifier.requireRestart(connectionOf(it.connection))
-                        it.copy(
-                            configState = "RESTART_REQUIRED",
-                            restartRequired = true,
-                            message = "The selected config already enables Network Commands and 10-second SaveRAM autosave. Fully restart RetroArch so DualDex can verify it.",
-                        )
-                    }
-                    is ConfigInstallResult.Failed -> update {
-                        it.copy(
-                            configState = "FAILED",
-                            restartRequired = false,
-                            message = result.message,
-                        )
-                    }
-                }
+                publishConfigResult(
+                    RetroArchConfigInstaller.install(SafRetroArchConfigStore(context.contentResolver, uri), commandPort),
+                )
             } catch (_: Throwable) {
                 update {
                     it.copy(
@@ -538,7 +517,7 @@ class RetroArchSetupCoordinator(
                     configGrant = if (fallbackGranted) "GRANTED" else "MISSING",
                     configState = if (fallbackGranted) it.configState else "NOT_FOUND",
                     message = if (fallbackGranted) it.message
-                    else "Shared storage is available, but RetroArch/retroarch.cfg was not found. The manual config-folder fallback remains available.",
+                    else RetroArchSetupPolicy.MISSING_PUBLIC_CONFIG_MESSAGE,
                 )
             }
             return
@@ -553,39 +532,24 @@ class RetroArchSetupCoordinator(
                 message = "Updating the public RetroArch config…",
             )
         }
-        when (val result = RetroArchConfigInstaller.install(FileRetroArchConfigStore(config), commandPort)) {
-            is ConfigInstallResult.Installed -> update {
-                restartVerifier.requireRestart(connectionOf(it.connection))
-                it.copy(
-                    configState = "RESTART_REQUIRED",
-                    restartRequired = true,
-                    message = "Network Commands and 10-second SaveRAM autosave were written and verified. Fully restart RetroArch, then return here.",
-                )
-            }
+        val result = RetroArchConfigInstaller.install(FileRetroArchConfigStore(config), commandPort)
+        if (result is ConfigInstallResult.Failed) directConfigAttempt.compareAndSet(configPath, null)
+        publishConfigResult(result)
+    }
 
-            ConfigInstallResult.AlreadyConfigured -> update {
-                val connected = connectionOf(it.connection) != RetroArchConnection.DISCONNECTED
-                it.copy(
-                    configState = if (connected) "VERIFIED" else "UNVERIFIED",
-                    restartRequired = false,
-                    message = if (connected) {
-                        "The public config and RetroArch Network Commands are verified."
-                    } else {
-                        "The public config already enables Network Commands and 10-second SaveRAM autosave. Open RetroArch so DualDex can verify the live connection."
-                    },
-                )
-            }
-
-            is ConfigInstallResult.Failed -> {
-                directConfigAttempt.compareAndSet(configPath, null)
-                update {
-                    it.copy(
-                        configState = "FAILED",
-                        restartRequired = false,
-                        message = result.message,
-                    )
-                }
-            }
+    private fun publishConfigResult(result: ConfigInstallResult) {
+        if (result is ConfigInstallResult.Installed) {
+            restartVerifier.requireRestart(connectionOf(view.get().connection))
+        }
+        update { current ->
+            val outcome = RetroArchSetupPolicy.afterInstall(
+                result, connectionOf(current.connection), restartVerifier.restartRequired,
+            )
+            current.copy(
+                configState = outcome.configState,
+                restartRequired = outcome.restartRequired,
+                message = outcome.message,
+            )
         }
     }
 
@@ -599,7 +563,7 @@ class RetroArchSetupCoordinator(
                 val status = session.lastStatus as? RetroArchStatus.Running
                 val resolution = session.lastStatus?.let { RomSessionResolver.resolve(it, eligibleRomEntries()) }
                     ?: SessionResolution.NoContent
-                val connected = session.connection != RetroArchConnection.DISCONNECTED
+                val connected = session.connection.hasValidCommandStatus
                 val restartVerified = restartVerifier.observe(session.connection)
                 val sourceVerificationEntry = RomSessionResolver.sourceVerificationCandidate(resolution)
                     ?.takeIf { connected }
@@ -1050,15 +1014,7 @@ class RetroArchSetupCoordinator(
         )
     }
 
-    private fun readAutosaveStatus(): String {
-        directConfigStore()?.let { store ->
-            return runCatching { store.readSaveSettings().autosaveStatus }.getOrDefault("UNVERIFIED")
-        }
-        val uri = storedConfigTree() ?: return "UNVERIFIED"
-        if (!hasReadGrant(uri)) return "UNVERIFIED"
-        return runCatching { SafRetroArchConfigStore(context.contentResolver, uri).readSaveSettings().autosaveStatus }
-            .getOrDefault("UNVERIFIED")
-    }
+    private fun readAutosaveStatus(): String = RetroArchSetupPolicy.RUNTIME_AUTOSAVE_STATUS
 
     private fun storedConfigTree(): Uri? = preferences.getString(CONFIG_TREE_URI, null)?.let(Uri::parse)
 

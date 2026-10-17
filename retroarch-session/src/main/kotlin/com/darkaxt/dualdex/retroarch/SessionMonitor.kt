@@ -1,6 +1,11 @@
 package com.darkaxt.dualdex.retroarch
 
-enum class RetroArchConnection { DISCONNECTED, CONTENTLESS, PLAYING, PAUSED, MALFORMED }
+enum class RetroArchConnection {
+    DISCONNECTED, CONTENTLESS, PLAYING, PAUSED, MALFORMED;
+
+    val hasValidCommandStatus: Boolean
+        get() = this == CONTENTLESS || this == PLAYING || this == PAUSED
+}
 
 data class SessionMonitorState(
     val sequence: Long = 0,

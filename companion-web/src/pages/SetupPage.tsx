@@ -23,6 +23,8 @@ const disconnected: RetroArchState = {
 export function SetupPage({ state, send }: { state: State; send: (type: string, values?: Record<string, string | number | boolean | null>) => void }) {
   const retroArch = state.retroArch ?? disconnected;
   const returnScreen = state.catalogReady ? state.priorScreen : 'POKEDEX';
+  const commandVerified = ['CONTENTLESS', 'PLAYING', 'PAUSED'].includes(retroArch.connection);
+  const gameRunning = ['PLAYING', 'PAUSED'].includes(retroArch.connection);
   return <section class="screen setup-screen">
     <Header title={msg('retroArch')} onBack={() => send('SCREEN', { screen: returnScreen })} />
     <div class="setup-content" data-scroll-region>
@@ -51,11 +53,12 @@ export function SetupPage({ state, send }: { state: State; send: (type: string, 
       <SetupStep number="2" title={msg('retroArchConfig')} status={retroArch.configState}>
         <p>{msg('configDescription')}</p>
         <small>{msg('configRestartNote')}</small>
+        <p class="warning-note">{msg('activeConfigInstruction')}</p>
         {retroArch.configState === 'FAILED' && <div class="setup-recovery" role="alert">
           <p>{msg('configVerificationFailed')}</p>
           <a class="setup-action setup-action-primary" href="dualdex://grant/retroarch">{msg('reselectRetroArchFolder')}</a>
         </div>}
-        {retroArch.configState !== 'VERIFIED' && <div class="setup-manual-path">
+        {(!commandVerified || retroArch.restartRequired) && <div class="setup-manual-path">
           <strong>{msg('manualRetroArchPath')}</strong>
           <p>{msg('manualNetworkInstruction')}</p>
           <p>{msg('manualSaveInstruction')}</p>
@@ -67,8 +70,12 @@ export function SetupPage({ state, send }: { state: State; send: (type: string, 
       <SetupStep number="3" title={msg('liveSession')} status={retroArch.connection}>
         <div class="setup-facts">
           <span><small>{msg('game')}</small><strong>{retroArch.gameBasename ?? msg('noGameOpen')}</strong></span>
-          <span><small>{msg('companion')}</small><strong>{retroArch.connection === 'CONNECTED' ? msg('ready') : msg('waitingForGame')}</strong></span>
+          <span><small>{msg('companion')}</small><strong>{gameRunning ? msg('ready') : msg('waitingForGame')}</strong></span>
         </div>
+        {commandVerified ? <p class="setup-message" role="status">{msg('commandInterfaceVerified')}</p> : <div class="setup-manual-path">
+          <p class="warning-note">{msg('networkBuildWarning')}</p>
+          <p>{msg('stableReleaseFallback')}</p>
+        </div>}
         <a class="setup-action setup-action-primary" href="dualdex://open/retroarch">{msg('openRetroArch')}</a>
         {retroArch.resolution === 'FAILED' && <>
           <p class="warning-note" role="alert">{retroArch.presentationMessage
@@ -96,6 +103,7 @@ function setupStatusLabel(status: string): string {
     GRANTED: msg('ready'), VERIFIED: msg('ready'), CONNECTED: msg('connected'),
     MISSING: msg('needsAccess'), NOT_CONFIGURED: msg('needsSetup'), RESTART_REQUIRED: msg('restartNeeded'),
     DISCONNECTED: msg('notConnected'), CONNECTING: msg('connecting'),
+    CONTENTLESS: msg('connected'), PLAYING: msg('connected'), PAUSED: msg('connected'),
   };
   return labels[status] ?? msg('needsAttention');
 }

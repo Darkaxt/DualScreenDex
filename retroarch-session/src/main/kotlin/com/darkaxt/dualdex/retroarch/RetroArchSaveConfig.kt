@@ -6,6 +6,7 @@ data class RetroArchSaveSettings(
     val sortByCore: Boolean?,
     val sortByContentDirectory: Boolean?,
 ) {
+    /** Parsed document status, not verification of the running instance's autosave interval. */
     val autosaveStatus: String
         get() = when {
             autosaveIntervalSeconds == null -> "UNVERIFIED"

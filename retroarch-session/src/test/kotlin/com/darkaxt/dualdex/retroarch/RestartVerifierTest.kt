@@ -28,6 +28,27 @@ class RestartVerifierTest {
     }
 
     @Test
+    fun malformedReplyCannotVerifyAListenerOrCompleteARestart() {
+        val verifier = RestartVerifier()
+
+        assertFalse(verifier.observe(RetroArchConnection.MALFORMED))
+        verifier.requireRestart(RetroArchConnection.DISCONNECTED)
+        assertFalse(verifier.observe(RetroArchConnection.MALFORMED))
+        assertTrue(verifier.restartRequired)
+        assertTrue(verifier.observe(RetroArchConnection.PAUSED))
+    }
+
+    @Test
+    fun malformedReplyDoesNotEstablishTheRequiredDisconnect() {
+        val verifier = RestartVerifier()
+
+        verifier.requireRestart(RetroArchConnection.PLAYING)
+        assertFalse(verifier.observe(RetroArchConnection.MALFORMED))
+        assertFalse(verifier.observe(RetroArchConnection.PAUSED))
+        assertTrue(verifier.restartRequired)
+    }
+
+    @Test
     fun ordinaryConnectivityNeedsNoRestartHandshake() {
         val verifier = RestartVerifier()
 

@@ -41,6 +41,10 @@ export interface MessageValues {
   manualSaveInstruction: string;
   manualDirectoryInstruction: string;
   manualRestartInstruction: string;
+  activeConfigInstruction: string;
+  networkBuildWarning: string;
+  stableReleaseFallback: string;
+  commandInterfaceVerified: string;
   liveSession: string;
   game: string;
   companion: string;
