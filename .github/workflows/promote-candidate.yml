@@ -162,7 +162,7 @@ jobs:
           verify_run "$release_run_url" ".github/workflows/release.yml"
           validation_mode="$(jq -r '.validationMode' "$RECORD")"
           case "$validation_mode" in
-            packaged-android-and-thor)
+            packaged-android-and-thor|packaged-android-user-waiver)
               validation_run_url="$(jq -r '.packagedAndroidWorkflowRunUrl' "$RECORD")"
               verify_run "$validation_run_url" ".github/workflows/release.yml"
               validation_run_id="${validation_run_url##*/}"

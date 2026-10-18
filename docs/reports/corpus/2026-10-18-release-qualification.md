@@ -1,6 +1,6 @@
 # Corpus / issue33 release qualification — October 18, 2026
 
-Status: **IN_PROGRESS — corpus and hosted Android acceptance qualified; production-signed RC4 draft independently verified. Public/stable promotion BLOCKED on signed-candidate Thor validation and protected promotion acceptance.**
+Status: **IN_PROGRESS — corpus, hosted Android and signed RC4 verification complete. The user's October18 physical-validation waiver resumes protected publication; no physical pass is claimed.**
 
 ## Packaged acceptance closure
 
@@ -81,8 +81,8 @@ The fresh candidate-source API35 debug-package JUnit reports **11 tests, zero fa
 
 ## Remaining release gates
 
-1. The existing [signed-candidate handoff](../../../release/POST_RELEASE_CHECKLIST.md) and [promotion contract](../../../release/candidate-promotions/README.md) require the user-performed Thor checklist for this exact APK/tag/signer, followed by protected promotion review. That actual acceptance is absent. The issue33 live config/status/restart and app cancellation changes are not limited to passive catalog generation/presentation; do not claim the passive substitution or fabricate its authorization. Physical Thor remains untouched. This external acceptance condition blocks public/stable promotion, not further corpus testing.
-2. After genuine acceptance, bind all68 existing immutable asset IDs/hashes and the successful packaged artifact digest in the candidate record; integrate the applicable tooling/record into the default branch and dispatch its protected promotion workflow. Never replace the existing candidate assets. Stable `v1.2.3` remains uncreated; recheck version availability and satisfy the unchanged candidate/source-tree metadata policy before stable signing/publication.
+1. The existing handoff initially blocked on physical validation. The user then explicitly instructed “Skip, the validation.” The prospective specification revision and committed `packaged-android-user-waiver` record now waive that check only for this exact RC4 and metadata-only stablev1.2.3. It pins the candidate source/APK/provenance/signer and successful hosted run/artifact, requires dated user authority and rejects a claimed physical pass. Issue33 config/session/restart and cancellation changes are not mislabeled passive/parser-only. The actual full68-asset cryptographic/evidence validator passes this mode, and all103 release-policy tests pass with zero failures/skips. Physical Thor remains untouched.
+2. Integrate the exact68 immutable asset IDs/hashes and applicable release tooling into the default branch, then dispatch protected candidate promotion with its reviewer requirement unchanged. Never replace candidate assets. Stable `v1.2.3` remains uncreated; recheck availability and satisfy the metadata-only source-tree policy before protected stable signing/publication.
 3. Retain required compact proof/consumers and the signed draft, smart-sync and publish source, apply exact reviewed cleanup tickets when those consumers no longer need the outputs, and reconcile the current-release criteria. The downloaded candidate/package proof is retained locally beyond the hosted artifact expiry; no active evidence is deleted to manufacture cleanup completion.
 4. Only after the current release, investigate and qualify remaining Unbound fixes, then publish the separate requested follow-up release. Do not automatically resume unfinished Pokescape work.
 

@@ -4,6 +4,12 @@ Status: IN_PROGRESS. Authorization: already_authorized by the user's October16 r
 
 The October16 scheduling revision initially parked the unfinished Pokescape-only continuation. On October17 the user explicitly dropped that planned continuation in favor of an Unbound-focused follow-up release after the current release. Neither change claims Pokescape or the all-ROM100% parent complete, removes existing support, or authorizes live device testing. Previously accepted bounded parser134 work remains protected.
 
+## October18 signed-candidate validation revision
+
+The user explicitly instructed “Skip, the validation” after the verified RC4 handoff identified the outstanding physical Thor checklist. For this current release only, waive physical/signed-candidate device validation and proceed using the completed exact-source hosted Android and protected release CI evidence. Do not claim Thor or signed-APK execution passed. The batch also includes issue33 setup/session behavior and the cancellation-completion correction; this is an explicit user waiver, not a parser-only/passive-catalog attestation.
+
+Bind the exception only to `v1.2.3-rc.4`, source `dfadcc2369763ec8f0f9c3136458771c48af3329`, APK `6D373B3A6C60D08C233541F66CC3DBBC18D03E6A0C8B88D770E8063B321F7A3E`, its verified provenance and pinned signer, and the matching metadata-only stable `v1.2.3`. Preserve all existing source-tree, immutable-asset, successful hosted-CI/package, privacy, protected reviewer and production-signing requirements. This narrow prospective revision supersedes only CR-04's physical-acceptance prerequisite for this release; historical blocked handoffs stay accurate for their time. It does not authorize device actions or a standing waiver for the separate Unbound release.
+
 ## Requirements
 
 | ID | Acceptance |

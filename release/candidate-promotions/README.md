@@ -8,6 +8,10 @@ Every record must include `sourceCommit`, `candidateProvenanceSha256`, and `rele
 
 The `release-promotion` environment must allow only the default branch, require an authorized reviewer, and contain no secrets. Dispatch the workflow from the repository default branch and provide the existing candidate tag. Keep the tag-only `release-signing` environment and its production secrets unchanged.
 
+## October18 current-release device waiver
+
+After RC4's signed draft and all hosted/downloaded checks passed, the user explicitly instructed “Skip, the validation.” The `packaged-android-user-waiver` mode records that exception **only** for `v1.2.3-rc.4` from `dfadcc2369763ec8f0f9c3136458771c48af3329` and its already-verified APK/provenance/signer. It is also the acceptance basis for metadata-only stable `v1.2.3`, not later releases. The validator pins that identity and the exact successful packaged workflow/artifact. It requires `thorValidated: false`, no physical-pass record, `userAuthorizedSkipDeviceValidation: true`, and a dated user waiver; it does not assert a parser-only/passive change. The workflow still verifies the complete immutable assets, cryptographic signer, source-bound release/package success, live artifact digest and protected reviewer environment before promotion. Default physical/passive policies remain unchanged for other releases.
+
 ## Packaged Android and physical-device mode
 
 Use this mode after the reusable packaged Android workflow and the physical Thor checklist pass. The JSON below is an abbreviated schema fragment, not a valid promotion record: its `releaseAssets` array deliberately shows only three entries. Generate the committed record from the draft release and include every asset returned by GitHub.

@@ -118,6 +118,33 @@ function validatePackagedAndroidAndThor(
   );
 }
 
+export function validateUserAuthorizedDeviceWaiver(record) {
+  // The user's October18 exception applies to this immutable candidate only.
+  const exactFields = {
+    candidateTag: "v1.2.3-rc.4",
+    sourceCommit: "dfadcc2369763ec8f0f9c3136458771c48af3329",
+    candidateProvenanceSha256: "2E620102B25B6D8A188AAE44F26E69E67B4A8787B5067FE52C4F7A7CAB455A08",
+    apkSha256: "6D373B3A6C60D08C233541F66CC3DBBC18D03E6A0C8B88D770E8063B321F7A3E",
+    validatedSignerSha256: "C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA",
+    validationMode: "packaged-android-user-waiver",
+    releaseWorkflowRunUrl: "https://github.com/Darkaxt/DualScreenDex/actions/runs/39119545357",
+    packagedAndroidWorkflowRunUrl: "https://github.com/Darkaxt/DualScreenDex/actions/runs/39119545357",
+    packagedAndroidEvidenceArtifactDigest: "sha256:0b3f5a1c7926c3fb9d9dbd8abec93812c97a121d9bdc225389a8118d38f07488",
+  };
+  const waiver = record.deviceValidationWaiver;
+  requireCondition(
+    Object.entries(exactFields).every(([key, value]) => record[key] === value) &&
+      record.userAuthorizedSkipDeviceValidation === true &&
+      record.releaseCiValidated === true && record.packagedAndroidValidated === true &&
+      record.thorValidated === false && record.avdValidated !== true &&
+      record.thorValidationRecord === undefined &&
+      waiver?.authorizedBy === "user" && waiver.authorizedDate === "2026-10-18" &&
+      waiver.instruction === "Skip, the validation" &&
+      waiver.scope === "v1.2.3 from v1.2.3-rc.4 only",
+    "Device-validation waiver requires the explicit user authorization and exact verified RC4 evidence without a physical-pass claim",
+  );
+}
+
 function validateAutomatedPassiveCatalog(record, repository) {
   const complete =
     record.userAuthorizedAutomatedPromotion === true &&
@@ -479,6 +506,8 @@ export function validateCandidatePromotion({
   };
   if (record.validationMode === "packaged-android-and-thor") {
     validatePackagedAndroidAndThor(record, provenance.repository, artifactIdentity);
+  } else if (record.validationMode === "packaged-android-user-waiver") {
+    validateUserAuthorizedDeviceWaiver(record);
   } else if (record.validationMode === "automated-passive-catalog") {
     validateAutomatedPassiveCatalog(record, provenance.repository);
   } else {

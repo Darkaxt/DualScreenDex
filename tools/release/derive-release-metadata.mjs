@@ -1,6 +1,7 @@
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
+import { validateUserAuthorizedDeviceWaiver } from "./validate-candidate-promotion.mjs";
 
 const EXPECTED_APPLICATION_ID = "com.darkaxt.dualdex";
 const FINAL_VERSION_QUALIFIER = 99;
@@ -162,6 +163,18 @@ function validateFinalAuthorization({
     throw new Error(`Stable product source differs from validated candidate: ${productChanges.join(", ")}`);
   }
 
+  if (authorization.validationMode === "packaged-android-user-waiver") {
+    validateUserAuthorizedDeviceWaiver(candidatePromotion);
+    const waiver = authorization.deviceValidationWaiver;
+    const recordedWaiver = candidatePromotion.deviceValidationWaiver;
+    if (versionName !== "1.2.3" || authorization.userAuthorizedSkipDeviceValidation !== true ||
+        authorization.avdValidated !== false || authorization.thorValidated !== false ||
+        !waiver || Object.keys(recordedWaiver).some(key => waiver[key] !== recordedWaiver[key])) {
+      throw new Error("Final authorization must preserve the exact user device waiver without claiming device validation");
+    }
+    return;
+  }
+
   const deviceValidated = authorization.avdValidated === true && authorization.thorValidated === true;
   const automatedPassiveChangeValidated =
     authorization.validationMode === "automated-passive-catalog" &&
@@ -180,6 +193,15 @@ function validateFinalAuthorization({
 }
 
 function isAllowedFinalMetadataPath(path, candidateTag, versionName) {
+  if (versionName === "1.2.3" && candidateTag === "v1.2.3-rc.4" && [
+    ".github/workflows/promote-candidate.yml",
+    "tools/release/validate-candidate-promotion.mjs",
+    "tools/release/release-device-waiver.test.mjs",
+    "release/candidate-promotions/README.md",
+    "docs/reports/corpus/2026-10-18-release-qualification.md",
+    "docs/superpowers/specs/2026-10-16-corpus-issue33-release-design.md",
+    "docs/superpowers/plans/2026-10-16-corpus-issue33-release-plan.md",
+  ].includes(path)) return true;
   const escapedTag = candidateTag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const escapedVersion = versionName.replaceAll(".", "\\.");
   return path === ".github/workflows/release.yml" ||
