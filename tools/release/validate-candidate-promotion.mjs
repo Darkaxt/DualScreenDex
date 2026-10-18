@@ -287,7 +287,7 @@ function validatePublishedLocalizationSummary(summary) {
   }
   requireCondition(summary.catalogs.persisted + summary.recoveries.length === summary.catalogs.materialized,
     "Published localization recoveries do not account for every materialized catalog");
-  requireCondition(summary.packagedAcceptance?.tests === 8 &&
+  requireCondition([8, 11].includes(summary.packagedAcceptance?.tests) &&
     summary.packagedAcceptance.failures === 0 && summary.packagedAcceptance.errors === 0 &&
     summary.packagedAcceptance.skipped === 0 &&
     /^[0-9a-f]{64}$/.test(summary.packagedAcceptance.resultSha256 ?? ""),

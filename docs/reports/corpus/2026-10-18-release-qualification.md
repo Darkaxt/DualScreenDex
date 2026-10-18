@@ -54,10 +54,14 @@ Stable `v1.2.2` uses parser revision 83. Current revision 139 intentionally inva
 
 The release manifest retains Stage 7/8 infrastructure closures attributed to their original QA baseline `66bd216d9c370735666d5eb7438e83796a87eec7`. Those historical closures are not relabeled as this release's Android or signing acceptance. Current host/web/corpus evidence and the separately source-bound hosted Android/localization closure are described above; remaining candidate/signing gates below are mandatory.
 
+## Candidate build status
+
+RC1 run39116529839 was intentionally canceled during verification, before signing, when a second exact-eight assertion was found in published-asset promotion validation. Its original tag/run are preserved, not claimed as a completed candidate. A focused RED reproduces that promotion rejection; both evidence and published-asset paths now accept only the known8/11 profiles while preserving all source/hash/zero-gap and signed-promotion requirements. The replacement is a fresh `v1.2.3-rc.2` tag, not an overwrite of RC1. App/parser/catalog production source and all qualified corpus/package evidence remain unchanged.
+
 ## Remaining release gates
 
 1. Current hosted Android/localization acceptance and its source-bound readiness marker are complete. The earlier schema2 aggregate correctly returned `localizationClosed: false`; the new schema3 closure uses actual generated-manifest counts and eleven-case packaged evidence, not changed acceptance booleans. Signed-candidate device validation remains a separate promotion requirement; physical Thor is untouched without its own authority.
-2. Complete the unchanged protected candidate/stable promotion requirements. Recheck version availability before creating a new `v1.2.3-rc.1` candidate or `v1.2.3`; never replace an existing tag or asset.
+2. Complete the unchanged protected candidate/stable promotion requirements. Recheck version availability before creating the fresh `v1.2.3-rc.2` candidate or `v1.2.3`; never replace an existing tag or asset.
 3. Sign only through the GitHub protected production environment; independently download and verify package/version, hashes, pinned certificate and provenance before release acceptance.
 4. Retain required compact proof/consumers, smart-sync and publish source, apply exact reviewed cleanup tickets, and reconcile the current-release criteria.
 5. Investigate and qualify remaining Unbound fixes, then publish the separate requested follow-up release. Do not automatically resume unfinished Pokescape work.

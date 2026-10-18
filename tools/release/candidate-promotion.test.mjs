@@ -117,7 +117,7 @@ function publishedEvidenceFiles() {
   ]);
 }
 
-function publishedLocalizationEvidenceFiles() {
+function publishedLocalizationEvidenceFiles(packagedTests = 8) {
   const files = publishedEvidenceFiles();
   const manifest = JSON.parse(files.get("compatibility-evidence.json"));
   const canonical = JSON.parse(files.get("canonical-corpus.json"));
@@ -155,7 +155,7 @@ function publishedLocalizationEvidenceFiles() {
       executionReceiptSha256: "9".repeat(64),
     }],
     packagedAcceptance: {
-      tests: 8,
+      tests: packagedTests,
       failures: 0,
       errors: 0,
       skipped: 0,
@@ -552,16 +552,36 @@ test("accepts an immutable 342-input release bound to the current canonical corp
 });
 
 test("accepts source-bound localization evidence and bounded recoveries", () => {
-  const fixture = immutableAssetFixture(publishedLocalizationEvidenceFiles());
+  for (const tests of [8, 11]) {
+    const fixture = immutableAssetFixture(publishedLocalizationEvidenceFiles(tests));
 
-  const result = validateReleaseAssetSet({
-    recordAssets: fixture.recordAssets,
-    releaseAssets: fixture.releaseAssets,
-    readAsset: name => fixture.files.get(name) ?? null,
-    candidateTag: "v1.1.0-rc.73",
-  });
+    const result = validateReleaseAssetSet({
+      recordAssets: fixture.recordAssets,
+      releaseAssets: fixture.releaseAssets,
+      readAsset: name => fixture.files.get(name) ?? null,
+      candidateTag: "v1.1.0-rc.73",
+    });
 
-  assert.equal(result.assetCount, fixture.releaseAssets.length);
+    assert.equal(result.assetCount, fixture.releaseAssets.length);
+  }
+});
+
+test("rejects unknown packaged profiles and every failure error or skip in published evidence", () => {
+  const invalid = [0, 7, 9, 10, 12, 11.5, "11"].map(tests => ({ tests }));
+  invalid.push({ failures: 1 }, { errors: 1 }, { skipped: 1 });
+  for (const fields of invalid) {
+    const fixture = immutableAssetFixture(publishedLocalizationEvidenceFiles(11));
+    const name = "dualdex-localization-corpus-evidence.json";
+    const summary = JSON.parse(fixture.files.get(name));
+    Object.assign(summary.packagedAcceptance, fields);
+    replacePublishedArtifact(fixture, name, "CORPUS_SUMMARY", summary);
+    assert.throws(() => validateReleaseAssetSet({
+      recordAssets: fixture.recordAssets,
+      releaseAssets: fixture.releaseAssets,
+      readAsset: asset => fixture.files.get(asset) ?? null,
+      candidateTag: "v1.1.0-rc.73",
+    }), /packaged localization acceptance is incomplete/i);
+  }
 });
 
 test("rejects legacy or incomplete candidate evidence assets", () => {
