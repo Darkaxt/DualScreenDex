@@ -4,11 +4,17 @@ This is the canonical reviewer entry point for DualDex release readiness.
 
 ## Active marker
 
-- **Latest public stable:** [`v1.2.2`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.2.2), published October 15, 2026.
-- **Prepared next release:** `v1.2.3`; its [public `v1.2.3-rc.4` candidate](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.2.3-rc.4) is independently verified. [Protected signing39119545357](https://github.com/Darkaxt/DualScreenDex/actions/runs/39119545357) passed all three required jobs at `dfadcc2369763ec8f0f9c3136458771c48af3329`. [Protected promotion39124872680](https://github.com/Darkaxt/DualScreenDex/actions/runs/39124872680) published the same releaseID416388339 and exact68 unchanged assets. RC1/2/3 retain their original cancellation/failure history; no tag or asset was replaced.
+- **Latest public stable:** [`v1.2.3`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.2.3), published October 18, 2026.
+- **Prepared next release:** `v1.2.3` preparation is closed by the verified stable publication below. The requested separate Unbound follow-up is now active; no newer release is prepared yet.
 - **Machine-readable readiness marker:** [`release/v1-ready.json`](../release/v1-ready.json), source-bound build/signing readiness, not stable-promotion acceptance.
-- **Current state:** corpus/regression QA, protected candidate signing, all68 downloaded asset digests, complete67-entry checksums, public privacy and APK identity/signer/provenance verification are complete. Fresh candidate-source hosted Android acceptance passes11 tests, zero failures/errors/skips, with four screenshots inspected. **The user explicitly waived physical/signed-candidate device validation for this current release on October18; protected candidate/stable publication is proceeding with exact hosted evidence and unchanged cryptographic/source/asset/reviewer safeguards.** This is not a passive/parser-only attestation or a physical pass; no physical device was touched.
+- **Current state:** **stablev1.2.3 is public and independently verified.** All68 downloaded assets,67 checksum entries, privacy checks and APK identity/signer/provenance pass. The final protected workflow passes all three jobs; its source-bound hosted Android JUnit has11 tests/zero failures/errors/skips. Physical validation was explicitly waived for this current release only, not claimed passed. Current-release cleanup removed568 exact superseded outputs/2,293,607,746 logical bytes, preserving all301 final catalogs, signed deliverables and private proof. Separate Unbound work remains in progress.
 - **Current qualification:** [October18 release reconciliation](reports/corpus/2026-10-18-release-qualification.md).
+
+## Verified public 1.2.3 release
+
+[Protected final signing/publication39125119550](https://github.com/Darkaxt/DualScreenDex/actions/runs/39125119550) succeeded at `f6429bc82cf5f9d0ed6e3bf5cca42227aad60eb1`; releaseID416426695 is neither draft nor prerelease. All68 downloaded assets match GitHub digests and the complete checksum set, with62 evidence assets byte-identical to RC4. Package `com.darkaxt.dualdex`, version `1.2.3`, code `1020399` and the pinned production signer are independently verified. APK SHA256: `12520594C734122F1D0B86D53EFBB2885EE2C12E3A2A26EE7E19C13E9BA9E532`. [Provenance](https://github.com/Darkaxt/DualScreenDex/releases/download/v1.2.3/provenance.json) SHA256: `CCEA1E4E41EE461ADD42B83C0B1F1FB6E8E745F165BD1E80D60EF7C8465E7285`.
+
+[Protected candidate promotion39124872680](https://github.com/Darkaxt/DualScreenDex/actions/runs/39124872680) published RC4 without replacing its release or any of its68 assets. The committed exact-candidate user waiver records the physical-check exception honestly; final product source is unchanged from RC4. No physical device or signed-APK execution pass is claimed. The separate requested Unbound follow-up retains its own acceptance requirements.
 
 ## Current source-bound corpus evidence
 
@@ -22,7 +28,7 @@ The retained library has **342 distinct identities**, canonical digest `733e3678
 - [Current release qualification and limits](reports/corpus/2026-10-18-release-qualification.md)
 - [Exact-source hosted Android acceptance](https://github.com/Darkaxt/DualScreenDex/actions/runs/39115516225): all **11 tests** pass with zero failures/errors/skips; four required screenshots inspected. The original eight-case coverage is preserved and three newer guide-isolation/picker-delivery cases also pass. A disposable API35 AOSP runner emulator was used; no physical or shared local device was touched.
 
-Parser cache revision **139** rejects stable v1.2.2 revision-83 caches; SQLite schema remains 2. The actual seeded83 rejection/miss/rewrite/exact-reopen regression passed. Partial compatibility, unsupported modules and fourteen Unbound budget-skipped maps remain explicit; family selection is not100% support. The separate requested Unbound follow-up release remains pending after this release.
+Parser cache revision **139** rejects stable v1.2.2 revision-83 caches; SQLite schema remains 2. The actual seeded83 rejection/miss/rewrite/exact-reopen regression passed. Partial compatibility, unsupported modules and fourteen Unbound budget-skipped maps remain explicit; family selection is not100% support. The separate requested Unbound follow-up release is now the active stage.
 
 Historical Stage7/8 infrastructure closures retain their original source attribution. Current hosted package/localization proof is independently source-bound above, not relabeled historical evidence. Production signing remains exclusively in the protected GitHub environment, and final promotion still requires the matching verified signed candidate and actual acceptance evidence.
 
