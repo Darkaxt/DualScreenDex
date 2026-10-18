@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 const COMMIT = /^[0-9a-f]{40}$/;
 const SHA256 = /^[0-9a-f]{64}$/;
-const RAW_REPORT_SCHEMA_VERSION = 13;
+const SUPPORTED_REPORT_SCHEMAS = new Set([13, 16]);
 const TERMINAL_OUTCOMES = new Set(["SELECTED", "AMBIGUOUS", "NO_FAMILY_MATCH", "ERROR"]);
 const COMPATIBILITY_OUTCOMES = new Set(["COMPLETE", "PARTIAL", "UNRESOLVED", "ERROR"]);
 
@@ -151,8 +151,10 @@ function summarizeParsedReport(report, receipt, canonicalCorpus, rawReportSha256
   validateReceipt(receipt, rawReportSha256);
   validateCanonicalCorpus(canonicalCorpus);
 
-  assert(report?.schemaVersion === RAW_REPORT_SCHEMA_VERSION,
-    `raw compatibility report schemaVersion must be ${RAW_REPORT_SCHEMA_VERSION}`);
+  assert(SUPPORTED_REPORT_SCHEMAS.has(report?.schemaVersion),
+    "raw compatibility report schemaVersion must be 13 or 16");
+  assert(report.schemaVersion === receipt.generator.schemaVersion,
+    "raw report schemaVersion does not match execution receipt");
   assert(report.execution?.sourceCommit === receipt.sourceCommit,
     "raw report source commit does not match execution receipt");
   assert(report.execution?.generatorSha256 === receipt.generator.sha256,
@@ -298,8 +300,8 @@ function validateReceipt(receipt, rawReportSha256) {
   assert(receipt?.schemaVersion === 1, "execution receipt schemaVersion must be 1");
   assert(COMMIT.test(receipt.sourceCommit ?? ""), "execution receipt source commit is invalid");
   assert(receipt.generator?.name === "parser-cli", "execution receipt generator must be parser-cli");
-  assert(receipt.generator?.schemaVersion === RAW_REPORT_SCHEMA_VERSION,
-    `execution receipt generator schemaVersion must be ${RAW_REPORT_SCHEMA_VERSION}`);
+  assert(SUPPORTED_REPORT_SCHEMAS.has(receipt.generator?.schemaVersion),
+    "execution receipt generator schemaVersion must be 13 or 16");
   assert(SHA256.test(receipt.generator?.sha256 ?? ""), "execution receipt generator digest is invalid");
   assert(SHA256.test(receipt.rawReportSha256 ?? ""), "execution receipt raw report digest is invalid");
   assert(receipt.rawReportSha256 === rawReportSha256,

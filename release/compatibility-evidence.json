@@ -1,11 +1,11 @@
 {
   "schemaVersion": 2,
-  "sourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
+  "sourceCommit": "36d6c2d4ee690e9069cc0af6d1ddb48f9ad4fc89",
   "qaBaselineSourceCommit": "66bd216d9c370735666d5eb7438e83796a87eec7",
   "generator": {
     "name": "parser-cli",
     "schemaVersion": 16,
-    "sha256": "443fbe6bc6804a12480e66e6c318a2dcd500c574663c84e210c09fcf03ba2b97"
+    "sha256": "145c7b29bb76817580ffe05e1a09ff8e4d1e4db0e5dfd393620291f76e4cd615"
   },
   "corpus": {
     "inputDigestSha256": "733e36785fa9a5b71bc4121343a6b6d2cbd27e43e08b3fddc2e2870bac1a0561",
@@ -13,25 +13,25 @@
   },
   "scopeDecision": {
     "type": "NONPARSER_REUSE",
-    "attestation": "Fresh full342 source-bound corpus evidence was generated at the named frozen parser/catalog executable commit. Later changes are release-policy tooling, workflow handoff, evidence/readiness documentation and a bounded synthetic persistence test fixture only; parser, catalog, build-wrapper and corpus-execution production source remain unchanged."
+    "attestation": "One fresh full342 qualification executed against the named frozen source and isolated parser/catalog runtime, with unchanged originals and independently reconciled persisted outputs. Subsequent changes are release summary tooling/tests, reviewed challenge test expectations and evidence/readiness documentation only; parser/catalog/build/corpus-execution source is unchanged. The retained Stage 7/8 closures belong to the historical qaBaselineSourceCommit, not current packaged Android or signed-release acceptance; current remaining gates are explicit in docs/reports/corpus/2026-10-18-release-qualification.md."
   },
   "cacheDecision": {
     "type": "BUMP_REQUIRED",
-    "previousRevision": 82,
-    "revision": 83,
-    "rationale": "Compiled Gen I and Gen II core expansion changes persisted catalog output relative to stable v1.2.0 revision 82. Revision 83 forces every earlier cache to rebuild; a seeded revision-82 rejection, rebuild and exact reopen regression preserves SQL schema 2.",
+    "previousRevision": 83,
+    "revision": 139,
+    "rationale": "Persisted compiled domains, map graph/budget admission, ability memberships and acquisition ownership differ from stable v1.2.2 parser revision 83. Revision 139 rejects prior caches and rebuilds under unchanged SQLite schema 2. CatalogStoreTest seeds revision 83, proves rejection and cache miss, then rewrites and exactly reopens the current catalog; the guarded full host run executed that regression successfully.",
     "seededRegressionTest": "catalog-store/src/test/kotlin/com/darkaxt/dualdex/catalog/CatalogStoreTest.kt"
   },
   "artifacts": [
     {
       "role": "CORPUS_SUMMARY",
-      "path": "docs/reports/corpus/2026-10-03-full342-evidence.json",
-      "sha256": "4ca371369c9390bffb6deebc6c495b9e2b1eddc7376661b83f32f0f8151fc90e"
+      "path": "docs/reports/corpus/2026-10-18-full342-evidence.json",
+      "sha256": "43882ac20567866fda0a7be3334d7f4d8e3a4adfb258bed84c59caaac5156e21"
     },
     {
       "role": "CORPUS_EXECUTION_RECEIPT",
-      "path": "docs/reports/corpus/2026-10-03-full342-execution.json",
-      "sha256": "8d27df5a06f1e1310adfd1ba6d08b6b599c5061ee6b71843f528ea60a966b7cd"
+      "path": "docs/reports/corpus/2026-10-18-full342-execution.json",
+      "sha256": "c1cc37e56d021002b7314e44a62dcc3c77eb8ddf6fec23ea153c7ee38c5a8152"
     },
     {
       "role": "STAGE_7_CLOSURE",

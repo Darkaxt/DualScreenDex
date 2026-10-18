@@ -31,9 +31,9 @@ function row(index, status, dataCompatibility, persisted = status === "SELECTED"
   };
 }
 
-function evidence(rows) {
+function evidence(rows, schemaVersion = 13) {
   const report = {
-    schemaVersion: 13,
+    schemaVersion,
     execution: {
       sourceCommit,
       generatorSha256: generatorDigest,
@@ -54,7 +54,7 @@ function evidence(rows) {
   const receipt = {
     schemaVersion: 1,
     sourceCommit,
-    generator: { name: "parser-cli", schemaVersion: 13, sha256: generatorDigest },
+    generator: { name: "parser-cli", schemaVersion, sha256: generatorDigest },
     rawReportSha256: createHash("sha256").update(raw).digest("hex"),
     inputCount: rows.length,
   };
@@ -151,12 +151,23 @@ test("rejects relabeling an older raw report even when its corpus digest matches
 });
 
 test("rejects stale schemas and raw-report or generator digest drift", () => {
-  const stale = evidence([row(1, "SELECTED", "COMPLETE")]);
-  stale.receipt.generator.schemaVersion = 12;
-  assert.throws(
-    () => summarizeCompatibilityEvidence(stale.raw, stale.receipt, stale.canonical),
-    /schemaVersion must be 13/i,
-  );
+  for (const schemaVersion of [12, 14, 15, 17]) {
+    const stale = evidence([row(1, "SELECTED", "COMPLETE")]);
+    stale.receipt.generator.schemaVersion = schemaVersion;
+    assert.throws(
+      () => summarizeCompatibilityEvidence(stale.raw, stale.receipt, stale.canonical),
+      /schemaVersion must be 13/i,
+    );
+    const staleRaw = evidence([row(1, "SELECTED", "COMPLETE")], 16);
+    const report = JSON.parse(staleRaw.raw.toString("utf8"));
+    report.schemaVersion = schemaVersion;
+    staleRaw.raw = Buffer.from(JSON.stringify(report));
+    staleRaw.receipt.rawReportSha256 = createHash("sha256").update(staleRaw.raw).digest("hex");
+    assert.throws(
+      () => summarizeCompatibilityEvidence(staleRaw.raw, staleRaw.receipt, staleRaw.canonical),
+      /raw compatibility report schemaVersion must be 13 or 16/i,
+    );
+  }
 
   const changedRaw = evidence([row(1, "SELECTED", "COMPLETE")]);
   changedRaw.receipt.rawReportSha256 = "c".repeat(64);
@@ -180,6 +191,48 @@ test("rejects stale schemas and raw-report or generator digest drift", () => {
     ),
     /generator digest/i,
   );
+});
+
+test("accepts current schema16 through both summary entrypoints without private fields", async () => {
+  const input = evidence([row(1, "SELECTED", "PARTIAL")], 16);
+  const directory = mkdtempSync(join(tmpdir(), "dualdex-summary-schema16-"));
+  const rawPath = join(directory, "corpus-raw.json");
+
+  try {
+    writeFileSync(rawPath, input.raw);
+    const summary = summarizeCompatibilityEvidence(input.raw, input.receipt, input.canonical);
+    const streamed = await summarizeCompatibilityEvidenceFile(rawPath, input.receipt, input.canonical);
+
+    assert.deepEqual(streamed, summary);
+    assert.equal(summary.generator.schemaVersion, 16);
+    assert.equal(summary.catalogs.persisted, 1);
+    assert.doesNotMatch(JSON.stringify(summary), /Private Game|D:\/private|0000000000000001/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("rejects mismatched supported report and receipt schemas", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "dualdex-summary-schema-mismatch-"));
+  const rawPath = join(directory, "corpus-raw.json");
+
+  try {
+    for (const schemaVersion of [13, 16]) {
+      const input = evidence([row(1, "SELECTED", "COMPLETE")], schemaVersion);
+      input.receipt.generator.schemaVersion = schemaVersion === 13 ? 16 : 13;
+      writeFileSync(rawPath, input.raw);
+      assert.throws(
+        () => summarizeCompatibilityEvidence(input.raw, input.receipt, input.canonical),
+        /report schemaVersion does not match execution receipt/i,
+      );
+      await assert.rejects(
+        () => summarizeCompatibilityEvidenceFile(rawPath, input.receipt, input.canonical),
+        /report schemaVersion does not match execution receipt/i,
+      );
+    }
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test("rejects missing terminal outcomes and all raw error channels", () => {
