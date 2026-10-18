@@ -12,14 +12,14 @@
     "inputCount": 342
   },
   "scopeDecision": {
-    "type": "NONPARSER_REUSE",
-    "attestation": "One fresh full342 qualification executed against the named frozen source and isolated parser/catalog runtime, with unchanged originals and independently reconciled persisted outputs. Subsequent changes cover release summary/acceptance tooling and tests, reviewed challenge expectations, release documentation and app cancellation-completion ownership; parser/catalog/build/corpus-execution source and generated output are unchanged. The app correction has deterministic RED and 95 passing synthetic runtime/session controls; its new candidate must pass unchanged protected host/package/signing and promotion gates. The retained Stage 7/8 closures belong to the historical qaBaselineSourceCommit. Frozen-source hosted Android/localization acceptance passes eleven cases and the generated language manifests are independently censused; neither is relabeled as signed-candidate acceptance. Current status is in docs/reports/corpus/2026-10-18-release-qualification.md."
+    "type": "BOUNDED_REQUALIFICATION",
+    "attestation": "Retain the completed released139 full342 baseline at its original source and runtime. Separately qualify five affected inputs at the named parser140 source/runtime, reconcile saved catalogs and all prior maps/pixels/POIs and localized references, and pin every changed parser/catalog/build/generator source file. Unchanged domains and ROM families reuse baseline evidence; no new full-corpus success or live-device/gameplay acceptance is claimed. The redundant partial full-corpus attempt was cancelled and is not acceptance evidence."
   },
   "cacheDecision": {
     "type": "BUMP_REQUIRED",
-    "previousRevision": 83,
-    "revision": 139,
-    "rationale": "Persisted compiled domains, map graph/budget admission, ability memberships and acquisition ownership differ from stable v1.2.2 parser revision 83. Revision 139 rejects prior caches and rebuilds under unchanged SQLite schema 2. CatalogStoreTest seeds revision 83, proves rejection and cache miss, then rewrites and exactly reopens the current catalog; the guarded full host run executed that regression successfully.",
+    "previousRevision": 139,
+    "revision": 140,
+    "rationale": "Self-contained lossless tiled static map assets change persisted local-map representation. Parser revision140 rejects139 caches and rebuilds under unchanged SQLite schema2; the focused integrated tests prove exact reopen/render and seeded139 rejection.",
     "seededRegressionTest": "catalog-store/src/test/kotlin/com/darkaxt/dualdex/catalog/CatalogStoreTest.kt"
   },
   "artifacts": [
@@ -43,5 +43,116 @@
       "path": "docs/reports/qa-hardening/stage-08-closure.json",
       "sha256": "18456a8fc27eb1442786ccd311acc4081633d4c3d2c6b4a28164f2d17d431c78"
     }
-  ]
+  ],
+  "boundedQualification": {
+    "schemaVersion": 1,
+    "sourceCommit": "d24b7e325346fbc978c570476979514ca21a0a85",
+    "generator": {
+      "name": "parser-cli",
+      "schemaVersion": 16,
+      "sha256": "aa272f07ea9936e665c100ecc4ed0befe4f2ea94c73e6528c7c5210fad1f6814"
+    },
+    "corpus": {
+      "schemaVersion": 2,
+      "inputCount": 5,
+      "uniqueRomIdentityCount": 5,
+      "inputDigestSha256": "847c69f50c0c4b1f762e4fa9c6171cdb53113d56bee5316cc4a24cee31840a7e"
+    },
+    "summary": {
+      "schemaVersion": 2,
+      "sourceCommit": "d24b7e325346fbc978c570476979514ca21a0a85",
+      "generator": {
+        "name": "parser-cli",
+        "schemaVersion": 16,
+        "sha256": "aa272f07ea9936e665c100ecc4ed0befe4f2ea94c73e6528c7c5210fad1f6814"
+      },
+      "rawReportSha256": "df6f662224908c8d2ca4c907f624ff9fb7e5ad57587a2b539d5a39ef8a1552e7",
+      "corpusInputDigestSha256": "847c69f50c0c4b1f762e4fa9c6171cdb53113d56bee5316cc4a24cee31840a7e",
+      "inputCount": 5,
+      "uniqueRomIdentities": 5,
+      "outcomes": {
+        "selected": 5,
+        "ambiguous": 0,
+        "noFamilyMatch": 0,
+        "total": 5,
+        "errors": 0
+      },
+      "dataCompatibility": {
+        "complete": 0,
+        "partial": 5,
+        "unresolved": 0,
+        "total": 5,
+        "errors": 0
+      },
+      "catalogs": {
+        "materialized": 5,
+        "persisted": 5,
+        "catalogErrors": 0,
+        "persistenceErrors": 0
+      },
+      "privacy": {
+        "containsRomIdentity": false,
+        "containsRomName": false,
+        "containsSourcePath": false,
+        "containsRomBytes": false
+      }
+    },
+    "executionReceipt": {
+      "schemaVersion": 1,
+      "sourceCommit": "d24b7e325346fbc978c570476979514ca21a0a85",
+      "generator": {
+        "name": "parser-cli",
+        "schemaVersion": 16,
+        "sha256": "aa272f07ea9936e665c100ecc4ed0befe4f2ea94c73e6528c7c5210fad1f6814"
+      },
+      "rawReportSha256": "df6f662224908c8d2ca4c907f624ff9fb7e5ad57587a2b539d5a39ef8a1552e7",
+      "inputCount": 5
+    },
+    "reviewedSourcePaths": [
+      {
+        "path": "catalog-store/src/main/kotlin/com/darkaxt/dualdex/catalog/CatalogSchema.kt",
+        "sha256": "2a614d623b73f21981d9d07769e138d84995568a28816b57e16636855ba0abb3"
+      },
+      {
+        "path": "parser-core/src/main/kotlin/com/enrpau/dualscreendex/parser/catalog/CatalogModels.kt",
+        "sha256": "a475431443c9228baef202ae0cd3a90841bcb29e090bcb0c0df3f302a9dcef5e"
+      },
+      {
+        "path": "parser-core/src/main/kotlin/com/enrpau/dualscreendex/parser/catalog/CatalogParser.kt",
+        "sha256": "23ba5172b2727b372fae134230ac2f5dcf9f09a9008f0c8e548082b939f7fdb8"
+      },
+      {
+        "path": "parser-core/src/main/kotlin/com/enrpau/dualscreendex/parser/catalog/LocalMapRasterRenderer.kt",
+        "sha256": "c45eb1d84a7695d76c508fa1d90553a8155af6b9169228979b4a2d6654b76f7a"
+      },
+      {
+        "path": "parser-core/src/main/kotlin/com/enrpau/dualscreendex/parser/catalog/RomThemeMaterializer.kt",
+        "sha256": "0d537fd70cbc79fea5f2cf4221dd98a0bfbc43ef296e8aa671d268ee95c5cac1"
+      },
+      {
+        "path": "parser-core/src/main/kotlin/com/enrpau/dualscreendex/parser/catalog/TiledMapAsset.kt",
+        "sha256": "dc8119d258a9babe6a831a18a41c4896a49b79b9ba534b48c2d44ea5f1c764ef"
+      },
+      {
+        "path": "parser-core/src/main/kotlin/com/enrpau/dualscreendex/parser/parse/Gen3LocalMapResolver.kt",
+        "sha256": "d4b9365fee1456433fa6bbe02f2451fa6973cd94d1e9ccff70a97246b1581fc0"
+      },
+      {
+        "path": "parser-core/src/main/kotlin/com/enrpau/dualscreendex/parser/parse/LocalMapRasterBudget.kt",
+        "sha256": "6a2b97edc819bde128fc16ae06ca2cc3f83a2b27ffa050ff29d9d5a079167cba"
+      }
+    ],
+    "comparison": {
+      "status": "ACCEPTED",
+      "baselineRawReportSha256": "f5a00ec3f4c7381623a2056724bc0220311d2320ed2c006057004e1f36eb4d50",
+      "qualifiedRawReportSha256": "df6f662224908c8d2ca4c907f624ff9fb7e5ad57587a2b539d5a39ef8a1552e7",
+      "catalogs": 5,
+      "referenceErrors": 0,
+      "lostMaps": 0,
+      "changedPriorPixels": 0,
+      "unresolvedCandidates": 0,
+      "auditSha256": "6bd8b6a6351680f2623369b246f32c2b53e1502b84e051d48ee051010f06919b",
+      "adjudicationSha256": "3853e170134c881c0893d2b7bc62b8494e1e9d6cba96dda4db51eb44cf7b6207"
+    }
+  }
 }

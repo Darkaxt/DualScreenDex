@@ -32,6 +32,7 @@ export function validateReleaseEvidence({
   catalogSchemaRevision,
   priorCatalogSchemaRevision,
   readArtifact,
+  readSourceAtCommit,
 }) {
   assert(manifest?.schemaVersion === 2, "evidence manifest schemaVersion must be 2");
   assert(COMMIT.test(manifest.sourceCommit ?? ""), "evidence sourceCommit must be a full lowercase commit");
@@ -46,15 +47,20 @@ export function validateReleaseEvidence({
     "manifest corpus input count does not match canonical corpus");
   assert(manifest.corpus?.inputDigestSha256 === canonicalCorpus.inputDigestSha256,
     "manifest corpus digest does not match canonical corpus digest");
-  assert(["FRESH_EVIDENCE", "NONPARSER_REUSE"].includes(manifest.scopeDecision?.type),
-    "scopeDecision.type must be FRESH_EVIDENCE or NONPARSER_REUSE");
+  assert(["FRESH_EVIDENCE", "NONPARSER_REUSE", "BOUNDED_REQUALIFICATION"].includes(manifest.scopeDecision?.type),
+    "scopeDecision.type must be FRESH_EVIDENCE, NONPARSER_REUSE or BOUNDED_REQUALIFICATION");
+  const bounded = manifest.scopeDecision.type === "BOUNDED_REQUALIFICATION";
+  assert(bounded || manifest.boundedQualification == null,
+    "bounded qualification requires the explicit BOUNDED_REQUALIFICATION scope decision");
   assert(typeof manifest.scopeDecision?.attestation === "string" && manifest.scopeDecision.attestation.trim().length >= 20,
     "scopeDecision requires a meaningful attestation");
   assert(Array.isArray(manifest.artifacts), "evidence manifest requires artifacts");
 
   const evidenceAffectingPaths = changedPaths.filter(isEvidenceAffectingPath);
-  assert(evidenceAffectingPaths.length === 0,
-    `evidence-affecting paths changed after evidence source: ${evidenceAffectingPaths.join(", ")}`);
+  if (!bounded) {
+    assert(evidenceAffectingPaths.length === 0,
+      `evidence-affecting paths changed after evidence source: ${evidenceAffectingPaths.join(", ")}`);
+  }
   if (manifest.scopeDecision.type === "FRESH_EVIDENCE") {
     const nonPackagingPaths = changedPaths.filter(path => !EVIDENCE_PACKAGING_PATH.test(path));
     assert(nonPackagingPaths.length === 0,
@@ -103,6 +109,16 @@ export function validateReleaseEvidence({
     manifest.qaBaselineSourceCommit ?? manifest.sourceCommit,
   );
 
+  const boundedQualification = bounded ? validateBoundedQualification({
+    qualification: manifest.boundedQualification,
+    baseline: manifest,
+    baselineSummary: summary,
+    canonicalCorpus,
+    evidenceAffectingPaths,
+    readArtifact,
+    readSourceAtCommit,
+  }) : null;
+
   return {
     schemaVersion: 2,
     releaseCommit,
@@ -117,6 +133,56 @@ export function validateReleaseEvidence({
     stage7Closed: true,
     stage8Closed: true,
     localizationClosed: summary.schemaVersion === 3,
+    ...(boundedQualification ? { boundedQualification } : {}),
+  };
+}
+
+function validateBoundedQualification({
+  qualification, baseline, baselineSummary, canonicalCorpus, evidenceAffectingPaths,
+  readArtifact, readSourceAtCommit,
+}) {
+  assert(qualification?.schemaVersion === 1, "bounded qualification schemaVersion must be 1");
+  assert(COMMIT.test(qualification.sourceCommit ?? "") && qualification.sourceCommit !== baseline.sourceCommit,
+    "bounded qualification requires its own full source commit");
+  validateGenerator(qualification.generator, "bounded qualification");
+  validateCanonicalCorpus(qualification.corpus);
+  assert(qualification.corpus.inputCount < canonicalCorpus.inputCount &&
+    qualification.corpus.inputDigestSha256 !== canonicalCorpus.inputDigestSha256,
+  "bounded qualification must describe a distinct smaller input subset");
+  validateSummary(qualification.summary, qualification, qualification.corpus);
+  validateReceipt(qualification.executionReceipt, qualification, qualification.summary);
+  const comparison = qualification.comparison;
+  assert(comparison?.status === "ACCEPTED" &&
+    comparison.baselineRawReportSha256 === baselineSummary.rawReportSha256 &&
+    comparison.qualifiedRawReportSha256 === qualification.summary.rawReportSha256 &&
+    comparison.catalogs === qualification.summary.catalogs.materialized &&
+    ["referenceErrors", "lostMaps", "changedPriorPixels", "unresolvedCandidates"].every(field => comparison[field] === 0) &&
+    SHA256.test(comparison.auditSha256 ?? "") && SHA256.test(comparison.adjudicationSha256 ?? ""),
+  "bounded qualification requires a source-bound zero-gap saved-output comparison");
+
+  const reviewed = qualification.reviewedSourcePaths;
+  assert(Array.isArray(reviewed) && reviewed.length > 0 &&
+    reviewed.length === evidenceAffectingPaths.length &&
+    new Set(reviewed.map(entry => entry.path)).size === reviewed.length &&
+    reviewed.every(entry => typeof entry.path === "string" && isSafeRelativePath(entry.path) &&
+      evidenceAffectingPaths.includes(entry.path) && SHA256.test(entry.sha256 ?? "")),
+  "bounded reviewed source paths must exactly cover every evidence-affecting change");
+  assert(typeof readSourceAtCommit === "function", "bounded qualification requires qualified source commit inspection");
+  for (const entry of reviewed) {
+    const qualified = readSourceAtCommit(qualification.sourceCommit, entry.path);
+    assert(qualified != null && sha256(qualified) === entry.sha256,
+      `reviewed bytes do not match the qualified source commit: ${entry.path}`);
+    const current = readArtifact(entry.path);
+    assert(current != null && sha256(current) === entry.sha256,
+      `qualified source bytes changed after qualification: ${entry.path}`);
+  }
+  return {
+    sourceCommit: qualification.sourceCommit,
+    generatorSha256: qualification.generator.sha256,
+    inputCount: qualification.corpus.inputCount,
+    inputDigestSha256: qualification.corpus.inputDigestSha256,
+    auditSha256: comparison.auditSha256,
+    adjudicationSha256: comparison.adjudicationSha256,
   };
 }
 
@@ -364,6 +430,12 @@ function main(arguments_) {
   const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
   const canonicalCorpus = JSON.parse(readFileSync(canonicalPath, "utf8"));
   runGit(repositoryRoot, ["merge-base", "--is-ancestor", manifest.sourceCommit, releaseCommit]);
+  if (manifest.scopeDecision?.type === "BOUNDED_REQUALIFICATION") {
+    const qualifiedSource = manifest.boundedQualification?.sourceCommit;
+    assert(COMMIT.test(qualifiedSource ?? ""), "bounded qualification source commit is invalid");
+    runGit(repositoryRoot, ["merge-base", "--is-ancestor", manifest.sourceCommit, qualifiedSource]);
+    runGit(repositoryRoot, ["merge-base", "--is-ancestor", qualifiedSource, releaseCommit]);
+  }
   if (manifest.qaBaselineSourceCommit != null) {
     runGit(repositoryRoot, ["merge-base", "--is-ancestor", manifest.qaBaselineSourceCommit, manifest.sourceCommit]);
   }
@@ -403,6 +475,11 @@ function main(arguments_) {
       const absolute = resolve(repositoryRoot, path);
       assert(absolute.startsWith(rootPrefix), `Artifact escapes repository root: ${path}`);
       return existsSync(absolute) ? readFileSync(absolute) : null;
+    },
+    readSourceAtCommit: (commit, path) => {
+      const source = spawnSync("git", ["show", `${commit}:${path}`], { cwd: repositoryRoot });
+      assert(source.status === 0, `qualified source commit is missing: ${path}`);
+      return source.stdout;
     },
   });
   const encoded = `${JSON.stringify(result, null, 2)}\n`;

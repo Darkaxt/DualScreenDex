@@ -5,10 +5,16 @@ This is the canonical reviewer entry point for DualDex release readiness.
 ## Active marker
 
 - **Latest public stable:** [`v1.2.3`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.2.3), published October 18, 2026.
-- **Prepared next release:** `v1.2.3` preparation is closed by the verified stable publication below. The requested separate Unbound follow-up is now active; no newer release is prepared yet.
+- **Prepared next release:** `v1.2.4`, the separate Unbound follow-up. Parser changes and bounded qualification are complete; protected candidate signing/publication and final acceptance remain pending.
 - **Machine-readable readiness marker:** [`release/v1-ready.json`](../release/v1-ready.json), source-bound build/signing readiness, not stable-promotion acceptance.
 - **Current state:** **stablev1.2.3 is public and independently verified.** All68 downloaded assets,67 checksum entries, privacy checks and APK identity/signer/provenance pass. The final protected workflow passes all three jobs; its source-bound hosted Android JUnit has11 tests/zero failures/errors/skips. Physical validation was explicitly waived for this current release only, not claimed passed. Current-release cleanup removed568 exact superseded outputs/2,293,607,746 logical bytes, preserving all301 final catalogs, signed deliverables and private proof. Separate Unbound work remains in progress.
-- **Current qualification:** [October18 release reconciliation](reports/corpus/2026-10-18-release-qualification.md).
+- **Current qualification:** [Unbound follow-up: five affected inputs plus baseline reuse](reports/corpus/2026-10-18-unbound-followup-qualification.md); [completed1.2.3 release reconciliation](reports/corpus/2026-10-18-release-qualification.md).
+
+## Prepared 1.2.4 Unbound follow-up
+
+Source `d24b7e325346fbc978c570476979514ca21a0a85` restores **458/458 Unbound maps**, retaining all444 prior maps pixel-exact,2,803 prior POIs and12 scenes. Five freshly qualified affected/control catalogs pass exact saved-output digest/reference/pixel/regression adjudication; all16 surfaced candidates are closed. Liquid Crystal gains eight maps and EmeraldEx one, while Modern Emerald and Odyssey remain unchanged. The51 focused generated integration tests and retained313-PNG/1,252-crop Kotlin comparisons pass.
+
+The release manifest keeps the completed released139 full342 baseline below and a distinct five-input source/runtime/receipt, with exact changed-source pins. **No new complete full-corpus run is claimed or required.** The redundant partial attempt was cancelled and remains nonaccepted. Parser cache140 now rejects139; SQLite2 and existing resource limits are unchanged. Protected signing, current candidate/promotion acceptance, independent downloaded verification and cleanup still need completion. No physical-device or live-gameplay acceptance is claimed, and the1.2.3-only waiver is not transferred.
 
 ## Verified public 1.2.3 release
 
@@ -16,7 +22,7 @@ This is the canonical reviewer entry point for DualDex release readiness.
 
 [Protected candidate promotion39124872680](https://github.com/Darkaxt/DualScreenDex/actions/runs/39124872680) published RC4 without replacing its release or any of its68 assets. The committed exact-candidate user waiver records the physical-check exception honestly; final product source is unchanged from RC4. No physical device or signed-APK execution pass is claimed. The separate requested Unbound follow-up retains its own acceptance requirements.
 
-## Current source-bound corpus evidence
+## Released 1.2.3 source-bound corpus baseline
 
 The retained library has **342 distinct identities**, canonical digest `733e36785fa9a5b71bc4121343a6b6d2cbd27e43e08b3fddc2e2870bac1a0561`. One fresh complete execution binds frozen source `36d6c2d4ee690e9069cc0af6d1ddb48f9ad4fc89` and its exact 13-jar runtime. All originals passed both hash/stat checks unchanged. Routing is **301 selected / 2 ambiguous / 39 unmatched**, with zero parser/catalog/persistence errors. All 301 persisted catalogs, 5,403 sections and 10,296,409 references are independently audited and reconciled; no new production regression remains open. Language manifests are **286 resolved / 15 explicitly unknown**, never backfilled from shared text.
 
@@ -28,7 +34,7 @@ The retained library has **342 distinct identities**, canonical digest `733e3678
 - [Current release qualification and limits](reports/corpus/2026-10-18-release-qualification.md)
 - [Exact-source hosted Android acceptance](https://github.com/Darkaxt/DualScreenDex/actions/runs/39115516225): all **11 tests** pass with zero failures/errors/skips; four required screenshots inspected. The original eight-case coverage is preserved and three newer guide-isolation/picker-delivery cases also pass. A disposable API35 AOSP runner emulator was used; no physical or shared local device was touched.
 
-Parser cache revision **139** rejects stable v1.2.2 revision-83 caches; SQLite schema remains 2. The actual seeded83 rejection/miss/rewrite/exact-reopen regression passed. Partial compatibility, unsupported modules and fourteen Unbound budget-skipped maps remain explicit; family selection is not100% support. The separate requested Unbound follow-up release is now the active stage.
+That released baseline uses parser cache revision **139**, rejecting stable v1.2.2 revision-83 caches under SQLite schema2. Its seeded83 rejection/miss/rewrite/exact-reopen regression passed. Its fourteen explicit Unbound budget omissions are restored by the separately qualified140 follow-up above, not retroactively removed from the139 evidence. Other unsupported modules remain explicit; family selection is not100% support.
 
 Historical Stage7/8 infrastructure closures retain their original source attribution. Current hosted package/localization proof is independently source-bound above, not relabeled historical evidence. Production signing remains exclusively in the protected GitHub environment, and final promotion still requires the matching verified signed candidate and actual acceptance evidence.
 

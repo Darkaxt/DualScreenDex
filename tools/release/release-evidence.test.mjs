@@ -122,6 +122,7 @@ function validate(evidence, changedPaths = [], decisionPaths = []) {
     changedPaths,
     decisionPaths,
     readArtifact: path => evidence.artifacts.get(path) ?? null,
+    readSourceAtCommit: (commit, path) => evidence.qualifiedSources?.get(`${commit}:${path}`) ?? null,
   });
 }
 
@@ -505,4 +506,92 @@ test("accepts source-bound localization evidence with exact bounded recoveries",
   summary.recoveries.pop();
   replaceArtifact(evidence, "CORPUS_SUMMARY", summary);
   assert.throws(() => validate(evidence), /persistence error.*bounded recovery/i);
+});
+
+const boundedSource = "f".repeat(40);
+const boundedPath = "parser-core/src/main/kotlin/Maps.kt";
+
+function boundedFixture() {
+  const evidence = currentCorpusFixture();
+  const generator = { name: "parser-cli", schemaVersion: 16, sha256: "1".repeat(64) };
+  const corpus = { schemaVersion: 2, inputCount: 5, uniqueRomIdentityCount: 5, inputDigestSha256: "2".repeat(64) };
+  const summary = {
+    ...artifactValue(evidence, "CORPUS_SUMMARY"), sourceCommit: boundedSource, generator,
+    rawReportSha256: "3".repeat(64), corpusInputDigestSha256: corpus.inputDigestSha256,
+    inputCount: 5, uniqueRomIdentities: 5,
+    outcomes: { selected: 5, ambiguous: 0, noFamilyMatch: 0, total: 5, errors: 0 },
+    dataCompatibility: { complete: 1, partial: 4, unresolved: 0, total: 5, errors: 0 },
+    catalogs: { materialized: 5, persisted: 5, catalogErrors: 0, persistenceErrors: 0 },
+  };
+  const bytes = Buffer.from("qualified static map implementation\n");
+  evidence.artifacts.set(boundedPath, bytes);
+  evidence.qualifiedSources = new Map([[`${boundedSource}:${boundedPath}`, bytes]]);
+  evidence.manifest.scopeDecision = {
+    type: "BOUNDED_REQUALIFICATION",
+    attestation: "Reuse the unchanged released full-corpus baseline with separately qualified affected parser outputs.",
+  };
+  evidence.manifest.boundedQualification = {
+    schemaVersion: 1, sourceCommit: boundedSource, generator, corpus, summary,
+    executionReceipt: { schemaVersion: 1, sourceCommit: boundedSource, generator, rawReportSha256: summary.rawReportSha256, inputCount: 5 },
+    reviewedSourcePaths: [{ path: boundedPath, sha256: sha256(bytes) }],
+    comparison: {
+      status: "ACCEPTED", baselineRawReportSha256: rawReportDigest,
+      qualifiedRawReportSha256: summary.rawReportSha256, catalogs: 5,
+      referenceErrors: 0, lostMaps: 0, changedPriorPixels: 0, unresolvedCandidates: 0,
+      auditSha256: "4".repeat(64), adjudicationSha256: "5".repeat(64),
+    },
+  };
+  return evidence;
+}
+
+test("binds a bounded qualification without relabeling the released full-corpus baseline", () => {
+  const result = validate(boundedFixture(), [boundedPath]);
+  assert.equal(result.evidenceSourceCommit, sourceCommit);
+  assert.equal(result.inputCount, 342);
+  assert.equal(result.generatorSha256, generatorDigest);
+  assert.equal(result.boundedQualification.sourceCommit, boundedSource);
+  assert.equal(result.boundedQualification.inputCount, 5);
+  assert.equal(result.boundedQualification.generatorSha256, "1".repeat(64));
+});
+
+test("bounded qualification rejects absent records, unreviewed changes and changed qualified bytes", () => {
+  const absent = boundedFixture();
+  delete absent.manifest.boundedQualification;
+  assert.throws(() => validate(absent, [boundedPath]), /bounded qualification/i);
+  const unreviewed = boundedFixture();
+  assert.throws(() => validate(unreviewed, [boundedPath, "gradle.properties"]), /reviewed source paths/i);
+  const duplicate = boundedFixture();
+  duplicate.manifest.boundedQualification.reviewedSourcePaths.push(duplicate.manifest.boundedQualification.reviewedSourcePaths[0]);
+  assert.throws(() => validate(duplicate, [boundedPath]), /reviewed source paths/i);
+  const stale = boundedFixture();
+  stale.artifacts.set(boundedPath, Buffer.from("later parser change"));
+  assert.throws(() => validate(stale, [boundedPath]), /qualified source bytes/i);
+  const relabeled = boundedFixture();
+  relabeled.qualifiedSources.set(`${boundedSource}:${boundedPath}`, Buffer.from("different source at that commit"));
+  assert.throws(() => validate(relabeled, [boundedPath]), /qualified source commit/i);
+});
+
+test("bounded qualification rejects mismatched source, runtime, receipt, subset and unresolved comparison", () => {
+  const mutations = [
+    q => { q.sourceCommit = sourceCommit; },
+    q => { q.summary.sourceCommit = sourceCommit; },
+    q => { q.executionReceipt.generator = { ...q.generator, sha256: "9".repeat(64) }; },
+    q => { q.executionReceipt.rawReportSha256 = rawReportDigest; },
+    q => { q.executionReceipt.inputCount = 342; },
+    q => { q.corpus.inputDigestSha256 = corpusDigest; },
+    q => { q.corpus.inputCount = 342; },
+    q => { q.comparison.baselineRawReportSha256 = "9".repeat(64); },
+    q => { q.comparison.qualifiedRawReportSha256 = rawReportDigest; },
+    q => { q.comparison.catalogs = 4; },
+    q => { q.comparison.status = "PENDING"; },
+    ...["referenceErrors", "lostMaps", "changedPriorPixels", "unresolvedCandidates"].map(field => q => { q.comparison[field] = 1; }),
+  ];
+  for (const mutate of mutations) {
+    const evidence = boundedFixture();
+    mutate(evidence.manifest.boundedQualification);
+    assert.throws(() => validate(evidence, [boundedPath]));
+  }
+  const oldMode = boundedFixture();
+  oldMode.manifest.scopeDecision.type = "NONPARSER_REUSE";
+  assert.throws(() => validate(oldMode, [boundedPath]), /bounded qualification|evidence-affecting paths/i);
 });

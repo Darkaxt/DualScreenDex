@@ -47,6 +47,33 @@ const validSummary = {
   },
 };
 
+test("bounded qualification keeps every new public object closed to unknown fields", () => {
+  const manifest = JSON.parse(readFileSync(resolve(repositoryRoot, "release/compatibility-evidence.json"), "utf8"));
+  manifest.boundedQualification = {
+    schemaVersion: 1, sourceCommit: "a".repeat(40), generator: validSummary.generator,
+    corpus: { schemaVersion: 2, inputCount: 5, uniqueRomIdentityCount: 5, inputDigestSha256: "b".repeat(64) },
+    summary: structuredClone(validSummary),
+    executionReceipt: { schemaVersion: 1, sourceCommit: "a".repeat(40), generator: validSummary.generator,
+      rawReportSha256: "c".repeat(64), inputCount: 5 },
+    reviewedSourcePaths: [{ path: "parser-core/src/main/kotlin/Maps.kt", sha256: "d".repeat(64) }],
+    comparison: { status: "ACCEPTED", baselineRawReportSha256: "c".repeat(64),
+      qualifiedRawReportSha256: "e".repeat(64), catalogs: 5, referenceErrors: 0,
+      lostMaps: 0, changedPriorPixels: 0, unresolvedCandidates: 0,
+      auditSha256: "f".repeat(64), adjudicationSha256: "1".repeat(64) },
+  };
+  const check = value => validatePublicReleaseAsset({ name: "compatibility-evidence.json", bytes: Buffer.from(JSON.stringify(value)) });
+  check(manifest);
+  for (const select of [
+    q => q, q => q.generator, q => q.corpus, q => q.summary, q => q.summary.privacy,
+    q => q.executionReceipt, q => q.executionReceipt.generator,
+    q => q.reviewedSourcePaths[0], q => q.comparison,
+  ]) {
+    const unknown = structuredClone(manifest);
+    select(unknown.boundedQualification).privateContext = "redacted";
+    assert.throws(() => check(unknown), /unknown|shape/i);
+  }
+});
+
 test("accepts a structurally known privacy-safe Stage 7 summary", () => {
   validatePublicReleaseAsset({
     name: "dualdex-stage-07-corpus-evidence.json",

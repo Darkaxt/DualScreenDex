@@ -102,11 +102,31 @@ function structuralShape(value) {
 function validateCompatibilityEvidence(manifest) {
   assertClosedKeys(manifest, [
     "schemaVersion", "sourceCommit", "generator", "corpus", "scopeDecision", "artifacts",
-  ], ["cacheDecision", "qaBaselineSourceCommit"]);
+  ], ["cacheDecision", "qaBaselineSourceCommit", "boundedQualification"]);
   assertExactKeys(manifest.generator, ["name", "schemaVersion", "sha256"]);
   assertExactKeys(manifest.corpus, ["inputDigestSha256", "inputCount"]);
   assertExactKeys(manifest.scopeDecision, ["type", "attestation"]);
   assertObjectArray(manifest.artifacts, ["role", "path", "sha256"]);
+  if (manifest.boundedQualification != null) {
+    const qualification = manifest.boundedQualification;
+    assertExactKeys(qualification, [
+      "schemaVersion", "sourceCommit", "generator", "corpus", "summary", "executionReceipt",
+      "reviewedSourcePaths", "comparison",
+    ]);
+    assertExactKeys(qualification.generator, ["name", "schemaVersion", "sha256"]);
+    validateCanonicalCorpus(qualification.corpus);
+    validateStage7Summary(qualification.summary);
+    assertExactKeys(qualification.executionReceipt, [
+      "schemaVersion", "sourceCommit", "generator", "rawReportSha256", "inputCount",
+    ]);
+    assertExactKeys(qualification.executionReceipt.generator, ["name", "schemaVersion", "sha256"]);
+    assertObjectArray(qualification.reviewedSourcePaths, ["path", "sha256"]);
+    assertExactKeys(qualification.comparison, [
+      "status", "baselineRawReportSha256", "qualifiedRawReportSha256", "catalogs",
+      "referenceErrors", "lostMaps", "changedPriorPixels", "unresolvedCandidates",
+      "auditSha256", "adjudicationSha256",
+    ]);
+  }
   if (manifest.cacheDecision != null) {
     if (manifest.cacheDecision.type === "BUMP_REQUIRED") {
       assertExactKeys(manifest.cacheDecision, [
@@ -127,11 +147,17 @@ function validateCanonicalCorpus(corpus) {
 }
 
 function validateReleaseEvidenceValidation(validation) {
-  assertExactKeys(validation, [
+  assertClosedKeys(validation, [
     "schemaVersion", "releaseCommit", "evidenceSourceCommit", "scopeDecision", "cacheDecision",
     "generatorSchemaVersion", "generatorSha256", "corpusInputDigestSha256", "inputCount",
     "artifactCount", "stage7Closed", "stage8Closed", "localizationClosed",
-  ]);
+  ], ["boundedQualification"]);
+  if (validation.boundedQualification != null) {
+    assertExactKeys(validation.boundedQualification, [
+      "sourceCommit", "generatorSha256", "inputCount", "inputDigestSha256",
+      "auditSha256", "adjudicationSha256",
+    ]);
+  }
 }
 
 function validateRepositoryPolicy(policy) {
