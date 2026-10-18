@@ -593,7 +593,7 @@ class ProductionCompanionRuntime(
             publishTransitionFailure(generation, "IDLE")
             active
         }
-        return cancelled?.let { task -> PendingCatalogCancellation(task::completeSuperseded) }
+        return cancelled?.let { task -> PendingCatalogCancellation(task::completeCancellation) }
     }
 
     private fun loadInternal(
@@ -724,13 +724,13 @@ class ProductionCompanionRuntime(
             performanceRecorder.waitingForGameAccess()
             transition.superseded
         }
-        superseded?.completeSuperseded()
+        superseded?.completeCancellation()
     }
 
     fun restoreCatalog(sha256: String): Boolean {
         performanceRecorder.beginLoad(sha256, null)
         val transition = synchronized(this) { beginCatalogTransition(sha256, phase = "CACHE_REOPEN") }
-        transition.superseded?.completeSuperseded()
+        transition.superseded?.completeCancellation()
         val stored = catalogRepository?.readComplete(sha256)?.takeIf { candidate ->
             candidate.catalog.matchesIdentity(sha256)
         }
@@ -1575,7 +1575,7 @@ class ProductionCompanionRuntime(
             clearCatalogProjectionCaches()
             active
         }
-        cancelled?.completeSuperseded()
+        cancelled?.completeCancellation()
         mapAssetRenderCache.clear()
         parserWorker.shutdownNow()
     }
@@ -1819,7 +1819,7 @@ class ProductionCompanionRuntime(
                 }
             }
         }
-        superseded?.completeSuperseded()
+        superseded?.completeCancellation()
         return task.takeIf { committed }
     }
 
@@ -2026,7 +2026,8 @@ class ProductionCompanionRuntime(
         private val commitFence: ((() -> Unit) -> Boolean),
     ) {
         val cancellation = ParserCancellationSource()
-        private val completed = AtomicBoolean()
+        private var completed = false
+        private var cancellationCompletionDeferred = false
         @Volatile private var future: Future<*>? = null
 
         val isCancellationRequested: Boolean
@@ -2049,17 +2050,26 @@ class ProductionCompanionRuntime(
         }
 
         fun requestCancellation() {
+            // Transfer completion ownership before interruption can wake the worker's catch path.
+            synchronized(this) { cancellationCompletionDeferred = true }
             cancellation.cancel()
             future?.cancel(true)
+        }
+
+        fun completeCancellation() {
+            complete(Result.failure(IllegalStateException("catalog load was superseded")), cancellationOwner = true)
         }
 
         fun completeSuperseded() {
             complete(Result.failure(IllegalStateException("catalog load was superseded")))
         }
 
-        fun complete(result: Result<Unit>) {
-            if (!completed.compareAndSet(false, true)) return
-            val callback = onComplete ?: return
+        fun complete(result: Result<Unit>, cancellationOwner: Boolean = false) {
+            val callback = synchronized(this) {
+                if (completed || (cancellationCompletionDeferred && !cancellationOwner)) return
+                completed = true
+                onComplete
+            } ?: return
             runCatching { callback(result) }
         }
     }

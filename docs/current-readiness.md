@@ -5,7 +5,7 @@ This is the canonical reviewer entry point for DualDex release readiness.
 ## Active marker
 
 - **Latest public stable:** [`v1.2.2`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.2.2), published October 15, 2026.
-- **Prepared next release:** `v1.2.3`, using a fresh `v1.2.3-rc.2` protected signed candidate. RC1's verification run was intentionally canceled after a stale duplicate promotion assertion was identified; its tag is preserved, not replaced, and no signed/accepted RC1 is claimed. The new candidate and stable version are not yet published.
+- **Prepared next release:** `v1.2.3`, using a fresh `v1.2.3-rc.3` protected signed candidate. RC1 was intentionally canceled before signing; RC2 failed a host cancellation-race assertion before signing. Both original tags/runs are preserved. The reproduced production race is repaired and all 95 focused runtime/session controls pass; RC3's mandatory protected build/package/signing and stable promotion remain pending.
 - **Machine-readable readiness marker:** [`release/v1-ready.json`](../release/v1-ready.json), ready for the protected candidate build/signing gate, not stable-promotion acceptance.
 - **Current state:** fresh final342 corpus, all regression adjudications, guarded host/security/web/browser QA and exact-source hosted packaged Android/localization acceptance pass. Candidate signing, independent downloaded identity/signer/provenance verification and unchanged stable-promotion requirements remain open.
 - **Current qualification:** [October18 release reconciliation](reports/corpus/2026-10-18-release-qualification.md).

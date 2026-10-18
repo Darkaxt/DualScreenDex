@@ -2249,10 +2249,15 @@ class ProductionCompanionRuntimeTest {
         val identity = VerifiedSessionIdentity(rom.sha256, "file:///A.gba")
         val token = requireNotNull(gate.observe(identity))
         var staleCompletionPublications = 0
+        var completions = 0
+        val parserWorker = Executors.newSingleThreadExecutor { runnable ->
+            Thread(runnable, "authority-cancellation-regression").apply { isDaemon = true }
+        }
         val runtime = ProductionCompanionRuntime(
+            parserWorker = parserWorker,
             parseCatalog = { _, _, _ ->
                 parserEntered.countDown()
-                releaseParser.await(2, TimeUnit.SECONDS)
+                releaseParser.await()
                 parsed
             },
         )
@@ -2261,19 +2266,28 @@ class ProductionCompanionRuntimeTest {
                 LoadedRom("A.gba", rom),
                 commitIfCurrent = { commit -> gate.commitIfCurrent(token, commit) },
                 onComplete = {
+                    completions++
                     gate.commitIfCurrent(token) { staleCompletionPublications++ }
                 },
             )
             assertTrue(parserEntered.await(2, TimeUnit.SECONDS))
 
             val cancellation = requireNotNull(runtime.cancelPendingCatalogLoadForAuthorityTransition())
+            // Drain the interrupted worker before advancing the epoch, without a scheduling race.
+            parserWorker.submit {}.get(2, TimeUnit.SECONDS)
+            assertEquals("the worker must not steal the deferred completion", 0, completions)
+            assertEquals(0, staleCompletionPublications)
+
             gate.observe(VerifiedSessionIdentity("f".repeat(64), "file:///B.gba"))
             cancellation.complete()
+            cancellation.complete()
 
+            assertEquals(1, completions)
             assertEquals(0, staleCompletionPublications)
         } finally {
             releaseParser.countDown()
             runtime.close()
+            gate.close()
         }
     }
 
