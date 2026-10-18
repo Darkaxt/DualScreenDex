@@ -1,21 +1,22 @@
 {
   "schema": 2,
-  "versionName": "1.2.1",
-  "sourceCandidateTag": "v1.2.1-rc.2",
-  "sourceCandidateCommit": "d2fedab79b01ed11e80dbc2363d7e31cf5ed417b",
-  "sourceCandidateTree": "c7bb950985f4b83c6c26589b117c11b55d32068c",
-  "candidateProvenanceSha256": "2FECBD15AF8AD129AC4F49DE52E755CE3DC05722778E1581C0A937380872A7FF",
-  "githubSignedCandidateSha256": "00D4F1D516F7E9A2DCA72C7A38B81CF1852D46BEE049476FE97D29E6ACA697C7",
+  "versionName": "1.2.3",
+  "sourceCandidateTag": "v1.2.3-rc.4",
+  "sourceCandidateCommit": "dfadcc2369763ec8f0f9c3136458771c48af3329",
+  "sourceCandidateTree": "3fc33dfaf01eff9341de945abddd181ac4dea548",
+  "candidateProvenanceSha256": "2E620102B25B6D8A188AAE44F26E69E67B4A8787B5067FE52C4F7A7CAB455A08",
+  "githubSignedCandidateSha256": "6D373B3A6C60D08C233541F66CC3DBBC18D03E6A0C8B88D770E8063B321F7A3E",
   "validatedSignerSha256": "C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA",
-  "validationMode": "automated-passive-catalog",
-  "userAuthorizedAutomatedPromotion": true,
-  "gameplayRuntimeChanged": false,
-  "exactRomControls": 5,
-  "catalogPersistenceValidated": true,
-  "runtimeApiValidated": true,
-  "webPresentationValidated": true,
+  "validationMode": "packaged-android-user-waiver",
+  "userAuthorizedSkipDeviceValidation": true,
+  "deviceValidationWaiver": {
+    "authorizedBy": "user",
+    "authorizedDate": "2026-10-18",
+    "instruction": "Skip, the validation",
+    "scope": "v1.2.3 from v1.2.3-rc.4 only"
+  },
   "releaseCiValidated": true,
   "avdValidated": false,
   "thorValidated": false,
-  "authorizedDate": "2026-10-04"
+  "authorizedDate": "2026-10-18"
 }
