@@ -4,28 +4,27 @@ This is the canonical reviewer entry point for DualDex release readiness.
 
 ## Active marker
 
-- **Stable release:** [`v1.2.1`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.2.1)
-- **Current release:** production-signed, publicly published and independently verified on October 4, 2026. The requested scan/release batch is complete; further compatibility work awaits a separate decision.
-- **Release notes:** [`release/RELEASE_NOTES_1.2.1.md`](../release/RELEASE_NOTES_1.2.1.md)
-- **Machine-readable readiness marker:** [`release/v1-ready.json`](../release/v1-ready.json)
-- **Current state:** project-wide QA Stages 7–8 remain closed with zero blockers and zero referrals; the six-stage localization system retains its closed baseline. The current compiled Gen I/II catalog batch has passed one full source-bound evaluation of all 342 distinct current-library identities, with zero parser, catalog, persistence or decoded-reference errors and no regressions against retained evidence.
+- **Latest public stable:** [`v1.2.2`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.2.2), published October 15, 2026.
+- **Prepared next release:** `v1.2.3`, beginning with a new `v1.2.3-rc.1` protected signed candidate. Neither is published at this checkpoint; existing tags/assets must not be replaced.
+- **Machine-readable readiness marker:** [`release/v1-ready.json`](../release/v1-ready.json), ready for the protected candidate build/signing gate, not stable-promotion acceptance.
+- **Current state:** fresh final342 corpus, all regression adjudications, guarded host/security/web/browser QA and exact-source hosted packaged Android/localization acceptance pass. Candidate signing, independent downloaded identity/signer/provenance verification and unchanged stable-promotion requirements remain open.
+- **Current qualification:** [October18 release reconciliation](reports/corpus/2026-10-18-release-qualification.md).
 
 ## Current source-bound corpus evidence
 
-The October 3 library snapshot contains **342 inputs and 342 distinct parser identities**. All retained source files and normalized identities were rehashed. The frozen parser/catalog executable at `f7214d1f644aa97f3bdfacddd3de8dcefdede9f5` selected 300 catalogs; every selected catalog persisted and reopened exactly with an unchanged logical digest. Two inputs remain ambiguous and 40 have no mainline-family match. Language authority is resolved for 285 catalogs and explicitly unknown for 15; no multilingual build is claimed.
+The retained library has **342 distinct identities**, canonical digest `733e36785fa9a5b71bc4121343a6b6d2cbd27e43e08b3fddc2e2870bac1a0561`. One fresh complete execution binds frozen source `36d6c2d4ee690e9069cc0af6d1ddb48f9ad4fc89` and its exact 13-jar runtime. All originals passed both hash/stat checks unchanged. Routing is **301 selected / 2 ambiguous / 39 unmatched**, with zero parser/catalog/persistence errors. All 301 persisted catalogs, 5,403 sections and 10,296,409 references are independently audited and reconciled; no new production regression remains open. Language manifests are **286 resolved / 15 explicitly unknown**, never backfilled from shared text.
 
 - [Current corpus contract](../release/current-library-corpus.json)
 - [Release evidence manifest](../release/compatibility-evidence.json)
-- [Full342 release summary](reports/corpus/2026-10-03-full342-evidence.json)
-- [Full342 execution receipt](reports/corpus/2026-10-03-full342-execution.json)
-- [Full342 comparison and persistence gate](reports/corpus/2026-10-03-full342-verification.md)
-- [Current compatibility matrix](reports/corpus/2026-10-03-library-compatibility.md)
-- [QA Stage 7 closure](reports/qa-hardening/stage-07-closure.md)
-- [QA Stage 8 integrated closure](reports/qa-hardening/stage-08-closure.md)
+- [Full342 source-bound localization summary](reports/corpus/2026-10-18-full342-localization-evidence.json)
+- [Unmodified full342 execution receipt](reports/corpus/2026-10-18-full342-execution.json)
+- [Initial aggregate summary, retained unchanged](reports/corpus/2026-10-18-full342-evidence.json)
+- [Current release qualification and limits](reports/corpus/2026-10-18-release-qualification.md)
+- [Exact-source hosted Android acceptance](https://github.com/Darkaxt/DualScreenDex/actions/runs/39115516225): all **11 tests** pass with zero failures/errors/skips; four required screenshots inspected. The original eight-case coverage is preserved and three newer guide-isolation/picker-delivery cases also pass. A disposable API35 AOSP runner emulator was used; no physical or shared local device was touched.
 
-Parser cache revision **83** forces revision-82 catalogs to rebuild; SQL schema remains 2. The seeded prior-revision rejection/rebuild test passed. Optional capabilities remain bounded and fail closed; family selection does not mean every optional module is complete.
+Parser cache revision **139** rejects stable v1.2.2 revision-83 caches; SQLite schema remains 2. The actual seeded83 rejection/miss/rewrite/exact-reopen regression passed. Partial compatibility, unsupported modules and fourteen Unbound budget-skipped maps remain explicit; family selection is not100% support. The separate requested Unbound follow-up release remains pending after this release.
 
-The release workflow binds source lineage, exact generator/report/input digests, current corpus totals, catalog accounting, cache revision, protected tags and the signing environment. It still requires the exact-source hosted packaged-Android acceptance gate before signing. No physical-device or local-emulator validation is claimed.
+Historical Stage7/8 infrastructure closures retain their original source attribution. Current hosted package/localization proof is independently source-bound above, not relabeled historical evidence. Production signing remains exclusively in the protected GitHub environment, and final promotion still requires the matching verified signed candidate and actual acceptance evidence.
 
 ## Verified public 1.2.1 release
 

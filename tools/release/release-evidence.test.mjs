@@ -486,6 +486,22 @@ test("accepts source-bound localization evidence with exact bounded recoveries",
   assert.equal(result.evidenceSourceCommit, localizationSource);
   assert.equal(result.localizationClosed, true);
 
+  summary.packagedAcceptance.tests = 11;
+  replaceArtifact(evidence, "CORPUS_SUMMARY", summary);
+  assert.equal(validate(evidence).localizationClosed, true);
+  for (const tests of [0, 7, 9, 10, 12, 11.5, "11"]) {
+    summary.packagedAcceptance.tests = tests;
+    replaceArtifact(evidence, "CORPUS_SUMMARY", summary);
+    assert.throws(() => validate(evidence), /packaged localization acceptance is incomplete/i);
+  }
+  summary.packagedAcceptance.tests = 11;
+  for (const field of ["failures", "errors", "skipped"]) {
+    summary.packagedAcceptance[field] = 1;
+    replaceArtifact(evidence, "CORPUS_SUMMARY", summary);
+    assert.throws(() => validate(evidence), /packaged localization acceptance is incomplete/i);
+    summary.packagedAcceptance[field] = 0;
+  }
+
   summary.recoveries.pop();
   replaceArtifact(evidence, "CORPUS_SUMMARY", summary);
   assert.throws(() => validate(evidence), /persistence error.*bounded recovery/i);

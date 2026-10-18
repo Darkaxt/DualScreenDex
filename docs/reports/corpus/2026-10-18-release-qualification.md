@@ -1,6 +1,15 @@
 # Corpus / issue33 release qualification — October 18, 2026
 
-Status: **IN_PROGRESS — not Android acceptance or a published release.**
+Status: **IN_PROGRESS — host/corpus and current hosted Android acceptance qualified; signed release and candidate promotion pending.**
+
+## Packaged acceptance closure
+
+After specific user authorization, [hosted run39115516225](https://github.com/Darkaxt/DualScreenDex/actions/runs/39115516225) executed the existing API35 AOSP managed-device workflow at the exact frozen source36d6c2d4. All **11 cases passed**, with zero failures/errors/skips; actual JUnit SHA256 `11f100f231ce0eef3591435ad10b5dde683e1c6548eb85af118fd7b9aba6621d`. All four required downloaded screenshots were inspected. The job and its disposable runner completed; no physical or shared local device was used. This is debug packaged acceptance, not production signing or signed-candidate device validation.
+
+A bounded read of the already-audited generated language manifests independently counts286 resolved/15 unknown catalogs and verifies their manifest digests and overlay presence. The [new source-bound localization summary](2026-10-18-full342-localization-evidence.json) preserves the same corpus execution/receipt and adds this census plus actual packaged evidence. The earlier schema2 aggregate remains unchanged as historical preparation evidence.
+
+The old release validator's exact-eight assertion was stale: the current eleven-case suite retains the original eight and adds guide-failure isolation plus two picker-delivery controls. A focused RED reproduced rejection of the genuinely passed11 profile. The prospective policy now accepts only the known8/11 profiles, still rejecting unknown counts, fractional/string counts and every failure/error/skip; no source/hash/closure or signed-promotion requirement changes. All26 focused evidence/metadata tests pass. This corrects assistant-maintained qualification bookkeeping without inventing an eight-test result or rerunning Android/corpus suites.
+
 
 The [execution receipt](2026-10-18-full342-execution.json) and [aggregate summary](2026-10-18-full342-evidence.json) bind one complete qualification to frozen source `36d6c2d4ee690e9069cc0af6d1ddb48f9ad4fc89`, parser revision 139, SQLite schema 2 and report schema 16. They do not combine earlier affected runs into a fictitious full execution. Later release-summary tooling, challenge expectations and documentation do not change that parser/catalog runtime.
 
@@ -43,11 +52,11 @@ DualDex now distinguishes selected-file readback from RetroArch's loaded config,
 
 Stable `v1.2.2` uses parser revision 83. Current revision 139 intentionally invalidates older persisted output while retaining SQLite schema 2. The executed seeded regression `revision83CachesWithoutCompiledGen2RelationshipsAreRejectedAndCurrentReopens` proves old-reader rejection/cache miss and exact current rewrite/reopen.
 
-The release manifest retains Stage 7/8 infrastructure closures attributed to their original QA baseline `66bd216d9c370735666d5eb7438e83796a87eec7`. Those historical closures are not relabeled as this release's Android or signing acceptance. Current host/web/corpus evidence is described above; the remaining gates below are mandatory.
+The release manifest retains Stage 7/8 infrastructure closures attributed to their original QA baseline `66bd216d9c370735666d5eb7438e83796a87eec7`. Those historical closures are not relabeled as this release's Android or signing acceptance. Current host/web/corpus evidence and the separately source-bound hosted Android/localization closure are described above; remaining candidate/signing gates below are mandatory.
 
 ## Remaining release gates
 
-1. Obtain specific live Android authority and complete required packaged acceptance, including current source-bound localization acceptance. The new aggregate corpus summary is schema 2 and therefore correctly reports `localizationClosed: false` in evidence validation; it is not the schema-3 packaged-localization closure required by release metadata. Refresh that closure and the historical readiness marker only from actual acceptance evidence, not by changing booleans or relaxing policy. Physical Thor remains untouched without its own authority. Host/browser checks do not substitute for Android execution.
+1. Current hosted Android/localization acceptance and its source-bound readiness marker are complete. The earlier schema2 aggregate correctly returned `localizationClosed: false`; the new schema3 closure uses actual generated-manifest counts and eleven-case packaged evidence, not changed acceptance booleans. Signed-candidate device validation remains a separate promotion requirement; physical Thor is untouched without its own authority.
 2. Complete the unchanged protected candidate/stable promotion requirements. Recheck version availability before creating a new `v1.2.3-rc.1` candidate or `v1.2.3`; never replace an existing tag or asset.
 3. Sign only through the GitHub protected production environment; independently download and verify package/version, hashes, pinned certificate and provenance before release acceptance.
 4. Retain required compact proof/consumers, smart-sync and publish source, apply exact reviewed cleanup tickets, and reconcile the current-release criteria.

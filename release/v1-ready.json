@@ -1,10 +1,10 @@
 {
   "schema": 1,
-  "versionName": "1.2.1",
+  "versionName": "1.2.3",
   "applicationId": "com.darkaxt.dualdex",
   "stage": 8,
   "status": "ready-for-github-signing",
-  "verifiedDate": "2026-10-04",
+  "verifiedDate": "2026-10-18",
   "openV1LedgerItems": 0,
   "baseFirst50Selected": 50,
   "mapFirst50Available": 26,
@@ -183,7 +183,7 @@
   "gen1Gen3CoverageParserErrors": 0,
   "qaClosure": {
     "schemaVersion": 1,
-    "evidenceSourceCommit": "f7214d1f644aa97f3bdfacddd3de8dcefdede9f5",
+    "evidenceSourceCommit": "36d6c2d4ee690e9069cc0af6d1ddb48f9ad4fc89",
     "stage7Closed": true,
     "stage8Closed": true,
     "localizationClosed": true,
@@ -194,5 +194,9 @@
   "productionCertificateSha256": "C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA",
   "v121CurrentLibraryCorpusValidated": true,
   "v121CompiledGen1Gen2CoreExpansion": true,
-  "v121Revision83CacheRebuild": true
+  "v121Revision83CacheRebuild": true,
+  "v123Frozen342RegressionQualification": true,
+  "v123Revision139CacheRebuild": true,
+  "v123TruthfulRetroArchSetup": true,
+  "v123PackagedAndroidLocalizationAcceptance": true
 }

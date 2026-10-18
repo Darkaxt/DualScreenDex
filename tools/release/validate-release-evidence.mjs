@@ -229,7 +229,7 @@ function validateRecoveredLocalizationSummary(summary) {
   });
   assert(summary.catalogs.persisted + summary.recoveries.length === summary.catalogs.materialized,
     "bounded recovery does not account for every materialized catalog");
-  assert(summary.packagedAcceptance?.tests === 8 && summary.packagedAcceptance?.failures === 0 &&
+  assert([8, 11].includes(summary.packagedAcceptance?.tests) && summary.packagedAcceptance?.failures === 0 &&
     summary.packagedAcceptance?.errors === 0 && summary.packagedAcceptance?.skipped === 0 &&
     SHA256.test(summary.packagedAcceptance?.resultSha256 ?? ""),
   "packaged localization acceptance is incomplete");
