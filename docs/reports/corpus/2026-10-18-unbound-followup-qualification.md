@@ -1,6 +1,8 @@
 # Unbound follow-up qualification — October18
 
-Status: parser fix and bounded output comparison complete; protected candidate signing/publication and final release acceptance remain pending.
+Status: COMPLETE for the requested Unbound follow-up. [Stablev1.2.4](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.2.4) is public and independently verified; exact cleanup is complete. Broader all-ROM/gameplay compatibility is not claimed.
+
+[Protected stable workflow39147432351](https://github.com/Darkaxt/DualScreenDex/actions/runs/39147432351) passes all three jobs at `df6ef8d340eb7c35a8560965b63e6b3ec9074e45`. All68 downloaded assets/67 checksums, public privacy, source/run provenance and host cryptographic APK verification pass. Package/version/code are `com.darkaxt.dualdex` / `1.2.4` / `1020499`, with the pinned production signer. APK SHA256: `5ABDAA1D8911962D5DC61100FFAE23A56E47ECB84FD0AF393EE318645CAC2023`; provenance SHA256: `C65DF6FA866C12855440EE85545F1F4F0B140A1B329E382A016009C57D744933`. All62 shared evidence assets and three packaged web assets match RC1. The [exact candidate acceptance](../candidate-promotions/v1.2.4-rc.1.json) uses five saved-catalog reader/runtime/API/Chromium controls, with honest no-game-state and hosted screenshot limitations. No physical or signed-APK execution pass is claimed. Exact cleanup removes54 expendable members/269,332,480 logical bytes; five authoritative catalogs remain unchanged and pass SQLite integrity checks. The released139 baseline, source, runtime, admissions, original inputs, signed deliverables and compact proof remain retained.
 
 ## What was qualified
 
@@ -30,7 +32,7 @@ A separate retained-output test exercises the actual Kotlin codec/renderers agai
 
 The completed released139 full342 evidence remains attributed to its original `36d6c2d4ee690e9069cc0af6d1ddb48f9ad4fc89` source/runtime. Its canonical342 digest is `733e36785fa9a5b71bc4121343a6b6d2cbd27e43e08b3fddc2e2870bac1a0561`; report SHA256 is `f5a00ec3f4c7381623a2056724bc0220311d2320ed2c006057004e1f36eb4d50`.
 
-An unnecessary follow-up full342 attempt was cancelled at53 completed inputs after the user's correction. Its consumed authority, logs and partial output are preserved as cancelled, not successful acceptance or reusable execution authority. No replacement full-corpus run is required or scheduled.
+An unnecessary follow-up full342 attempt was cancelled at53 completed inputs after the user's correction. Its consumed authority, logs, cancellation proof and exact output inventory remain preserved as cancelled, not successful acceptance or reusable execution authority. Its nonaccepted partial SQLite derivatives were removed only after stable publication through the exact reviewed cleanup ticket. No replacement full-corpus run is required or scheduled.
 
 `BOUNDED_REQUALIFICATION` in the release manifest keeps the old full baseline and the fresh five-input summary/receipt separate. Every changed evidence-affecting source file is pinned to the qualified commit and checked against release bytes; unreviewed or later parser/build/generator changes fail closed. Existing cache, source-lineage, privacy, QA-closure, signing and promotion checks remain in force.
 

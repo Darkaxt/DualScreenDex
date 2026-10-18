@@ -1,6 +1,8 @@
 # Full-corpus regression validation, issue33 and release
 
-Status: IN_PROGRESS. Authorization: already_authorized by the user's October16 request to switch focus, validate the full corpus, fix the reported issue and publish a release; regressions must be fixed first.
+Status: COMPLETE for this corpus/issue33 release and the separately requested Unbound follow-up. Authorization: already_authorized by the user's October16 request to switch focus, validate the full corpus, fix the reported issue and publish a release; regressions must be fixed first.
+
+Final reconciliation: stablev1.2.3 and stablev1.2.4 are public and independently verified. The Unbound follow-up restores458/458 maps with all444 prior maps pixel-exact; protected1.2.4 workflow39147432351, exact68-asset/signature/provenance verification and ticketed cleanup close UB-01–04 and CR-01–07 with zero blockers/tracked deferrals in this specification. Current passive-catalog promotion uses its own five catalog/runtime/browser controls, not the earlier device waiver. Broader all-ROM100% compatibility remains unfinished and Pokescape-specific continuation is not resumed. See the current plan and release-readiness evidence.
 
 The October16 scheduling revision initially parked the unfinished Pokescape-only continuation. On October17 the user explicitly dropped that planned continuation in favor of an Unbound-focused follow-up release after the current release. Neither change claims Pokescape or the all-ROM100% parent complete, removes existing support, or authorizes live device testing. Previously accepted bounded parser134 work remains protected.
 
