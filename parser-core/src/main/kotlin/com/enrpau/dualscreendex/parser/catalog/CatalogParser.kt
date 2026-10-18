@@ -1057,9 +1057,14 @@ object CatalogMaterializer {
         worldMaps.assets.toSortedMap().values.toList()
             .takeIf { it.isNotEmpty() }
             ?.let { put(CatalogThemeAssetClass.WORLD_MAP, it) }
-        localMaps.assets.toSortedMap().values.mapNotNull { asset ->
-            runCatching { decodeNormalizedPng(asset.bytes) }.getOrNull()
-        }.takeIf { it.isNotEmpty() }
+        RomThemeMaterializer.selectAssets(
+            (localMaps.assets.keys + localMaps.tiledAssets.keys).sorted().asSequence().mapNotNull { key ->
+                runCatching {
+                    localMaps.assets[key]?.let { decodeNormalizedPng(it.bytes) }
+                        ?: localMaps.tiledAssets[key]?.let { TiledLocalMapRasterRenderer.render(it) }
+                }.getOrNull()
+            },
+        ).takeIf { it.isNotEmpty() }
             ?.let { put(CatalogThemeAssetClass.LOCAL_MAP, it) }
     }
 

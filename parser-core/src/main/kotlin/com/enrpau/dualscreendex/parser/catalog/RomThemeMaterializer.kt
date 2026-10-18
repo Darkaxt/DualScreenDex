@@ -44,8 +44,17 @@ object RomThemeMaterializer {
             palette.colors.all { it in 0..0xFFFFFF } &&
             palette.colors.distinct().size >= MINIMUM_DIRECT_COLORS
 
+    internal fun selectAssets(sprites: Sequence<RgbaSprite>): List<RgbaSprite> {
+        val selected = sortedMapOf<Long, RgbaSprite>()
+        sprites.forEach { sprite ->
+            selected.putIfAbsent(assetFingerprint(sprite), sprite)
+            if (selected.size > MAX_ASSETS_PER_CLASS) selected.remove(selected.lastKey())
+        }
+        return selected.values.toList()
+    }
+
     private fun classHistogram(sprites: List<RgbaSprite>): Map<Int, Double>? {
-        val selected = sprites.distinctBy(::assetFingerprint).sortedBy(::assetFingerprint).take(MAX_ASSETS_PER_CLASS)
+        val selected = selectAssets(sprites.asSequence())
         if (selected.isEmpty()) return null
         val aggregate = linkedMapOf<Int, Double>()
         selected.forEach { sprite ->

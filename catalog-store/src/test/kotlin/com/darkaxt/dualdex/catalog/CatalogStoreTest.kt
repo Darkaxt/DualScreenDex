@@ -45,6 +45,9 @@ import com.enrpau.dualscreendex.parser.catalog.IndexedMapAsset
 import com.enrpau.dualscreendex.parser.catalog.LevelUpRulesetSelector
 import com.enrpau.dualscreendex.parser.catalog.LocalMap
 import com.enrpau.dualscreendex.parser.catalog.LocalMapCatalog
+import com.enrpau.dualscreendex.parser.catalog.LocalMapAssetRenderer
+import com.enrpau.dualscreendex.parser.catalog.MapLighting
+import com.enrpau.dualscreendex.parser.catalog.TiledMapRasterCodec
 import com.enrpau.dualscreendex.parser.catalog.LocalMapLightingPolicy
 import com.enrpau.dualscreendex.parser.catalog.LocalMapNameDisposition
 import com.enrpau.dualscreendex.parser.catalog.textProjection
@@ -132,6 +135,39 @@ import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 class CatalogStoreTest {
+    @Test
+    fun tiledMapsReopenRenderExactlyAndRevision139CachesAreRejected() {
+        val raster = RgbaSprite(64, 32, IntArray(64 * 32) { pixel ->
+            0xff000000.toInt() or ((pixel % 16) shl 16) or ((pixel / 64 % 16) shl 8)
+        })
+        val asset = TiledMapRasterCodec.encode(raster)
+        val map = LocalMap("local/0102", "Generated", 0x0102, 64, 32, 4, 2, "local/0102/map")
+        val catalog = localizedFixtureCatalog(
+            completeCatalog("d".repeat(64)),
+            localMaps = LocalMapCatalog(maps = listOf(map), tiledAssets = mapOf(map.imageAssetKey to asset)),
+        )
+        val root = newRoot().toFile()
+        val source = CatalogSourceMetadata.direct("Synthetic.gba", 65536, "SYNTHETIC")
+        val cache = CatalogCache(root, JdbcCatalogDatabaseFactory)
+        cache.write(catalog, source, CatalogWriteProgress.complete())
+        val reopened = requireNotNull(CatalogCache(root, JdbcCatalogDatabaseFactory).readComplete(catalog.romSha256)).catalog
+        assertEquals(catalog, reopened)
+        assertArrayEquals(PngEncoder.encode(raster), requireNotNull(
+            LocalMapAssetRenderer.render(reopened.localMaps, map.imageAssetKey, MapLighting.NIGHT),
+        ).bytes)
+        JdbcCatalogDatabaseFactory.open(cache.fileFor(catalog.romSha256)).use { database ->
+            database.execute("UPDATE catalog_metadata SET parser_schema_version = 139 WHERE id = 1")
+            assertNull(CatalogReader(database).readComplete())
+        }
+        val stale = CatalogCache(root, JdbcCatalogDatabaseFactory).lookupComplete(catalog.romSha256)
+        assertEquals(CatalogCacheDecision.MISS_INCOMPLETE_OR_INCOMPATIBLE, stale.decision)
+        assertNull(stale.stored)
+        cache.write(catalog, source, CatalogWriteProgress.complete())
+        assertEquals(catalog, requireNotNull(CatalogCache(root, JdbcCatalogDatabaseFactory).readComplete(catalog.romSha256)).catalog)
+        assertEquals(140, CatalogSchema.parserSchemaVersion)
+        assertEquals(2, CatalogSchema.version)
+    }
+
     @Test
     fun runtimeLanguageSelectionSurvivesSqliteCloseAndReopen() {
         val catalog = runtimeLanguageCatalog()

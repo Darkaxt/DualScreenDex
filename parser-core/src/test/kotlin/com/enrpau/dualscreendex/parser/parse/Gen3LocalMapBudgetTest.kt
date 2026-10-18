@@ -12,6 +12,15 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class Gen3LocalMapBudgetTest {
+    @Test
+    fun repeatedMetatilesDoNotDropReachableMapsAtTheWholeRasterLimit() {
+        val session = RomAnalysisSession(RomImage(fixture(mixedLighting = false)), RomHeader(Platform.GBA, "SYNTHETIC MAP BUDGET"))
+        val result = Gen3LocalMapResolver.resolve(session, setOf(0), EngineFamily.EMERALD, null)
+            as LocalMapResolution.Resolved
+        assertEquals((0 until MAP_COUNT).toList(), result.catalog.maps.map { it.baseAreaId })
+        assertEquals(0, result.skippedMaps)
+    }
+
     @Test fun retainedPixelLimitKeepsValidMapsAndLaterAliasesWithoutInventingCompleteCoverage() =
         assertRetainedMaps(mixedLighting = false)
 
@@ -22,6 +31,24 @@ class Gen3LocalMapBudgetTest {
 
     @Test fun navigationPriorityAlsoAppliesToMixedStaticAndTimedRasters() =
         assertRetainedMaps(mixedLighting = true, prioritizeNavigation = true)
+
+    @Test
+    fun genuinelyOversubscribedTimedRastersStillPreservePriorMapsAndReportPartialCoverage() {
+        for (prioritizeNavigation in listOf(false, true)) {
+            val bytes = fixture(mixedLighting = true, connectedMaps = prioritizeNavigation)
+            repeat(MAP_COUNT) { bytes[0x1000 + it * 0x40 + 0x17] = 1 }
+            val session = RomAnalysisSession(RomImage(bytes), RomHeader(Platform.GBA, "SYNTHETIC MAP BUDGET"))
+            val encounters = if (prioritizeNavigation) setOf(0, 62) else setOf(0)
+            val result = Gen3LocalMapResolver.resolve(session, encounters, EngineFamily.EMERALD, null)
+                as LocalMapResolution.Resolved
+            val retained = if (prioritizeNavigation) (0 until 48).toList() + (60..63) else (0 until 51).toList() + 63
+            assertEquals(retained, result.catalog.maps.map { it.baseAreaId })
+            assertEquals(12, result.skippedMaps)
+            assertEquals(12, result.reasons.count { it.contains("raster-pixels") })
+            assertTrue(result.catalog.tiledAssets.isEmpty())
+            assertTrue(result.catalog.timedAssets.values.sumOf { it.pixelCount.toLong() } <= 100_000_000L)
+        }
+    }
 
     @Test
     fun nonOversubscribedMapsKeepNativeOrderAndAliasOwnership() {
@@ -53,24 +80,25 @@ class Gen3LocalMapBudgetTest {
         assertTrue(outcome.toString(), outcome is LocalMapResolution.Resolved)
         val result = outcome as LocalMapResolution.Resolved
         val catalog = result.catalog.validate()
-        val retained = if (prioritizeNavigation) (0 until 48).toList() + (60..63) else (0 until 51).toList() + 63
+        val retained = (0 until MAP_COUNT).toList()
         assertEquals(retained, catalog.maps.map { it.baseAreaId })
-        assertEquals(12, result.skippedMaps)
-        assertEquals(12, result.reasons.count { it.contains("raster-pixels") })
+        assertEquals(0, result.skippedMaps)
+        assertEquals(0, result.reasons.count { it.contains("raster-pixels") })
         assertTrue(result.reasons.any { it.contains("omitted localized") })
         assertEquals(mixedLighting, result.reasons.any { it.contains("indexed timed rasters") })
-        assertEquals(51, catalog.assets.size + catalog.timedAssets.size)
+        assertEquals(63, catalog.tiledAssets.size + catalog.timedAssets.size)
         assertEquals(mixedLighting, catalog.timedAssets.isNotEmpty())
-        assertTrue(catalog.assets.isNotEmpty())
+        assertTrue(catalog.assets.isEmpty())
+        assertTrue(catalog.tiledAssets.isNotEmpty())
         assertTrue(catalog.maps.sumOf { it.pixelWidth.toLong() * it.pixelHeight } > 100_000_000L)
-        assertTrue(catalog.maps.distinctBy { it.imageAssetKey }
-            .sumOf { it.pixelWidth.toLong() * it.pixelHeight } <= 100_000_000L)
-        val encodedBytes = catalog.assets.values.sumOf { it.bytes.size.toLong() } +
+        assertTrue(catalog.tiledAssets.values.sumOf { it.storedPixelCount.toLong() } +
+            catalog.timedAssets.values.sumOf { it.pixelCount.toLong() } <= 100_000_000L)
+        val encodedBytes = catalog.tiledAssets.values.sumOf { it.encodedBytes } +
             catalog.timedAssets.values.sumOf { it.compressedIndices.size.toLong() +
                 (it.baseColors.size + it.alternateColors.size) * Int.SIZE_BYTES }
         assertTrue(encodedBytes <= 64L * 1024 * 1024)
         assertEquals(catalog.maps.first().imageAssetKey, catalog.maps.last().imageAssetKey)
-        assertEquals(catalog.assets.keys + catalog.timedAssets.keys, catalog.maps.map { it.imageAssetKey }.toSet())
+        assertEquals(catalog.tiledAssets.keys + catalog.timedAssets.keys, catalog.maps.map { it.imageAssetKey }.toSet())
         assertEquals(retained.size, catalog.pois.size)
         assertEquals(catalog.maps.map { it.key }.toSet(), catalog.pois.map { it.localMapKey }.toSet())
     }

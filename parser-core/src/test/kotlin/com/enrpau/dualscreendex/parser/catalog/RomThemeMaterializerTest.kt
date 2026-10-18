@@ -7,6 +7,32 @@ import org.junit.Test
 
 class RomThemeMaterializerTest {
     @Test
+    fun `streaming selection preserves the legacy fingerprint order and first duplicate`() {
+        val sprites = (0 until 256).map { seed ->
+            RgbaSprite(16, 16, IntArray(256) { pixel -> 0xff000000.toInt() or (seed shl 8) or pixel })
+        }
+        fun fingerprint(sprite: RgbaSprite): Long {
+            var hash = -0x340d631b7bdddcdbL
+            hash = (hash xor sprite.width.toLong()) * 0x100000001b3L
+            hash = (hash xor sprite.height.toLong()) * 0x100000001b3L
+            sprite.argb.forEach { hash = (hash xor it.toLong()) * 0x100000001b3L }
+            return hash
+        }
+        for (size in listOf(0, 1, 15, 16, 17, 64, 256)) {
+            val input = sprites.take(size).shuffled(kotlin.random.Random(size)).flatMap {
+                listOf(it, it.copy(argb = it.argb.copyOf()))
+            }
+            val expected = input.distinctBy(::fingerprint).sortedBy(::fingerprint).take(16)
+            var visited = 0
+            val selected = RomThemeMaterializer.selectAssets(input.asSequence().onEach { visited++ }.constrainOnce())
+            assertEquals(input.size, visited)
+            assertEquals(expected, selected)
+            assertTrue(selected.size <= 16)
+            expected.zip(selected).forEach { (first, actual) -> assertTrue(first === actual) }
+        }
+    }
+
+    @Test
     fun `multi asset theme is deterministic under class and asset reordering`() {
         val evidence = linkedMapOf(
             CatalogThemeAssetClass.WORLD_MAP to listOf(

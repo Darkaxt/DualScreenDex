@@ -238,6 +238,7 @@ object LocalMapAssetRenderer {
         requested: MapLighting,
         time: MapTimeOfDay? = null,
     ): RenderedMapAsset? = catalog.assets[key]?.let { RenderedMapAsset(it.bytes, null) }
+        ?: catalog.tiledAssets[key]?.let { TiledLocalMapRasterRenderer.renderPng(it) }
         ?: catalog.indexedAssets[key]?.let { LocalMapRasterRenderer.renderPng(it, requested) }
         ?: catalog.timedAssets[key]?.let {
             TimedLocalMapRasterRenderer.renderPng(it, time ?: MapTimeOfDay(DEFAULT_HOUR, 0))

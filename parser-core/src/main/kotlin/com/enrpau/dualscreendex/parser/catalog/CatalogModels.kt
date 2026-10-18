@@ -707,6 +707,7 @@ data class LocalMapCatalog(
     val scenes: List<LocalMapScene> = emptyList(),
     val pois: List<LocalMapPoi> = emptyList(),
     val poiAssets: Map<String, PngMapAsset> = emptyMap(),
+    val tiledAssets: Map<String, TiledMapAsset> = emptyMap(),
 ) {
     /** Inventories are derived from shared structural declarations, never missing text. */
     val staticNameRequiredMapKeys: Set<String>
@@ -733,19 +734,17 @@ data class LocalMapCatalog(
         require(maps.map(LocalMap::baseAreaId).toSet().size == maps.size) {
             "local maps must bind unique base-area IDs"
         }
-        require(
-            assets.keys.intersect(indexedAssets.keys).isEmpty() &&
-                assets.keys.intersect(timedAssets.keys).isEmpty() &&
-                indexedAssets.keys.intersect(timedAssets.keys).isEmpty()
-        ) {
+        val rasterStores = listOf(assets.keys, indexedAssets.keys, timedAssets.keys, tiledAssets.keys)
+        require(rasterStores.sumOf { it.size } == rasterStores.flatten().toSet().size) {
             "local-map asset keys must belong to exactly one raster store"
         }
         val referencedAssetKeys = maps.map(LocalMap::imageAssetKey).toSet()
-        require(assets.keys + indexedAssets.keys + timedAssets.keys == referencedAssetKeys) {
+        require(rasterStores.flatten().toSet() == referencedAssetKeys) {
             "local-map assets must exactly match map asset keys"
         }
         indexedAssets.values.forEach(IndexedMapAsset::validate)
         timedAssets.values.forEach(TimedIndexedMapAsset::validate)
+        tiledAssets.values.forEach(TiledMapAsset::validate)
         maps.forEach { map ->
             requireNotNull(map.nameDisposition) { "local maps require a name disposition" }
             require(map.nameDisposition == LocalMapNameDisposition.STATIC_NAME_REQUIRED || map.displayName == null) {
@@ -770,6 +769,10 @@ data class LocalMapCatalog(
             val timed = timedAssets[map.imageAssetKey]
             require(timed == null || timed.pixelWidth == map.pixelWidth && timed.pixelHeight == map.pixelHeight) {
                 "local map ${map.key} timed raster dimensions do not match metadata"
+            }
+            val tiled = tiledAssets[map.imageAssetKey]
+            require(tiled == null || tiled.pixelWidth == map.pixelWidth && tiled.pixelHeight == map.pixelHeight) {
+                "local map ${map.key} tiled raster dimensions do not match metadata"
             }
         }
         val mapsByKey = maps.associateBy(LocalMap::key)

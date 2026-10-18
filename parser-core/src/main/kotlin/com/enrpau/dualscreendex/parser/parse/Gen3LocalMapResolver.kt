@@ -10,6 +10,8 @@ import com.enrpau.dualscreendex.parser.catalog.LocalMapRasterCodec
 import com.enrpau.dualscreendex.parser.catalog.PngMapAsset
 import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
 import com.enrpau.dualscreendex.parser.catalog.TimedIndexedMapAsset
+import com.enrpau.dualscreendex.parser.catalog.TiledMapAsset
+import com.enrpau.dualscreendex.parser.catalog.TiledMapRasterCodec
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.EngineFamily
 import com.enrpau.dualscreendex.parser.sprite.GbaDecodeContract
@@ -84,8 +86,9 @@ internal object Gen3LocalMapResolver {
             selectedHeaders = reachableHeaders
             descriptorBatch = readDescriptors(session.rom, selectedHeaders, names, cancellation, blankNameSections)
         }
+        val useTiledStaticAssets = descriptorBatch.descriptors.sumOf { it.pixelCount.toLong() } > MAX_TOTAL_PIXELS
         val descriptors = descriptorBatch.descriptors.let { descriptors ->
-            if (descriptors.sumOf { it.pixelCount.toLong() } <= MAX_TOTAL_PIXELS) {
+            if (!useTiledStaticAssets) {
                 descriptors
             } else {
                 val connectedIds = Gen3MapSceneResolver.cardinallyConnectedMapIds(
@@ -107,21 +110,11 @@ internal object Gen3LocalMapResolver {
         val maps = mutableListOf<LocalMap>()
         val assets = linkedMapOf<String, PngMapAsset>()
         val timedAssets = linkedMapOf<String, TimedIndexedMapAsset>()
+        val tiledAssets = linkedMapOf<String, TiledMapAsset>()
         val assetKeyByPng = linkedMapOf<PngMapAsset, String>()
         val assetKeyByTimed = linkedMapOf<TimedIndexedMapAsset, String>()
-        var encodedBytes = 0L
-        var uniquePixels = 0L
-        fun reserveAsset(pixelCount: Int, assetBytes: Long) {
-            require(uniquePixels + pixelCount <= MAX_TOTAL_PIXELS) {
-                "raster-pixels budget: retained $uniquePixels plus $pixelCount exceeds $MAX_TOTAL_PIXELS"
-            }
-            require(encodedBytes + assetBytes <= MAX_ENCODED_BYTES) {
-                "encoded-assets budget: retained $encodedBytes plus $assetBytes exceeds $MAX_ENCODED_BYTES"
-            }
-            // A rejected asset consumes neither budget and cannot discard previously retained maps.
-            uniquePixels += pixelCount
-            encodedBytes += assetBytes
-        }
+        val assetKeyByTiled = linkedMapOf<TiledMapAsset, String>()
+        val budget = LocalMapRasterBudget(MAX_TOTAL_PIXELS, MAX_ENCODED_BYTES)
         descriptors.forEach { descriptor ->
             cancellation.throwIfCancellationRequested()
             runCatching {
@@ -141,15 +134,22 @@ internal object Gen3LocalMapResolver {
                         paletteModel = requireNotNull(lightingModel),
                     )
                     assetKeyByTimed[asset] ?: descriptor.assetKey.also { newAssetKey ->
-                        reserveAsset(descriptor.pixelCount, compressed.size.toLong() + TIMED_PALETTE_BYTES)
+                        budget.reserve(descriptor.pixelCount, compressed.size.toLong() + TIMED_PALETTE_BYTES)
                         assetKeyByTimed[asset] = newAssetKey
                         timedAssets[newAssetKey] = asset
+                    }
+                } else if (useTiledStaticAssets) {
+                    val asset = TiledMapRasterCodec.encode(raster.toRgbaSprite(cancellation), cancellation)
+                    assetKeyByTiled[asset] ?: descriptor.assetKey.also { newAssetKey ->
+                        budget.reserve(asset.storedPixelCount, asset.encodedBytes)
+                        assetKeyByTiled[asset] = newAssetKey
+                        tiledAssets[newAssetKey] = asset
                     }
                 } else {
                     val asset = PngMapAsset(PngEncoder.encode(raster.toRgbaSprite(cancellation), cancellation))
                     cancellation.throwIfCancellationRequested()
                     assetKeyByPng[asset] ?: descriptor.assetKey.also { newAssetKey ->
-                        reserveAsset(descriptor.pixelCount, asset.bytes.size.toLong())
+                        budget.reserve(descriptor.pixelCount, asset.bytes.size.toLong())
                         assetKeyByPng[asset] = newAssetKey
                         assets[newAssetKey] = asset
                     }
@@ -188,6 +188,7 @@ internal object Gen3LocalMapResolver {
             maps = maps,
             assets = assets,
             timedAssets = timedAssets,
+            tiledAssets = tiledAssets,
             scenes = scenes,
             pois = poiResolution.pois,
         ).validate()
@@ -196,9 +197,13 @@ internal object Gen3LocalMapResolver {
             catalog = catalog,
             reasons = listOf(
                 "resolved ${maps.size} local maps from a compiled gMapGroups consumer",
-                "rendered ${assets.size + timedAssets.size} unique bounded ${format.label} 16x16 metatile rasters " +
+                "rendered ${assets.size + timedAssets.size + tiledAssets.size} unique bounded ${format.label} 16x16 metatile rasters " +
                     "from ROM tilesets and palettes",
-            ) + (if (scenes.isNotEmpty()) {
+            ) + (if (tiledAssets.isNotEmpty()) {
+                listOf("retained ${tiledAssets.size} lossless static tiled rasters under shared storage budgets")
+            } else {
+                emptyList()
+            }) + (if (scenes.isNotEmpty()) {
                 listOf("placed ${scenes.sumOf { it.placements.size }} maps in ${scenes.size} connection-derived scenes")
             } else {
                 emptyList()

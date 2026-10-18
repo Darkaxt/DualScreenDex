@@ -14,6 +14,8 @@ import com.enrpau.dualscreendex.parser.catalog.ParsedCatalog
 import com.enrpau.dualscreendex.parser.catalog.RgbaSprite
 import com.enrpau.dualscreendex.parser.catalog.SpeciesRecord
 import com.enrpau.dualscreendex.parser.catalog.TimedIndexedMapAsset
+import com.enrpau.dualscreendex.parser.catalog.TiledMapRasterCodec
+import com.enrpau.dualscreendex.parser.sprite.PngEncoder
 import com.enrpau.dualscreendex.parser.catalog.PngMapAsset
 import com.enrpau.dualscreendex.parser.catalog.RenderedMapAsset
 import com.enrpau.dualscreendex.parser.io.LoadedRom
@@ -442,6 +444,9 @@ class ServerContractTest {
             dark = IntArray(32) { 0xff440000.toInt() + it },
         )
         val corruptIndices = LocalMapRasterCodec.compress(ByteArray(256))
+        val tiledRaster = RgbaSprite(32, 16, IntArray(512) { 0xff123456.toInt() })
+        val tiled = TiledMapRasterCodec.encode(tiledRaster)
+        val corruptTiled = tiled.copy(compressedGrid = tiled.compressedGrid.copyOf())
         val runtime = DualDexRuntime()
         runtime.loadCatalog(
             "fixture.gba",
@@ -455,6 +460,8 @@ class ServerContractTest {
                         LocalMap("local/0011", "Route 102", 0x0011, 16, 16, 1, 1, "local/0011/map"),
                         LocalMap("local/0012", "Corrupt", 0x0012, 16, 16, 1, 1, "local/0012/map"),
                         LocalMap("local/0013", "Timed", 0x0013, 16, 16, 1, 1, "local/0013/map"),
+                        LocalMap("local/0014", "Tiled", 0x0014, 32, 16, 2, 1, "local/0014/map"),
+                        LocalMap("local/0015", "Corrupt tiled", 0x0015, 32, 16, 2, 1, "local/0015/map"),
                     ),
                     assets = mapOf(
                         "local/0010/map" to PngMapAsset(
@@ -480,12 +487,14 @@ class ServerContractTest {
                     timedAssets = mapOf(
                         "local/0013/map" to timedAsset(),
                     ),
+                    tiledAssets = mapOf("local/0014/map" to tiled, "local/0015/map" to corruptTiled),
                 ),
             ),
         )
         val server = DualDexServer(runtime, root, 0)
         try {
             corruptIndices.fill(0)
+            corruptTiled.compressedGrid.fill(0)
             server.start()
             val base = "http://127.0.0.1:${server.address.port}"
             val map = URI("$base/api/maps/local%2F0010%2Fmap.png").toURL().openConnection() as HttpURLConnection
@@ -527,6 +536,15 @@ class ServerContractTest {
             val incompleteTime = URI("$base/api/maps/local%2F0013%2Fmap.png?hour=12")
                 .toURL().openConnection() as HttpURLConnection
             assertEquals(400, incompleteTime.responseCode)
+
+            val tiledDay = get(server, "/api/maps/local%2F0014%2Fmap.png?lighting=DAY")
+            val tiledNight = get(server, "/api/maps/local%2F0014%2Fmap.png?lighting=NIGHT")
+            assertEquals(200, tiledDay.responseCode)
+            assertEquals("image/png", tiledDay.contentType)
+            assertEquals(PngEncoder.encode(tiledRaster).toList(), tiledDay.inputStream.readBytes().toList())
+            assertEquals(PngEncoder.encode(tiledRaster).toList(), tiledNight.inputStream.readBytes().toList())
+            assertEquals(tiledDay.getHeaderField("ETag"), tiledNight.getHeaderField("ETag"))
+            assertMapUnavailable(get(server, "/api/maps/local%2F0015%2Fmap.png"), "IllegalArgumentException")
 
             val missing = URI("$base/api/maps/local%2Fmissing.png").toURL().openConnection() as HttpURLConnection
             assertEquals(404, missing.responseCode)
