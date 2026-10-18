@@ -5,9 +5,9 @@ This is the canonical reviewer entry point for DualDex release readiness.
 ## Active marker
 
 - **Latest public stable:** [`v1.2.2`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.2.2), published October 15, 2026.
-- **Prepared next release:** `v1.2.3`, using a fresh `v1.2.3-rc.4` protected signed candidate. RC1 was canceled; RC2 exposed the repaired cancellation race. RC3 passed full build/Android gates and runner-side signing but failed public-evidence shape validation before release creation. Its original run/tag remain preserved. The strict public-schema correction passes all 100 release-policy tests; RC4 and stable publication remain pending.
-- **Machine-readable readiness marker:** [`release/v1-ready.json`](../release/v1-ready.json), ready for the protected candidate build/signing gate, not stable-promotion acceptance.
-- **Current state:** fresh final342 corpus, all regression adjudications, guarded host/security/web/browser QA and exact-source hosted packaged Android/localization acceptance pass. Candidate signing, independent downloaded identity/signer/provenance verification and unchanged stable-promotion requirements remain open.
+- **Prepared next release:** `v1.2.3`; its `v1.2.3-rc.4` production-signed draft candidate is independently verified. [Protected run39119545357](https://github.com/Darkaxt/DualScreenDex/actions/runs/39119545357) passed all three required jobs at `dfadcc2369763ec8f0f9c3136458771c48af3329`. RC1/2/3 retain their original cancellation/failure history in the qualification report; no tag or asset was replaced.
+- **Machine-readable readiness marker:** [`release/v1-ready.json`](../release/v1-ready.json), source-bound build/signing readiness, not stable-promotion acceptance.
+- **Current state:** corpus/regression QA, protected candidate signing, all68 downloaded asset digests, complete67-entry checksums, public privacy and APK identity/signer/provenance verification are complete. Fresh candidate-source hosted Android acceptance passes11 tests, zero failures/errors/skips, with four screenshots inspected. **Public promotion/stable publication are blocked on the actual signed-candidate Thor checklist and protected promotion acceptance.** Emulator authority does not supply physical acceptance; no physical device was touched.
 - **Current qualification:** [October18 release reconciliation](reports/corpus/2026-10-18-release-qualification.md).
 
 ## Current source-bound corpus evidence

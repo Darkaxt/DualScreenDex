@@ -1,6 +1,6 @@
 # Corpus / issue33 release qualification — October 18, 2026
 
-Status: **IN_PROGRESS — host/corpus and current hosted Android acceptance qualified; signed release and candidate promotion pending.**
+Status: **IN_PROGRESS — corpus and hosted Android acceptance qualified; production-signed RC4 draft independently verified. Public/stable promotion BLOCKED on signed-candidate Thor validation and protected promotion acceptance.**
 
 ## Packaged acceptance closure
 
@@ -66,14 +66,24 @@ RC3 [run39118451823](https://github.com/Darkaxt/DualScreenDex/actions/runs/39118
 
 The privacy failure is reproduced locally using the actual manifest-selected summary, not only a historical fixture:14 tests pass and that one acceptance test fails. Its added fields are the already-public compatibility aggregate and exact hosted-run ID/URL, not private data. The prospective validator accepts only those named optional shapes: aggregate keys stay closed and require nonnegative integer counts with exact totals; hosted-run metadata must be a paired positive integer ID and the exact matching repository Actions URL. Unknown nested fields, malformed counts, missing/mismatched/foreign run URLs, private paths and local identifiers still reject. All100 release-policy tests pass, with no errors/skips. A source-only preflight also validates all64 actual static public payloads selected by the workflow, including the manifest-selected corpus summary/receipt and new notes; dynamic signed APK/provenance/checksums/policy metadata still require the real protected run. The regression now reads the manifest-selected artifact so future evidence changes are checked before the build/signing stage. No evidence bytes, production app source, corpus output or historical failed run is rewritten by this correction.
 
-The replacement will be a fresh `v1.2.3-rc.4`, never a moved earlier tag. The app cancellation correction changes completion coordination, not parser/catalog/build/corpus-execution source or generated output; the frozen342 qualification remains applicable without rerunning originals. Prior host and frozen-source debug-package evidence retain their actual source attribution. RC4 must still pass the unchanged full protected release CI, fresh hosted packaged job, signing/publication and signed-candidate promotion gates.
+The replacement `v1.2.3-rc.4` is now a production-signed **draft prerelease**, release ID416388339, built from `dfadcc2369763ec8f0f9c3136458771c48af3329`. [Protected run39119545357](https://github.com/Darkaxt/DualScreenDex/actions/runs/39119545357) passed all three jobs: full verification/build, hosted packaged Android and protected signing/draft creation. No earlier tag or asset was moved or replaced. The parser/catalog/build/corpus-execution source and frozen342 outputs remain unchanged; no corpus rerun was performed.
+
+Independent downloads verify the exact68-asset GitHub set, every asset digest/size and all67 checksum entries. Provenance binds the repository, exact source/run/tag, version, compatibility evidence and protected signing authority. All68 downloaded assets pass public-privacy validation. Host-only cryptographic/package inspection confirms:
+
+| Signed candidate identity | Verified value |
+|---|---|
+| Application / version / code | `com.darkaxt.dualdex` / `1.2.3-rc.4` / `1020304` |
+| APK SHA256 | `6D373B3A6C60D08C233541F66CC3DBBC18D03E6A0C8B88D770E8063B321F7A3E` |
+| Pinned certificate SHA256 | `C5A02CECB47CDA41B618817EA684CBB6CCFDCC17A3E7D8243448175C8E3B2FBA` |
+| Provenance SHA256 | `2E620102B25B6D8A188AAE44F26E69E67B4A8787B5067FE52C4F7A7CAB455A08` |
+
+The fresh candidate-source API35 debug-package JUnit reports **11 tests, zero failures/errors/skips**, SHA256 `e9409bdb57bc12d2125f4d876d6d174c592c02b79366804432f03377f284b5ee`. All four downloaded screenshots were visually inspected: bootstrap, intentional indexing/guide recovery and synthetic cache reopen render without a crash dialog. The recovery banner is an injected control, not a production failure. Source-bound evidence artifact12133133706 has GitHub digest `sha256:0b3f5a1c7926c3fb9d9dbd8abec93812c97a121d9bdc225389a8118d38f07488`; results artifact12133328196 retains JUnit/screenshots. This is debug packaged execution on a disposable hosted emulator, **not physical execution of the signed APK**. Host APK verification used no install mode or device serial.
 
 ## Remaining release gates
 
-1. Current hosted Android/localization acceptance and its source-bound readiness marker are complete. The earlier schema2 aggregate correctly returned `localizationClosed: false`; the new schema3 closure uses actual generated-manifest counts and eleven-case packaged evidence, not changed acceptance booleans. Signed-candidate device validation remains a separate promotion requirement; physical Thor is untouched without its own authority.
-2. Complete the unchanged protected candidate/stable promotion requirements. Recheck version availability before creating the fresh `v1.2.3-rc.4` candidate or `v1.2.3`; never replace an existing tag or asset.
-3. Sign only through the GitHub protected production environment; independently download and verify package/version, hashes, pinned certificate and provenance before release acceptance.
-4. Retain required compact proof/consumers, smart-sync and publish source, apply exact reviewed cleanup tickets, and reconcile the current-release criteria.
-5. Investigate and qualify remaining Unbound fixes, then publish the separate requested follow-up release. Do not automatically resume unfinished Pokescape work.
+1. The existing [signed-candidate handoff](../../../release/POST_RELEASE_CHECKLIST.md) and [promotion contract](../../../release/candidate-promotions/README.md) require the user-performed Thor checklist for this exact APK/tag/signer, followed by protected promotion review. That actual acceptance is absent. The issue33 live config/status/restart and app cancellation changes are not limited to passive catalog generation/presentation; do not claim the passive substitution or fabricate its authorization. Physical Thor remains untouched. This external acceptance condition blocks public/stable promotion, not further corpus testing.
+2. After genuine acceptance, bind all68 existing immutable asset IDs/hashes and the successful packaged artifact digest in the candidate record; integrate the applicable tooling/record into the default branch and dispatch its protected promotion workflow. Never replace the existing candidate assets. Stable `v1.2.3` remains uncreated; recheck version availability and satisfy the unchanged candidate/source-tree metadata policy before stable signing/publication.
+3. Retain required compact proof/consumers and the signed draft, smart-sync and publish source, apply exact reviewed cleanup tickets when those consumers no longer need the outputs, and reconcile the current-release criteria. The downloaded candidate/package proof is retained locally beyond the hosted artifact expiry; no active evidence is deleted to manufacture cleanup completion.
+4. Only after the current release, investigate and qualify remaining Unbound fixes, then publish the separate requested follow-up release. Do not automatically resume unfinished Pokescape work.
 
 No acceptance policy, live-device gate, unsupported module or partial compatibility limit is waived by this report. Stage-closure review finds no additional acceptance-required consolidation: production challenge policy remains unchanged, release schemas use one supported set with explicit equality, and the prior shared setup/connection policy and source-owned artwork fixes remain intact.
