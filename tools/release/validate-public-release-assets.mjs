@@ -190,12 +190,20 @@ function validateStage7Summary(summary) {
 }
 
 function validateLocalizationSummary(summary) {
-  assertExactKeys(summary, [
+  assertClosedKeys(summary, [
     "schemaVersion", "status", "sourceCommit", "generator", "rawReportSha256",
     "corpusInputDigestSha256", "inputCount", "uniqueRomIdentities", "outcomes",
     "languageManifests", "catalogs", "recoveries", "packagedAcceptance", "openBlockers",
     "privacy",
-  ]);
+  ], ["dataCompatibility"]);
+  if (Object.hasOwn(summary, "dataCompatibility")) {
+    const counts = summary.dataCompatibility;
+    assertExactKeys(counts, ["complete", "partial", "unresolved", "total", "errors"]);
+    if (Object.values(counts).some(value => !Number.isSafeInteger(value) || value < 0) ||
+        counts.total !== summary.inputCount || counts.complete + counts.partial + counts.unresolved !== counts.total) {
+      throw new Error("Public compatibility aggregate is invalid");
+    }
+  }
   assertExactKeys(summary.generator, ["name", "schemaVersion", "sha256"]);
   assertExactKeys(summary.outcomes, ["selected", "ambiguous", "noFamilyMatch", "total", "errors"]);
   assertExactKeys(summary.languageManifests, ["resolved", "unknown"]);
@@ -208,7 +216,15 @@ function validateLocalizationSummary(summary) {
   for (const recovery of summary.recoveries) {
     assertExactKeys(recovery.generator, ["name", "schemaVersion", "sha256"]);
   }
-  assertClosedKeys(summary.packagedAcceptance, ["tests", "failures", "errors", "skipped", "resultSha256"], ["sourceCommit"]);
+  assertClosedKeys(summary.packagedAcceptance, ["tests", "failures", "errors", "skipped", "resultSha256"],
+    ["sourceCommit", "runId", "url"]);
+  if (Object.hasOwn(summary.packagedAcceptance, "runId") || Object.hasOwn(summary.packagedAcceptance, "url")) {
+    const { runId, url } = summary.packagedAcceptance;
+    if (!Number.isSafeInteger(runId) || runId <= 0 ||
+        url !== `https://github.com/Darkaxt/DualScreenDex/actions/runs/${runId}`) {
+      throw new Error("Public packaged acceptance workflow identity is invalid");
+    }
+  }
   if (summary.packagedAcceptance.sourceCommit != null &&
       !/^[0-9a-f]{40}$/.test(summary.packagedAcceptance.sourceCommit)) {
     throw new Error("Packaged acceptance source commit is invalid");

@@ -75,6 +75,42 @@ test("retains explicit historical packaged-test provenance without allowing unkn
   assert.throws(() => validatePublicReleaseAsset(input), /unknown|shape/i);
 });
 
+function currentLocalizationSummary() {
+  const manifest = JSON.parse(readFileSync(resolve(repositoryRoot, "release/compatibility-evidence.json"), "utf8"));
+  const summary = manifest.artifacts.find(artifact => artifact.role === "CORPUS_SUMMARY");
+  return JSON.parse(readFileSync(resolve(repositoryRoot, summary.path), "utf8"));
+}
+
+function publicLocalizationInput(summary) {
+  return { name: "dualdex-localization-corpus-evidence.json", bytes: Buffer.from(JSON.stringify(summary)) };
+}
+
+test("accepts the actual manifest-selected public localization evidence", () => {
+  validatePublicReleaseAsset(publicLocalizationInput(currentLocalizationSummary()));
+});
+
+test("keeps current aggregate and hosted-run evidence closed and internally bound", () => {
+  for (const mutate of [
+    summary => { summary.privateContext = "redacted"; },
+    summary => { summary.dataCompatibility.privateContext = "redacted"; },
+    summary => { summary.packagedAcceptance.privateContext = "redacted"; },
+    summary => { summary.dataCompatibility.complete = "0"; },
+    summary => { summary.dataCompatibility.partial = -1; },
+    summary => { summary.dataCompatibility.total++; },
+    summary => { summary.packagedAcceptance.runId = "39115516225"; },
+    summary => { summary.packagedAcceptance.runId = 1.5; },
+    summary => { summary.packagedAcceptance.url += "?extra=unreviewed"; },
+    summary => { summary.packagedAcceptance.url = "https://example.com/actions/runs/39115516225"; },
+    summary => { summary.packagedAcceptance.runId++; },
+    summary => { delete summary.packagedAcceptance.runId; },
+    summary => { delete summary.packagedAcceptance.url; },
+  ]) {
+    const summary = currentLocalizationSummary();
+    mutate(summary);
+    assert.throws(() => validatePublicReleaseAsset(publicLocalizationInput(summary)));
+  }
+});
+
 test("rejects Windows backslash and forward-slash absolute paths and Unix home paths", () => {
   for (const privateText of [
     "workspace=C:\\Users\\local-user\\project",
