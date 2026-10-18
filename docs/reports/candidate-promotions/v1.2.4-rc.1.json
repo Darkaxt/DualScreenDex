@@ -1,0 +1,75 @@
+{
+  "schema": 1,
+  "candidateTag": "v1.2.4-rc.1",
+  "apkSha256": "A8356631C73B57BCADD80EF72EC586237462DB1F356CDD259E03EB5AB2964EDD",
+  "sourceCommit": "12f1f92b8e8a512d4a92929abd0ca9e911a894fd",
+  "validationMode": "automated-passive-catalog",
+  "automatedValidationWorkflowRunUrl": "https://github.com/Darkaxt/DualScreenDex/actions/runs/39140446252",
+  "userAuthorizedAutomatedPromotion": true,
+  "gameplayRuntimeChanged": false,
+  "catalogPersistenceValidated": true,
+  "runtimeApiValidated": true,
+  "webPresentationValidated": true,
+  "releaseCiValidated": true,
+  "authorizationBasis": "User requested the separate Unbound fix and published release; this is the existing parser/catalog-only automated promotion route, not the v1.2.3 device waiver.",
+  "evidenceScope": "Five generated SQLite catalogs reopened by the actual reader, runtime and HTTP server; packaged-identical web assets exercised in Chromium. Expected no-game/undiscovered Pokedex state reviewed; map PNGs decoded through the browser. No populated gameplay, Local-map navigation, signed-APK execution or physical-device acceptance claim.",
+  "privateProofSha256": "090B31331CFCD0C3EB0C149E3E7D0BA41C34C71FA01E01939E8464E27CEB337B",
+  "screenshotReviewSha256": "F191898CB4101691F06A550A8293791A413251D8F062DED0C3D50A58566C88B2",
+  "packagedAndroidWorkflowRunUrl": "https://github.com/Darkaxt/DualScreenDex/actions/runs/39144979833",
+  "packagedAndroidJunit": {
+    "tests": 11,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "hostedScreenshotAcceptance": false,
+  "hostedScreenshotLimit": "The isolated run has no Close app / Wait overlay. It does not establish the cause of the original dialog or complete clean packaged visual acceptance. Screenshots are diagnostic; functional assertions passed.",
+  "presentationAcceptanceBasis": "Five exact generated-catalog reader/runtime/API/Chromium controls using web assets byte-identical to the signed APK, under the existing automated-passive-catalog policy.",
+  "controls": [
+    {
+      "romSha256": "7aa25bbf568f7cfcf6ee1cf2e9e6ff637350b3d0705c2375cabb6baa7d9739f7",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true,
+      "localMapCount": 458,
+      "screenshotSha256": "b743d6e4ae561b9a2f2b98203fa813180b2a0a549e2be4fe921ae12d0cac5cf3",
+      "mapPngSha256": "dbf51740de94b5b61072e81778502e1db22d9b2d572962c76d9cb9a2bee3df2d"
+    },
+    {
+      "romSha256": "475b6279da87cff642c302fda1cc4423b300f2130035898cac35d4e8fa4bafca",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true,
+      "localMapCount": 193,
+      "screenshotSha256": "9700901073667a1dd75cf215c285121ff5e873ad0b24357483ccf4a995403fbd",
+      "mapPngSha256": "d9f2817dedcf1c3576009c40ead56cb68f2b59517d824c298924d2d79d3bc5ed"
+    },
+    {
+      "romSha256": "af63734ab7e9790f3ac52ab46c41e8c048976bfa5caae77d1207674b327938a1",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true,
+      "localMapCount": 432,
+      "screenshotSha256": "a1fa15d192cf47c83dcdf3a95e5ecfc8b8f53a6800f0702e6438d90cae8dbd69",
+      "mapPngSha256": "afa74499c1f369bf913085c0976f1ab9f6aa38a6a2551f6c3696fe8f1ad54f9c"
+    },
+    {
+      "romSha256": "21a0306c4e5b5dc15ca70b74e713e3140612c1045aa298072993a6c5dd8d6895",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true,
+      "localMapCount": 557,
+      "screenshotSha256": "5b5bec0c5e8eaa7befa8054a7e484460294eace110c1c85bba73cd425bfbc678",
+      "mapPngSha256": "eee949cab85d0cc929793875ac5117fa4930f8ce63b28e831016da335b199399"
+    },
+    {
+      "romSha256": "44c7e3eafab19c39df7c39d54bafb78a1d9caf7c371244b6f5efb12cfd98d0d0",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true,
+      "localMapCount": 110,
+      "screenshotSha256": "58aac0bda67a67748116bdcd0e511196cd74edbfd0c80cfe81354c6d3a9a27a9",
+      "mapPngSha256": "54f8b189623feb3eea973c0053ec92ab18402be52c918a39fc76715134a04ce7"
+    }
+  ]
+}
