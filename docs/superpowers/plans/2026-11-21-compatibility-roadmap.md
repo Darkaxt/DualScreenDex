@@ -88,7 +88,7 @@ No live ADB/device gates for parser-only work (memory `dualdex-no-ad-hoc-live-ad
 | --- | --- | --- | --- |
 | B0 | Done | f0fc4a7c, test fixture fix | Issue #33 answered and closed; v1.2.4 notes link fixed; PR #32 closed as stale; npm audit 0, companion-web 365/365, release tools 107/107. |
 | B1 | Done | a23be727, f27e2736, 32f65b9e, 98028c12, 90cc4c67, 25bc99f8 (from PR #35) | Skipped: 104c3479 (shipped in 1.2.2), 2ee4e886 (superseded by lazy theme selection), 06b80bb7 (cache bump replaced by 141), 17d8089d (merge). |
-| R1 | Next | — | B0+B1 gated host tests: app 693, parser-core 2658, catalog-store 130 tests, 0 failed (corpus-dependent tests skipped). |
-| B2 | Pending | — | — |
+| R1 | Done | 160861fe | [R1 report](../../reports/corpus/2026-11-21-r1-corpus-refresh.md): 342 inputs, 0 errors, originals unchanged; 0 regressions, 8 LOCAL_MAP gains (mean 79.875%→79.911%); 2 h 52 m vs 4 h 05 m. Evidence JSON switch deferred to B4. Host tests before R1: app 693, parser-core 2658, catalog-store 130, 0 failed. |
+| B2 | Next | — | — |
 | B3 | Pending | — | — |
 | B4 | Pending | — | — |
