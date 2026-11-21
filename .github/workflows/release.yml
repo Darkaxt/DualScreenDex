@@ -684,6 +684,10 @@ jobs:
           cp docs/reports/localization/final-translation-system-closure.md "$ASSETS/dualdex-full-translation-system-closure.md"
           release_notes="release/RELEASE_NOTES_${RELEASE_TAG#v}.md"
           test -s "$release_notes"
+          if grep -nE '\]\((\.\.?/|docs/|release/|reports/)' "$release_notes"; then
+            echo "::error file=$release_notes::Release notes are published as the GitHub release body; use absolute https://github.com/... links, not repository-relative links."
+            exit 1
+          fi
           cp "$release_notes" "$ASSETS/RELEASE_NOTES.md"
 
           apk_sha256="$(sha256sum "$APK" | cut -d ' ' -f 1 | tr '[:lower:]' '[:upper:]')"

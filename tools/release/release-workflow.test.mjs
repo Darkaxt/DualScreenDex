@@ -458,6 +458,7 @@ test("publishes independently gated compatibility and UI-conformance evidence", 
   assert.match(workflow, /\.gen1Gen3CoverageParserErrors == 0/);
   assert.match(workflow, /release\/RELEASE_NOTES_\$\{RELEASE_TAG#v\}\.md/);
   assert.match(workflow, /test -s "\$release_notes"/);
+  assert.match(workflow, /grep -nE .*"\$release_notes"; then\r?\n\s+echo "::error[^\n]*absolute https:\/\/github\.com[^\n]*\r?\n\s+exit 1/);
   assert.match(workflow, /\.v11Rc4HotfixBoundedRomIndex == true/);
   assert.match(workflow, /has\(\"debugApkSha256\"\) \| not/);
 });

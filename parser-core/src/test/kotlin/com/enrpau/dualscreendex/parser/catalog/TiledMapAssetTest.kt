@@ -46,6 +46,32 @@ class TiledMapAssetTest {
     }
 
     @Test
+    fun themeCollectorReportsUndecodableLocalMapsInsteadOfDroppingThemSilently() {
+        val valid = raster()
+        val catalog = LocalMapCatalog(
+            maps = listOf(
+                LocalMap("local/0", "Generated", 0, 64, 32, 4, 2, "map/0"),
+                LocalMap("local/1", "Generated", 1, 64, 32, 4, 2, "map/1"),
+            ),
+            assets = mapOf(
+                "map/0" to PngMapAsset(PngEncoder.encode(valid)),
+                "map/1" to PngMapAsset(ByteArray(40) { 7 }),
+            ),
+        )
+        val skipped = mutableListOf<String>()
+
+        val theme = CatalogMaterializer.catalogThemeAssets(
+            emptyMap(),
+            TrainerAssetCatalog(),
+            WorldMapCatalog(),
+            catalog,
+        ) { skipped += it }
+
+        assertEquals(listOf(valid), theme[CatalogThemeAssetClass.LOCAL_MAP])
+        assertEquals(listOf("map/1"), skipped)
+    }
+
+    @Test
     fun themeCollectorBoundsMixedStaticBackingsWithoutChangingTheSelectedPixels() {
         val rasters = (0 until 40).map { seed ->
             RgbaSprite(32, 16, IntArray(512) { pixel -> 0xff000000.toInt() or (seed shl 16) or pixel })

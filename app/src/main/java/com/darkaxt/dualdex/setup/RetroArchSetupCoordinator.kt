@@ -51,6 +51,7 @@ import com.darkaxt.dualdex.storage.SafProviderRetryDisposition
 import com.darkaxt.dualdex.storage.StoredSafIndexEligibility
 import com.darkaxt.dualdex.web.ProductionCompanionRuntime
 import com.darkaxt.dualdex.web.GuideLoadFailure
+import com.darkaxt.dualdex.web.completeAfter
 import com.enrpau.dualscreendex.companion.api.RetroArchView
 import com.enrpau.dualscreendex.companion.api.SaveCandidateView
 import com.enrpau.dualscreendex.companion.api.SaveRamView
@@ -329,9 +330,7 @@ class RetroArchSetupCoordinator(
         closed = true
         heartbeatTask?.cancel(false)
         heartbeatTask = null
-        val catalogCancellation = runtime.cancelPendingCatalogLoadForAuthorityTransition()
-        sessionEpoch.close()
-        catalogCancellation?.complete()
+        runtime.cancelPendingCatalogLoadForAuthorityTransition().completeAfter { sessionEpoch.close() }
         activeEntry.getAndSet(null)?.let { activationGate.cancel(it.sourceId) }
         heartbeat.shutdownNow()
         battleMemory.close()
@@ -572,10 +571,9 @@ class RetroArchSetupCoordinator(
                 } else {
                     null
                 }
-                val token = sessionEpoch.observe(
-                    sourceVerificationEntry?.sessionIdentity(resolution),
-                )
-                catalogCancellation?.complete()
+                val token = catalogCancellation.completeAfter {
+                    sessionEpoch.observe(sourceVerificationEntry?.sessionIdentity(resolution))
+                }
                 val candidateEntry = sourceVerificationEntry?.takeIf { token != null }
                 val previousEntry = activeEntry.getAndSet(candidateEntry)
                 if (previousEntry != candidateEntry) {
@@ -670,9 +668,7 @@ class RetroArchSetupCoordinator(
     }
 
     private fun suspendCommandAuthority(message: String) {
-        val catalogCancellation = runtime.cancelPendingCatalogLoadForAuthorityTransition()
-        sessionEpoch.observe(null)
-        catalogCancellation?.complete()
+        runtime.cancelPendingCatalogLoadForAuthorityTransition().completeAfter { sessionEpoch.observe(null) }
         activeEntry.getAndSet(null)?.let { activationGate.cancel(it.sourceId) }
         battleMemory.updateSession(false, null, null)
         update {
@@ -1104,9 +1100,7 @@ class RetroArchSetupCoordinator(
         val hadEntries = entries.getAndSet(emptyList()).isNotEmpty()
         val previousEntry = activeEntry.getAndSet(null)
         if (!hadEntries && previousEntry == null) return
-        val catalogCancellation = runtime.cancelPendingCatalogLoadForAuthorityTransition()
-        sessionEpoch.observe(null)
-        catalogCancellation?.complete()
+        runtime.cancelPendingCatalogLoadForAuthorityTransition().completeAfter { sessionEpoch.observe(null) }
         previousEntry?.let { activationGate.cancel(it.sourceId) }
         battleMemory.updateSession(false, null, null)
         lastSaveCandidates.set(emptyList())

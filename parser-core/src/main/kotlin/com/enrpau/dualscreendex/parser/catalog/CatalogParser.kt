@@ -945,9 +945,10 @@ object CatalogMaterializer {
             }
         }.getOrNull() ?: TrainerAssetCatalog()
         cancellation.throwIfCancellationRequested()
+        val skippedThemeLocalMaps = mutableListOf<String>()
         val theme = runCatching {
             materializeTheme(
-                catalogThemeAssets(species, trainerAssets, worldMaps, localMaps),
+                catalogThemeAssets(species, trainerAssets, worldMaps, localMaps) { skippedThemeLocalMaps += it },
                 emptyList(),
             ).validate()
         }.getOrElse { CatalogTheme.neutral() }
@@ -1011,6 +1012,12 @@ object CatalogMaterializer {
                             "abilities=${it.mechanicsByAbility.size}",
                     )
                 }
+                if (skippedThemeLocalMaps.isNotEmpty()) {
+                    add(
+                        "theme: skipped ${skippedThemeLocalMaps.size} undecodable local map assets " +
+                            "(first: ${skippedThemeLocalMaps.first()})",
+                    )
+                }
                 if (unjoinedLearnsetRows > 0) {
                     add("learnset rulesets: omitted $unjoinedLearnsetRows physical-table rows outside the published species domain")
                 }
@@ -1043,6 +1050,7 @@ object CatalogMaterializer {
         trainerAssets: TrainerAssetCatalog,
         worldMaps: WorldMapCatalog,
         localMaps: LocalMapCatalog,
+        onSkippedLocalMap: (String) -> Unit = {},
     ): Map<CatalogThemeAssetClass, List<RgbaSprite>> = buildMap {
         species.entries.asSequence()
             .sortedBy { it.key }
@@ -1062,6 +1070,9 @@ object CatalogMaterializer {
                 runCatching {
                     localMaps.assets[key]?.let { decodeNormalizedPng(it.bytes) }
                         ?: localMaps.tiledAssets[key]?.let { TiledLocalMapRasterRenderer.render(it) }
+                }.onFailure { failure ->
+                    if (failure is java.util.concurrent.CancellationException) throw failure
+                    onSkippedLocalMap(key.toString())
                 }.getOrNull()
             },
         ).takeIf { it.isNotEmpty() }

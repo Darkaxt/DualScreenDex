@@ -180,6 +180,18 @@ internal class PendingCatalogCancellation(
     }
 }
 
+/**
+ * Runs the authority [transition] and then releases the cancelled load's completion, even if the
+ * transition throws. Once cancellation is requested only this hand-off can notify the load's waiter,
+ * so skipping it would leave that waiter blocked forever.
+ */
+internal inline fun <T> PendingCatalogCancellation?.completeAfter(transition: () -> T): T =
+    try {
+        transition()
+    } finally {
+        this?.complete()
+    }
+
 /** Production ROM catalog runtime. It deliberately has no simulator dependency or battle generator. */
 class ProductionCompanionRuntime(
     private val parserWorker: ExecutorService = Executors.newSingleThreadExecutor { runnable ->
