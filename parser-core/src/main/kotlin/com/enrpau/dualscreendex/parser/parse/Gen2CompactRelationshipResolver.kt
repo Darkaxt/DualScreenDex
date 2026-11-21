@@ -14,8 +14,8 @@ import com.enrpau.dualscreendex.parser.model.Gen2CompactRelationshipContract
  * [dec bc]; ld hl, table; add hl, bc; add hl, bc; ld a, [hli]; ld h, [hl]; ld l, a; ret`, using the same
  * helper (and decrement) as the compact base-stat consumer, so row N is base-stat row N.
  *
- * Two row ABIs are recognized, each from its own compiled consumer in the same bank:
- * - `$FF`-terminated rows with `species, form` targets: a width consumer that reads the method with
+ * Two row ABIs are recognized, each from its own compiled consumer of the table bank:
+ * - `$FF`-terminated rows with `species, form` targets: a width consumer (in any bank) that reads the method with
  *   `ld a, BANK; call GetFarByte`, then skips three bytes for exactly the three compared methods and two
  *   otherwise before reading the target word from the same bank.
  * - Zero-terminated rows with species-byte targets: the pokecrystal pre-evolution walker over this table
@@ -54,7 +54,7 @@ internal object Gen2CompactRelationshipResolver {
         }
         val (bank, table) = consumers.singleOrNull() ?: return null
         if (table + rows * 2 > minOf((bank + 1) * BANK_BYTES, rom.size)) return null
-        val wide = widthConsumerMethods(rom, bank)
+        val wide = widthConsumerMethods(session, bank)
         val walkers = Gen2CompiledRelationshipResolver.preEvolutionWalkers(rom, bank, session.cancellation)
         val byteRows = walkers.isNotEmpty() && walkers.all { (root, bound) -> root == table && bound <= rows }
         val contract = when {
@@ -165,12 +165,16 @@ internal object Gen2CompactRelationshipResolver {
         return Row(structuralFailure = "compact learnset exceeds the entry budget")
     }
 
-    /** The three methods given an extra parameter byte by the sole width consumer in [bank], or null. */
-    private fun widthConsumerMethods(rom: RomImage, bank: Int): Set<Int>? {
-        val start = bank * BANK_BYTES
-        val end = minOf(start + BANK_BYTES, rom.size) - WIDTH.size
+    /**
+     * The three methods given an extra parameter byte by the width consumer that far-reads [bank], or null.
+     * The consumer may live in any bank (Polished Crystal keeps it outside the table bank); both of its
+     * far-read bank operands must name the table bank, and every such consumer must agree.
+     */
+    private fun widthConsumerMethods(session: RomAnalysisSession, bank: Int): Set<Int>? {
+        val rom = session.rom
         val found = mutableSetOf<Set<Int>>()
-        for (offset in start..end) {
+        for (offset in 0..rom.size - WIDTH.size) {
+            if (offset % 4096 == 0) session.cancellation.throwIfCancellationRequested()
             if (rom.u8(offset) != 0x3E || !matches(rom, offset, WIDTH)) continue
             if (rom.u8(offset + 1) != bank || rom.u8(offset + 29) != bank) continue
             val methods = setOf(rom.u8(offset + 13), rom.u8(offset + 17), rom.u8(offset + 21))

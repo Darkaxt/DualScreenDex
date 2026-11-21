@@ -102,7 +102,8 @@ class Gen2CompactRelationshipResolverTest {
     private companion object {
         const val BANK3 = 0xC000
         const val CONSUMER = BANK3 + 0x2000
-        const val WIDTH = BANK3 + 0x2100
+        // Bank 2: the width consumer far-reads the bank-3 table from another bank, as in Polished Crystal.
+        const val WIDTH = 0xA000
         const val TRADE = BANK3 + 0x2200
         const val ROW = BANK3 + 0x1400
         // Complete pre-evolution walker over the bank-3 table at 0x5000, bound 254.
