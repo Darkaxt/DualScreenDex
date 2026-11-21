@@ -673,6 +673,31 @@ class RelationshipMaterializersTest {
     }
 
     @Test
+    fun compiledGenTwoAbiMaterializesHackMethodsAndUnreachableLevels() {
+        val bytes = ByteArray(0x8000)
+        putU16(bytes, 0, 0x4020)
+        byteArrayOf(6, 0x52, 1, 7, 42, 1, 0, 101, 33, 0xFF.toByte(), 34, 0).copyInto(bytes, 0x4020)
+        val table = TableLayout(
+            0, 1, 2, variableLength = true, bank = 1,
+            format = com.enrpau.dualscreendex.parser.model.TableRecordFormat.GEN2_COMPILED_RELATIONSHIPS,
+        )
+        val layout = ResolvedRomLayout(
+            family = EngineFamily.CRYSTAL,
+            generation = 2,
+            platform = Platform.GBC,
+            speciesCount = 1,
+            moveCount = 100,
+            tables = ProfileTables(evolutions = table, learnsets = table),
+        )
+
+        val result = RelationshipMaterializers.relationshipsWithEvidence(RomImage(bytes), layout)
+
+        assertEquals(listOf(6, 7), result.evolutions.records.getValue(1).map { it.methodId })
+        assertEquals(listOf(0x52, 42), result.evolutions.records.getValue(1).map { it.parameter })
+        assertEquals(listOf(LearnsetEntry(101, 33), LearnsetEntry(255, 34)), result.learnsets.records.getValue(1))
+    }
+
+    @Test
     fun materializesCombinedGenTwoEvolutionAndLearnsetStream() {
         val bytes = ByteArray(0x8000)
         putU16(bytes, 0, 0x4020)

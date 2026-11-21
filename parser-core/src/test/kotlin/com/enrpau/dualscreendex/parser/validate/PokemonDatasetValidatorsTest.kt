@@ -220,6 +220,24 @@ class PokemonDatasetValidatorsTest {
     }
 
     @Test
+    fun compiledGen2AbiAloneAcceptsHackMethodsAndUnreachableLevels() {
+        val bytes = ByteArray(0x10000)
+        putU16(bytes, 0x100, 0x4200)
+        putU16(bytes, 0x102, 0x4210)
+        byteArrayOf(6, 0x52, 2, 0, 101, 10, 0).copyInto(bytes, 0x8200)
+        byteArrayOf(0, 0xFF.toByte(), 10, 0).copyInto(bytes, 0x8210)
+        fun validate(compiled: Boolean) = PokemonDatasetValidators.gen12EvolutionsAndLearnsets(
+            RomImage(bytes), pointerTableOffset = 0x100, speciesCount = 2,
+            tableBank = 2, moveCount = 30, generation = 2, compiledGen2Abi = compiled,
+        )
+
+        assertEquals(2, validate(true).evolutions.validRecords)
+        assertEquals(2, validate(true).learnsets.validRecords)
+        assertEquals(1, validate(false).evolutions.validRecords)
+        assertEquals(0, validate(false).learnsets.validRecords)
+    }
+
+    @Test
     fun acceptsGen2LearnsetsWhoseTerminatedRecordsAreNotLevelSorted() {
         val bytes = ByteArray(0x10000)
         putU16(bytes, 0x100, 0x4200)

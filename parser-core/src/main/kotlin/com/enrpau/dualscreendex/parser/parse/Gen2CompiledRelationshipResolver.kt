@@ -3,6 +3,7 @@ package com.enrpau.dualscreendex.parser.parse
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.io.RomImage
 import com.enrpau.dualscreendex.parser.model.TableLayout
+import com.enrpau.dualscreendex.parser.model.TableRecordFormat
 
 /** Local-bank byte-species relationship authority, independent of inherited retail roots. */
 internal object Gen2CompiledRelationshipResolver {
@@ -46,7 +47,10 @@ internal object Gen2CompiledRelationshipResolver {
             if (!validRows(session, root, speciesCount, moveCount, work)) {
                 return Resolution(null, "compiled Gen II relationship rows are malformed or out of domain")
             }
-            Resolution(TableLayout(root, speciesCount, 2, variableLength = true, bank = root / BANK_BYTES))
+            Resolution(TableLayout(
+                root, speciesCount, 2, variableLength = true, bank = root / BANK_BYTES,
+                format = TableRecordFormat.GEN2_COMPILED_RELATIONSHIPS,
+            ))
         } catch (failure: BudgetExceeded) {
             Resolution(null, failure.message)
         }
@@ -109,7 +113,7 @@ internal object Gen2CompiledRelationshipResolver {
             while (contains(cursor, 1) && rom.u8(cursor) != 0) {
                 if (evolutionEntries++ >= 16) return false
                 val method = rom.u8(cursor)
-                val width = when (method) { in 1..4 -> 3; 5 -> 4; else -> return false }
+                val width = evolutionWidth(method)
                 if (!contains(cursor, width) || rom.u8(cursor + width - 1) !in 1..count) return false
                 claim(width)
                 active++
@@ -120,7 +124,7 @@ internal object Gen2CompiledRelationshipResolver {
             cursor++
             var learnsetEntries = 0
             while (contains(cursor, 1) && rom.u8(cursor) != 0) {
-                if (learnsetEntries++ >= 128 || !contains(cursor, 2) || rom.u8(cursor) !in 1..100 ||
+                if (learnsetEntries++ >= 128 || !contains(cursor, 2) || rom.u8(cursor) !in 1..MAX_LEARN_LEVEL ||
                     rom.u8(cursor + 1) !in 1..moves
                 ) return false
                 claim(2)
@@ -132,6 +136,14 @@ internal object Gen2CompiledRelationshipResolver {
         }
         return active > 0
     }
+
+    /**
+     * The matched pre-evolution walker skips one extra byte only for its `cp EVOLVE_STAT` constant and
+     * reads the target species after the parameter for every other nonzero method, so hack methods
+     * beyond the retail five are three-byte rows. The learn walker compares levels only for equality.
+     */
+    fun evolutionWidth(method: Int): Int = if (method == STAT_METHOD) 4 else 3
+    const val MAX_LEARN_LEVEL = 255
 
     private fun matches(rom: RomImage, offset: Int, pattern: IntArray): Boolean =
         offset >= 0 && offset.toLong() + pattern.size <= rom.size.toLong() &&
@@ -147,11 +159,12 @@ internal object Gen2CompiledRelationshipResolver {
     }
 
     private const val BANK_BYTES = 0x4000
+    private const val STAT_METHOD = 5
     private val WRAM = 0xC000..0xDFFF
     // Complete sequential pre-evolution traversal, including the extra stat parameter and return.
     private val PRE_EVOLUTION = intArrayOf(
         0x0E, 0, 0x21, -1, -1, 0x06, 0, 0x09, 0x09, 0x2A, 0x66, 0x6F,
-        0x2A, 0xA7, 0x28, 0x11, 0xFE, 5, 0x20, 1, 0x23, 0x23, 0xFA, -1, -1,
+        0x2A, 0xA7, 0x28, 0x11, 0xFE, STAT_METHOD, 0x20, 1, 0x23, 0x23, 0xFA, -1, -1,
         0xBE, 0x28, 0x0D, 0x23, 0x7E, 0xA7, 0x20, 0xEB, 0x0C, 0x79, 0xFE, -1,
         0x38, 0xDB, 0xA7, 0xC9, 0x0C, 0x79, 0xEA, -1, -1, 0x37, 0xC9,
     )

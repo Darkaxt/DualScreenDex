@@ -44,10 +44,23 @@ class Gen2CompiledRelationshipResolverTest {
     @Test fun rejectsMalformedRecordsReferencesAndTerminators() {
         val original = fixture()
         val row = TABLE + 251 * 2
-        listOf(row to 6, row + 3 to 252, row + 5 to 101, row + 6 to 252,
-            row + 7 to 1).forEach { (offset, value) ->
+        listOf(row + 3 to 252, row + 6 to 252, row + 7 to 1).forEach { (offset, value) ->
             assertNull("malformed row $offset", resolve(original.copyOf().also { it[offset] = value.toByte() })?.table)
         }
+    }
+
+    @Test fun acceptsHackMethodsAsConsumerThreeByteRowsAndUnreachableLearnLevels() {
+        val bytes = fixture()
+        // Item-like method 6 and level-only method 7 (Anniversary/Inheritance), then levels 101 and 255.
+        bytes.put(TABLE + 251 * 2, "06 52 02 07 2a 03 05 14 01 02 00 65 01 ff 02 00")
+        val table = requireNotNull(resolve(bytes)?.table)
+        assertEquals(com.enrpau.dualscreendex.parser.model.TableRecordFormat.GEN2_COMPILED_RELATIONSHIPS, table.format)
+    }
+
+    @Test fun hackMethodWidthStillRequiresAnInDomainTargetAndTerminator() {
+        val bytes = fixture()
+        bytes.put(TABLE + 251 * 2, "06 52 fc 00 01 01 00")
+        assertNull(resolve(bytes)?.table)
     }
 
     @Test fun rejectsPointerToHomeBankAndTableOrRecordCrossingBank() {
@@ -64,7 +77,7 @@ class Gen2CompiledRelationshipResolverTest {
         other.copyInto(original, 3 * BANK, 3 * BANK, 4 * BANK)
         assertNotNull(resolve(original)?.rejection)
         assertNull(resolve(original)?.table)
-        original[3 * BANK + 0x1000 + 251 * 2] = 6
+        original[3 * BANK + 0x1000 + 251 * 2 + 3] = 252.toByte()
         assertNull(resolve(original)?.table)
     }
 

@@ -128,6 +128,7 @@ internal class DependentDatasetsStrategy : FamilyProbePhaseStrategy {
                     it.bank ?: 0,
                     core.inferredMoveCount ?: profile?.moveCount ?: it.count,
                     generation,
+                    compiledGen2Abi = it.format == com.enrpau.dualscreendex.parser.model.TableRecordFormat.GEN2_COMPILED_RELATIONSHIPS,
                 )
             }
         } else {

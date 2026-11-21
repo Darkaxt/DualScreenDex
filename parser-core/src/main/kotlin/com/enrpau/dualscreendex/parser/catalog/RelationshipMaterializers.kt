@@ -401,6 +401,8 @@ object RelationshipMaterializers {
                 rom,
                 start,
                 layout.generation,
+                compiledGen2Abi = layout.generation == 2 &&
+                    table.format == com.enrpau.dualscreendex.parser.model.TableRecordFormat.GEN2_COMPILED_RELATIONSHIPS,
             )
             if (evolution.edges != null) {
                 evolutions[speciesId] = evolution.edges
@@ -429,6 +431,7 @@ object RelationshipMaterializers {
         rom: RomImage,
         start: Int,
         generation: Int,
+        compiledGen2Abi: Boolean,
     ): Gen12EvolutionSection {
         val edges = mutableListOf<EvolutionEdge>()
         var cursor = start
@@ -440,7 +443,11 @@ object RelationshipMaterializers {
             if (method == 0) {
                 return Gen12EvolutionSection(edges, cursor + 1, null)
             }
-            val width = evolutionWidth(generation, method)
+            val width = if (compiledGen2Abi) {
+                com.enrpau.dualscreendex.parser.parse.Gen2CompiledRelationshipResolver.evolutionWidth(method)
+            } else {
+                evolutionWidth(generation, method)
+            }
             if (width == null) {
                 return Gen12EvolutionSection(
                     edges = null,

@@ -1,5 +1,6 @@
 package com.enrpau.dualscreendex.parser.validate
 
+import com.enrpau.dualscreendex.parser.parse.Gen2CompiledRelationshipResolver
 import com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken
 import com.enrpau.dualscreendex.parser.analysis.RomAnalysisSession
 import com.enrpau.dualscreendex.parser.dataset.descriptions.DescriptionCodec
@@ -163,6 +164,7 @@ object PokemonDatasetValidators {
         tableBank: Int,
         moveCount: Int,
         generation: Int,
+        compiledGen2Abi: Boolean = false,
     ): CombinedEvolutionLearnsetEvidence {
         var validEvolutions = 0
         var validLearnsets = 0
@@ -177,6 +179,7 @@ object PokemonDatasetValidators {
                     speciesCount,
                     moveCount,
                     generation,
+                    compiledGen2Abi && generation == 2,
                 )
             }.getOrNull()
             if (parsed?.evolutions == true) validEvolutions++
@@ -590,6 +593,7 @@ object PokemonDatasetValidators {
         speciesCount: Int,
         moveCount: Int,
         generation: Int,
+        compiledGen2Abi: Boolean,
     ): Gen12SpeciesValidation {
         var cursor = offset
         var evolutionEntries = 0
@@ -599,7 +603,7 @@ object PokemonDatasetValidators {
             }
             val method = rom.u8(cursor)
             if (method == 0) break
-            val width = evolutionWidth(generation, method)
+            val width = (if (compiledGen2Abi) Gen2CompiledRelationshipResolver.evolutionWidth(method) else evolutionWidth(generation, method))
                 ?: return Gen12SpeciesValidation(false, false)
             if (!contains(rom, cursor, width)) {
                 return Gen12SpeciesValidation(false, false)
@@ -627,7 +631,8 @@ object PokemonDatasetValidators {
                 return Gen12SpeciesValidation(true, false)
             }
             val move = rom.u8(cursor + 1)
-            if ((generation != 1 && level !in 1..100) || move !in 1..moveCount) {
+            val maximumLevel = if (compiledGen2Abi) Gen2CompiledRelationshipResolver.MAX_LEARN_LEVEL else 100
+            if ((generation != 1 && level !in 1..maximumLevel) || move !in 1..moveCount) {
                 return Gen12SpeciesValidation(true, false)
             }
             cursor += 2

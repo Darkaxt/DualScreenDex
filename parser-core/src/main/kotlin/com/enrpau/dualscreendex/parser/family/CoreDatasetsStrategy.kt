@@ -188,7 +188,9 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
         }
         val inferredMoveCount = expansion?.moveCount ?: headerlessUnifiedMoves?.moveCount ?: inferMoveCount(
             rom, tables.moveNames, probeCodec, profile, exactProfile = exact != null,
-        )
+        )?.let { inherited ->
+            compiledGen2MoveCount(session, generation, exact != null, tables.moveNames, inherited, probeCodec) ?: inherited
+        }
         if (generation == 2 && speciesCount != null && inferredMoveCount != null) {
             Gen2CompiledNamePairResolver.resolve(
                 rom = rom,
@@ -525,6 +527,23 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
         return TableValidators.inferFixedNameCount(rom, layout.offset, layout.recordSize, codec, 100, 2048)
             ?: profile?.moveCount?.plus(1)
             ?: layout.count
+    }
+
+    /** A larger compiled Gen II move domain replaces the inherited retail count only when every name decodes. */
+    private fun compiledGen2MoveCount(
+        session: RomAnalysisSession,
+        generation: Int,
+        exactProfile: Boolean,
+        layout: TableLayout?,
+        inherited: Int,
+        codec: PokemonTextCodec,
+    ): Int? {
+        if (generation != 2 || exactProfile || layout?.variableLength != true) return null
+        val compiled = com.enrpau.dualscreendex.parser.parse.Gen2CompiledMoveCountResolver
+            .resolve(session.rom, session.cancellation)
+            ?.takeIf { it > inherited } ?: return null
+        val names = TableValidators.variableNames(session.rom, layout.offset, compiled, codec)
+        return compiled.takeIf { names.compatible && names.validRecords == compiled }
     }
 
     private fun validateNames(
