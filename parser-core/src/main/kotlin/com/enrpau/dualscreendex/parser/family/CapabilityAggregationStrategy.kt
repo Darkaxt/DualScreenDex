@@ -148,7 +148,7 @@ internal class CapabilityAggregationStrategy : FamilyProbePhaseStrategy {
                         baseStats = core.resolvedBaseStats,
                     ),
                     compiledCanonicalSpecies = core.compiledCanonicalSpecies,
-                    gen2CompactCore = identity.gen2Compact?.core?.metadata,
+                    gen2CompactCore = identity.gen2Compact?.metadata,
                     languageManifest = core.languageManifest.withDefaultLocalizedTables(
                         LocalizedTableLayout(
                             speciesNames = resolvedTables.speciesNames,

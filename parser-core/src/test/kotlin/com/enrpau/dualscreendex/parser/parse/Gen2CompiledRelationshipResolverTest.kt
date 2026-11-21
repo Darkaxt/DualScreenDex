@@ -24,6 +24,14 @@ class Gen2CompiledRelationshipResolverTest {
         assertEquals(253, requireNotNull(resolve(fixture(count = 253), 253)?.table).count)
     }
 
+    @Test fun reportsTheWalkerSpeciesBoundAsTheCompiledDomain() {
+        val bytes = fixture(count = 252)
+        assertEquals(listOf(BANK + 0x1000 to 252), Gen2CompiledRelationshipResolver.preEvolutionWalkers(RomImage(bytes)))
+        assertEquals(emptyList<Pair<Int, Int>>(), Gen2CompiledRelationshipResolver.preEvolutionWalkers(RomImage(bytes), bank = 2))
+        assertEquals(emptyList<Pair<Int, Int>>(),
+            Gen2CompiledRelationshipResolver.preEvolutionWalkers(RomImage(bytes.also { it[PRE + 17] = 6 })))
+    }
+
     @Test fun acceptsEmptyRowsButNotAnEntireEmptyDataset() {
         val bytes = fixture()
         bytes.put(TABLE + 251 * 2, "00 00")

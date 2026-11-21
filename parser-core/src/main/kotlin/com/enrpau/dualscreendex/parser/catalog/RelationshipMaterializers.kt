@@ -184,6 +184,16 @@ object RelationshipMaterializers {
             val table = layout.tables.evolutions
                 ?: layout.tables.learnsets
                 ?: return emptyRelationships()
+            if (table.format == com.enrpau.dualscreendex.parser.model.TableRecordFormat.GEN2_COMPACT_RELATIONSHIPS) {
+                val compact = layout.gen2CompactCore ?: return emptyRelationships()
+                val moves = layout.tables.moveNames?.count ?: return emptyRelationships()
+                val decoded = com.enrpau.dualscreendex.parser.parse.Gen2CompactRelationshipResolver
+                    .decode(rom, compact, moves) ?: return emptyRelationships()
+                return RelationshipMaterialization(
+                    RecordMaterialization(decoded.evolutions, decoded.evolutionFailures),
+                    RecordMaterialization(decoded.learnsets, decoded.learnsetFailures),
+                )
+            }
             return gen12Relationships(rom, layout, table)
         }
         return RelationshipMaterialization(

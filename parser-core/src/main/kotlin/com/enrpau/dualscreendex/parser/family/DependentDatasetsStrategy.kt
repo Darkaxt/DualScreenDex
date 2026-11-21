@@ -59,12 +59,12 @@ internal class DependentDatasetsStrategy : FamilyProbePhaseStrategy {
         val identity = requireNotNull(state.identityRoots) as IdentityRootsPhaseResult.Resolved
         val semantic = requireNotNull(state.semanticDomain) as SemanticDomainPhaseResult.Resolved
         val core = semantic.coreDatasets
-        if (identity.gen2Compact != null) {
+        identity.gen2Compact?.let { compact ->
             return state.withDependentDatasets(DependentDatasetsPhaseResult.Resolved(
                 semanticDomain = semantic,
                 sprites = missingEvidence("compact sprite authority is unavailable"),
-                evolutions = missingEvidence("compact evolution authority is unavailable"),
-                learnsets = missingEvidence("compact learnset authority is unavailable"),
+                evolutions = compact.evolutionsEvidence ?: missingEvidence("compact evolution authority is unavailable"),
+                learnsets = compact.learnsetsEvidence ?: missingEvidence("compact learnset authority is unavailable"),
                 learnsetTables = emptyList(), learnsetSelector = null,
             ))
         }

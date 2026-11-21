@@ -364,9 +364,41 @@ object CatalogMaterializer {
         )
         publishProgress(CatalogMaterializationProgress(CatalogMaterializationPhase.ESSENTIAL, 1, 5, essentialCatalog))
         if (layout.gen2CompactCore != null) {
-            // Canonical static authority does not authorize any classic optional or runtime ABI.
-            publishProgress(CatalogMaterializationProgress(CatalogMaterializationPhase.COMPLETE, 5, 5, essentialCatalog))
-            return essentialCatalog
+            // Canonical static authority does not authorize any classic optional or runtime ABI; only the
+            // separately proven compact relationship contract adds evolutions and learnsets.
+            val compactCatalog = if (layout.gen2CompactCore.relationships == null) essentialCatalog else {
+                beginWork(CatalogWorkModule.EVOLUTIONS_AND_LEARNSETS)
+                val relationships = RelationshipMaterializers.relationshipsWithEvidence(rom, layout)
+                val species = essentialCatalog.speciesById.mapValues { (id, record) ->
+                    record.copy(
+                        evolutionEdges = materializedField(relationships.evolutions, id, "evolution row"),
+                        learnset = materializedField(relationships.learnsets, id, "learnset row"),
+                    )
+                }
+                val capabilities = essentialCatalog.capabilities.toMutableMap()
+                capabilities[RomCapability.EVOLUTIONS] = materializationCapability(
+                    capability = RomCapability.EVOLUTIONS,
+                    covered = species.values.count { it.evolutionEdges.status == CapabilityStatus.AVAILABLE },
+                    expected = species.size,
+                    availableReason = "decoded compiled compact evolution relationships",
+                    partialReason = "some compact evolution rows use an unclassified method",
+                    unavailableReason = "compact evolution relationships were not materialized",
+                )
+                capabilities[RomCapability.LEARNSETS] = materializationCapability(
+                    capability = RomCapability.LEARNSETS,
+                    covered = species.values.count { it.learnset.status == CapabilityStatus.AVAILABLE },
+                    expected = species.size,
+                    availableReason = "decoded compiled compact learnsets",
+                    partialReason = "some compact learnset rows were unavailable",
+                    unavailableReason = "compact learnsets were not materialized",
+                )
+                essentialCatalog.copy(
+                    speciesById = species,
+                    capabilities = capabilities,
+                )
+            }
+            publishProgress(CatalogMaterializationProgress(CatalogMaterializationPhase.COMPLETE, 5, 5, compactCatalog))
+            return compactCatalog
         }
 
         beginWork(CatalogWorkModule.SPECIES_MEDIA)

@@ -124,6 +124,7 @@ enum class TableRecordFormat {
     GEN2_EXTENDED_TYPE_NAMES,
     /** Consumer-proven Gen II evolution/learnset stream: any nonzero method, stat rows 4 bytes, levels 1..255. */
     GEN2_COMPILED_RELATIONSHIPS,
+    GEN2_COMPACT_RELATIONSHIPS,
     /** Compiled-owned seven-byte prefix through the highest referenced native move type, not game count. */
     GBA_REFERENCED_TYPE_NAMES,
     WIDE_STATS_64,

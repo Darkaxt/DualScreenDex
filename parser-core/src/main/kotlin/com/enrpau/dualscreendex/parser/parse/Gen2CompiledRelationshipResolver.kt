@@ -56,6 +56,27 @@ internal object Gen2CompiledRelationshipResolver {
         }
     }
 
+    /**
+     * Complete pre-evolution walkers as (table root, species bound), optionally restricted to one bank.
+     * The walker's `cp N` bound is the number of rows it traverses, i.e. the compiled species domain.
+     */
+    fun preEvolutionWalkers(
+        rom: RomImage,
+        bank: Int? = null,
+        cancellation: com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken =
+            com.enrpau.dualscreendex.parser.analysis.ParserCancellationToken.NONE,
+    ): List<Pair<Int, Int>> {
+        val range = if (bank == null) 0 until rom.size else bank * BANK_BYTES until minOf((bank + 1) * BANK_BYTES, rom.size)
+        val result = mutableListOf<Pair<Int, Int>>()
+        for (offset in range) {
+            if (offset % 4096 == 0) cancellation.throwIfCancellationRequested()
+            if (rom.u8(offset) != 0x0E) continue
+            val bound = if (offset.toLong() + PRE_EVOLUTION.size <= rom.size) rom.u8(offset + 36) else continue
+            preEvolutionConsumer(rom, offset, bound)?.let { result += it.root to bound }
+        }
+        return result
+    }
+
     private fun preEvolutionConsumer(rom: RomImage, offset: Int, count: Int): Consumer? {
         if (!matches(rom, offset, PRE_EVOLUTION)) return null
         if (rom.u8(offset + 36) != count) return null

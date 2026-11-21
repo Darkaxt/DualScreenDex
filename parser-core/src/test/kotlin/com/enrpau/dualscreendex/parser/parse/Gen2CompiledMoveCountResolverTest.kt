@@ -31,6 +31,25 @@ class Gen2CompiledMoveCountResolverTest {
         assertEquals(251, resolve(bytes))
     }
 
+    @Test fun battleTowerBoundIsOnlyAFallbackWithoutAnyMetronomeLoop() {
+        assertEquals(254, resolve(tower("ff", "ff")))
+        assertEquals(251, resolve(tower("fc", "fc")))
+        assertNull(resolve(tower("ff", "fc")))
+        // A compiled Metronome loop stays primary, even when it disagrees.
+        val both = loop("fe fd 30")
+        tower("ff", "ff").copyInto(both, 0x200, 0x200, 0x240)
+        assertEquals(252, resolve(both))
+        // Conflicting tower loaders fail closed.
+        val conflict = tower("ff", "ff")
+        tower("fc", "fc").copyInto(conflict, 0x300, 0x200, 0x240)
+        assertNull(resolve(conflict))
+    }
+
+    private fun tower(first: String, second: String): ByteArray = ByteArray(0x400).also { bytes ->
+        ("21 02 00 09 16 03 2a a7 28 06 fe $first 30 02 18 0a 2b 3e 01 22 af 22 22 77 18 0b 7e fe $second " +
+            "38 02 36 00 23 15 20 f5 21 24 00 09").split(' ').map { it.toInt(16).toByte() }.toByteArray().copyInto(bytes, 0x200)
+    }
+
     private fun resolve(bytes: ByteArray) = Gen2CompiledMoveCountResolver.resolve(RomImage(bytes))
 
     private fun loop(compare: String): ByteArray = ByteArray(0x400).also { bytes ->

@@ -206,8 +206,8 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
         } else {
             null
         }
-        // A larger 8-bit boundary is authoritative only when a complete compiled sprite consumer
-        // resolves the same expanded species count.
+        // A larger 8-bit boundary is authoritative only when a complete compiled consumer resolves the
+        // same expanded species count: the sprite consumer, or the sole pre-evolution walker's bound.
         val gen2CompiledCore = if (generation == 2 && exact == null) {
             Gen2CompiledCoreResolver.resolve(session.rom, probeCodec)?.takeIf { compiled ->
                 baseProfile != null && when {
@@ -218,7 +218,9 @@ internal class IdentityRootsStrategy : FamilyProbePhaseStrategy {
                             compiled.speciesCount,
                             session.cancellation,
                             session.limits,
-                        ) != null
+                        ) != null || com.enrpau.dualscreendex.parser.parse.Gen2CompiledRelationshipResolver
+                            .preEvolutionWalkers(session.rom, cancellation = session.cancellation)
+                            .map { it.second }.distinct().singleOrNull() == compiled.speciesCount
                     else -> true
                 }
             }

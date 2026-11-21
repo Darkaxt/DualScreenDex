@@ -17,6 +17,9 @@ internal data class Gen2CompactCoreResolution(
     val typeNames: TableLayout,
     val namesEvidence: ValidationEvidence,
     val statsEvidence: ValidationEvidence,
+    /** The base-stat consumer's species/form index helper and whether it decrements to a zero-based row. */
+    val baseIndexHelper: Int = 0,
+    val baseDecrements: Boolean = false,
 )
 
 /** Coherent compact name/base/index authority; no inherited or fuzzy table geometry. */
@@ -101,7 +104,8 @@ internal object Gen2CompactCoreResolver {
             val count = indexes.metadata.slots.size
             Gen2CompactCoreResolution(indexes.metadata, ProfileTables(speciesNames = nameTable, baseStats = statsTable),
                 codec, typeNames, evidence(nameTable, count, "compiled compact canonical names"),
-                evidence(statsTable, count, "compiled compact six-stat fields and native type references"))
+                evidence(statsTable, count, "compiled compact six-stat fields and native type references"),
+                base.indexHelper, base.oneBased)
         } }
         return candidates.distinct().singleOrNull()
     }
