@@ -55,7 +55,7 @@ class TiledMapAssetTest {
             ),
             assets = mapOf(
                 "map/0" to PngMapAsset(PngEncoder.encode(valid)),
-                "map/1" to PngMapAsset(ByteArray(40) { 7 }),
+                "map/1" to PngMapAsset(PngEncoder.encode(valid).copyOf(40)),
             ),
         )
         val skipped = mutableListOf<String>()
