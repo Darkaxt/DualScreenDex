@@ -186,16 +186,15 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
             speciesCount = reconciled.speciesCount
             tables = reconciled.tables
         }
-        val inferredMoveCount = expansion?.moveCount ?: headerlessUnifiedMoves?.moveCount ?: inferMoveCount(
+        val ownedMoveCount = expansion?.moveCount ?: headerlessUnifiedMoves?.moveCount
+        val inheritedMoveCount = ownedMoveCount ?: inferMoveCount(
             rom, tables.moveNames, probeCodec, profile, exactProfile = exact != null,
-        )?.let { inherited ->
-            compiledGen2MoveCount(session, generation, exact != null, tables.moveNames, inherited, probeCodec) ?: inherited
-        }
-        if (generation == 2 && speciesCount != null && inferredMoveCount != null) {
+        )
+        if (generation == 2 && speciesCount != null && inheritedMoveCount != null) {
             Gen2CompiledNamePairResolver.resolve(
                 rom = rom,
                 speciesCount = speciesCount,
-                moveCount = inferredMoveCount,
+                moveCount = inheritedMoveCount,
                 codec = probeCodec,
                 cancellation = session.cancellation,
             )?.let { compiledNames ->
@@ -209,10 +208,10 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
         var dynamicMoveDataEvidence: ValidationEvidence? = null
         if (
             generation == 3 && expansion == null && publishedDataEvidence == null &&
-            speciesCount != null && inferredMoveCount != null
+            speciesCount != null && inheritedMoveCount != null
         ) {
             val dynamic = Gen3DynamicTableResolver.resolveWithEvidence(
-                rom, tables, speciesCount, inferredMoveCount,
+                rom, tables, speciesCount, inheritedMoveCount,
             )
             tables = dynamic.tables
             dynamicBaseStatsEvidence = dynamic.baseStatsEvidence.takeIf { headerlessUnifiedSpecies == null }
@@ -280,10 +279,10 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
         }
         var moveNamesLayout = tables.moveNames
         var moveNames = headerlessUnifiedMoves?.moveNamesEvidence
-            ?: validateNames(rom, moveNamesLayout, inferredMoveCount, probeCodec, generation)
+            ?: validateNames(rom, moveNamesLayout, inheritedMoveCount, probeCodec, generation)
         if (
             generation == 2 && exact == null && probeCodec === PokemonTextCodec.gbEnglish &&
-                inferredMoveCount != null &&
+                inheritedMoveCount != null &&
             moveNamesLayout?.variableLength == true &&
             tables.moveData?.let { hasCanonicalGen2MovePrefix(rom, it) } == true
         ) {
@@ -293,13 +292,24 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
                 expectedNames = listOf("POUND", "KARATE CHOP", "DOUBLESLAP"),
                 cancellation = session.cancellation,
             )?.let { relocatedOffset ->
-                val relocated = TableValidators.variableNames(rom, relocatedOffset, inferredMoveCount, probeCodec)
+                val relocated = TableValidators.variableNames(rom, relocatedOffset, inheritedMoveCount, probeCodec)
                 if (relocated.compatible) {
                     moveNamesLayout = moveNamesLayout.copy(offset = relocatedOffset)
                     moveNames = relocated.copy(reasons = listOf("matched leading canonical Gen 2 move records"))
                 }
             }
         }
+        // A larger compiled Gen II domain is checked against the final (compiled- or prefix-relocated) name table.
+        val compiledMoveCount = if (ownedMoveCount == null && inheritedMoveCount != null) {
+            compiledGen2MoveCount(session, generation, exact != null, moveNamesLayout, inheritedMoveCount, probeCodec)
+        } else null
+        if (compiledMoveCount != null) {
+            moveNamesLayout = moveNamesLayout?.copy(count = compiledMoveCount)
+            moveNames = validateNames(rom, moveNamesLayout, compiledMoveCount, probeCodec, generation).let {
+                it.copy(reasons = it.reasons + "move domain bounded by the compiled Metronome random-move consumer")
+            }
+        }
+        val inferredMoveCount = compiledMoveCount ?: inheritedMoveCount
         var moveData = headerlessUnifiedMoves?.moveDataEvidence ?: publishedDataEvidence ?: dynamicMoveDataEvidence ?: tables.moveData?.let {
             if (expansion != null) {
                 TableValidators.pokeemeraldExpansionMoveData(rom, it, inferredMoveCount ?: it.count)
