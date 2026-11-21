@@ -74,6 +74,32 @@ class MoveAcquisitionMaterializerTest {
     }
 
     @Test
+    fun separatesAmbiguousGenTwoMachineListsByTheirBankLocalConsumer() {
+        val bytes = ByteArray(0xC000)
+        val stats = 0x100
+        repeat(4) { species -> bytes[stats + species * 32 + 24] = 0x01 }
+        val machineTable = 0x4300
+        repeat(60) { bytes[machineTable + it] = (it + 1).toByte() }
+        val unrelatedRun = 0x8500
+        repeat(60) { bytes[unrelatedRun + it] = (it + 40).toByte() }
+        val genTwo = layout(2, Platform.GBC, 4, 100, TableLayout(stats, 4, 32))
+
+        assertTrue(!MoveAcquisitionMaterializer.materialize(RomImage(bytes), genTwo)
+            .evidence.getValue(MoveAcquisitionMethod.MACHINE).compatible)
+
+        bytes[0x8010] = 0x21 // ld hl, $4300 in another bank does not consume bank 1's list
+        putU16(bytes, 0x8011, 0x4300)
+        assertTrue(!MoveAcquisitionMaterializer.materialize(RomImage(bytes), genTwo)
+            .evidence.getValue(MoveAcquisitionMethod.MACHINE).compatible)
+
+        bytes[0x4010] = 0x21
+        putU16(bytes, 0x4011, 0x4300)
+        val result = MoveAcquisitionMaterializer.materialize(RomImage(bytes), genTwo)
+        assertEquals(machineTable, result.evidence.getValue(MoveAcquisitionMethod.MACHINE).offset)
+        assertEquals(1, result.acquisitionsBySpecies.getValue(1).first { it.method == MoveAcquisitionMethod.MACHINE }.moveId)
+    }
+
+    @Test
     fun treatsGoldAndSilverTutorsAsNotApplicableWhileDecodingMachines() {
         val bytes = ByteArray(2048)
         val stats = 0x100

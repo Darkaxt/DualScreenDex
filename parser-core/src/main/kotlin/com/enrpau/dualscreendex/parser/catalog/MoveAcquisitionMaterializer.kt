@@ -387,8 +387,10 @@ object MoveAcquisitionMaterializer {
             offset++
         }
         val distinct = candidates.distinctBy { it.second }
-        if (distinct.size != 1) return LegacyAcquisitions()
-        val (sourceOffset, moves) = distinct.single()
+        // A wider move domain can admit unrelated byte runs; only then require the compiled `ld hl, list` consumer.
+        val selected = if (distinct.size > 1) distinct.filter { hasBankLocalHlLoad(rom, it.first) } else distinct
+        if (selected.size != 1) return LegacyAcquisitions()
+        val (sourceOffset, moves) = selected.single()
         return LegacyAcquisitions(
             machine = embeddedFlagCandidate(
                 rom, stats, GEN_TWO_FLAG_OFFSET, moves.take(GEN_TWO_MACHINE_COUNT), 0,
@@ -399,6 +401,16 @@ object MoveAcquisitionMaterializer {
                 MoveAcquisitionMethod.TUTOR, sourceOffset,
             ) else null,
         )
+    }
+
+    private fun hasBankLocalHlLoad(rom: RomImage, offset: Int): Boolean {
+        val bank = offset / GB_BANK_SIZE
+        val address = if (bank == 0) offset else GB_BANK_SIZE + offset % GB_BANK_SIZE
+        val start = bank * GB_BANK_SIZE
+        val end = minOf(rom.size, start + GB_BANK_SIZE) - 3
+        return (start..end).any {
+            rom.u8(it) == 0x21 && rom.u8(it + 1) == (address and 0xFF) && rom.u8(it + 2) == address shr 8
+        }
     }
 
     private fun embeddedFlagCandidate(
@@ -1301,6 +1313,7 @@ object MoveAcquisitionMaterializer {
         5, 14, 25, 34, 38, 68, 69, 102, 118, 135, 138, 86, 153, 157, 164,
     )
     private const val GEN_TWO_MACHINE_COUNT = 57
+    private const val GB_BANK_SIZE = 0x4000
     private const val GEN_TWO_TUTOR_COUNT = 3
     private const val GEN_TWO_FLAG_OFFSET = 24
     private const val GEN_TWO_FLAG_BYTES = 8
