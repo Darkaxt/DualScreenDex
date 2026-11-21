@@ -1,4 +1,6 @@
-# All-ROM compatibility completion — active execution ledger
+# All-ROM compatibility completion — historical execution ledger
+
+> **Superseded 2026-11-21:** active execution moved to the [compatibility roadmap](2026-11-21-compatibility-roadmap.md). Pokescape is parked by user decision; everything below is history.
 
 **Status: IN_PROGRESS. Authorization: already_authorized.** Source of truth: [parent specification](../specs/2026-10-07-all-rom-compatibility-completion-design.md). Current target: **Pokescape v1.0.4**, accepted weighted score **95.83%**, not whole-ROM compatibility. Do not advance to another implementation ROM or stop after a feature checkpoint.
 

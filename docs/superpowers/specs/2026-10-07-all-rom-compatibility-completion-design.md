@@ -20,6 +20,8 @@ The goal is **100% compatibility across all ROMs, one ROM at a time**. A publish
 
 ## Current ROM and next batch
 
+> **Revised 2026-11-21:** Pokescape is parked by user decision (2026-10-17). ALL-03 and ALL-09 now mean "one coherent batch at a time, ranked by verified multi-ROM impact"; ALL-06 keeps parser implementation inline while read-only QA agents run at batch close. The current order and working model live in the [compatibility roadmap](../plans/2026-11-21-compatibility-roadmap.md). The Pokescape notes below are history.
+
 Pokescape's working core, two map datasets and retained acceptance stay protected. Remaining obligations include:
 
 - **Completed move leaf:** all 828 named moves now have independently accepted details/categories. Compiled diagnostics establish a distinct packed-bitfield 20-byte `BattleMove`, not the aligned layout of the current public source. Exact packaged source, 5,796 native scalar checks, complete references and whole-payload/retained-baseline equality close that field only; opaque flag semantics remain uninferred.
