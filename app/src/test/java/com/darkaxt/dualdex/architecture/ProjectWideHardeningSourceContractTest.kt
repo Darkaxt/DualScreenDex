@@ -10,8 +10,8 @@ class ProjectWideHardeningSourceContractTest {
     @Test
     fun `guide retry fault is production owned inert by default and packaged test uses production retry`() {
         val root = repositoryRoot()
-        val fault = root.resolve("app/src/main/java/com/darkaxt/dualdex/setup/GuideLoadFault.kt")
-        val coordinator = read(root, "app/src/main/java/com/darkaxt/dualdex/setup/RetroArchSetupCoordinator.kt")
+        val fault = root.resolve("companion-android/src/main/java/com/darkaxt/dualdex/setup/GuideLoadFault.kt")
+        val coordinator = read(root, "companion-android/src/main/java/com/darkaxt/dualdex/setup/RetroArchSetupCoordinator.kt")
         val application = read(root, "app/src/main/java/com/darkaxt/dualdex/DualDexApplication.kt")
         val activity = read(root, "app/src/main/java/com/darkaxt/dualdex/MainActivity.kt")
         val runner = read(root, "app/src/androidTest/java/com/darkaxt/dualdex/QaAndroidJUnitRunner.kt")
@@ -50,9 +50,9 @@ class ProjectWideHardeningSourceContractTest {
     @Test
     fun `overlay picker uses one canonical dispatcher from service through both activity delivery paths`() {
         val root = repositoryRoot()
-        val request = read(root, "app/src/main/java/com/darkaxt/dualdex/setup/SetupPickerRequest.kt")
-        val picker = read(root, "app/src/main/java/com/darkaxt/dualdex/setup/SetupDocumentPicker.kt")
-        val registry = root.resolve("app/src/main/java/com/darkaxt/dualdex/setup/SetupPickerActivityResultRegistry.kt")
+        val request = read(root, "companion-android/src/main/java/com/darkaxt/dualdex/setup/SetupPickerRequest.kt")
+        val picker = read(root, "companion-android/src/main/java/com/darkaxt/dualdex/setup/SetupDocumentPicker.kt")
+        val registry = root.resolve("companion-android/src/main/java/com/darkaxt/dualdex/setup/SetupPickerActivityResultRegistry.kt")
         val application = read(root, "app/src/main/java/com/darkaxt/dualdex/DualDexApplication.kt")
         val service = read(root, "app/src/main/java/com/darkaxt/dualdex/overlay/FloatingCompanionService.kt")
         val activity = read(root, "app/src/main/java/com/darkaxt/dualdex/MainActivity.kt")

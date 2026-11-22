@@ -79,6 +79,8 @@ class RetroArchSetupCoordinator(
     private val guideLoadFault: GuideLoadFault = NoGuideLoadFault,
     private val networkCommandTransportFactory: () -> NetworkCommandTransport =
         { UdpNetworkCommandTransport(commandPort) },
+    /** An embedding host's running game; when it returns a session, it replaces the indexed ROM library. */
+    private val hostSession: (() -> HostSession?)? = null,
 ) : AutoCloseable {
     private val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
     private val indexStore = RomIndexStore(File(context.filesDir, "retroarch/rom-index.json"))
@@ -1075,6 +1077,7 @@ class RetroArchSetupCoordinator(
     }
 
     private fun eligibleRomEntries(): List<RomIndexEntry> {
+        hostSession?.invoke()?.let { return listOf(it.rom) }
         if (sharedStorage.isGranted()) return entries.get()
         val valid = storedSafGrantIsValid()
         val previous = lastSafGrant.getAndSet(valid)

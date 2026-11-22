@@ -26,6 +26,7 @@ buildscript {
 
 plugins {
     alias(libs.plugins.android.application) apply false
+    alias(libs.plugins.android.library) apply false
     id("org.jetbrains.kotlin.android") version "2.4.20-Beta2" apply false
     id("org.jetbrains.kotlin.jvm") version "2.4.20-Beta2" apply false
 }

@@ -22,6 +22,7 @@ dependencyResolutionManagement {
 rootProject.name = "DualScreenDex"
 include(
     ":app",
+    ":companion-android",
     ":parser-core",
     ":parser-cli",
     ":companion-core",
