@@ -29,4 +29,23 @@ Remaining C1 rows:
 
 ## C3: FireRed/Emerald tie (`LIB26-GBA-FRLG-EM-TIE`)
 
-In progress.
+Finding: Ultra Violet and Lugias Ocean replace the cartridge game code (`PUVV`, `2008`), and both family probes score 80 on identical vanilla FireRed tables. The type-chart tie-break cannot separate them, because both charts are complete. These two were the only `AMBIGUOUS` rows in R1.
+
+Engine evidence: both engines decode money as `*moneyPtr ^ gSaveBlock2Ptr->encryptionKey`, but `struct SaveBlock2` places `encryptionKey` at 0xF20 in pokefirered and at 0xAC in pokeemerald. A scan of the compiled `GetMoney` consumers gives:
+
+| ROM | Key-offset materialisation | Offset |
+| --- | --- | --- |
+| Ultra Violet, Lugias Ocean, Radical Red | `movs r2,#0xF2; lsls r2,#4; adds r1,r2` | 0xF20 |
+| Emerald Kaizo | `adds r1,#0xAC` | 0xAC |
+
+Fix (c4697b98): `Gen3SaveBlock2EngineDiscriminator` decodes only that exact Thumb shape. It must load an IWRAM pointer literal, dereference it, add the offset, load through R0, load the key, `eors r0` and `bx lr`. Every match must agree on one offset. `ParserOrchestrator.select` asks it only for an exact FireRed/Emerald score tie that the type chart leaves open. Conflicting, missing or unknown offsets keep the tie. Near ties stay refused.
+
+| Run | Commit | Inputs | Result |
+| --- | --- | --- | --- |
+| Qualification | c4697b98 (jar manifest matches) | 5: Ultra Violet, Lugias Ocean, controls Radical Red, Unbound, Emerald Kaizo | Exit 0. 3 identical to R1. Ultra Violet 45.83→99.50% and Lugias Ocean 50.00→91.15%, both now SELECTED (FireRed). Lugias Ocean WORLD_MAP is ambiguous and LOCAL_MAP partial. |
+
+Coverage: the rule can only change rows that end in an exact family tie. R1 had exactly these two, and no later B3/B3a run produced another.
+
+Originals: all 5 inputs hash to their corpus identity prefix after the run.
+
+Host tests at c4697b98: parser-core 2679 run, 240 skipped, 0 failed.

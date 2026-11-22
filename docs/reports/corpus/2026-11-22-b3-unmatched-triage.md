@@ -35,8 +35,8 @@ Row IDs are `ROW-<first 12 hex of the SHA-256>`, the same prefix the corpus libr
 | ROW-15df05788ca9 | Recharged Emerald (v2.2.8) | C2 | GBA focus: base stats interleave with learnset data from row 414; sprites unresolved |
 | ROW-442c38ee4ac5 | Recharged Yellow (v1.9.7) | C2 | GBA focus: same layout as Recharged Emerald |
 | ROW-64712b2e16c5 | Noon (Completed) | C2 | GBA focus: header matches neither family; base stats run into learnsets from row 203 |
-| ROW-467fe116ff6d | Ultra Violet (v1.22) | C3 | GBA focus: FireRed/Emerald discriminator |
-| ROW-c632fed60254 | Lugias Ocean | C3 | GBA focus: FireRed/Emerald discriminator |
+| ROW-467fe116ff6d | Ultra Violet (v1.22) | C3 | **Selected in B3a** (FireRed, GetMoney discriminator at c4697b98) |
+| ROW-c632fed60254 | Lugias Ocean | C3 | **Selected in B3a** (FireRed, GetMoney discriminator at c4697b98) |
 | ROW-0c31f9415c7b | Too Many Types (v1.6) | C4 | GBA focus: expansion SpeciesInfo stride |
 | ROW-7bb7df60a2ed | Too Many Types 2 (v1.5.2) | C4 | GBA focus: expansion SpeciesInfo stride |
 | ROW-87686967d562 | Unova Emerald (2.0.3) | C4 | GBA focus: stale published names pointer |
