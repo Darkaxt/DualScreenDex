@@ -1,5 +1,8 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 buildscript {
+    // Guava 33.7.1 and older allow uncontrolled allocation on deserialization (Dependabot #63).
+    fun secureGuavaVersion(requested: String?): String =
+        if (requested?.endsWith("-android") == true) "33.7.2-android" else "33.7.2-jre"
     configurations.configureEach {
         resolutionStrategy.eachDependency {
             val secureVersion = when (requested.group to requested.name) {
@@ -10,6 +13,7 @@ buildscript {
                 "org.jdom" to "jdom2" -> "2.0.6.1"
                 "org.apache.commons" to "commons-lang3" -> "3.18.0"
                 "org.apache.httpcomponents" to "httpclient" -> "4.5.14"
+                "com.google.guava" to "guava" -> secureGuavaVersion(requested.version)
                 else -> null
             }
             if (secureVersion != null) {
@@ -44,6 +48,9 @@ subprojects {
     }
 }
 
+fun secureGuavaVersion(requested: String?): String =
+    if (requested?.endsWith("-android") == true) "33.7.2-android" else "33.7.2-jre"
+
 allprojects {
     configurations.configureEach {
         resolutionStrategy.eachDependency {
@@ -58,6 +65,7 @@ allprojects {
                 requested.group == "org.jdom" && requested.name == "jdom2" -> "2.0.6.1"
                 requested.group == "org.apache.commons" && requested.name == "commons-lang3" -> "3.18.0"
                 requested.group == "org.apache.httpcomponents" && requested.name == "httpclient" -> "4.5.14"
+                requested.group == "com.google.guava" && requested.name == "guava" -> secureGuavaVersion(requested.version)
                 else -> null
             }
             if (secureVersion != null) {
@@ -104,6 +112,7 @@ tasks.register("verifySecureBuildDependencies") {
             "org.apache.httpcomponents:httpclient" to setOf("4.5.14"),
             "com.google.protobuf:protobuf-java" to setOf("3.25.5", "4.28.3"),
             "com.google.protobuf:protobuf-kotlin" to setOf("4.28.3"),
+            "com.google.guava:guava" to setOf("33.7.2-jre", "33.7.2-android"),
         )
         val resolved = mutableSetOf<Pair<String, String>>()
         val configurationsToCheck = buildList {
