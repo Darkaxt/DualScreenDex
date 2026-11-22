@@ -1,0 +1,76 @@
+{
+  "schema": 1,
+  "candidateTag": "v1.2.5-rc.1",
+  "apkSha256": "EA8C2C6523EBCEB9BF9987EDE9AE444F831674979C9DDBC66B2F0CA653A7A8D7",
+  "sourceCommit": "b89c525854938f3daf47d850deb6d0c39083d3bf",
+  "validationMode": "automated-passive-catalog",
+  "automatedValidationWorkflowRunUrl": "https://github.com/Darkaxt/DualScreenDex/actions/runs/45023634277",
+  "userAuthorizedAutomatedPromotion": true,
+  "gameplayRuntimeChanged": false,
+  "catalogPersistenceValidated": true,
+  "runtimeApiValidated": true,
+  "webPresentationValidated": true,
+  "releaseCiValidated": true,
+  "authorizationBasis": "User directed the B4 v1.2.5 release batch (roadmap 2026-11-21) under the standing parser-only passive-catalog release route (no physical-device gate); not the v1.2.3 device waiver.",
+  "evidenceScope": "Five saved B4 full342 SQLite catalogs reopened by the actual reader, runtime and HTTP server; packaged-identical web assets exercised in Chromium. Expected no-game/undiscovered Pokedex state reviewed; map PNGs decoded through the browser for the three controls with Local maps. No populated gameplay, Local-map navigation, signed-APK execution or physical-device acceptance claim.",
+  "appChangeDisclosure": "Non-gameplay app changes since v1.2.4: RetroArch setup cancellation hand-off (B0), shared-storage library scan quota and Android indexer (B1), first-load complete-catalog persistence (B1), theme render failure logging (B0). The release-run packaged acceptance exercised index failure/recovery and cache reopen (11/11 on attempt 2; attempt 1 timed out once on the failed-index projection, tracked as DEF-PACKAGED-INDEX-FAILURE-TIMING). No RetroArch session, memory-reading or save path changed.",
+  "privateProofSha256": "25C1AA8DA5EF1F16EC22322BA09E7C86382DC81F55FAACDAEE59497E645DD2D9",
+  "screenshotReviewSha256": "88EFD7C0DD577200B1E7926B6D3A87C406D5F3E1B69189F4A2D64AE456394404",
+  "packagedAndroidWorkflowRunUrl": "https://github.com/Darkaxt/DualScreenDex/actions/runs/45023731071",
+  "packagedAndroidJunit": {
+    "tests": 11,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "hostedScreenshotAcceptance": false,
+  "hostedScreenshotLimit": "Hosted screenshots are diagnostic captures of injected recovery states on a disposable API35 emulator; functional assertions passed. They are not populated gameplay or clean visual acceptance.",
+  "presentationAcceptanceBasis": "Five exact saved B4 catalogs (three with Local maps decoded in the browser, two Gen II without maps) reopened by the actual reader/runtime/API and rendered in Chromium with web assets byte-identical to the signed APK, under the existing automated-passive-catalog policy.",
+  "controls": [
+    {
+      "romSha256": "467fe116ff6d7d5723b9f8fc60dd81c698c5d4e27b1b444168f3be292848d015",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true,
+      "localMapCount": 143,
+      "screenshotSha256": "c1d167f3a4c6ef738a31c3ec8c3713a5506ab9d9585a382b1c7882089dbe7088",
+      "mapPngSha256": "53be05e74bf4d6cf2b36bac3ddf33adb024e25dee09c8537888a7bf0c9412cdd"
+    },
+    {
+      "romSha256": "87766f522368b6208c840f0803641e41046c2b79c765892b2885a8fbbc682117",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true,
+      "localMapCount": 425,
+      "screenshotSha256": "a060e330123a88437d537e8ee597ecc19906ec5fcde5b7f38974e414a72cad2b",
+      "mapPngSha256": "54f8b189623feb3eea973c0053ec92ab18402be52c918a39fc76715134a04ce7"
+    },
+    {
+      "romSha256": "3698392d27605dafdc85190c6271d68be1be8004f21f6c27ee81be05fbb1671f",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true,
+      "localMapCount": 518,
+      "screenshotSha256": "8511501c5f2e1162fd28d50b5ce1cb6a827ea09ac1f727953bfc941b8b22ddf3",
+      "mapPngSha256": "ba5630e1362b46539d91849fe44f87d9179c81a5d1e4b09778aa3aa394f37265"
+    },
+    {
+      "romSha256": "568e0d2ea2fa7291f3ba4cedb9a6a92da68ebf6304c5a704abdcbab507b4f44f",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true,
+      "localMapCount": 0,
+      "screenshotSha256": "f490b77b0298a27f3a53aaf03fa0b8d349a7e143868844fc9992baecac261e66",
+      "mapPngSha256": null
+    },
+    {
+      "romSha256": "5e0c4688abd5ce2cb00d76902301791d5dfd196a99ff1e764268dffb196c50c3",
+      "catalogPersistenceValidated": true,
+      "runtimeApiValidated": true,
+      "webPresentationValidated": true,
+      "localMapCount": 0,
+      "screenshotSha256": "e5ec87157df6de9d56e8e4e827a282ce51b718d86e7e0ad0c1bac60b62e6ece2",
+      "mapPngSha256": null
+    }
+  ]
+}
