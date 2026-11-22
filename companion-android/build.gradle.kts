@@ -4,7 +4,8 @@ plugins {
 
 // The DualDex companion: catalog runtime, RetroArch session, saves, knowledge, loopback server and web UI assets.
 // `app` (launcher activity, overlay service, Application) and embedding hosts such as DualPlay depend on it.
-val companionWebDirectory = rootProject.layout.projectDirectory.dir("companion-web")
+// Relative to this module, so hosts that include it from a checkout (DualPlay) resolve the same directory.
+val companionWebDirectory = layout.projectDirectory.dir("../companion-web")
 val companionWebDist = companionWebDirectory.dir("dist")
 val generatedWebAssets = layout.buildDirectory.dir("generated/dualdexWebAssets")
 val buildCompanionWeb by tasks.registering(Exec::class) {
