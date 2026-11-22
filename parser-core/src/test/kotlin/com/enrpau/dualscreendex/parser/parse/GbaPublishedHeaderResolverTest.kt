@@ -13,7 +13,7 @@ import org.junit.Test
 class GbaPublishedHeaderResolverTest {
     @Test
     fun itemNominationUsesSameSharedSelectionAndNeverBreaksAnAmbiguousTie() {
-        for (start in listOf(0x1AC, 0x1B4, 0x1BC)) {
+        for (start in listOf(0x1AC, 0x1B4, 0x1B8, 0x1BC)) {
             val bytes = ByteArray(0x20000)
             repeat(7) { writePointer(bytes, start + it * 4, 0x8000 + it * 0x1000) }
             val rom = RomImage(bytes)
@@ -84,6 +84,24 @@ class GbaPublishedHeaderResolverTest {
         assertEquals(0xE000, resolved.baseStats)
         assertEquals(0xF000, resolved.abilities)
         assertEquals(0x10000, resolved.abilityDescriptions)
+        assertEquals(0x12000, resolved.moveData)
+    }
+
+    @Test
+    fun resolvesOneSeenFlagGfHeaderPointerBlock() {
+        // One seen-flag offset removed: the zero word at 0x1B4 leaves 0x1B4 and 0x1BC with six pointers each.
+        val bytes = ByteArray(0x22000)
+        val roots = listOf(0xE000, 0xF000, 0x10000, 0x11000, 0x12000, 0x13000, 0x14000)
+        roots.forEachIndexed { index, target -> writePointer(bytes, 0x1B8 + index * 4, target) }
+        writeU32(bytes, 0x1D4, 0xA8)
+
+        val resolved = GbaPublishedHeaderResolver.resolve(RomImage(bytes), PokemonTextCodec.gbaEnglish)
+
+        assertEquals(GbaPublishedDataState.RESOLVED, resolved.publishedDataState)
+        assertEquals(0xE000, resolved.baseStats)
+        assertEquals(0xF000, resolved.abilities)
+        assertEquals(0x10000, resolved.abilityDescriptions)
+        assertEquals(0x11000, resolved.itemRoot)
         assertEquals(0x12000, resolved.moveData)
     }
 

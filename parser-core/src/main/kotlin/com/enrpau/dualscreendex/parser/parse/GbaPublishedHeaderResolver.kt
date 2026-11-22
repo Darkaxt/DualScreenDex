@@ -31,6 +31,9 @@ internal enum class GbaPublishedDataState { RESOLVED, ABSENT, AMBIGUOUS }
  *
  * Older decompilation projects place species, ability, item, move, and ball roots at 0x1AC,
  * while the retained retail/DPE header places the same seven consecutive pointers at 0x1BC.
+ * Removing both Emerald seen-flag offsets moves the block to 0x1B4. Removing one of them moves
+ * it to 0x1B8: the published pokedexOffset at 0x158 is followed by a single seen offset, and
+ * pokedexVar sits at 0x160 instead of 0x164.
  * Complete runs are ranked by whether their base-stat and move-data roles validate against the
  * independently published name-table counts. Pointer completeness is only a fallback when no
  * candidate has semantic evidence; equally credible windows are rejected rather than address-tied.
@@ -38,7 +41,7 @@ internal enum class GbaPublishedDataState { RESOLVED, ABSENT, AMBIGUOUS }
 internal object GbaPublishedHeaderResolver {
     /** Published roles only; compiled accessors still have to prove ownership, indices and extents. */
     fun abilityPointerRolesForCore(rom: RomImage, coreRoot: Int): List<GbaPublishedAbilityPointerRoles> =
-        listOf(COMPACT_DATA_ROOT, FREE_SEEN_FLAGS_DATA_ROOT, STANDARD_DATA_ROOT).mapNotNull { start ->
+        DATA_ROOTS.mapNotNull { start ->
             if (rom.pointerOrNull(start) != coreRoot) return@mapNotNull null
             val names = rom.pointerOrNull(start + 4) ?: return@mapNotNull null
             val descriptions = rom.pointerOrNull(start + 8) ?: return@mapNotNull null
@@ -61,7 +64,7 @@ internal object GbaPublishedHeaderResolver {
             ?: inferredNameCount(rom, SPECIES_NAMES_SLOT, SPECIES_NAME_WIDTH, 2_048, codec)
         val moveCount = geometry.moveNames?.count
             ?: inferredNameCount(rom, MOVE_NAMES_SLOT, MOVE_NAME_WIDTH, 2_048, codec)
-        val candidates = listOf(COMPACT_DATA_ROOT, FREE_SEEN_FLAGS_DATA_ROOT, STANDARD_DATA_ROOT)
+        val candidates = DATA_ROOTS
             .map { start ->
                 PublishedBlockCandidate(
                     start = start,
@@ -187,7 +190,9 @@ internal object GbaPublishedHeaderResolver {
     private const val POKEDEX_COUNT_SLOT = 0x168
     private const val COMPACT_DATA_ROOT = 0x1AC
     private const val FREE_SEEN_FLAGS_DATA_ROOT = 0x1B4
+    private const val ONE_SEEN_FLAG_DATA_ROOT = 0x1B8
     private const val STANDARD_DATA_ROOT = 0x1BC
+    private val DATA_ROOTS = listOf(COMPACT_DATA_ROOT, FREE_SEEN_FLAGS_DATA_ROOT, ONE_SEEN_FLAG_DATA_ROOT, STANDARD_DATA_ROOT)
     private const val PUBLISHED_POINTER_COUNT = 7
     private const val SPECIES_NAME_WIDTH = 11
     private const val MOVE_NAME_WIDTH = 13
