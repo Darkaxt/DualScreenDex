@@ -164,7 +164,7 @@ class CatalogStoreTest {
         assertNull(stale.stored)
         cache.write(catalog, source, CatalogWriteProgress.complete())
         assertEquals(catalog, requireNotNull(CatalogCache(root, JdbcCatalogDatabaseFactory).readComplete(catalog.romSha256)).catalog)
-        assertEquals(143, CatalogSchema.parserSchemaVersion)
+        assertEquals(144, CatalogSchema.parserSchemaVersion)
         assertEquals(2, CatalogSchema.version)
     }
 
