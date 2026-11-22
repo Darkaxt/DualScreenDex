@@ -61,7 +61,14 @@ No live ADB/device gates for parser-only work (memory `dualdex-no-ad-hoc-live-ad
 | --- | --- | --- | --- |
 | DEF-LC-SMOL | Liquid Crystal: four unsupported SMOL map failures and an invalid event-pointer diagnostic (Unbound follow-up report) | B5+ map batch | Maps decode or are recorded as a proven unsupported engine feature. |
 | DEF-ME-HIDDEN11 | Modern Emerald: 11 hidden-only challenge areas without proved collection flags | B5+ | Compiled-consumer proof of the hidden-item flag base, or a permanent documented exclusion. |
-| DEF-ROWS-41 | 39 unmatched + 2 ambiguous corpus rows | B3 | Each row has an ID and a target. |
+| DEF-ROWS-41 | 39 unmatched + 2 ambiguous corpus rows | Closed 2026-11-22 (B3) | Each row has an ID and a target ([B3 report](../../reports/corpus/2026-11-22-b3-unmatched-triage.md)). |
+| LIB26-GBA-HEADER-1B8 | C1: 7 Emerald-derived hacks with a 0x1B8, ambiguous or zeroed-slot published header, then per-hack species ABIs | GBA focus (B3a) | Header candidate and leading-run scoring select the rows; per-ABI species support follows. |
+| LIB26-GBA-FRLG-EM-TIE | C3: Ultra Violet and Lugias Ocean tie between the FireRed and Emerald probes | GBA focus (B3a) | A compiled-code engine discriminator breaks the tie; vanilla controls unchanged. |
+| LIB26-GBA-EXPANSION-ABI | C4: 9 pokeemerald-expansion rows with unsupported SpeciesInfo strides or stale pointers | GBA focus (B3a) | Each expansion version's layout is source-backed and selects. |
+| LIB26-GBA-ZERO-TAIL | Elysium B: base-stat table ends in a 40-row zero tail | GBA focus (B3a) | A compiled count authority proves the extent, or it stays fail-closed. |
+| LIB26-GBA-TABLE-EXTENT | Gaia, Recharged Emerald/Yellow and Noon: tables run into learnset data, or have no proven end | GBA focus (B3a) | A bounded extent proof selects them. |
+| LIB26-GBA-MOVE-PP | Moon Galaxy: active move 506 has PP above the typed codec's 64 | GBA focus (B3a) | A source-backed PP domain for the hack's codec, or a documented exclusion. |
+| LIB26-G12-CUSTOM | C8: 6 custom Gen I/II engines (Prism, Orange, Peridot, Brown, Fools Gold, BW3 Genesis) | After the GBA focus | Source-backed engine support per row, or recorded as unsupported. |
 | DEF-POKESCAPE | Pokescape remaining POI text/mechanics (95.83%) | Parked by user | Resumes only on explicit user request. |
 | DEF-G3-LIGHTING-LIVE | Gen III seamless-map live visual check (memory tasks #123/#130, RC29) | Downstream live observation | The user reports the visuals on a current release, or the item is closed as superseded. |
 | DEF-G2-AMBROSIA-MOVE-DOMAIN | Ambrosia: no Metronome exclusion loop, so no compiled move-count authority (B2) | Closed 2026-11-22 (efcadaff) | Battle Tower bound fallback proves 254 moves; EVOLUTIONS and LEARNSETS available. |
@@ -95,5 +102,5 @@ No live ADB/device gates for parser-only work (memory `dualdex-no-ad-hoc-live-ad
 | B1 | Done | a23be727, f27e2736, 32f65b9e, 98028c12, 90cc4c67, 25bc99f8 (from PR #35) | Skipped: 104c3479 (shipped in 1.2.2), 2ee4e886 (superseded by lazy theme selection), 06b80bb7 (cache bump replaced by 141), 17d8089d (merge). |
 | R1 | Done | 160861fe | [R1 report](../../reports/corpus/2026-11-21-r1-corpus-refresh.md): 342 inputs, 0 errors, originals unchanged; 0 regressions, 8 LOCAL_MAP gains (mean 79.875%→79.911%); 2 h 52 m vs 4 h 05 m. Evidence JSON switch deferred to B4. Host tests before R1: app 693, parser-core 2658, catalog-store 130, 0 failed. |
 | B2 | Done 2026-11-22 | ea77e7e7, 3b823905, 10cd23f3, efcadaff, 7a0e10cb | [B2 report](../../reports/corpus/2026-11-21-b2-gen2-relationships.md): 22 affected inputs, 0 errors, originals unchanged; all 8 target ROMs gain EVOLUTIONS and LEARNSETS (Crystal Inheritance EVOLUTIONS partial 242/254, DEF-G2-INHERITANCE-METHOD-VOCAB); 0 regressions, 14 controls unchanged. Host tests: parser-core 2672, catalog-store 130, app 693, 0 failed. Parser schema 143. |
-| B3 | Next | — | — |
+| B3 | Done 2026-11-22 | 5f179dae, 4f523473, ff0a24cd | [B3 report](../../reports/corpus/2026-11-22-b3-unmatched-triage.md): all 41 rows have IDs and targets. C2 rule: Moon Galaxy and Sun Sky now SELECTED (37%→82% and 86%). Run 1 (82 inputs) found the Elysium B regression, fixed at ff0a24cd. Run 2 (8 inputs) is identical to R1 apart from the two gains. 82 originals unchanged. Parser schema 144. Next: the GBA focus (B3a). |
 | B4 | Pending | — | — |
