@@ -4,11 +4,17 @@ This is the canonical reviewer entry point for DualDex release readiness.
 
 ## Active marker
 
-- **Latest public stable:** [`v1.2.4`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.2.4), published October 18, 2026.
-- **Prepared next release:** `v1.2.5` (candidate `v1.2.5-rc.1`), qualified on the [B4 release corpus run](reports/corpus/2026-11-22-b4-release-corpus.md) at evidence source `1e8777ee5cbdac1a224134e4d9609a4ee135639a` (parser revision 144). Signing and promotion follow the protected workflows.
+- **Latest public stable:** [`v1.2.5`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.2.5), published November 22, 2026.
+- **Prepared next release:** `v1.2.5` preparation is complete: this marker now identifies the published stable, not a pending release. No additional release is scheduled.
 - **Machine-readable readiness marker:** [`release/v1-ready.json`](../release/v1-ready.json), source-bound build/signing readiness, not stable-promotion acceptance.
-- **Current state:** stable v1.2.4 remains the public release until 1.2.5 is promoted and independently verified. No physical-device, signed-APK execution or all-ROM 100% acceptance is claimed.
-- **Current qualification:** one fresh full342 run: 310 selected / 0 ambiguous / 32 unmatched, 0 errors, 18 ROMs improved, 0 regressions, mean 79.911% → 81.513%, languages 295 resolved / 15 unknown, originals unchanged. [Hosted packaged acceptance 45022647102](https://github.com/Darkaxt/DualScreenDex/actions/runs/45022647102): 11 tests, 0 failures/errors/skips. Parser cache 144 rejects 140; SQLite 2 unchanged.
+- **Current state:** stable v1.2.5 is published from the verified RC1 source through the protected final workflow. No physical-device, signed-APK execution or all-ROM 100% acceptance is claimed.
+- **Current qualification:** [B4 release corpus run](reports/corpus/2026-11-22-b4-release-corpus.md): one fresh full342 run at `1e8777ee5cbdac1a224134e4d9609a4ee135639a`, 310 selected / 0 ambiguous / 32 unmatched, 0 errors, 18 ROMs improved, 0 regressions, mean 79.911% → 81.513%, languages 295 resolved / 15 unknown, originals unchanged. Parser cache 144 rejects 140; SQLite 2 unchanged.
+
+## Released 1.2.5 compatibility batch
+
+[Signed RC1](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.2.5-rc.1), source `b89c525854938f3daf47d850deb6d0c39083d3bf`, passed [protected release 45023731071](https://github.com/Darkaxt/DualScreenDex/actions/runs/45023731071) on attempt 2. Attempt 1 failed twice: the policy audit's unauthenticated GitHub API call returned 403, which looks like an anonymous runner rate limit because the same endpoints return 200 publicly; and one packaged case timed out after 30 s waiting for the failed-index projection (tracked as DEF-PACKAGED-INDEX-FAILURE-TIMING). The rerun of the failed jobs at the same tag passed all 11 packaged tests. All 68 assets and 67 checksums, provenance, package `com.darkaxt.dualdex` 1.2.5-rc.1 (1020501) and the pinned production signer were independently verified. APK SHA256: `EA8C2C6523EBCEB9BF9987EDE9AE444F831674979C9DDBC66B2F0CA653A7A8D7`. [Protected promotion 45025210880](https://github.com/Darkaxt/DualScreenDex/actions/runs/45025210880) made the same release public without changing any asset ID or digest.
+
+[Candidate acceptance](reports/candidate-promotions/v1.2.5-rc.1.json) uses the existing automated passive-catalog route. Five saved B4 catalogs (Ultra Violet, Moon Galaxy, Scorched Silver, Ambrosia and Gold 97 Reforged) were reopened by the actual reader, runtime and API and rendered in Chromium with web assets byte-identical to the signed APK. Local-map PNGs were decoded in the browser for the three controls that have maps. Non-gameplay app changes since 1.2.4 (setup cancellation, library scan quota, first-load persistence, theme logging) are disclosed there; no RetroArch session, memory-reading or save path changed.
 
 ## Released 1.2.4 Unbound follow-up
 
