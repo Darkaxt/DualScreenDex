@@ -191,7 +191,7 @@ object ParserOrchestrator {
             val probe = probes.first { it.family == exact.family }
             Selection(SelectionStatus.SELECTED, probe, null)
         } else {
-            select(probes)
+            select(probes) { tied -> Gen3SaveBlock2EngineDiscriminator.resolve(rom, tied) }
         }
         val capabilities = applySpeciesSemanticDomain(
             session,
@@ -375,7 +375,14 @@ object ParserOrchestrator {
             incompleteRecords = incompleteRecords,
         )
 
-    fun select(probes: List<ParserProbe>): Selection {
+    /**
+     * [engineDiscriminator] is asked only for an exact score tie that the type chart leaves open; it
+     * returns the one tied family proven by compiled engine code, or null to keep the tie.
+     */
+    fun select(
+        probes: List<ParserProbe>,
+        engineDiscriminator: (Set<EngineFamily>) -> EngineFamily? = { null },
+    ): Selection {
         val eligible = probes
             .filter { it.hardGatePassed && it.anchors >= 2 }
             .sortedWith(compareByDescending<ParserProbe> { it.score }.thenBy { it.family.name })
@@ -391,6 +398,13 @@ object ParserOrchestrator {
             val typeChartWinner = tied.singleOrNull { it.hasCompleteTypeChart() }
             if (typeChartWinner != null) {
                 return Selection(SelectionStatus.SELECTED, typeChartWinner, margin)
+            }
+            val tiedFamilies = tied.map { it.family }.toSet()
+            if (tiedFamilies.size == tied.size) {
+                val engineWinner = engineDiscriminator(tiedFamilies)?.let { family -> tied.single { it.family == family } }
+                if (engineWinner != null) {
+                    return Selection(SelectionStatus.SELECTED, engineWinner, margin)
+                }
             }
         }
         return Selection(SelectionStatus.AMBIGUOUS, null, margin)

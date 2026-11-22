@@ -107,6 +107,24 @@ class ParserOrchestratorTest {
         )
 
         assertEquals(SelectionStatus.AMBIGUOUS, result.status)
+
+        val tied = listOf(
+            probe(EngineFamily.EMERALD, 80).copy(capabilities = listOf(completeTypeChart)),
+            probe(EngineFamily.FIRERED_LEAFGREEN, 80).copy(capabilities = listOf(completeTypeChart)),
+        )
+        var asked: Set<EngineFamily>? = null
+        val discriminated = ParserOrchestrator.select(tied) { families ->
+            asked = families
+            EngineFamily.FIRERED_LEAFGREEN
+        }
+        assertEquals(SelectionStatus.SELECTED, discriminated.status)
+        assertEquals(EngineFamily.FIRERED_LEAFGREEN, discriminated.winner?.family)
+        assertEquals(setOf(EngineFamily.EMERALD, EngineFamily.FIRERED_LEAFGREEN), asked)
+        // A near tie is still refused: the discriminator only settles exact score ties.
+        val near = ParserOrchestrator.select(
+            listOf(probe(EngineFamily.EMERALD, 80), probe(EngineFamily.FIRERED_LEAFGREEN, 74)),
+        ) { EngineFamily.FIRERED_LEAFGREEN }
+        assertEquals(SelectionStatus.AMBIGUOUS, near.status)
     }
 
     @Test
