@@ -25,3 +25,4 @@ androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = 
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
+android-library = { id = "com.android.library", version.ref = "agp" }

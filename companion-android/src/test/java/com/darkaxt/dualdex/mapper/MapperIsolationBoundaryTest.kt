@@ -11,8 +11,8 @@ class MapperIsolationBoundaryTest {
         val protectedRoots = listOf("parser-core", "catalog-store", "save-core", "companion-core", "retroarch-session", "battle-memory")
             .map { File(root, "$it/src/main") } +
             listOf(
-                File(root, "app/src/main/java/com/darkaxt/dualdex/web/ProductionCompanionRuntime.kt"),
-                File(root, "app/src/main/java/com/darkaxt/dualdex/battle"),
+                File(root, "companion-android/src/main/java/com/darkaxt/dualdex/web/ProductionCompanionRuntime.kt"),
+                File(root, "companion-android/src/main/java/com/darkaxt/dualdex/battle"),
             )
         val violations = protectedRoots.flatMap { path ->
             if (path.isFile) listOf(path) else path.walkTopDown().filter(File::isFile).toList()

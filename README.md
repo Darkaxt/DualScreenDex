@@ -267,7 +267,8 @@ The release candidate contains:
 - `retroarch-session`: passive Network Command status monitoring, safe configuration editing, ROM-library indexing, and active-content resolution;
 - `battle-memory`: pure-Kotlin Generation I/III structure resolution, selected-target interpretation, PP/latch observation tracking, and independent capability states;
 - `memory-mapper-lab`: an optional read-only issue-report subsystem that has no production-state output;
-- `app`: the replacement Android host with packaged web assets, per-ROM SQLite catalogs and knowledge, setup wizard, normal Docked mode, and an opt-in floating Poké Ball that toggles the same UI in a bounded, resizable 4:3 overlay;
+- `companion-android`: the Android companion library (catalog runtime, RetroArch session coordinator, saves, knowledge, loopback server and packaged web assets) behind `DualDexCompanionHost`, which an embedding frontend can start in-process with its own network-command transport and `HostSession`;
+- `app`: the replacement Android host with the launcher activity, setup wizard, normal Docked mode, and an opt-in floating Poké Ball that toggles the same UI in a bounded, resizable 4:3 overlay;
 - competitive family parsers for Red/Blue, Yellow, Gold/Silver, Crystal, Ruby/Sapphire, Emerald, and FireRed/LeafGreen;
 - dynamic structural resolution for common relocated and expanded Gen III layouts;
 - direct ROM and streamed ZIP-entry inputs through the same parser contract;

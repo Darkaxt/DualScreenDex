@@ -55,7 +55,8 @@ class InterfaceLanguageSettingsTest {
     private fun strings(directory: String): Map<String, String> = strings("main", directory)
 
     private fun strings(sourceSet: String, directory: String): Map<String, String> {
-        val file = File("src/$sourceSet/res/$directory/strings.xml")
+        // The localized resources belong to the DualDex app module.
+        val file = File("../app/src/$sourceSet/res/$directory/strings.xml")
         val nodes = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(file).getElementsByTagName("string")
         return buildMap {
             repeat(nodes.length) { index ->
