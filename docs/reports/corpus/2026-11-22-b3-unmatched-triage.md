@@ -22,10 +22,10 @@ Row IDs are `ROW-<first 12 hex of the SHA-256>`, the same prefix the corpus libr
 | ID | ROM | Cluster | Target / reason |
 | --- | --- | --- | --- |
 | ROW-35cbc369eb8f | Light and Shadow (V2.0.4) | C1 | GBA focus: 0x1BC header with zeroed ability slots |
-| ROW-3698392d2760 | Scorched Silver (v1.3) | C1 | GBA focus: header at 0x1B8 |
+| ROW-3698392d2760 | Scorched Silver (v1.3) | C1 | **Selected in B3a** (Emerald, 0x1B8 header at 20f4b0af) |
 | ROW-55b887450b93 | Elite Redux (2.65.3b) | C1 | GBA focus: 0x1BC header, missing ball slots; innates species ABI (source: `Game Boy Advance/Elite Redux`) |
-| ROW-560c746d5b9b | Team Rocket Edition (v2.1) | C1 | GBA focus: header at 0x1B8 |
-| ROW-57d9ee54b152 | Parallel Emerald (v1.2) | C1 | GBA focus: header at 0x1B8 |
+| ROW-560c746d5b9b | Team Rocket Edition (v2.1) | C1 | **Selected in B3a** (Emerald, 0x1B8 header at 20f4b0af) |
+| ROW-57d9ee54b152 | Parallel Emerald (v1.2) | C1 | **Selected in B3a** (Emerald, 0x1B8 header at 20f4b0af) |
 | ROW-8f58e67c994e | Scale x Fang (v1.0.2) | C1 | GBA focus: header at 0x1B8 |
 | ROW-9c66085c61cf | WaveBlue (v1.9.4) | C1 | GBA focus: 0x1BC header with zeroed ability slots |
 | ROW-87766f522368 | Moon Galaxy | C2 | **Selected in B3** (FireRed). MOVE_DETAILS stays not found: move 506 is active with PP above the typed codec's ceiling of 64 (`LIB26-GBA-MOVE-PP`) |
