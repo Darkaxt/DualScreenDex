@@ -222,6 +222,35 @@ class PokeemeraldExpansionResolverTest {
         assertNull(resolve(RomImage(fixture(typeChart = TypeChartFixture.CUSTOM_TWICE_REFERENCED))))
     }
 
+    @Test
+    fun infersSpeciesShapeAcrossZeroFilledDisabledFamilyRows() {
+        val disabled = (1..9).toSet() + (16..22)
+        val bytes = fixture(speciesCount = 80, disabledSpecies = disabled).also {
+            Base64.getDecoder().decode("ASAIAAAAKAABAAAAAAH+BwEAAAA=").copyInto(it, 0x8100)
+            it[0x8200 + 2] = 0x1F
+        }
+        val rom = RomImage(bytes)
+        val resolved = requireNotNull(resolve(rom))
+
+        assertEquals(180, resolved.metadata.speciesRecordSize)
+        assertEquals(44, resolved.metadata.speciesNameOffset)
+        assertEquals(60, resolved.metadata.nationalDexOffset)
+        listOf(
+            PokeemeraldExpansionResolver.validateSpeciesNames(rom, resolved, PokemonTextCodec.gbaEnglish),
+            PokeemeraldExpansionResolver.validateBaseStats(rom, resolved),
+            PokeemeraldExpansionResolver.validateLearnsets(rom, resolved),
+            PokeemeraldExpansionResolver.validateEvolutions(rom, resolved),
+        ).forEach {
+            assertEquals(true, it.compatible)
+            assertEquals(79 - disabled.size, it.validRecords)
+        }
+    }
+
+    @Test
+    fun rejectsSpeciesShapeWhenTooFewPopulatedRowsFillTheSample() {
+        assertNull(resolve(RomImage(fixture(speciesCount = 80, activeSpeciesCount = 10))))
+    }
+
     private enum class TypeChartFixture { VANILLA_ANCHORS, CUSTOM_REFERENCED, CUSTOM_ROOT_ONLY, CUSTOM_TWICE_REFERENCED }
 
     private fun resolve(rom: RomImage): PokeemeraldExpansionResolution? =
@@ -237,6 +266,7 @@ class PokeemeraldExpansionResolverTest {
         evolutionRecordSize: Int = 12,
         terminateEvolutions: Boolean = true,
         typeChart: TypeChartFixture = TypeChartFixture.VANILLA_ANCHORS,
+        disabledSpecies: Set<Int> = emptySet(),
     ): ByteArray {
         val bytes = ByteArray(if (typeChart == TypeChartFixture.CUSTOM_TWICE_REFERENCED) 0xA000 else 0x9000)
         writeAscii(bytes, 0x108, "pokemon emerald version")
@@ -254,7 +284,7 @@ class PokeemeraldExpansionResolverTest {
 
         repeat(speciesCount) { id ->
             val base = 0x1000 + id * 180
-            if (id in 1..activeSpeciesCount) {
+            if (id in 1..activeSpeciesCount && id !in disabledSpecies) {
                 repeat(6) { bytes[base + it] = (40 + id).toByte() }
                 bytes[base + 6] = 12
                 bytes[base + 7] = 3

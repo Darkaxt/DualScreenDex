@@ -408,10 +408,11 @@ object PokeemeraldExpansionResolver {
         moveCount: Int,
         codec: PokemonTextCodec,
     ): SpeciesShape? {
-        val sample = sampleIds(count, 24)
+        val sampleSize = minOf(count - 1, 24)
         val candidates = mutableListOf<SpeciesShape>()
         for (stride in 64..384 step 4) {
             if (base.toLong() + count.toLong() * stride > rom.size) continue
+            val sample = populatedSpeciesIds(rom, base, count, stride, sampleSize) ?: continue
             val statsScore = sample.count { id -> plausibleStats(rom, base + id * stride) }
             if (statsScore < sample.size * 0.80) continue
             for (nameOffset in 24..96) {
@@ -601,6 +602,21 @@ object PokeemeraldExpansionResolver {
     private fun sampleIds(count: Int, maximum: Int): List<Int> {
         val live = count - 1
         return (1..minOf(live, maximum)).toList()
+    }
+
+    /**
+     * The first [size] species rows that are not entirely zero. Expansion builds gate every family's
+     * SpeciesInfo initializers behind `P_FAMILY_*`, so a disabled family leaves zero-filled rows inside
+     * the published extent. Returns null unless the full sample exists.
+     */
+    private fun populatedSpeciesIds(rom: RomImage, base: Int, count: Int, stride: Int, size: Int): List<Int>? {
+        val ids = ArrayList<Int>(size)
+        for (id in 1 until count) {
+            if (ids.size == size) break
+            val record = base + id * stride
+            if ((0 until stride).any { rom.u8(record + it) != 0 }) ids += id
+        }
+        return ids.takeIf { it.size == size && size > 0 }
     }
 
     private fun sampleIdsAcrossExtent(count: Int, maximum: Int): List<Int> {
