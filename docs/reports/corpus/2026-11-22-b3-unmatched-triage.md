@@ -42,10 +42,10 @@ Row IDs are `ROW-<first 12 hex of the SHA-256>`, the same prefix the corpus libr
 | ROW-87686967d562 | Unova Emerald (2.0.3) | C4 | GBA focus: stale published names pointer |
 | ROW-c68f5d2932f6 | Voyager (v0.3.6) | C4 | GBA focus: expansion SpeciesInfo stride |
 | ROW-1108eccf0fa9 | Voyager (Battle Frontier Demo) (v1.1) | C4 | GBA focus: expansion SpeciesInfo stride |
-| ROW-5a3bde580eb6 | Pisces (v1.5.4) | C4 | GBA focus: expansion SpeciesInfo stride |
+| ROW-5a3bde580eb6 | Pisces (v1.5.4) | C4 | GBA focus: expansion SpeciesInfo stride. Selected in B3a (b3d2fec7) |
 | ROW-d756b2783ded | Lazarus (v2.0) | C4 | GBA focus: expansion SpeciesInfo stride |
 | ROW-b6b7cb019394 | Recordkeepers (v1.2.1) | C4 | GBA focus: non-standard header (code at 0x100) |
-| ROW-ded48b60accf | Sovereign of the Skies (v2.1.2) | C4 | GBA focus: 36-byte stats validate, names 940/1208 (source: `Game Boy Advance/Sovereign of the Skies`) |
+| ROW-ded48b60accf | Sovereign of the Skies (v2.1.2) | C4 | GBA focus: 36-byte stats validate, names 940/1208 (source: `Game Boy Advance/Sovereign of the Skies`). Selected in B3a (b3d2fec7) |
 | ROW-0166385dc909 | The Nuzlomizer (3.0.1) | C5 | GBA focus, after C1–C4 |
 | ROW-07dcceb75eee | Harvestcraft (v2.0) | C6 | Unsupported engine: header `UNKNOWN`, not a mainline engine |
 | ROW-1e1180b8dd30 | Order & Chaos Remastered | C6 | Unsupported engine: garbled header |

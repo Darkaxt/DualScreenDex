@@ -49,3 +49,43 @@ Coverage: the rule can only change rows that end in an exact family tie. R1 had 
 Originals: all 5 inputs hash to their corpus identity prefix after the run.
 
 Host tests at c4697b98: parser-core 2679 run, 240 skipped, 0 failed.
+
+## C4: expansion-era species extents (`LIB26-GBA-EXPANSION-ABI`)
+
+Finding: the nine C4 rows do not share one ABI. They split by SpeciesInfo stride, measured from the published 0x1BC base-stats root:
+
+| Rows | Stride | Shape |
+| --- | --- | --- |
+| Pisces, Sovereign of the Skies | 36 | The C1 36-byte layout. The species count, not the stride, was wrong. |
+| Too Many Types | 36 | Three type bytes and type IDs up to 46, beyond the Gen III type domain. |
+| Unova Emerald, Too Many Types 2, Recordkeepers | 84, 260, 296 | Version-specific expansion SpeciesInfo layouts. |
+| Voyager, Voyager Demo, Lazarus | unknown | No retail Bulbasaur stat row anywhere in the ROM. |
+
+Pisces and Sovereign size the species-name array by `NUM_SPECIES` and leave inactive slots all zero:
+
+- Pisces: 1818 name slots, names 1..1468 populated, 1469..1817 zero. The unsized 36-byte SpeciesInfo array ends at row 1469, where Bulbasaur's level-up learnset starts, and the learnset pointer table's first entry targets exactly that address. The parser counted 1818 species, so stats (224/1818 at a 28-byte stride) and names (1469/1818) both failed.
+- Sovereign of the Skies: 1208 slots bounded by the move-name root, last slot populated, 268 all-zero interior slots (for example 810..898). Stats already validated at 1208; names failed at 940/1208.
+
+Fix (b3d2fec7):
+
+- `Gen3DynamicTableResolver` trims the species count to the populated name prefix K only when every name slot from K is zero, the stats validate for exactly K rows at an inferred stride, row K is neither a stats row nor empty, and an aligned ROM word targets row K.
+- `TableValidators.fixedNamesWithEmptySlots` treats all-zero name slots as uncovered placeholders. `CoreDatasetsStrategy` uses it for Gen III only after ordinary validation fails and only when the base stats validated the same species count. The last slot must be a name, at most 1% of slots may be malformed, and at least half must be names.
+- A zero tail on its own still proves nothing.
+
+Impact scan (`namescan.py`, published 0x144 name roots bounded by 0x148, 211 GBA headers): 9 ROMs have any all-zero name slot. Only Pisces has a pure zero tail. The scan does not cover name tables located through compiled geometry outside the published header.
+
+| Run | Commit | Inputs | Result |
+| --- | --- | --- | --- |
+| Qualification | b3d2fec7 (jar manifest matches) | 12: the 9 scan rows (Pisces, Sovereign, Scale x Fang, DarkFire, Super Mariomon, Spades & Clubs, Celia, Tourmaline, Voyager) plus controls Radical Red, Unbound, Emerald Kaizo | Exit 0. 9 identical to R1. Pisces 8.13→54.17% and Sovereign 28.97→53.24%, both now SELECTED (Emerald). Scale x Fang carries only its C1 change (12.30%). |
+
+Originals: all 12 inputs hash unchanged and match their corpus identity prefix.
+
+Host tests at b3d2fec7: parser-core 2687 run, 240 skipped, 0 failed.
+
+Follow-ups:
+
+| ID | Gap |
+| --- | --- |
+| LIB26-GBA-EXPANSION-LEARNSETS | Pisces level-up learnsets (`LevelUpMove {u16 move; u16 level}`) and evolutions are not materialized; abilities are missing on both new selections. |
+| LIB26-GBA-EXPANSION-DEX-DOMAIN | Sovereign excludes 997 of 1208 slots from the Pokédex semantic domain under the existing zero-Dex rule; audit against the species-to-dex map. |
+| LIB26-GBA-EXPANSION-ABI (open) | Too Many Types (type domain), Unova Emerald, Too Many Types 2 and Recordkeepers (84/260/296-byte layouts), Voyager, Voyager Demo and Lazarus (no retail stat anchor). |
