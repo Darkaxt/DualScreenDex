@@ -423,7 +423,11 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
         }
 
         val publishedPartialBaseStatsCandidate =
-            if (generation == 3 && expansion == null && !stats.compatible) {
+            if (generation == 3 && expansion == null && (
+                    !stats.compatible ||
+                        stats.reasons.any { it.startsWith(TableValidators.PLACEHOLDER_BASE_STATS_REASON) }
+                    )
+            ) {
                 Gen3PublishedPartialBaseStatsResolver.resolveStructuralCandidate(
                 rom = rom,
                 publishedRoot = tableResolution.publishedBaseStatsRoot,

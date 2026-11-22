@@ -273,7 +273,100 @@ class TableValidatorsTest {
 
         assertTrue(TableValidators.baseStats(RomImage(bytes), 0, count, width, generation = 3).compatible)
         bytes[(894 * width)] = 0
-        assertFalse(TableValidators.baseStats(RomImage(bytes), 0, count, width, generation = 3).compatible)
+        assertFalse(
+            TableValidators.baseStats(
+                RomImage(bytes), 0, count, width, generation = 3, allowPlaceholderSlots = false,
+            ).compatible,
+        )
+    }
+
+    @Test
+    fun reservesEmptyPlaceholderSlotsInExpandedGen3BaseStatTables() {
+        val count = 500
+        val width = 28
+        // Populated rows surround the empty slots, so the final record is a real species.
+        fun table(valid: Int, malformed: Int, zeroTail: Boolean = false): ByteArray {
+            val bytes = ByteArray(count * width)
+            val head = if (zeroTail) valid else valid / 2
+            val empty = count - valid - malformed
+            repeat(count) { index ->
+                val base = index * width
+                val tailIndex = index - head - malformed - empty
+                when {
+                    index < head || tailIndex >= 0 -> {
+                        repeat(6) { stat -> bytes[base + stat] = 50 }
+                        bytes[base + 6] = 1
+                        bytes[base + 7] = 2
+                    }
+                    index < head + malformed -> bytes[base + 2] = 7
+                    // Placeholder slots: empty, but some keep default egg groups.
+                    index % 2 == 0 -> { bytes[base + 20] = 2; bytes[base + 21] = 2 }
+                }
+            }
+            return bytes
+        }
+
+        val accepted = TableValidators.baseStats(RomImage(table(400, 5)), 0, count, width, generation = 3)
+        assertTrue(accepted.compatible)
+        assertEquals(400, accepted.validRecords)
+        assertTrue(accepted.reasons.single().startsWith(TableValidators.PLACEHOLDER_BASE_STATS_REASON))
+        // Placeholder slots stay uncovered rather than becoming species data.
+        assertEquals(399, accepted.coveredRecords)
+        assertEquals(count - 1, accepted.expectedRecords)
+
+        // More than 1% malformed rows, or fewer than 80% populated rows, still fail closed.
+        assertFalse(TableValidators.baseStats(RomImage(table(400, 6)), 0, count, width, generation = 3).compatible)
+        assertFalse(TableValidators.baseStats(RomImage(table(399, 0)), 0, count, width, generation = 3).compatible)
+        // A zero tail is not proven to be inside the table.
+        assertFalse(
+            TableValidators.baseStats(RomImage(table(400, 0, zeroTail = true)), 0, count, width, generation = 3).compatible,
+        )
+        // Strict callers keep the ordinary all-slot rule.
+        assertFalse(
+            TableValidators.baseStats(
+                RomImage(table(400, 0)), 0, count, width, generation = 3, allowPlaceholderSlots = false,
+            ).compatible,
+        )
+        // Egg-group bytes are only placeholder fields in the standard 28-byte record.
+        val wide = ByteArray(count * 32)
+        repeat(count) { index ->
+            val base = index * 32
+            if (index < 400) {
+                repeat(6) { stat -> wide[base + stat] = 50 }
+            } else {
+                wide[base + 20] = 2
+            }
+        }
+        assertFalse(TableValidators.baseStats(RomImage(wide), 0, count, 32, generation = 3).compatible)
+    }
+
+    @Test
+    fun acceptsOneInteriorGen3MoveRecordWhosePpExceedsTheRetailCeiling() {
+        val recordSize = 12
+        val count = 40
+        fun table(outliers: List<Int>, outlierAccuracy: Int = 100): ByteArray {
+            val bytes = ByteArray(recordSize * count)
+            repeat(count) { index ->
+                val base = index * recordSize
+                bytes[base + 1] = 40
+                bytes[base + 2] = 9
+                bytes[base + 3] = if (index in outliers) outlierAccuracy.toByte() else 100
+                bytes[base + 4] = if (index in outliers) 82 else 35
+            }
+            return bytes
+        }
+        fun validate(bytes: ByteArray) = TableValidators.moveData(
+            RomImage(bytes), offset = 0, count = count, recordSize = recordSize, generation = 3,
+        )
+
+        val accepted = validate(table(listOf(25)))
+        assertTrue(accepted.compatible)
+        assertEquals(count, accepted.totalRecords)
+        assertTrue(accepted.reasons.single().contains("(25)"))
+        // Two outliers, a final-row outlier, or an outlier that is also structurally invalid fail closed.
+        assertFalse(validate(table(listOf(10, 25))).compatible)
+        assertFalse(validate(table(listOf(count - 1))).compatible)
+        assertFalse(validate(table(listOf(25), outlierAccuracy = 5)).compatible)
     }
 
     @Test

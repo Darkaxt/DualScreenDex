@@ -54,7 +54,7 @@ internal object Gen3PublishedPartialBaseStatsResolver {
         if (compiledReferences < MINIMUM_COMPILED_REFERENCES) return null
         return SUPPORTED_RECORD_SIZES.mapNotNull { recordSize ->
             val table = TableLayout(root, count, recordSize)
-            val rawStats = TableValidators.baseStats(rom, root, count, recordSize, generation = 3)
+            val rawStats = TableValidators.baseStats(rom, root, count, recordSize, generation = 3, allowPlaceholderSlots = false)
             structuralCandidate(rom, root, rawStats, table, count, compiledReferences)
         }.singleOrNull()
     }

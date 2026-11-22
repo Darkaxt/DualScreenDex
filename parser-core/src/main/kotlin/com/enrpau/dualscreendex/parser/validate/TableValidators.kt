@@ -432,9 +432,12 @@ object TableValidators {
         count: Int,
         recordSize: Int,
         generation: Int,
+        allowPlaceholderSlots: Boolean = true,
     ): ValidationEvidence = safely(offset, recordSize, count) {
         var valid = 0
+        var placeholders = 0
         var firstRecordValid = false
+        var lastRecordValid = false
         repeat(count) { index ->
             val base = offset + index * recordSize
             val statStart = if (generation <= 2) 1 else 0
@@ -446,14 +449,33 @@ object TableValidators {
             if (statsValid && typesValid) {
                 valid++
                 if (index == 0) firstRecordValid = true
+                if (index == count - 1) lastRecordValid = true
+            } else if (generation == 3 && isGen3PlaceholderBaseStats(rom, base, recordSize)) {
+                placeholders++
             }
         }
         val confidence = valid.toDouble() / count.coerceAtLeast(1)
         val minimumRatio = if (generation == 3 && count >= 1_000) 0.895 else 0.90
-        val compatible = confidence >= minimumRatio
+        val malformed = count - valid - placeholders
+        // Expanded Gen III species tables reserve unused slots as empty records. They are neither
+        // species nor malformed data, so a table that is otherwise clean still validates while the
+        // empty slots stay uncovered. The final record must be populated: a zero tail cannot be told
+        // apart from an over-counted table or unfilled active species. A second record size that also
+        // fits most rows makes the stride ambiguous, so the table is then refused.
+        val placeholderTable = allowPlaceholderSlots && generation == 3 && confidence < minimumRatio && placeholders > 0 &&
+            lastRecordValid &&
+            valid * 100L >= count * 80L && malformed * 100L <= count &&
+            (20..64 step 2).none { it != recordSize && gen3PlausibleStatRows(rom, offset, count, it) * 100L >= count * 70L }
+        val compatible = confidence >= minimumRatio || placeholderTable
         ValidationEvidence(
             compatible, valid, count, confidence,
-            if (compatible) emptyList() else listOf("plausible base stats $valid/$count below ${minimumRatio * 100}%"),
+            when {
+                placeholderTable -> listOf(
+                    "$PLACEHOLDER_BASE_STATS_REASON: plausible $valid/$count, empty $placeholders, malformed $malformed",
+                )
+                compatible -> emptyList()
+                else -> listOf("plausible base stats $valid/$count below ${minimumRatio * 100}%")
+            },
             offset, recordSize,
             coveredRecords = if (generation == 3 && count > 0) {
                 valid - if (firstRecordValid) 1 else 0
@@ -463,6 +485,29 @@ object TableValidators {
             expectedRecords = if (generation == 3 && count > 0) count - 1 else count,
         )
     }
+
+    /** Rows of a candidate Gen III base-stat table that carry six nonzero stats and in-range types. */
+    private fun gen3PlausibleStatRows(rom: RomImage, offset: Int, count: Int, recordSize: Int): Int {
+        var plausible = 0
+        for (index in 0 until count) {
+            val base = offset + index * recordSize
+            if (base < 0 || base + 8 > rom.size) break
+            if ((0 until 6).all { rom.u8(base + it) != 0 } && rom.u8(base + 6) <= 31 && rom.u8(base + 7) <= 31) {
+                plausible++
+            }
+        }
+        return plausible
+    }
+
+    /** Reason prefix of base-stat evidence that validated only because empty placeholder slots were reserved. */
+    const val PLACEHOLDER_BASE_STATS_REASON = "base stats with reserved empty placeholder slots"
+
+    /**
+     * An empty Gen III species slot: every byte is zero, except that the standard 28-byte record may
+     * keep its two egg-group bytes (20..21), which some expanded-species engines fill by default.
+     */
+    private fun isGen3PlaceholderBaseStats(rom: RomImage, base: Int, recordSize: Int): Boolean =
+        (0 until recordSize).all { it in 20..21 && recordSize == 28 || rom.u8(base + it) == 0 }
 
     fun moveData(
         rom: RomImage,
@@ -476,6 +521,7 @@ object TableValidators {
         val plausibleRecords = BooleanArray(count)
         var consecutiveInvalid = 0
         var invalidRunStart = -1
+        val ppOnlyOutliers = mutableListOf<Int>()
         repeat(count) { index ->
             val base = offset + index * recordSize
             val plausible = if (generation == 3) {
@@ -485,6 +531,9 @@ object TableValidators {
                 val pp = rom.u8(base + 4)
                 val reserved = (0 until recordSize).all { rom.u8(base + it) == 0 }
                 if (!reserved) populated++
+                if (index > 0 && !reserved && pp > 64 && type in 0..31 && (accuracy == 0 || accuracy in 10..100)) {
+                    ppOnlyOutliers += index
+                }
                 index == 0 || reserved || (
                     type in 0..31 &&
                         pp in 0..64 &&
@@ -567,14 +616,20 @@ object TableValidators {
         }
         val confidence = valid.toDouble() / count.coerceAtLeast(1)
         val populatedRatio = populated.toDouble() / (count - 1).coerceAtLeast(1)
+        // A single interior record whose only violation is a PP value above the retail ceiling is a
+        // hack's own move data (the u8 field accepts it), not a table boundary.
+        val singlePpOutlier = generation == 3 && valid == count - 1 && populatedRatio >= 0.80 &&
+            ppOnlyOutliers.singleOrNull()?.let { it < count - 1 && !plausibleRecords[it] } == true
         val compatible = if (generation == 3) {
-            valid == count && (count <= 1 || populatedRatio >= 0.80)
+            (valid == count || singlePpOutlier) && (count <= 1 || populatedRatio >= 0.80)
         } else {
             confidence >= 0.90
         }
         ValidationEvidence(
             compatible, valid, count, confidence,
-            if (compatible) emptyList() else listOf(
+            if (singlePpOutlier) listOf(
+                "accepted one interior move record (${ppOnlyOutliers.single()}) whose PP exceeds the retail ceiling",
+            ) else if (compatible) emptyList() else listOf(
                 "plausible move records $valid/$count do not form a complete populated table; populated $populated/${(count - 1).coerceAtLeast(1)}",
             ),
             offset, recordSize,
