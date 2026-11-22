@@ -77,8 +77,8 @@ No live ADB/device gates for parser-only work (memory `dualdex-no-ad-hoc-live-ad
 | DEF-G2-ANNIVERSARY-SPECIES-252 | Anniversary Crystal: species 252 (PHANCERO) beyond the inherited 251 (B2) | Closed 2026-11-22 (efcadaff) | Pre-evolution walker bound proves 252 species; EVOLUTIONS and LEARNSETS available. |
 | DEF-G2-POLISHED-ENGINE | Polished Crystal and Crystal Inheritance: compact-engine relationship streams (B2) | Closed 2026-11-22 (efcadaff, 7a0e10cb) | Compact relationship contract; both ROMs gain EVOLUTIONS and LEARNSETS. |
 | DEF-G2-INHERITANCE-METHOD-VOCAB | Crystal Inheritance: method 3 is HOLDING, not trade; 12 species' evolutions refused (fail closed) | B5+ (`LIB26-G2-OPTIONAL`) | A parsed per-ROM method vocabulary drives the presentation; those species show their real conditions. |
-| DEF-DEPENDABOT-63 | Dependabot #63: guava ≤33.7.1 (high), transitive through the Gradle plugin classpath | B4 | A verified build-classpath constraint to ≥33.7.2; the alert closes. |
-| DEF-MATRIX-STALE | `docs/rom-compatibility-matrix.md` predates the 342 library | B4 | Regenerated from release evidence. |
+| DEF-DEPENDABOT-63 | Dependabot #63: guava ≤33.7.1 (high), transitive through the Gradle plugin classpath | B4 (pinned at 1e8777ee) | A verified build-classpath constraint to ≥33.7.2; the alert closes. Pin verified by `verifySecureBuildDependencies`; alert closure pending GitHub re-scan. |
+| DEF-MATRIX-STALE | `docs/rom-compatibility-matrix.md` predates the 342 library | Closed 2026-11-22 (B4) | Regenerated from the B4 full342 run ([B4 report](../../reports/corpus/2026-11-22-b4-release-corpus.md)). |
 
 ## Storage (D:/Temp, ~23 GB)
 
@@ -105,4 +105,5 @@ No live ADB/device gates for parser-only work (memory `dualdex-no-ad-hoc-live-ad
 | R1 | Done | 160861fe | [R1 report](../../reports/corpus/2026-11-21-r1-corpus-refresh.md): 342 inputs, 0 errors, originals unchanged; 0 regressions, 8 LOCAL_MAP gains (mean 79.875%→79.911%); 2 h 52 m vs 4 h 05 m. Evidence JSON switch deferred to B4. Host tests before R1: app 693, parser-core 2658, catalog-store 130, 0 failed. |
 | B2 | Done 2026-11-22 | ea77e7e7, 3b823905, 10cd23f3, efcadaff, 7a0e10cb | [B2 report](../../reports/corpus/2026-11-21-b2-gen2-relationships.md): 22 affected inputs, 0 errors, originals unchanged; all 8 target ROMs gain EVOLUTIONS and LEARNSETS (Crystal Inheritance EVOLUTIONS partial 242/254, DEF-G2-INHERITANCE-METHOD-VOCAB); 0 regressions, 14 controls unchanged. Host tests: parser-core 2672, catalog-store 130, app 693, 0 failed. Parser schema 143. |
 | B3 | Done 2026-11-22 | 5f179dae, 4f523473, ff0a24cd | [B3 report](../../reports/corpus/2026-11-22-b3-unmatched-triage.md): all 41 rows have IDs and targets. C2 rule: Moon Galaxy and Sun Sky now SELECTED (37%→82% and 86%). Run 1 (82 inputs) found the Elysium B regression, fixed at ff0a24cd. Run 2 (8 inputs) is identical to R1 apart from the two gains. 82 originals unchanged. Parser schema 144. Next: the GBA focus (B3a). |
-| B4 | Pending | — | — |
+| B3a | Done 2026-11-22 | 20f4b0af, c4697b98, b3d2fec7 | [B3a report](../../reports/corpus/2026-11-22-b3a-gba-focus.md): C1 0x1B8 header (3 select), C3 FireRed/Emerald tie closed (2 select), C4 expansion extents (2 select); remainders ledgered above. |
+| B4 | RC v1.2.5-rc.1 | 1e8777ee (evidence source) | [B4 report](../../reports/corpus/2026-11-22-b4-release-corpus.md): one full342 run, 310/0/32, 0 errors, 18 up, 0 down, mean 81.513%; hosted packaged 45022647102 11/11; matrix regenerated. |

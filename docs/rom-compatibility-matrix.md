@@ -1,16 +1,16 @@
 # ROM compatibility matrix
 
-This document lists every input in the current 333-ROM canonical benchmark. Routed ROMs are grouped by generation and detected engine family. The benchmark includes ROM hacks and official validation controls; a row describes the scanned build named in the **ROM** column, not every release of that project.
+This document lists every input in the current 342-ROM canonical benchmark. Routed ROMs are grouped by generation and detected engine family. The benchmark includes ROM hacks and official validation controls; a row describes the scanned build named in the **ROM** column, not every release of that project.
 
 Capability percentages are parser confidence derived from bounded structural evidence. They are not a probability that every feature behaves exactly as the ROM author intended. Unless separately identified by a live test, these rows are static parser and persisted-catalog observations.
 
-- Inputs: **333**
-- Detected family and catalog: **276**
-- Resolved ROM-language manifests: **261**
+- Inputs: **342**
+- Detected family and catalog: **310**
+- Resolved ROM-language manifests: **295**
 - Resolved manifests reporting more than one language: **0**
 - Unknown ROM-language manifests: **15**
-- Ambiguous family: **2**
-- No family match: **55**
+- Ambiguous family: **0**
+- No family match: **32**
 - Parser errors: **0**
 
 The **Languages** column is the number of parser-proven ROM-content projections. `?` means the parser could not establish language authority. It does not assume that every resolved ROM supports English.
@@ -50,19 +50,19 @@ Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for 
 
 | Generation | Detected family | ROM inputs | Average coverage | Multilingual manifests |
 |---:|---|---:|---:|---:|
-| 1 | Red/Blue family | 81 | 94.56% | 0 |
-| 1 | Yellow family | 3 | 95.47% | 0 |
-| 2 | Gold/Silver family | 3 | 96.30% | 0 |
-| 2 | Crystal family | 12 | 70.99% | 0 |
+| 1 | Red/Blue family | 95 | 94.36% | 0 |
+| 1 | Yellow family | 8 | 93.61% | 0 |
+| 2 | Gold/Silver family | 5 | 91.11% | 0 |
+| 2 | Crystal family | 14 | 74.16% | 0 |
 | 3 | Ruby/Sapphire family | 15 | 91.80% | 0 |
-| 3 | Emerald family | 73 | 82.07% | 0 |
-| 3 | FireRed/LeafGreen family | 89 | 89.78% | 0 |
+| 3 | Emerald family | 80 | 81.71% | 0 |
+| 3 | FireRed/LeafGreen family | 93 | 90.08% | 0 |
 
 ## Generation I
 
 ### Red/Blue family
 
-<details><summary>81 ROM inputs</summary>
+<details><summary>95 ROM inputs</summary>
 
 | ROM | Languages | Coverage | Species | Names | Types | Chart | Stats | Sprites | Dex text | Evos | Moves | Move data | Move text | Learnsets | Egg | Machines | Tutors | Abilities | Ability text | Ability logic | Encounters | Type UI | Balls | World map | Local maps | Natures |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -77,60 +77,74 @@ Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for 
 | Blue Kaizo (19.06.26).gbc | 1 | 99.83% | P 99% | 100% | P 99% | 100% | P 99% | P 99% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
 | Blue Kaizo (Christmas) (19.06.26).gbc | 1 | 93.58% | P 99% | 100% | P 99% | 100% | P 99% | P 99% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
 | Blue Kaizo (Yellow Colors) (19.06.26).gbc | 1 | 100.00% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Celebrations Blue (CrysAudio Gen 2 UI).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Blue (CrysAudio Snowy Gen 2 UI).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Blue (CrysAudio Snowy).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Blue (CrysAudio) (11.05.26).gb | 1 | 98.12% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Celebrations Blue (CrysAudio).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Blue (Custom GFX & CrysAudio) (11.05.26).gb | 1 | 98.12% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Celebrations Blue (Gen 2 UI).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Blue (New Sprites).gb | ? | 77.48% | P 75% | 0% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Celebrations Blue (Snowy Gen 2 UI).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Blue (Snowy).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Blue.gb | ? | 77.48% | P 75% | 0% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Celebrations Blue.gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Green (CrysAudio Gen 2 UI).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Green (CrysAudio Snowy Gen 2 UI).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Green (CrysAudio Snowy).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Green (CrysAudio) (11.05.26).gb | 1 | 98.12% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Celebrations Green (CrysAudio).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Green (Custom GFX & CrysAudio) (11.05.26).gb | 1 | 98.12% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Celebrations Green (Gen 2 UI).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Green (New Sprites).gbc | ? | 77.48% | P 75% | 0% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Celebrations Green (Snowy Gen 2 UI).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Green (Snowy).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Green.gb | ? | 77.48% | P 75% | 0% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Celebrations Green.gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Red (CrysAudio Gen 2 UI).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Red (CrysAudio Snowy Gen 2 UI).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Red (CrysAudio Snowy).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Red (CrysAudio) (11.05.26).gb | 1 | 98.12% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Celebrations Red (CrysAudio).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Red (Custom GFX & CrysAudio) (11.05.26).gb | 1 | 98.12% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Celebrations Red (Gen 2 UI).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Red (New Sprites).gb | ? | 77.48% | P 75% | 0% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Celebrations Red (Snowy Gen 2 UI).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Red (Snowy).gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Celebrations Red.gb | ? | 77.48% | P 75% | 0% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Celebrations Red.gbc | 1 | 91.87% | P 75% | P 75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Blue (CrysAudio Gen 2 UI).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Blue (CrysAudio Snowy Gen 2 UI).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Blue (CrysAudio Snowy).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Blue (CrysAudio) (11.05.26).gb | 1 | 100.00% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Celebrations Blue (CrysAudio).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Blue (Custom GFX & CrysAudio) (11.05.26).gb | 1 | 100.00% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Celebrations Blue (Gen 2 UI).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Blue (New Sprites).gb | ? | 77.78% | 100% | 0% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Celebrations Blue (Snowy Gen 2 UI).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Blue (Snowy).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Blue.gb | ? | 77.78% | 100% | 0% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Celebrations Blue.gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Green (CrysAudio Gen 2 UI).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Green (CrysAudio Snowy Gen 2 UI).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Green (CrysAudio Snowy).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Green (CrysAudio) (11.05.26).gb | 1 | 100.00% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Celebrations Green (CrysAudio).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Green (Custom GFX & CrysAudio) (11.05.26).gb | 1 | 100.00% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Celebrations Green (Gen 2 UI).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Green (New Sprites).gbc | ? | 77.78% | 100% | 0% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Celebrations Green (Snowy Gen 2 UI).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Green (Snowy).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Green.gb | ? | 77.78% | 100% | 0% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Celebrations Green.gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Red (CrysAudio Gen 2 UI).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Red (CrysAudio Snowy Gen 2 UI).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Red (CrysAudio Snowy).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Red (CrysAudio) (11.05.26).gb | 1 | 100.00% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Celebrations Red (CrysAudio).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Red (Custom GFX & CrysAudio) (11.05.26).gb | 1 | 100.00% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Celebrations Red (Gen 2 UI).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Red (New Sprites).gb | ? | 77.78% | 100% | 0% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Celebrations Red (Snowy Gen 2 UI).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Red (Snowy).gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Celebrations Red.gb | ? | 77.78% | 100% | 0% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Celebrations Red.gbc | 1 | 93.75% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
 | Grape (Final 1.7).gb | 1 | 61.13% | P 95% | 100% | P 95% | 100% | P 95% | 100% | P 100% | P 92% | 100% | 0% | N/A | 0% | N/A | 0% | N/A | N/A | N/A | N/A | 0% | 100% | N/A | 0% | 0% | N/A |
+| Intense Indigo (Blue Full Color QOL Gen2UI).gbc | 1 | 99.34% | P 97% | 100% | P 97% | 100% | P 97% | P 99% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Intense Indigo (Blue Full Color QOL).gbc | 1 | 99.34% | P 97% | 100% | P 97% | 100% | P 97% | P 99% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Intense Indigo (Blue QOL) .gbc | 1 | 99.50% | P 97% | 100% | P 97% | 100% | P 97% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
 | Intense Indigo (Blue QOL) (28.07.26).gb | 1 | 99.50% | P 97% | 100% | P 97% | 100% | P 97% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
 | Intense Indigo (Blue) (28.07.26).gb | 1 | 99.50% | P 97% | 100% | P 97% | 100% | P 97% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Intense Indigo (Blue) (28.07.26).gbc | 1 | 99.34% | P 97% | 100% | P 97% | 100% | P 97% | P 99% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Intense Indigo (Blue) (Gen 2 UI) (28.07.26).gbc | 1 | 99.34% | P 97% | 100% | P 97% | 100% | P 97% | P 99% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Intense Indigo (Blue).gbc | 1 | 99.50% | P 97% | 100% | P 97% | 100% | P 97% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Intense Indigo (Red Full Color QOL Gen2UI).gbc | 1 | 99.34% | P 97% | 100% | P 97% | 100% | P 97% | P 99% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Intense Indigo (Red Full Color QOL) .gbc | 1 | 99.34% | P 97% | 100% | P 97% | 100% | P 97% | P 99% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Intense Indigo (Red QOL) .gbc | 1 | 99.50% | P 97% | 100% | P 97% | 100% | P 97% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
 | Intense Indigo (Red QOL) (28.07.26).gb | 1 | 99.50% | P 97% | 100% | P 97% | 100% | P 97% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
 | Intense Indigo (Red) (28.07.26).gb | 1 | 99.50% | P 97% | 100% | P 97% | 100% | P 97% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Intense Indigo (Red) (28.07.26).gbc | 1 | 99.34% | P 97% | 100% | P 97% | 100% | P 97% | P 99% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Intense Indigo (Red) (Gen 2 UI) (28.07.26).gbc | 1 | 99.34% | P 97% | 100% | P 97% | 100% | P 97% | P 99% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Intense Indigo (Red).gbc | 1 | 99.50% | P 97% | 100% | P 97% | 100% | P 97% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Intense IndigoLite (Blue Full Color QOL Gen2UI).gbc | 1 | 99.34% | P 97% | 100% | P 97% | 100% | P 97% | P 99% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Intense IndigoLite (Blue Full Color QOL).gbc | 1 | 99.34% | P 97% | 100% | P 97% | 100% | P 97% | P 99% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
 | Intense IndigoLite (Blue QOL) (28.07.26).gb | 1 | 99.50% | P 97% | 100% | P 97% | 100% | P 97% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Intense IndigoLite (Blue QOL).gbc | 1 | 99.50% | P 97% | 100% | P 97% | 100% | P 97% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
 | Intense IndigoLite (Blue) (28.07.26).gb | 1 | 99.50% | P 97% | 100% | P 97% | 100% | P 97% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Intense IndigoLite (Blue) (28.07.26).gbc | 1 | 99.34% | P 97% | 100% | P 97% | 100% | P 97% | P 99% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Intense IndigoLite (Blue) (Gen 2 UI) (28.07.26).gbc | 1 | 99.34% | P 97% | 100% | P 97% | 100% | P 97% | P 99% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Intense IndigoLite (Blue).gbc | 1 | 99.50% | P 97% | 100% | P 97% | 100% | P 97% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Intense IndigoLite (Red Full Color QOL Gen2UI).gbc | 1 | 99.34% | P 97% | 100% | P 97% | 100% | P 97% | P 99% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Intense IndigoLite (Red Full Color QOL).gbc | 1 | 99.34% | P 97% | 100% | P 97% | 100% | P 97% | P 99% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
 | Intense IndigoLite (Red QOL) (28.07.26).gb | 1 | 99.50% | P 97% | 100% | P 97% | 100% | P 97% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Intense IndigoLite (Red QOL).gbc | 1 | 99.50% | P 97% | 100% | P 97% | 100% | P 97% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
 | Intense IndigoLite (Red) (28.07.26).gb | 1 | 99.50% | P 97% | 100% | P 97% | 100% | P 97% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Intense IndigoLite (Red) (28.07.26).gbc | 1 | 99.34% | P 97% | 100% | P 97% | 100% | P 97% | P 99% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Intense IndigoLite (Red) (Gen 2 UI) (28.07.26).gbc | 1 | 99.34% | P 97% | 100% | P 97% | 100% | P 97% | P 99% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Intense IndigoLite (Red).gbc | 1 | 99.50% | P 97% | 100% | P 97% | 100% | P 97% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
 | Nova (v1.0.2).gb | 1 | 98.45% | P 93% | 100% | P 93% | 100% | P 93% | 100% | P 98% | 100% | 100% | P 97% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| PureBlue (03.09.26).gbc | 1 | 75.00% | 100% | 100% | 100% | 100% | 100% | 0% | 0% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 0% | 0% | N/A |
+| PureBlue (22.08.26).gbc | 1 | 75.00% | 100% | 100% | 100% | 100% | 100% | 0% | 0% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 0% | 0% | N/A |
+| PureGreen (03.09.26).gbc | 1 | 75.00% | 100% | 100% | 100% | 100% | 100% | 0% | 0% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 0% | 0% | N/A |
+| PureGreen (22.08.26).gbc | 1 | 75.00% | 100% | 100% | 100% | 100% | 100% | 0% | 0% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 0% | 0% | N/A |
+| PureRed (03.09.26).gbc | 1 | 75.00% | 100% | 100% | 100% | 100% | 100% | 0% | 0% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 0% | 0% | N/A |
+| PureRed (22.08.26).gbc | 1 | 75.00% | 100% | 100% | 100% | 100% | 100% | 0% | 0% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 0% | 0% | N/A |
 | Red (Gen 2 & CrysAudio) (19.06.26).gb | 1 | 99.83% | P 99% | 100% | P 99% | 100% | P 99% | P 99% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
 | Red (Gen 2) (19.06.26).gb | 1 | 99.83% | P 99% | 100% | P 99% | 100% | P 99% | P 99% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
 | Red (Yellow Backport) (04.07.26).gbc | 1 | 100.00% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
@@ -152,13 +166,18 @@ Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for 
 
 ### Yellow family
 
-<details><summary>3 ROM inputs</summary>
+<details><summary>8 ROM inputs</summary>
 
 | ROM | Languages | Coverage | Species | Names | Types | Chart | Stats | Sprites | Dex text | Evos | Moves | Move data | Move text | Learnsets | Egg | Machines | Tutors | Abilities | Ability text | Ability logic | Encounters | Type UI | Balls | World map | Local maps | Natures |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | Pink (v1.0.7).gb | 1 | 100.00% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Static Yellow (25.07.26).gb | 1 | 87.50% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Static Yellow (11.08.26).gb | 1 | 87.50% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Static Yellow (Gen 1) (v1.6.4).gb | 1 | 87.50% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
 | Unova Red (18.03.25).gb | 1 | 98.91% | 100% | 100% | 100% | 100% | 100% | 100% | P 83% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Yellow Kaizo (1.0.4 QOL).gb | 1 | 87.50% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Yellow Kaizo (1.0.4).gb | 1 | 87.50% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Yellow Legacy (17.03.26).gb | 1 | 100.00% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Yellow Legacy+ (08.09.25).gb | 1 | 100.00% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | 100% | N/A | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
 
 </details>
 
@@ -166,34 +185,38 @@ Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for 
 
 ### Gold/Silver family
 
-<details><summary>3 ROM inputs</summary>
+<details><summary>5 ROM inputs</summary>
 
 | ROM | Languages | Coverage | Species | Names | Types | Chart | Stats | Sprites | Dex text | Evos | Moves | Move data | Move text | Learnsets | Egg | Machines | Tutors | Abilities | Ability text | Ability logic | Encounters | Type UI | Balls | World map | Local maps | Natures |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | Bronze (Girl Patch) (v1.23).gbc | 1 | 100.00% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
 | Bronze (v1.23).gbc | 1 | 100.00% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
 | Dark Energy (v5.01).gbc | 1 | 88.89% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 0% | 0% | N/A |
+| Gold 97 Reforged (v6.1f).gbc | 1 | 83.33% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 0% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Silver 97 Reforged (v6.1f).gbc | 1 | 83.33% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 0% | N/A | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
 
 </details>
 
 ### Crystal family
 
-<details><summary>12 ROM inputs</summary>
+<details><summary>14 ROM inputs</summary>
 
 | ROM | Languages | Coverage | Species | Names | Types | Chart | Stats | Sprites | Dex text | Evos | Moves | Move data | Move text | Learnsets | Egg | Machines | Tutors | Abilities | Ability text | Ability logic | Encounters | Type UI | Balls | World map | Local maps | Natures |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Anniversary Crystal (v1.2.3).gbc | 1 | 51.81% | P 95% | 100% | P 95% | 0% | P 95% | 100% | 0% | 0% | 100% | 0% | 100% | 0% | 0% | 0% | 0% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Ambrosia (v2.9.0).gbc | 1 | 73.62% | P 100% | 100% | P 100% | 0% | P 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 0% | 0% | N/A |
+| Anniversary Crystal (v1.2.3).gbc | 1 | 62.34% | P 95% | 100% | P 95% | 0% | P 95% | 100% | 0% | 100% | 100% | 0% | 100% | 100% | 0% | 0% | 0% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
 | Bronze 2 (v1.05).gbc | 1 | 100.00% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Crystal Clear (Color Filter) (v2.6).gbc | 1 | 57.89% | 100% | 100% | 100% | 0% | 100% | 100% | 0% | 0% | 100% | 0% | 100% | 0% | 0% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 0% | 0% | N/A |
-| Crystal Clear (v2.6).gbc | 1 | 57.89% | 100% | 100% | 100% | 0% | 100% | 100% | 0% | 0% | 100% | 0% | 100% | 0% | 0% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 0% | 0% | N/A |
-| Crystal Kaizo (01.08.26).gbc | 1 | 73.68% | 100% | 100% | 100% | 100% | 100% | 0% | 0% | 0% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Crystal Legacy (06.01.25).gbc | 1 | 73.68% | 100% | 100% | 100% | 0% | 100% | 100% | 0% | 0% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Crystal Legacy Timeless (v1.1.3).gbc | 1 | 73.68% | 100% | 100% | 100% | 0% | 100% | 100% | 0% | 0% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Digimon Crystal (v11.02.24).gbc | 1 | 87.08% | P 91% | 100% | P 91% | 0% | P 91% | 100% | 100% | P 90% | 100% | 0% | 100% | P 90% | 100% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Gold 97 Reforged (v6.1f).gbc | 1 | 63.16% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 0% | 0% | 0% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Kalos Crystal (v1.0).gbc | 1 | 77.31% | P 93% | 100% | P 93% | 0% | P 93% | P 91% | 100% | 0% | 100% | P 97% | 100% | 0% | 0% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
-| Mystic Crystal (v1.0).gbc | 1 | 72.55% | P 93% | 100% | P 93% | 0% | P 93% | 100% | 100% | 0% | 100% | 0% | 100% | 0% | 100% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
-| Silver 97 Reforged (v6.1f).gbc | 1 | 63.16% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 0% | 0% | 0% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Crystal Clear (Color Filter) (v2.6).gbc | 1 | 68.42% | 100% | 100% | 100% | 0% | 100% | 100% | 0% | 100% | 100% | 0% | 100% | 100% | 0% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 0% | 0% | N/A |
+| Crystal Clear (v2.6).gbc | 1 | 68.42% | 100% | 100% | 100% | 0% | 100% | 100% | 0% | 100% | 100% | 0% | 100% | 100% | 0% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 0% | 0% | N/A |
+| Crystal Inheritance (v1.1).gbc | 1 | 37.30% | 100% | 100% | 100% | 0% | 100% | 0% | 0% | P 95% | 100% | 100% | 0% | 100% | 0% | 0% | 0% | 0% | 0% | 0% | 0% | 100% | 0% | 0% | 0% | 0% |
+| Crystal Kaizo (01.08.26).gbc | 1 | 84.21% | 100% | 100% | 100% | 100% | 100% | 0% | 0% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Crystal Legacy (06.01.25).gbc | 1 | 84.21% | 100% | 100% | 100% | 0% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Crystal Legacy Timeless (v1.1.3).gbc | 1 | 84.21% | 100% | 100% | 100% | 0% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Digimon Crystal (v11.02.24).gbc | 1 | 88.09% | P 91% | 100% | P 91% | 0% | P 91% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Kalos Crystal (v1.0).gbc | 1 | 87.83% | P 93% | 100% | P 93% | 0% | P 93% | P 91% | 100% | 100% | 100% | P 97% | 100% | 100% | 0% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 100% | N/A |
+| Mystic Crystal (v1.0).gbc | 1 | 83.08% | P 93% | 100% | P 93% | 0% | P 93% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
+| Polished Crystal (14.09.26).gbc | 1 | 37.50% | 100% | 100% | 100% | 0% | 100% | 0% | 0% | 100% | 100% | 100% | 0% | 100% | 0% | 0% | 0% | 0% | 0% | 0% | 0% | 100% | 0% | 0% | 0% | 0% |
+| Sour Crystal (v7.0a).gbc | 1 | 78.95% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 0% | N/A | N/A | N/A | 100% | 100% | N/A | 100% | 0% | N/A |
 
 </details>
 
@@ -225,29 +248,29 @@ Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for 
 
 ### Emerald family
 
-<details><summary>73 ROM inputs</summary>
+<details><summary>80 ROM inputs</summary>
 
 | ROM | Languages | Coverage | Species | Names | Types | Chart | Stats | Sprites | Dex text | Evos | Moves | Move data | Move text | Learnsets | Egg | Machines | Tutors | Abilities | Ability text | Ability logic | Encounters | Type UI | Balls | World map | Local maps | Natures |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | All In (v1.0).gba | 1 | 99.49% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 95% | 93% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Altair (2019-06-13).gba | 1 | 91.51% | P 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 75% | 95% | 93% | 100% | 100% | P 100% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Altered Emerald (v4.2c).gba | 1 | 87.52% | 94% | 100% | 94% | 100% | 94% | P 100% | 0% | 100% | 100% | 100% | 94% | 100% | 100% | 98% | 98% | 92% | 100% | P 100% | 100% | 100% | 100% | 100% | P 100% | 0% |
-| Battle Theater (V2.3.0).gba | 1 | 89.78% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 34% | 100% | 100% | P 99% | 100% | P 32% | P 100% | N/A | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 50% |
+| Battle Theater (V2.6.0).gba | 1 | 89.78% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 34% | 100% | 100% | P 99% | 100% | P 32% | P 100% | N/A | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 50% |
 | Blazed Glazed (v1.3).gba | 1 | 91.56% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 100% | 98% | 82% | 100% | 100% | P 100% | 100% | 100% | 100% | 100% | P 95% | 100% |
 | Blazing Emerald (v1.6).gba | 1 | 95.64% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 98% | 82% | 100% | 100% | P 100% | 100% | 100% | 100% | 100% | 100% | 100% |
 | CAWPS.gba | 1 | 99.49% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 95% | 82% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Chronicles of Soala (v9.0).gba | 1 | 95.33% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 96% | 96% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% |
-| Classic (v1.5.0b).gba | 1 | 83.45% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 100% | 100% | 95% | 93% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | P 3% | 100% |
+| Classic (v1.5.0b).gba | 1 | 83.33% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 100% | 100% | 95% | 93% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 0% | 100% |
 | Clover (v1.3.3).gba | 1 | 91.15% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 97% | 97% | 100% | P 100% | ? 0% | 100% | 100% | 100% | 100% | 0% | 100% |
 | Crippling Medical Debt Edition (v1.1).gba | 1 | 72.53% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 35% | 100% | 100% | 100% | 100% | P 33% | P 100% | N/A | 100% | 100% | 100% | 0% | 100% | 0% | 0% | 0% | P 50% |
-| DarkFire (v2.1.3).gba | 1 | 75.00% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 0% | 0% | 85% | ? 95% | 0% | 0% | 100% | 100% | 100% | 100% | 100% | 100% |
+| DarkFire (v2.1.3).gba | 1 | 83.33% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 0% | 0% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Delta Emerald (v1.1.5).gba | 1 | 87.50% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 0% | 100% | 100% | 100% | 73% | 85% | 91% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 100% |
-| Dreamstone Mysteries.gba | 1 | 91.64% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 99% | 100% | 100% | 100% | 94% | 100% | 100% | 100% | 100% | 100% | 96% | 100% | 0% | P 50% |
+| Dreamstone Mysteries.gba | 1 | 95.81% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 99% | 100% | 100% | 100% | 94% | 100% | 100% | 100% | 100% | 100% | 96% | 100% | 100% | P 50% |
 | Emerald Azure (0.5.4).gba | 1 | 81.26% | 100% | 100% | 100% | 100% | 100% | 100% | P 100% | P 37% | 100% | 100% | P 99% | 100% | P 35% | P 100% | N/A | 100% | 100% | 100% | 100% | 100% | 0% | 0% | P 99% | P 50% |
-| Emerald Crest (v1.0.F).gba | 1 | 58.30% | 100% | 100% | 100% | 0% | 100% | P 100% | 0% | 100% | 100% | 0% | P 99% | 100% | 100% | 0% | 91% | ? 95% | 0% | 0% | ? 0% | 100% | 100% | ? 0% | 0% | 100% |
+| Emerald Crest (v1.0.F).gba | 1 | 58.30% | 100% | 100% | 100% | 0% | 100% | P 100% | 100% | 100% | 100% | 0% | P 99% | 100% | 100% | 0% | 0% | 0% | 0% | 0% | ? 0% | 100% | 100% | ? 0% | 0% | 100% |
 | Emerald Essence (v1).gba | 1 | 99.49% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 95% | 93% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% |
-| Emerald Ex (1.0.2).gba | ? | 54.17% | 0% | 0% | 100% | 100% | 100% | 100% | 0% | 0% | 0% | 0% | 0% | 100% | 0% | 0% | 0% | 0% | 0% | 0% | 100% | 100% | 100% | 100% | P 100% | 100% |
-| Emerald Exceeded (v11.5).gba | 1 | 60.97% | P 96% | 100% | P 96% | 100% | P 96% | P 100% | 0% | 0% | 95% | 100% | 0% | 0% | 0% | 79% | 91% | 100% | P 74% | 0% | 0% | 100% | 100% | 0% | 0% | 100% |
+| Emerald Ex (1.0.4).gba | ? | 54.17% | 0% | 0% | 100% | 100% | 100% | 100% | 0% | 0% | 0% | 0% | 0% | 100% | 0% | 0% | 0% | 0% | 0% | 0% | 100% | 100% | 100% | 100% | 100% | 100% |
+| Emerald Exceeded (v11.5).gba | 1 | 62.03% | P 96% | 100% | P 96% | 100% | P 96% | P 100% | 0% | 0% | 95% | 100% | 0% | 0% | 0% | 79% | 91% | 100% | 100% | 0% | 0% | 100% | 100% | 0% | 0% | 100% |
 | Emerald Extended Cut (Classic + Hotfix 1.6).gba | 1 | 95.33% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 95% | 93% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% |
 | Emerald Imperium (v1.3.1).gba | 1 | 72.46% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 35% | 100% | 100% | P 99% | 100% | P 32% | P 100% | N/A | 100% | 100% | 100% | 0% | 100% | 0% | 0% | 0% | P 50% |
 | Emerald Isle (1.2.22).gba | 1 | 99.49% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 95% | 93% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% |
@@ -255,49 +278,56 @@ Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for 
 | Emerald Legacy (04.06.26).gba | 1 | 99.47% | P 100% | 100% | 100% | 100% | 100% | 100% | P 93% | 100% | 100% | 100% | 100% | 100% | 100% | 95% | 93% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Emerald Mini (1.2.2).gba | 1 | 99.49% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 95% | 93% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Emerald Party Randomizer Plus (v1.0.8).gba | 1 | 95.02% | P 95% | P 100% | P 95% | 100% | P 95% | 100% | 0% | 100% | 100% | 100% | 100% | P 95% | 100% | 95% | 93% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% |
-| Emerald Rogue (v2.1.2-EX).gba | 1 | 63.01% | 95% | 95% | 95% | 100% | 95% | 100% | P 13% | 100% | 100% | 0% | P 99% | 0% | 0% | 0% | 0% | ? 95% | 0% | 0% | 100% | 100% | 100% | 100% | 100% | 100% |
-| Emerald Rogue (Vanilla) (v2.1.2).gba | 1 | 83.08% | 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 94% | 0% | 0% | 81% | 0% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 100% |
+| Emerald Rogue (v2.2.1-EX).gba | 1 | 62.47% | 96% | 96% | 96% | 100% | 96% | 100% | 0% | 100% | 100% | 0% | P 99% | 0% | 0% | 0% | 0% | ? 0% | 0% | 0% | 100% | 100% | 100% | 100% | 100% | 100% |
+| Emerald Rogue (v2.2.1-Vanilla).gba | 1 | 83.08% | 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 94% | 0% | 0% | 81% | 0% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Emerald Seaglass (v3.0).gba | 1 | 64.64% | 100% | 100% | 100% | 100% | 100% | 0% | 0% | P 42% | 100% | 100% | P 99% | 100% | P 12% | P 33% | N/A | 100% | 100% | 100% | 0% | 100% | 100% | 0% | 0% | P 50% |
+| Exceeded (15.2).gba | 1 | 54.16% | 100% | 100% | 100% | 100% | 100% | P 100% | 0% | 0% | 95% | 100% | 0% | 0% | 0% | 72% | 91% | 0% | 0% | 0% | 0% | 100% | 100% | 0% | 0% | 100% |
 | Fire of Sky (v1.0.3).gba | 1 | 79.63% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | P 99% | 100% | P 32% | P 100% | N/A | 100% | 100% | 100% | 100% | 100% | 0% | 0% | 100% | 0% |
 | Flora Sky (Complement Dex).gba | 1 | 87.25% | P 100% | 100% | 100% | 100% | 100% | 99% | 0% | 0% | 100% | 100% | 100% | 100% | 100% | 96% | 93% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% |
 | Flora Sky.gba | 1 | 91.16% | P 100% | 100% | 100% | 100% | 100% | 99% | P 94% | 0% | 100% | 100% | 100% | 100% | 100% | 95% | 93% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% |
 | Fluvio (Demo) (v0.1.10).gba | 1 | 72.33% | 100% | 100% | 100% | 100% | 100% | P 98% | 100% | P 34% | 100% | 100% | P 99% | 100% | P 32% | P 100% | N/A | 100% | 100% | 100% | 0% | 100% | 0% | 0% | 0% | P 50% |
 | Glazed (9.2.0).gba | 1 | 95.23% | P 100% | P 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 99% | 97% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | P 96% | 100% |
-| Heart & Soul (v1.2.1).gba | 1 | 89.04% | P 100% | 100% | 100% | 100% | 100% | 99% | P 95% | 100% | 100% | 100% | 100% | 100% | 100% | 96% | 95% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | P 48% | 100% |
+| Heart and Soul (v2.0.6).gba | 1 | 80.92% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 37% | 100% | 100% | P 99% | 100% | P 30% | P 91% | N/A | 100% | 100% | 100% | 100% | 100% | 100% | 0% | P 3% | P 50% |
 | Hoenn's Last Wish (v0.4.7).gba | 1 | 72.24% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 38% | 100% | 100% | P 99% | 100% | P 31% | P 93% | N/A | 100% | 100% | 100% | 0% | 100% | 0% | 0% | 0% | P 50% |
 | Hyper Emerald - Lost Artifacts (v5.7).gba | 1 | 82.94% | 100% | P 100% | 100% | 0% | 100% | 100% | 0% | 0% | 100% | 100% | P 85% | 100% | 67% | 70% | 87% | 100% | 100% | P 100% | 100% | 100% | 100% | 100% | 100% | 100% |
-| Inclement Emerald (v1.1.3).gba | 1 | 87.50% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 90% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | P 100% | 100% |
-| Inclement Emerald [Custom UI Update 1.5] (v1.1.3).gba | 1 | 87.50% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 90% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | P 100% | 100% |
-| Inkwell (v1.04).gba | 1 | 81.15% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 35% | 100% | 100% | P 99% | 100% | P 32% | P 100% | N/A | 100% | 100% | 100% | 100% | 100% | 0% | 0% | P 100% | P 50% |
-| Lime (Demo) (v1.4).gba | 1 | 58.33% | 100% | 100% | 100% | 0% | 100% | 0% | 0% | 100% | 95% | 100% | 100% | 100% | 0% | 0% | 90% | ? 95% | 0% | 0% | 100% | 100% | 0% | 0% | P 100% | 100% |
+| Inclement Emerald (v1.1.3).gba | 1 | 91.67% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 90% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 100% |
+| Inclement Emerald [Custom UI Update 1.5] (v1.1.3).gba | 1 | 91.67% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 90% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 100% |
+| Inkwell (v1.04).gba | 1 | 81.15% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 35% | 100% | 100% | P 99% | 100% | P 32% | P 100% | N/A | 100% | 100% | 100% | 100% | 100% | 0% | 0% | 100% | P 50% |
+| Lime (Demo) (v1.4).gba | 1 | 62.50% | 100% | 100% | 100% | 0% | 100% | 0% | 0% | 100% | 95% | 100% | 100% | 100% | 0% | 0% | 0% | 100% | 100% | 0% | 100% | 100% | 0% | 0% | 100% | 100% |
 | Lithium (1.0.18).gba | 1 | 70.81% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 99% | 100% | 100% | 100% | 94% | 0% | 0% | 0% | 0% | 100% | 100% | 0% | 0% | P 50% |
 | Maxie's Island (v1.4).gba | 1 | 79.12% | 100% | 100% | 100% | 100% | 100% | P 100% | 100% | 100% | 100% | 100% | P 99% | 100% | 100% | 76% | 0% | 0% | 0% | 0% | 100% | 100% | 100% | 100% | P 100% | 0% |
-| Mega Power (v5.71).gba | 1 | 95.35% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 96% | 93% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% |
+| Mega Power (v5.71).gba | 1 | 99.51% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 96% | 93% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Modern Emerald (v3.5).gba | 1 | 99.77% | 100% | 100% | 100% | 100% | 100% | 99% | P 95% | 100% | 100% | 100% | 100% | 100% | 100% | 81% | 97% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Monster Hunter Emerald (v1.0).gba | 1 | 91.15% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | P 100% | 100% | 0% | 100% | 100% | 100% | 96% | 94% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Mystique (1.1.1).gba | 1 | 89.62% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 37% | 100% | 100% | P 99% | 100% | P 31% | P 94% | N/A | 99% | P 99% | 100% | 100% | 100% | 100% | 100% | 100% | P 50% |
-| National History Museum (v1.0.4).gba | 1 | 79.14% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 0% | P 99% | 100% | 100% | 74% | 90% | ? 95% | 0% | 0% | 100% | 100% | 100% | 100% | 100% | 100% |
-| Peach (Demo) (v1.4).gba | 1 | 58.33% | 100% | 100% | 100% | 0% | 100% | 0% | 0% | 100% | 95% | 100% | 100% | 100% | 0% | 0% | 90% | ? 95% | 0% | 0% | 100% | 100% | 0% | 0% | P 100% | 100% |
+| National History Museum (v1.0.4).gba | 1 | 91.67% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 99% | 100% | 100% | 100% | P 0% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 100% |
+| Parallel Emerald (v1.2).gba | 1 | 75.00% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 0% | 0% | 0% | 0% | 100% | 100% | 100% | 100% | 100% | 100% |
+| Peach (Demo) (v1.4).gba | 1 | 62.50% | 100% | 100% | 100% | 0% | 100% | 0% | 0% | 100% | 95% | 100% | 100% | 100% | 0% | 0% | 0% | 100% | 100% | 0% | 100% | 100% | 0% | 0% | 100% | 100% |
+| Pisces (v1.5.4).gba | 1 | 54.17% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 0% | 95% | 0% | 0% | 0% | 0% | 0% | 0% | 0% | 0% | 0% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Pokémon Hearth (v0.1.27).gba | 1 | 72.22% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 35% | 100% | 100% | P 99% | 100% | P 31% | P 96% | N/A | 100% | 100% | 100% | 0% | 100% | 0% | 0% | 0% | P 50% |
-| Pokescape (v1.0.4).gba | 1 | 74.97% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 0% | P 99% | 100% | 100% | 74% | 90% | ? 95% | 0% | 0% | 100% | 100% | 100% | 0% | 100% | 100% |
-| Quetzal (Emerald Multiplayer) (v0.8.4).gba | 1 | 53.79% | 91% | P 91% | 100% | 100% | 100% | 100% | 0% | 0% | 95% | 100% | 100% | 0% | 0% | 0% | 83% | ? 95% | 0% | 0% | ? 0% | 100% | 100% | 0% | 0% | 100% |
-| R.o.w.e (v2.1.9).gba | 1 | 41.29% | 0% | P 91% | 0% | 0% | 0% | 100% | 0% | 0% | 95% | 100% | 0% | 0% | 0% | 0% | 82% | 100% | 100% | 0% | 0% | 100% | 100% | ? 0% | 0% | 100% |
+| Pokescape (v1.0.4).gba | 1 | 91.67% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 99% | 100% | 100% | 100% | P 0% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 100% |
+| Quetzal (Emerald Multiplayer) (v0.8.4).gba | 1 | 49.62% | 91% | P 91% | 100% | 100% | 100% | 100% | 0% | 0% | 95% | 100% | 100% | 0% | 0% | 0% | 0% | 0% | 0% | 0% | ? 0% | 100% | 100% | 0% | 0% | 100% |
+| R.O.W.E. (2.1.1).gba | 1 | 70.83% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 0% | 100% | P 100% | 100% | 100% | 74% | 0% | 89% | 100% | 100% | 0% | 0% | 100% | 100% | ? 0% | 0% | 100% |
+| R.O.W.E. (2.1.9.1 Experimental).gba | 1 | 70.82% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 0% | 100% | P 100% | 100% | 100% | 73% | 74% | 0% | 100% | 100% | 0% | 0% | 100% | 100% | ? 0% | 0% | 100% |
 | Recollection Quest (v1.2).gba | 1 | 75.26% | 100% | 100% | 100% | 100% | 100% | P 100% | P 100% | 0% | 100% | 100% | P 99% | 100% | P 32% | P 100% | N/A | 100% | 100% | 100% | 0% | 100% | 100% | 0% | 0% | P 50% |
 | Regis’ Origin (v1.0).gba | 1 | 83.33% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 0% | 100% | 100% | 100% | 96% | 90% | 100% | 100% | 0% | 100% | 100% | 100% | ? 0% | 100% | 100% |
-| Resolute (v2.97).gba | 1 | 83.20% | P 100% | 100% | 100% | 100% | 100% | 100% | 0% | 0% | 100% | 100% | 100% | 100% | 100% | 96% | 93% | 100% | 100% | P 100% | 100% | 100% | 100% | 100% | 0% | 100% |
+| Resolute (v2.97).gba | 1 | 87.36% | P 100% | 100% | 100% | 100% | 100% | 100% | 0% | 0% | 100% | 100% | 100% | 100% | 100% | 96% | 93% | 100% | 100% | P 100% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Retro Platinum (Demo) (v0.1.2).gba | 1 | 77.83% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 41% | 100% | 100% | P 99% | 100% | P 13% | P 36% | N/A | 100% | 100% | 100% | 100% | 100% | 0% | 0% | 100% | P 50% |
+| Scorched Silver (v1.3).gba | 1 | 79.17% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 0% | 0% | 0% | 0% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Sirius (2019-06-13).gba | 1 | 91.51% | P 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 75% | 95% | 93% | 100% | 100% | P 100% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Sky Blue (2024-10-03).gba | 1 | 87.16% | P 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | P 98% | 100% | 95% | 97% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 0% | 100% |
-| Soulgold (v1.0.2).gba | 1 | 79.40% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 34% | 100% | 100% | P 99% | 100% | P 19% | P 66% | N/A | 100% | 100% | 100% | 100% | 100% | 100% | 0% | P 8% | P 50% |
+| Soulgold (v1.1.4).gba | 1 | 79.28% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 34% | 100% | 100% | P 99% | 100% | P 19% | P 66% | N/A | 100% | 100% | 100% | 100% | 100% | 100% | 0% | P 5% | P 50% |
+| Sovereign of the Skies (v2.1.2).gba | 1 | 53.24% | 78% | P 78% | 100% | 100% | 100% | 100% | 0% | 100% | 95% | 0% | 100% | 0% | 0% | 0% | 90% | 0% | 0% | 0% | 0% | 100% | 100% | 0% | 0% | 100% |
 | Spades & Clubs (Demo) (v0.2.1).gba | 1 | 91.04% | P 99% | P 100% | P 99% | 100% | P 99% | P 100% | P 94% | P 100% | 100% | 100% | 100% | 100% | 0% | 0% | 93% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Spirits of the Storm (v1.2.01).gba | 1 | 81.15% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 35% | 100% | 100% | P 99% | 100% | P 32% | P 100% | N/A | 100% | 100% | 100% | 100% | 100% | 0% | 0% | 100% | P 50% |
-| Super Mariomon (v1.5.2-Anniversary).gba | 1 | 62.50% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 0% | 95% | 100% | 100% | 100% | 0% | 0% | 82% | ? 95% | 0% | 0% | 100% | 100% | 0% | 0% | 100% | 100% |
+| Super Mariomon (v1.5.2-Anniversary).gba | 1 | 62.50% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 0% | 95% | 100% | 100% | 100% | 0% | 0% | 82% | 0% | 0% | 0% | 100% | 100% | 0% | 0% | 100% | 100% |
+| Team Rocket Edition (v2.1).gba | 1 | 70.83% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | P 100% | 100% | 0% | 0% | 0% | 0% | 0% | 100% | 100% | 100% | 100% | 0% | 100% |
 | The Pit (2.5.1) (Gen 3).gba | 1 | 76.61% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 34% | 100% | 100% | P 99% | 100% | P 32% | P 97% | N/A | 100% | 100% | 100% | 0% | 100% | 100% | 0% | 0% | P 50% |
 | The Pit (2.5.1) (Gen 5).gba | 1 | 76.76% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 35% | 100% | 100% | P 99% | 100% | P 32% | P 99% | N/A | 100% | 100% | 100% | 0% | 100% | 100% | 0% | 0% | P 50% |
 | The Pit (2.5.1) (Gen 9).gba | 1 | 76.81% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 35% | 100% | 100% | P 99% | 100% | P 32% | P 100% | N/A | 100% | 100% | 100% | 0% | 100% | 100% | 0% | 0% | P 50% |
 | The Unown King (v1.1.0).gba | 1 | 87.33% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 42% | 100% | 100% | P 99% | 100% | P 18% | P 49% | N/A | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 50% |
 | Theta Emerald Renev (v2.3).gba | 1 | 79.15% | P 98% | 100% | P 98% | 0% | P 98% | 100% | 0% | 100% | 100% | 0% | 100% | 100% | 73% | 0% | 89% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 100% |
-| Tourmaline (v1.1.1).gba | 1 | 58.30% | 100% | P 100% | 100% | 0% | 100% | 100% | 0% | 100% | 100% | 0% | P 99% | 100% | 100% | 0% | 91% | ? 95% | 0% | 0% | 0% | 100% | 100% | 0% | 0% | 100% |
+| Tourmaline (v1.1.1).gba | 1 | 62.47% | 100% | P 100% | 100% | 0% | 100% | 100% | 0% | 100% | 100% | 0% | P 99% | 100% | 100% | 0% | 0% | 99% | 100% | 0% | 0% | 100% | 100% | 0% | 0% | 100% |
 | Transform (v1.4).gba | 1 | 89.83% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 35% | 100% | 100% | P 99% | 100% | P 32% | P 100% | N/A | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 50% |
 | TWO (v1.2).gba | 1 | 81.15% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 35% | 100% | 100% | P 99% | 100% | P 32% | P 100% | N/A | 100% | 100% | 100% | 100% | 100% | 0% | 0% | 100% | P 50% |
 | Ultimate Fusion.gba | 1 | 99.49% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 97% | 94% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% |
@@ -307,7 +337,7 @@ Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for 
 
 ### FireRed/LeafGreen family
 
-<details><summary>89 ROM inputs</summary>
+<details><summary>93 ROM inputs</summary>
 
 | ROM | Languages | Coverage | Species | Names | Types | Chart | Stats | Sprites | Dex text | Evos | Moves | Move data | Move text | Learnsets | Egg | Machines | Tutors | Abilities | Ability text | Ability logic | Encounters | Type UI | Balls | World map | Local maps | Natures |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -324,14 +354,14 @@ Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for 
 | AshGray - Newerest Edition (v1.0).gba | 1 | 99.47% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 96% | 96% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 99% | 100% |
 | AshGray (v4.6).gba | 1 | 99.47% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 96% | 96% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 99% | 100% |
 | Bill's Secret Garden DX (v2.0).gba | 1 | 95.80% | P 98% | P 100% | P 98% | 100% | P 98% | P 99% | 100% | 100% | 100% | 100% | 95% | P 100% | 100% | 95% | 97% | 100% | 100% | P 100% | 100% | 100% | 100% | 100% | 100% | 100% |
-| Celia's Stupid Romhack (1.1.4).gba | 1 | 87.33% | P 100% | P 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | ? 0% | P 84% | 100% | 51% | 56% | 89% | 99% | P 97% | 0% | 100% | 100% | 100% | 100% | P 99% | 100% |
+| Celia's Stupid Romhack (1.1.4).gba | 1 | 87.34% | P 100% | P 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | ? 0% | P 84% | 100% | 51% | 56% | 89% | 99% | P 97% | 0% | 100% | 100% | 100% | 100% | P 100% | 100% |
 | Chaos Black (Fixed) (v3.1).gba | 1 | 99.49% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 96% | 96% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Chaos Black Recreated (2026-01-25).gba | 1 | 99.49% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 96% | 96% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Cloud White (v523d).gba | 1 | 91.39% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 100% | 100% | 99% | 99% | 99% | 100% | P 100% | 100% | 100% | 100% | 0% | P 92% | 100% |
-| Cloud White 2 (v279).gba | 1 | 86.47% | P 89% | 100% | P 89% | 100% | P 89% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 66% | 93% | 79% | 88% | 100% | P 100% | 100% | 100% | 100% | 100% | 0% | 100% |
-| Cloud White 3 (v277).gba | 1 | 87.52% | P 97% | 100% | P 97% | 100% | P 97% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 66% | 96% | 83% | 88% | 100% | P 100% | 100% | 100% | 100% | 100% | 0% | 100% |
+| Cloud White 2 (v279).gba | 1 | 90.64% | P 89% | 100% | P 89% | 100% | P 89% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 66% | 93% | 79% | 88% | 100% | P 100% | 100% | 100% | 100% | 100% | 100% | 100% |
+| Cloud White 3 (v277).gba | 1 | 91.69% | P 97% | 100% | P 97% | 100% | P 97% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 66% | 96% | 83% | 88% | 100% | P 100% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Crown (v1.9).gba | 1 | 78.66% | P 100% | 100% | 100% | 100% | 100% | 0% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 96% | 96% | 100% | 100% | 100% | ? 0% | 100% | 0% | ? 0% | 0% | 100% |
-| Crystal Advance Redux (7-8-26).gba | 1 | 82.57% | P 96% | P 99% | P 96% | 100% | P 96% | P 94% | P 92% | 100% | 99% | 100% | 0% | P 100% | 100% | 0% | 96% | 100% | 100% | P 100% | 100% | 100% | 100% | 0% | 100% | 100% |
+| Crystal Advance Redux (20-9-26).gba | 1 | 82.58% | P 96% | P 99% | P 96% | 100% | P 96% | P 94% | P 92% | 100% | 99% | 100% | 0% | P 100% | 100% | 0% | 96% | 100% | 100% | P 100% | 100% | 100% | 100% | 0% | 100% | 100% |
 | Dark Cry - The Legend of Giratina (v2.6.7).gba | 1 | 99.67% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 98% | 98% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 99% | 100% |
 | Dark Rising - Order Destroyed.gba | 1 | 91.23% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 0% | 100% | 96% | 96% | 98% | 100% | P 100% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Dark Rising 2.gba | 1 | 99.61% | 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 96% | 96% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 97% | 100% |
@@ -345,12 +375,12 @@ Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for 
 | Elysium (Part A) (v2.5.0).gba | 1 | 82.45% | P 94% | 100% | P 94% | 100% | P 94% | 100% | 0% | 100% | 100% | 0% | P 100% | P 96% | 100% | 98% | 96% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 100% | 100% |
 | Fire Gold (v1.4.1).gba | 1 | 83.37% | 100% | 100% | 100% | 100% | 100% | 100% | P 100% | 100% | 100% | 100% | 100% | 100% | 100% | 99% | 95% | 99% | 100% | P 100% | 0% | 100% | 100% | 0% | 0% | 100% |
 | Fire Red Backwards Edition.gba | 1 | 91.16% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 0% | 100% | 100% | 100% | 96% | 96% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | P 100% | 100% |
-| Fire Red Extended (3.5.6).gba | 1 | 74.78% | P 94% | 100% | P 94% | 0% | P 94% | 100% | 0% | 100% | 100% | 100% | 100% | 0% | 100% | 96% | 89% | 99% | 100% | P 100% | 100% | 100% | 100% | 0% | 0% | 100% |
-| FireEmerald (v0.6.1).gba | 1 | 87.53% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 34% | 100% | 100% | P 99% | 100% | P 32% | P 100% | N/A | 100% | P 99% | 100% | 100% | 100% | 100% | 100% | P 49% | 0% |
+| Fire Red Extended (3.5.6).gba | 1 | 78.95% | P 94% | 100% | P 94% | 0% | P 94% | 100% | 0% | 100% | 100% | 100% | 100% | 0% | 100% | 96% | 89% | 99% | 100% | P 100% | 100% | 100% | 100% | 0% | 100% | 100% |
+| FireEmerald (v0.6.1).gba | 1 | 87.99% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 34% | 100% | 100% | P 99% | 100% | P 32% | P 100% | N/A | 100% | P 99% | 100% | 100% | 100% | 100% | 100% | P 59% | 0% |
 | FireRed & LeafGreen+ (v1.5.1).gba | 1 | 79.17% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 82% | 100% | 100% | 100% | 0% | 100% | 100% | 0% | 0% | 100% |
 | FireRed Essence (v1.5).gba | 1 | 99.49% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 96% | 96% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% |
-| FireRed Extended (v3.5.6).gba | 1 | 74.78% | P 94% | 100% | P 94% | 0% | P 94% | 100% | 0% | 100% | 100% | 100% | 100% | 0% | 100% | 96% | 89% | 99% | 100% | P 100% | 100% | 100% | 100% | 0% | 0% | 100% |
-| FireRed Reignited Legacy.gba | 1 | 95.33% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 95% | 95% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 100% |
+| FireRed Extended (v3.5.6).gba | 1 | 78.95% | P 94% | 100% | P 94% | 0% | P 94% | 100% | 0% | 100% | 100% | 100% | 100% | 0% | 100% | 96% | 89% | 99% | 100% | P 100% | 100% | 100% | 100% | 0% | 100% | 100% |
+| Firered Reignited (v2.19.1).gba | 1 | 95.33% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 95% | 95% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 100% |
 | FireRed Team Rocket Edition (v1.02).gba | 1 | 91.16% | P 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 100% | 96% | 96% | 99% | 100% | P 100% | 100% | 100% | 100% | 100% | P 92% | 100% |
 | FireRed VR Missions (v1.0).gba | 1 | 82.21% | 0% | 100% | 0% | 100% | 0% | P 100% | P 72% | 100% | 100% | 100% | 100% | 100% | 45% | 77% | 78% | 99% | 99% | P 100% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Fuligin.gba | 1 | 99.49% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 96% | 96% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | P 100% | 100% |
@@ -361,32 +391,35 @@ Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for 
 | Kanlara Ultimate (2020.01.21).gba | 1 | 91.64% | P 100% | 100% | P 100% | 100% | P 100% | 100% | 0% | 100% | 100% | 100% | 100% | 0% | 100% | 99% | 94% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Kanto Black (v2.08).gba | 1 | 75.03% | 0% | 100% | 0% | 100% | 0% | 100% | 0% | 100% | 100% | 100% | 100% | 0% | 84% | 98% | 89% | 62% | P 100% | P 100% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Korosu (2017-07-23).gba | 1 | 100.00% | 94% | 100% | 94% | 100% | 94% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 93% | 93% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% |
+| Leafgreen Regrown (V2.19.1).gba | 1 | 95.33% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 95% | 95% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 100% |
 | LeafGreen Regrown Legacy.gba | 1 | 95.33% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 95% | 95% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Legends Delta (v1.0.1).gba | 1 | 95.80% | P 97% | P 100% | P 97% | 100% | P 97% | P 100% | 100% | 100% | 100% | 100% | 94% | P 100% | 100% | 97% | 95% | 100% | 100% | P 100% | 100% | 100% | 100% | 100% | 100% | 100% |
-| Liquid Crystal (v3.3.00512).gba | 1 | 87.61% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 100% | 96% | 95% | 100% | 100% | P 100% | 100% | 100% | 100% | 100% | 0% | 100% |
-| Nameless (v5.45).gba | 1 | 75.00% | 0% | 100% | 0% | 100% | 0% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 100% | 87% | 87% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 0% | 100% |
+| Liquid Crystal (v3.3.00512).gba | 1 | 91.69% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 100% | 96% | 95% | 100% | 100% | P 100% | 100% | 100% | 100% | 100% | P 98% | 100% |
+| Lugias Ocean.gba | 1 | 91.15% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 96% | 96% | 100% | 100% | 0% | 100% | 100% | 100% | ? 0% | P 100% | 100% |
+| Moon Galaxy.gba | 1 | 81.87% | P 87% | 100% | P 87% | 100% | P 87% | P 99% | P 100% | 100% | 100% | 0% | 100% | 0% | 45% | 89% | 66% | 100% | 0% | 0% | 100% | 100% | 100% | 100% | 100% | 100% |
+| Nameless (v5.45).gba | 1 | 79.17% | 0% | 100% | 0% | 100% | 0% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 100% | 87% | 87% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Odyssey (v4.1.1).gba | 1 | 96.09% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 99% | 99% | 51% | 100% | P 100% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Odyssey II - Heroes of Lemuria (Demo) (v0.1.3).gba | 1 | 66.37% | 0% | 100% | P 97% | 100% | P 97% | 100% | 0% | P 99% | 99% | 100% | 100% | 0% | 77% | 0% | 91% | 100% | 100% | P 100% | 0% | 100% | 100% | 0% | 0% | 100% |
 | Orange Islands (Beta 5.7).gba | 1 | 91.67% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 100% | 96% | 96% | 100% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% |
 | Outlaw.gba | 1 | 99.49% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 96% | 96% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% |
-| Phoenix Red (v1.2).gba | 1 | 95.21% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | P 95% | 100% | 96% | 96% | 100% | 100% | P 100% | 100% | 100% | 100% | 100% | 100% | 100% |
+| Phoenix Red (2.0).gba | 1 | 95.22% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | P 95% | 100% | 96% | 96% | 100% | 100% | P 100% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Project Nova (v2.7.0).gba | 1 | 91.16% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 0% | 100% | 100% | 100% | 99% | 95% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Project Pi (v1.3.4).gba | 1 | 91.42% | 97% | P 100% | 97% | 100% | 97% | 100% | 100% | 100% | 100% | 100% | P 94% | P 100% | 100% | 96% | 95% | 100% | 100% | P 100% | 100% | 100% | 100% | 0% | 100% | 100% |
 | Radical Red (v4.1).gba | ? | 70.86% | 98% | 0% | 98% | 100% | 98% | 100% | 0% | 100% | 100% | 100% | 0% | 0% | 48% | 0% | 89% | 0% | 0% | P 100% | 100% | 100% | 100% | 100% | 100% | 100% |
-| Red Adventure (v15c).gba | 1 | 91.68% | P 98% | 100% | P 98% | 100% | P 98% | 100% | 100% | 100% | 100% | 100% | 100% | P 100% | 45% | 95% | 66% | 99% | 100% | P 100% | 100% | 100% | 100% | 0% | 100% | 100% |
+| Rijon Adventures (2009).gba | 1 | 99.49% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 96% | 96% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Rijon Adventures (dev-git).gba | 1 | 99.50% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 96% | 96% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% |
-| Rijon Adventures.gba | 1 | 99.49% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 96% | 96% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Saffron (Demo) (v2.0).gba | 1 | 86.64% | P 98% | 100% | P 98% | 100% | P 98% | 100% | P 94% | 100% | 100% | 100% | P 84% | P 93% | 89% | 90% | 95% | 100% | 0% | 0% | 100% | 100% | 100% | 0% | P 99% | 100% |
 | Saiph (v2020).gba | 1 | 79.18% | 0% | 100% | 0% | 100% | 0% | 100% | P 100% | 100% | 100% | 100% | 100% | 0% | 65% | 86% | 88% | 99% | 100% | P 100% | 100% | 100% | 100% | 100% | P 99% | 100% |
-| Saiph 2 (v1.4.0).gba | 1 | 95.81% | P 98% | P 100% | P 98% | 100% | P 98% | P 100% | 100% | 100% | 100% | 100% | 94% | P 99% | 52% | 97% | 95% | 100% | 100% | P 100% | 100% | 100% | 100% | 100% | P 100% | 100% |
-| Saiph 2 [Lag Fix Removal] (v1.4.0).gba | 1 | 95.81% | P 98% | P 100% | P 98% | 100% | P 98% | P 100% | 100% | 100% | 100% | 100% | 94% | P 99% | 52% | 97% | 95% | 100% | 100% | P 100% | 100% | 100% | 100% | 100% | P 100% | 100% |
-| Saiph 2 [Time Based Removal] (v1.4.0).gba | 1 | 95.81% | P 98% | P 100% | P 98% | 100% | P 98% | P 100% | 100% | 100% | 100% | 100% | 94% | P 99% | 52% | 97% | 95% | 100% | 100% | P 100% | 100% | 100% | 100% | 100% | P 100% | 100% |
-| Saiph 2 [Vigilante Mode] (v1.4.0).gba | 1 | 95.81% | P 98% | P 100% | P 98% | 100% | P 98% | P 100% | 100% | 100% | 100% | 100% | 94% | P 99% | 52% | 97% | 95% | 100% | 100% | P 100% | 100% | 100% | 100% | 100% | P 100% | 100% |
+| Saiph 2 (Lag Fix Removal) (v1.5.0).gba | 1 | 95.71% | P 97% | P 100% | P 97% | 100% | P 97% | P 100% | 100% | 100% | 100% | 100% | 94% | P 99% | 52% | 97% | 95% | 100% | 100% | P 100% | 100% | 100% | 100% | 100% | P 100% | 100% |
+| Saiph 2 (Time Based Removal) (v1.5.0).gba | 1 | 95.71% | P 97% | P 100% | P 97% | 100% | P 97% | P 100% | 100% | 100% | 100% | 100% | 94% | P 99% | 52% | 97% | 95% | 100% | 100% | P 100% | 100% | 100% | 100% | 100% | P 100% | 100% |
+| Saiph 2 (v1.5.0).gba | 1 | 95.71% | P 97% | P 100% | P 97% | 100% | P 97% | P 100% | 100% | 100% | 100% | 100% | 94% | P 99% | 52% | 97% | 95% | 100% | 100% | P 100% | 100% | 100% | 100% | 100% | P 100% | 100% |
+| Saiph 2 (Vigilante Mode) (v1.5.0).gba | 1 | 95.71% | P 97% | P 100% | P 97% | 100% | P 97% | P 100% | 100% | 100% | 100% | 100% | 94% | P 99% | 52% | 97% | 95% | 100% | 100% | P 100% | 100% | 100% | 100% | 100% | P 100% | 100% |
 | Scarlet & Violet.gba | 1 | 99.49% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 93% | 96% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Sienna.gba | 1 | 87.55% | ? 0% | 100% | 100% | 100% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 100% | 96% | 96% | 100% | 100% | P 100% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Sky Twilight (Fixed) (v3.0).gba | 1 | 94.36% | P 94% | 100% | P 94% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 92% | 90% | 99% | 100% | P 100% | 100% | 100% | 100% | 100% | P 84% | 100% |
 | Sors 2 (Story Demo) (Hotfix 3).gba | 1 | 91.60% | P 97% | P 100% | P 97% | 100% | P 97% | P 100% | 100% | 100% | 100% | 100% | 94% | P 100% | 100% | 97% | 95% | 100% | 100% | P 100% | 100% | 100% | 100% | 0% | P 99% | 100% |
 | Sors 2 (Tech Demo) (Evolution Fix).gba | 1 | 91.39% | P 97% | P 100% | P 97% | 100% | P 97% | P 100% | 100% | 100% | 100% | 100% | P 94% | P 100% | 100% | 97% | 95% | 100% | 100% | P 100% | 100% | 100% | 100% | 0% | 100% | 100% |
+| Sun Sky.gba | 1 | 86.09% | P 87% | 100% | P 87% | 100% | P 87% | P 99% | P 100% | 100% | 100% | 100% | 100% | 0% | 45% | 89% | 66% | 100% | 0% | P 100% | 100% | 100% | 100% | 100% | P 100% | 100% |
 | Sweet (v1.0).gba | 1 | 91.25% | P 100% | 100% | 100% | 0% | 100% | 100% | P 93% | 100% | 100% | 100% | 100% | 100% | 100% | 96% | 96% | 100% | 100% | P 100% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Sweet 2th (v1.0).gba | 1 | 83.39% | 100% | 100% | 100% | 0% | 100% | 100% | 0% | 100% | 100% | 100% | 100% | 100% | 100% | 96% | 96% | 99% | 100% | P 100% | 100% | 100% | 100% | 0% | 100% | 100% |
 | Sword and Shield Ultimate Plus (Casual + Performance) (v1.2.1.2).gba | 1 | 95.85% | 98% | P 100% | 98% | 100% | 98% | 100% | P 100% | 100% | 100% | 100% | 94% | 100% | 100% | 97% | 95% | 100% | 100% | P 100% | 100% | 100% | 100% | 100% | 100% | 100% |
@@ -394,6 +427,7 @@ Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for 
 | Sword and Shield Ultimate Plus (Performance Patch) (v1.2.1.2).gba | 1 | 95.85% | 98% | P 100% | 98% | 100% | 98% | 100% | P 100% | 100% | 100% | 100% | 94% | 100% | 100% | 97% | 95% | 100% | 100% | P 100% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Sword and Shield Ultimate Plus (v1.2.1.2).gba | 1 | 95.85% | 98% | P 100% | 98% | 100% | 98% | 100% | P 100% | 100% | 100% | 100% | 94% | 100% | 100% | 97% | 95% | 100% | 100% | P 100% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Ultra Shiny Gold Sigma (v1.5.0).gba | 1 | 79.15% | 0% | 100% | 0% | 100% | 0% | 100% | P 100% | 100% | 100% | 100% | 100% | P 100% | 49% | 97% | 93% | 100% | 100% | 0% | 100% | 100% | 100% | 0% | 100% | 100% |
+| Ultra Violet (v1.22).gba | 1 | 99.50% | P 100% | 100% | 100% | 100% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | 100% | 100% | 96% | 96% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Unbound (v2.1.1.1).gba | 1 | 100.00% | 98% | 100% | 98% | 100% | 98% | 100% | 100% | 100% | 100% | 100% | 94% | 100% | 100% | 95% | 96% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Unknown (v1.0).gba | 1 | 95.87% | 98% | 100% | 98% | 100% | 98% | 100% | 100% | 100% | 100% | 100% | 93% | 100% | 100% | 97% | 96% | 100% | 100% | P 100% | 100% | 100% | 100% | 100% | 100% | 100% |
 | Valen (v1.9).gba | 1 | 91.21% | P 100% | 100% | 100% | 0% | 100% | 100% | P 94% | 100% | 100% | 100% | 100% | P 100% | 100% | 95% | 96% | 98% | 100% | P 100% | 100% | 100% | 100% | 100% | 100% | 100% |
@@ -405,7 +439,7 @@ Cells use `P 64%` for partial support, `? 64%` for ambiguous evidence, `0%` for 
 
 ## Unclassified inputs
 
-These inputs remain in the 333-ROM denominator but do not have a selected family, so no family-specific capability claim is made.
+These inputs remain in the 342-ROM denominator but do not have a selected family, so no family-specific capability claim is made.
 
 | ROM | Platform | Routing outcome |
 |---|---|---|
@@ -419,55 +453,30 @@ These inputs remain in the 333-ROM denominator but do not have a selected family
 | Gaia (v3.2).gba | GBA | No family match |
 | Lazarus (v2.0).gba | GBA | No family match |
 | Light and Shadow (V2.0.4).gba | GBA | No family match |
-| Lugias Ocean.gba | GBA | Ambiguous family |
-| Moon Galaxy.gba | GBA | No family match |
 | Noon (Completed).gba | GBA | No family match |
 | Palimpsest (v1.2.0).gba | GBA | No family match |
-| Parallel Emerald (v1.2).gba | GBA | No family match |
-| Pisces (v1.5.4).gba | GBA | No family match |
 | Recharged Emerald (v2.2.8).gba | GBA | No family match |
 | Recharged Yellow (v1.9.7).gba | GBA | No family match |
 | Recordkeepers (v1.2.1).gba | GBA | No family match |
-| ROWE (v2.1.1).gba | GBA | No family match |
 | Scale x Fang (v1.0.2).gba | GBA | No family match |
-| Scorched Silver (v1.3).gba | GBA | No family match |
-| Sovereign of the Skies (v2.1.2).gba | GBA | No family match |
-| Sun Sky.gba | GBA | No family match |
-| Team Rocket Edition (v2.1).gba | GBA | No family match |
 | The Nuzlomizer (3.0.1).gba | GBA | No family match |
 | Too Many Types (v1.6).gba | GBA | No family match |
 | Too Many Types 2 (v1.5.2).gba | GBA | No family match |
-| Ultra Violet (v1.22).gba | GBA | Ambiguous family |
 | Unova Emerald (2.0.3).gba | GBA | No family match |
 | Voyager (Battle Frontier Demo) (v1.1).gba | GBA | No family match |
 | Voyager (v0.3.6).gba | GBA | No family match |
 | WaveBlue (v1.9.4).gba | GBA | No family match |
-| Ambrosia (v2.6.2).gbc | GBC | No family match |
 | Black & White 3 - Genesis (24.12.23).gbc | GBC | No family match |
-| Crystal Inheritance (v1.0.5).gbc | GBC | No family match |
 | Fools Gold (v1.3.2).gbc | GBC | No family match |
 | Orange (Suloku Patch 2026.0.2 PSS).gbc | GBC | No family match |
-| Orange (Suloku Patch 2026.0.2).gbc | GBC | No family match |
 | Peridot Version (v2.3.0).gbc | GBC | No family match |
-| Polished Crystal (29.07.26).gbc | GBC | No family match |
-| Polished Crystal (Faithful) (29.07.26).gbc | GBC | No family match |
 | Prism (v0.95.0254).gbc | GBC | No family match |
-| PureBlue (05.07.26).gb | GBC | No family match |
-| PureGreen (05.07.26).gb | GBC | No family match |
-| PureRed (05.07.26).gb | GBC | No family match |
-| SourCrystal (30.07.26).gbc | GBC | No family match |
-| SourCrystal (GB Tower) (30.07.26).gbc | GBC | No family match |
-| SourCrystal (VC) (30.07.26).gbc | GBC | No family match |
 | TCG - Generations (1.7.2b).gbc | GBC | No family match |
 | TCG - Neo (Legacy) (v1.43).gbc | GBC | No family match |
 | TCG - Neo (v1.43).gbc | GBC | No family match |
-| Yellow Kaizo (1.0.3) (QOL).gb | GBC | No family match |
-| Yellow Kaizo (1.0.3).gb | GBC | No family match |
-| Yellow Legacy (17.03.26).gb | GBC | No family match |
-| Yellow Legacy+ (08.09.25).gb | GBC | No family match |
 | Harvestcraft (v2.0).gba | UNKNOWN | No family match |
 
 ## Evidence and privacy
 
-The row-level matrix was generated from parser schema 16 at source commit `15a9dbb1cc6c586e5a62043f5181e2d65894cae3`, filtered to the exact canonical corpus identity multiset. The final localization closure at `5397f6e3b131cf0e15e16fff4f13b4e09761e46d` independently binds the aggregate routing and language-manifest totals. The document intentionally excludes ROM hashes, source paths, archive paths, decoded text, ROM bytes, save data, and parser diagnostics. Public ROM filenames are retained only to identify the benchmark rows. Aggregate release evidence is in [Stage 6 corpus evidence](reports/localization/stage-06-corpus-evidence.json).
+The row-level matrix was generated from parser schema 16 at source commit `1e8777ee5cbdac1a224134e4d9609a4ee135639a`, filtered to the exact canonical corpus identity multiset. The final localization closure at `1e8777ee5cbdac1a224134e4d9609a4ee135639a` independently binds the aggregate routing and language-manifest totals. The document intentionally excludes ROM hashes, source paths, archive paths, decoded text, ROM bytes, save data, and parser diagnostics. Public ROM filenames are retained only to identify the benchmark rows. Aggregate release evidence is in [Stage 6 corpus evidence](reports/localization/stage-06-corpus-evidence.json).
 

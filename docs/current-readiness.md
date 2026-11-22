@@ -5,10 +5,10 @@ This is the canonical reviewer entry point for DualDex release readiness.
 ## Active marker
 
 - **Latest public stable:** [`v1.2.4`](https://github.com/Darkaxt/DualScreenDex/releases/tag/v1.2.4), published October 18, 2026.
-- **Prepared next release:** `v1.2.4` preparation is complete: this marker now identifies the published stable, not a pending release. No additional release is scheduled.
+- **Prepared next release:** `v1.2.5` (candidate `v1.2.5-rc.1`), qualified on the [B4 release corpus run](reports/corpus/2026-11-22-b4-release-corpus.md) at evidence source `1e8777ee5cbdac1a224134e4d9609a4ee135639a` (parser revision 144). Signing and promotion follow the protected workflows.
 - **Machine-readable readiness marker:** [`release/v1-ready.json`](../release/v1-ready.json), source-bound build/signing readiness, not stable-promotion acceptance.
-- **Current state:** **stablev1.2.4 is public and independently verified.** All68 downloaded assets/67 checksum entries, public privacy, provenance, APK package/version and pinned production signer pass. Its protected final workflow passes all three jobs. The separate Unbound follow-up and exact cleanup are complete; no physical-device, signed-APK execution or all-ROM100% acceptance is claimed.
-- **Current qualification:** [Unbound follow-up: five affected inputs plus baseline reuse](reports/corpus/2026-10-18-unbound-followup-qualification.md); [completed1.2.3 release reconciliation](reports/corpus/2026-10-18-release-qualification.md).
+- **Current state:** stable v1.2.4 remains the public release until 1.2.5 is promoted and independently verified. No physical-device, signed-APK execution or all-ROM 100% acceptance is claimed.
+- **Current qualification:** one fresh full342 run: 310 selected / 0 ambiguous / 32 unmatched, 0 errors, 18 ROMs improved, 0 regressions, mean 79.911% → 81.513%, languages 295 resolved / 15 unknown, originals unchanged. [Hosted packaged acceptance 45022647102](https://github.com/Darkaxt/DualScreenDex/actions/runs/45022647102): 11 tests, 0 failures/errors/skips. Parser cache 144 rejects 140; SQLite 2 unchanged.
 
 ## Released 1.2.4 Unbound follow-up
 

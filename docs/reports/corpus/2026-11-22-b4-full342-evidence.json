@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 2,
+  "sourceCommit": "1e8777ee5cbdac1a224134e4d9609a4ee135639a",
+  "generator": {
+    "name": "parser-cli",
+    "schemaVersion": 16,
+    "sha256": "a8a543ff771347e4cca452b80dbcbfad7605d2c0261fa79bf700c59fb6d4f935"
+  },
+  "rawReportSha256": "7639a1b551947a3570a1edeea1276efbc50027baaa59037bdf9dd0a0c319b761",
+  "corpusInputDigestSha256": "733e36785fa9a5b71bc4121343a6b6d2cbd27e43e08b3fddc2e2870bac1a0561",
+  "inputCount": 342,
+  "uniqueRomIdentities": 342,
+  "outcomes": {
+    "selected": 310,
+    "ambiguous": 0,
+    "noFamilyMatch": 32,
+    "total": 342,
+    "errors": 0
+  },
+  "dataCompatibility": {
+    "complete": 0,
+    "partial": 332,
+    "unresolved": 10,
+    "total": 342,
+    "errors": 0
+  },
+  "catalogs": {
+    "materialized": 310,
+    "persisted": 310,
+    "catalogErrors": 0,
+    "persistenceErrors": 0
+  },
+  "privacy": {
+    "containsRomIdentity": false,
+    "containsRomName": false,
+    "containsSourcePath": false,
+    "containsRomBytes": false
+  }
+}

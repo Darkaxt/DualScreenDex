@@ -304,7 +304,7 @@ export function renderRomCompatibilityMarkdown(matrix) {
   const lines = [
     "# ROM compatibility matrix",
     "",
-    "This document lists every input in the current 333-ROM canonical benchmark. Routed ROMs are grouped by generation and detected engine family. The benchmark includes ROM hacks and official validation controls; a row describes the scanned build named in the **ROM** column, not every release of that project.",
+    `This document lists every input in the current ${matrix.inputCount}-ROM canonical benchmark. Routed ROMs are grouped by generation and detected engine family. The benchmark includes ROM hacks and official validation controls; a row describes the scanned build named in the **ROM** column, not every release of that project.`,
     "",
     "Capability percentages are parser confidence derived from bounded structural evidence. They are not a probability that every feature behaves exactly as the ROM author intended. Unless separately identified by a live test, these rows are static parser and persisted-catalog observations.",
     "",
@@ -366,7 +366,7 @@ export function renderRomCompatibilityMarkdown(matrix) {
     "",
     "## Unclassified inputs",
     "",
-    "These inputs remain in the 333-ROM denominator but do not have a selected family, so no family-specific capability claim is made.",
+    `These inputs remain in the ${matrix.inputCount}-ROM denominator but do not have a selected family, so no family-specific capability claim is made.`,
     "",
     "| ROM | Platform | Routing outcome |",
     "|---|---|---|",
