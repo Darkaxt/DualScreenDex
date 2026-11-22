@@ -39,7 +39,7 @@ The procedural overhead those safeguards accumulated is replaced as follows:
 
 Builds go through the installed Gradle gate (`gradle-build-gate`), one build at a time.
 
-Release cadence: a new RC/stable only for a meaningful batch or one major fix (memory `dualdex-batch-release-candidates`). On release, comment on and close the exact linked issues.
+Release cadence (user, 2026-11-22): the work is raising corpus compatibility. Stages do not end in releases; publish only when accumulated gains are meaningful or one major fix justifies it (memory `dualdex-batch-release-candidates`). On release, comment on and close the exact linked issues.
 
 No live ADB/device gates for parser-only work (memory `dualdex-no-ad-hoc-live-adb-gates`). Hosted packaged acceptance plus passive-catalog controls are the release route.
 
@@ -53,7 +53,7 @@ No live ADB/device gates for parser-only work (memory `dualdex-no-ad-hoc-live-ad
 | B2 | Gen II relationships | `LIB26-G2-RELATIONSHIPS-REMAINING`: evolutions/learnsets NOT_FOUND for Ambrosia, Anniversary Crystal, Crystal Kaizo, Mystic Crystal, Gold/Silver 97 Reforged, Polished Crystal and Crystal Inheritance. First re-check each against the R1 baseline (later Gen II core fixes may have closed some). Then implement one generic compiled-consumer contract. | Affected ROMs gain both datasets with valid references; Gen II controls unchanged. |
 | B3 | Unmatched/ambiguous triage | Cluster the 39 unmatched and 2 ambiguous rows by engine/header family. Give every row an ID (`ROW-<identity>`) with target batch or explicit "unsupported engine" reason. Implement the largest shared family-detection gap. | Every row has an ID; the largest cluster selects and parses. |
 | B4 | Release batch v1.2.5 | After B0–B2 (B3 optional). Reuse the R1 corpus run; re-run the full corpus only if B2/B3 changed shared parser paths, otherwise affected + controls. B2 changed shared Gen II paths and schema (143), qualified on all 19 Gen II rows plus Gen I controls; decide full vs. affected afresh, and move the evidence JSON and cache decision to 143. Includes DEF-DEPENDABOT-63. Signed RC → protected promotion → stable; downloaded verification; close linked issues. | Public release verified; matrix doc regenerated from the release corpus evidence. |
-| B5+ | Next quick wins | In order of verified multi-ROM impact: `LIB26-MAPS` (Heart and Soul, SoulGold, Tourmaline), `LIB26-G3-SIBLINGS` and ROWE domains, `LIB26-G2-LINEAGE/SIBLINGS/OPTIONAL`, `LIB26-G1-OPTIONAL/FORMS`, official-control runs (`LIB26-G2/G3-OFFICIAL-CONTROLS`). Re-rank after each release. | Per-batch ledger row closed. |
+| B5+ | Next quick wins (GBA first) | The GBA ledger remainders above (C1, C4, expansion learnsets/dex domain, table extent, zero tail, move PP), then, in order of verified multi-ROM impact: `LIB26-MAPS` (Heart and Soul, SoulGold, Tourmaline), `LIB26-G3-SIBLINGS` and ROWE domains, `LIB26-G2-LINEAGE/SIBLINGS/OPTIONAL`, `LIB26-G1-OPTIONAL/FORMS`, official-control runs (`LIB26-G2/G3-OFFICIAL-CONTROLS`). Re-rank after each stage by measured corpus gain. | Per-batch ledger row closed. |
 
 ## Tracked deferrals (previously untracked)
 
