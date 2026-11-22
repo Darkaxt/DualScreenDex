@@ -509,6 +509,14 @@ object TableValidators {
     private fun isGen3PlaceholderBaseStats(rom: RomImage, base: Int, recordSize: Int): Boolean =
         (0 until recordSize).all { it in 20..21 && recordSize == 28 || rom.u8(base + it) == 0 }
 
+    /** True when the record at [base] exists and is neither an empty nor a plausible Gen III move record. */
+    private fun isGen3MoveTableBoundary(rom: RomImage, base: Int, recordSize: Int): Boolean {
+        if (base < 0 || base + recordSize > rom.size) return false
+        if ((0 until recordSize).all { rom.u8(base + it) == 0 }) return false
+        val accuracy = rom.u8(base + 3)
+        return !(rom.u8(base + 2) in 0..31 && rom.u8(base + 4) in 0..64 && (accuracy == 0 || accuracy in 10..100))
+    }
+
     fun moveData(
         rom: RomImage,
         offset: Int,
@@ -617,9 +625,11 @@ object TableValidators {
         val confidence = valid.toDouble() / count.coerceAtLeast(1)
         val populatedRatio = populated.toDouble() / (count - 1).coerceAtLeast(1)
         // A single interior record whose only violation is a PP value above the retail ceiling is a
-        // hack's own move data (the u8 field accepts it), not a table boundary.
+        // hack's own move data (the u8 field accepts it), not a table boundary. The record after the
+        // table must be non-move data, so a truncated view of a longer table is not accepted.
         val singlePpOutlier = generation == 3 && valid == count - 1 && populatedRatio >= 0.80 &&
-            ppOnlyOutliers.singleOrNull()?.let { it < count - 1 && !plausibleRecords[it] } == true
+            ppOnlyOutliers.singleOrNull()?.let { it < count - 1 && !plausibleRecords[it] } == true &&
+            isGen3MoveTableBoundary(rom, offset + count * recordSize, recordSize)
         val compatible = if (generation == 3) {
             (valid == count || singlePpOutlier) && (count <= 1 || populatedRatio >= 0.80)
         } else {

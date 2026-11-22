@@ -344,9 +344,11 @@ class TableValidatorsTest {
     fun acceptsOneInteriorGen3MoveRecordWhosePpExceedsTheRetailCeiling() {
         val recordSize = 12
         val count = 40
-        fun table(outliers: List<Int>, outlierAccuracy: Int = 100): ByteArray {
-            val bytes = ByteArray(recordSize * count)
-            repeat(count) { index ->
+        // One record past the table: name text by default (0xFF type byte), or another move.
+        fun table(outliers: List<Int>, outlierAccuracy: Int = 100, moveAfterTable: Boolean = false): ByteArray {
+            val bytes = ByteArray(recordSize * (count + 1))
+            repeat(recordSize) { bytes[count * recordSize + it] = 0xFF.toByte() }
+            repeat(if (moveAfterTable) count + 1 else count) { index ->
                 val base = index * recordSize
                 bytes[base + 1] = 40
                 bytes[base + 2] = 9
@@ -367,6 +369,8 @@ class TableValidatorsTest {
         assertFalse(validate(table(listOf(10, 25))).compatible)
         assertFalse(validate(table(listOf(count - 1))).compatible)
         assertFalse(validate(table(listOf(25), outlierAccuracy = 5)).compatible)
+        // A truncated view of a longer table has no proven boundary.
+        assertFalse(validate(table(listOf(25), moveAfterTable = true)).compatible)
     }
 
     @Test
