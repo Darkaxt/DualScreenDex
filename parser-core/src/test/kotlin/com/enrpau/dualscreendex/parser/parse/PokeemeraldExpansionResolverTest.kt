@@ -203,6 +203,27 @@ class PokeemeraldExpansionResolverTest {
         )
     }
 
+    @Test
+    fun resolvesACustomOrderedTypeChartOnlyThroughAUniqueRootAndEndReferencedMatrix() {
+        val resolved = requireNotNull(resolve(RomImage(fixture(typeChart = TypeChartFixture.CUSTOM_REFERENCED))))
+
+        assertEquals(0x8800, resolved.tables.typeChart?.offset)
+        assertEquals(20 * 20, resolved.tables.typeChart?.count)
+        assertEquals(20 * 4, resolved.tables.typeChart?.recordSize)
+    }
+
+    @Test
+    fun rejectsACustomOrderedTypeChartWithoutACompiledEndReference() {
+        assertNull(resolve(RomImage(fixture(typeChart = TypeChartFixture.CUSTOM_ROOT_ONLY))))
+    }
+
+    @Test
+    fun rejectsTwoReferencedCustomOrderedTypeCharts() {
+        assertNull(resolve(RomImage(fixture(typeChart = TypeChartFixture.CUSTOM_TWICE_REFERENCED))))
+    }
+
+    private enum class TypeChartFixture { VANILLA_ANCHORS, CUSTOM_REFERENCED, CUSTOM_ROOT_ONLY, CUSTOM_TWICE_REFERENCED }
+
     private fun resolve(rom: RomImage): PokeemeraldExpansionResolution? =
         PokeemeraldExpansionResolver.resolve(rom, PokemonTextCodec.gbaEnglish)
 
@@ -215,8 +236,9 @@ class PokeemeraldExpansionResolverTest {
         cryAliasThrough: Int = 0,
         evolutionRecordSize: Int = 12,
         terminateEvolutions: Boolean = true,
+        typeChart: TypeChartFixture = TypeChartFixture.VANILLA_ANCHORS,
     ): ByteArray {
-        val bytes = ByteArray(0x9000)
+        val bytes = ByteArray(if (typeChart == TypeChartFixture.CUSTOM_TWICE_REFERENCED) 0xA000 else 0x9000)
         writeAscii(bytes, 0x108, "pokemon emerald version")
         writePointer(bytes, 0x1BC, 0x1000)
         writePointer(bytes, 0x1CC, 0x5000)
@@ -283,11 +305,32 @@ class PokeemeraldExpansionResolverTest {
             writeU16(bytes, entry + 4, 2)
         }
         if (terminateEvolutions) writeU16(bytes, 0x8600 + evolutionRecordSize, 0xFFFF)
-        repeat(20 * 20) { index -> writeU32(bytes, 0x8800 + index * 4, 4096) }
-        writeU32(bytes, 0x8800 + (1 * 20 + 6) * 4, 2048)
-        writeU32(bytes, 0x8800 + (1 * 20 + 8) * 4, 0)
-        writeU32(bytes, 0x8800 + (2 * 20 + 1) * 4, 8192)
+        if (typeChart == TypeChartFixture.VANILLA_ANCHORS) {
+            repeat(20 * 20) { index -> writeU32(bytes, 0x8800 + index * 4, 4096) }
+            writeU32(bytes, 0x8800 + (1 * 20 + 6) * 4, 2048)
+            writeU32(bytes, 0x8800 + (1 * 20 + 8) * 4, 0)
+            writeU32(bytes, 0x8800 + (2 * 20 + 1) * 4, 8192)
+        } else {
+            writeCustomTypeChart(bytes, 0x8800)
+            writePointer(bytes, 0x8F00, 0x8800)
+            if (typeChart != TypeChartFixture.CUSTOM_ROOT_ONLY) writePointer(bytes, 0x8F04, 0x8800 + 20 * 20 * 4)
+            if (typeChart == TypeChartFixture.CUSTOM_TWICE_REFERENCED) {
+                writeCustomTypeChart(bytes, 0x9000)
+                writePointer(bytes, 0x8F08, 0x9000)
+                writePointer(bytes, 0x8F0C, 0x9000 + 20 * 20 * 4)
+            }
+        }
         return bytes
+    }
+
+    /** A Q4.12 matrix whose effects avoid the vanilla Normal/Fighting anchor cells. */
+    private fun writeCustomTypeChart(bytes: ByteArray, offset: Int) {
+        repeat(20 * 20) { index -> writeU32(bytes, offset + index * 4, 4096) }
+        for (attacker in 1 until 20) {
+            writeU32(bytes, offset + (attacker * 20 + attacker) * 4, 2048)
+            writeU32(bytes, offset + (attacker * 20 + attacker % 19 + 1) * 4, 8192)
+        }
+        writeU32(bytes, offset + (3 * 20 + 9) * 4, 0)
     }
 
     private fun encodeGba(target: ByteArray, offset: Int, value: String) {

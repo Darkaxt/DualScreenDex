@@ -10,6 +10,7 @@ import com.enrpau.dualscreendex.parser.model.ValidationEvidence
 import com.enrpau.dualscreendex.parser.sprite.GbaDecodeContract
 import com.enrpau.dualscreendex.parser.sprite.GbaRomCompression
 import com.enrpau.dualscreendex.parser.text.PokemonTextCodec
+import com.enrpau.dualscreendex.parser.validate.TableValidators
 
 data class PokeemeraldExpansionFirstRegisters(
     val speciesName: String,
@@ -581,7 +582,18 @@ object PokeemeraldExpansionResolver {
                 }
             }
         }
-        return candidates.singleOrNull()
+        if (candidates.isNotEmpty()) return candidates.singleOrNull()
+        // Hacks with a reordered or custom type domain keep the matrix but break the vanilla
+        // Normal/Fighting anchors. Accept only one compiled root-and-end-referenced u32 Q4.12
+        // matrix that covers every move type; any ambiguity still fails closed.
+        return TableValidators.locateReferencedGen3Q412TypeCharts(rom, activeTypeLowerBound = maximumType + 1)
+            .filter { it.elementSize == 4 }
+            .mapNotNull { evidence ->
+                val offset = evidence.offset ?: return@mapNotNull null
+                val recordSize = evidence.recordSize ?: return@mapNotNull null
+                TypeChartShape(offset, recordSize / 4)
+            }
+            .singleOrNull()
     }
 
     private fun alignToWord(value: Int): Int = (value + 3) and -4
