@@ -34,6 +34,7 @@ object Gen3DynamicTableResolver {
             codec = codec,
             referenceSites = referenceSites,
         )?.let { return it }
+        reconcileUnsizedSpeciesTable(rom, tables, proposedCount, codec)?.let { return it }
         val mapOffset = references.counts.keys.singleOrNull { candidate ->
             credibleSpeciesToDexMap(rom, names, proposedCount, candidate)
         } ?: return Gen3SpeciesExtentResolution(proposedCount, tables)
@@ -132,6 +133,67 @@ object Gen3DynamicTableResolver {
                 learnsets = tables.learnsets?.copy(count = minOf(tables.learnsets.count, selected.boundary)),
             ),
         )
+    }
+
+    /**
+     * A decompilation can size its species-name array by NUM_SPECIES while the SpeciesInfo array
+     * stays unsized, so it ends after the last species that has data. The inactive names are then a
+     * zero tail and the stats table is followed directly by another table. Three independent facts
+     * must agree on the boundary K: every name slot from K on is zero, the stats validate for exactly
+     * K rows at an inferred stride, and row K is neither a stats row nor empty but the start of a
+     * region that some ROM pointer word targets. A zero tail alone never proves the extent.
+     */
+    private fun reconcileUnsizedSpeciesTable(
+        rom: RomImage,
+        tables: ProfileTables,
+        proposedCount: Int,
+        codec: PokemonTextCodec,
+    ): Gen3SpeciesExtentResolution? {
+        val names = tables.speciesNames ?: return null
+        val stats = tables.baseStats ?: return null
+        if (names.variableLength || names.valuesArePointers || names.stride != null && names.stride != names.recordSize) {
+            return null
+        }
+        val width = names.recordSize
+        if (names.offset < 0 || names.offset.toLong() + proposedCount.toLong() * width > rom.size.toLong()) return null
+        fun zeroName(index: Int): Boolean = (0 until width).all { rom.u8(names.offset + index * width + it) == 0 }
+        val boundary = (proposedCount - 1 downTo 0).firstOrNull { !zeroName(it) }?.plus(1) ?: return null
+        if (boundary >= proposedCount || boundary <= MINIMUM_RECONCILED_SPECIES_COUNT) return null
+        if (!TableValidators.names(rom, names.copy(count = boundary), boundary, codec).compatible) return null
+        val recordSize = TableValidators.inferBaseStatsRecordSize(rom, stats.offset, boundary, generation = 3) ?: return null
+        if (!TableValidators.baseStats(rom, stats.offset, boundary, recordSize, generation = 3, allowPlaceholderSlots = false).compatible) {
+            return null
+        }
+        val next = stats.offset.toLong() + boundary.toLong() * recordSize
+        if (next < 0 || next + recordSize > rom.size.toLong()) return null
+        val nextRow = next.toInt()
+        if ((0 until recordSize).all { rom.u8(nextRow + it) == 0 } ||
+            validStatsRow(rom, stats.copy(recordSize = recordSize), boundary, abilityUpperBound = null) ||
+            !romWordTargets(rom, nextRow)
+        ) {
+            return null
+        }
+        return Gen3SpeciesExtentResolution(
+            boundary,
+            tables.copy(
+                speciesNames = names.copy(count = boundary),
+                baseStats = stats.copy(count = boundary, recordSize = recordSize),
+                sprites = tables.sprites?.copy(count = minOf(tables.sprites.count, boundary)),
+                evolutions = tables.evolutions?.copy(count = minOf(tables.evolutions.count, boundary)),
+                learnsets = tables.learnsets?.copy(count = minOf(tables.learnsets.count, boundary)),
+            ),
+        )
+    }
+
+    /** True when an aligned ROM word holds the GBA ROM address of [offset]. */
+    private fun romWordTargets(rom: RomImage, offset: Int): Boolean {
+        val address = GBA_ROM_BASE + offset
+        var cursor = 0
+        while (cursor <= rom.size - 4) {
+            if (rom.u32le(cursor) == address) return true
+            cursor += 4
+        }
+        return false
     }
 
     private fun sparseMappedSpeciesBoundary(rom: RomImage, offset: Int, proposedCount: Int): Int? {
@@ -841,6 +903,7 @@ object Gen3DynamicTableResolver {
     private const val MAX_DYNAMIC_PREFILTER_SHAPES = 4_096
     private const val MAX_REFERENCED_DYNAMIC_CANDIDATES = 256
     private const val MINIMUM_RECONCILED_SPECIES_COUNT = 300
+    private const val GBA_ROM_BASE = 0x08000000L
     private const val MINIMUM_INCOHERENT_SUFFIX_DENOMINATOR = 4
     private const val MAXIMUM_INCOHERENT_SUFFIX_VALID_NUMERATOR = 1
     private const val MINIMUM_DIRECT_SPECIES_TO_DEX_REFERENCES = 2

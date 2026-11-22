@@ -277,6 +277,17 @@ internal class CoreDatasetsStrategy : FamilyProbePhaseStrategy {
                 stats = relocated
             }
         }
+        // Reserved species slots may keep an all-zero name. That is only credible once the base
+        // stats have independently validated the same species extent.
+        if (generation == 3 && !names.compatible && expansion == null && headerlessUnifiedSpecies == null &&
+            speciesCount != null && stats.compatible && stats.totalRecords == speciesCount
+        ) {
+            speciesNamesLayout
+                ?.takeIf { !it.variableLength && !it.valuesArePointers && (it.stride == null || it.stride == it.recordSize) }
+                ?.let { TableValidators.fixedNamesWithEmptySlots(rom, it.offset, speciesCount, it.recordSize, probeCodec) }
+                ?.takeIf { it.compatible }
+                ?.let { names = it }
+        }
         var moveNamesLayout = tables.moveNames
         var moveNames = headerlessUnifiedMoves?.moveNamesEvidence
             ?: validateNames(rom, moveNamesLayout, inheritedMoveCount, probeCodec, generation)

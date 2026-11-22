@@ -96,6 +96,57 @@ object TableValidators {
         ValidationEvidence(confidence >= minimumRatio, valid, count, confidence, reasons, offset, width)
     }
 
+    /** Reason prefix of name evidence that validated only because empty placeholder slots were reserved. */
+    const val PLACEHOLDER_NAMES_REASON = "fixed names with reserved empty placeholder slots"
+
+    /**
+     * Validates a fixed-width name table whose extent is already proven elsewhere and whose unused
+     * species slots are left entirely zero. Empty slots are neither names nor malformed data, so they
+     * stay uncovered. The final slot must be a name, because a zero tail cannot be told apart from an
+     * over-counted table; anything that is neither a plausible name nor an empty slot is malformed,
+     * and at most 1% of slots may be malformed.
+     */
+    fun fixedNamesWithEmptySlots(
+        rom: RomImage,
+        offset: Int,
+        count: Int,
+        width: Int,
+        codec: PokemonTextCodec,
+    ): ValidationEvidence = safely(offset, width, count) {
+        var valid = 0
+        var empty = 0
+        var firstValid = false
+        var lastValid = false
+        repeat(count) { index ->
+            val base = offset + index * width
+            val decoded = codec.decodeDetailed(rom.slice(base, width))
+            if (plausibleFixedName(decoded, width, 0.85)) {
+                valid++
+                if (index == 0) firstValid = true
+                if (index == count - 1) lastValid = true
+            } else if ((0 until width).all { rom.u8(base + it) == 0 }) {
+                empty++
+            }
+        }
+        val malformed = count - valid - empty
+        val compatible = count > 1 && empty > 0 && lastValid &&
+            malformed * 100L <= count && valid * 2L >= count
+        val confidence = valid.toDouble() / count.coerceAtLeast(1)
+        ValidationEvidence(
+            compatible, valid, count, confidence,
+            listOf(
+                if (compatible) {
+                    "$PLACEHOLDER_NAMES_REASON: valid $valid/$count, empty $empty, malformed $malformed"
+                } else {
+                    "fixed names $valid/$count with $empty empty and $malformed malformed slots do not form a proven table"
+                },
+            ),
+            offset, width,
+            coveredRecords = valid - if (firstValid) 1 else 0,
+            expectedRecords = count - 1,
+        )
+    }
+
     fun inferFixedNameCount(
         rom: RomImage,
         offset: Int,

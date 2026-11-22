@@ -190,6 +190,70 @@ class Gen3DynamicTableResolverTest {
     }
 
     @Test
+    fun trimsZeroNameTailWhenUnsizedStatsTableEndsAtReferencedRoot() {
+        val resolved = unsizedSpeciesFixture()
+
+        assertEquals(UNSIZED_ACTIVE_COUNT, resolved.speciesCount)
+        assertEquals(UNSIZED_ACTIVE_COUNT, resolved.tables.speciesNames?.count)
+        assertEquals(UNSIZED_ACTIVE_COUNT, resolved.tables.baseStats?.count)
+        assertEquals(36, resolved.tables.baseStats?.recordSize)
+    }
+
+    @Test
+    fun keepsZeroNameTailWithoutReferencedFollowingRoot() {
+        assertEquals(UNSIZED_PROPOSED_COUNT, unsizedSpeciesFixture(pointToBoundary = false).speciesCount)
+    }
+
+    @Test
+    fun keepsZeroNameTailWhenNextStatsRowIsEmpty() {
+        // An all-zero row after the prefix is a zero tail, which never proves where the table ends.
+        assertEquals(UNSIZED_PROPOSED_COUNT, unsizedSpeciesFixture(followingRegion = false).speciesCount)
+    }
+
+    @Test
+    fun keepsExtentWhenFinalNameSlotIsPopulated() {
+        assertEquals(UNSIZED_PROPOSED_COUNT, unsizedSpeciesFixture(populateLastName = true).speciesCount)
+    }
+
+    /**
+     * Pisces-shaped layout: a NUM_SPECIES-sized name array whose inactive tail is zero, an unsized
+     * 36-byte SpeciesInfo array, and a level-up learnset root that starts right after its last row.
+     */
+    private fun unsizedSpeciesFixture(
+        pointToBoundary: Boolean = true,
+        followingRegion: Boolean = true,
+        populateLastName: Boolean = false,
+    ): Gen3SpeciesExtentResolution {
+        val names = 0x4000
+        val stats = 0x6000
+        val boundary = stats + UNSIZED_ACTIVE_COUNT * 36
+        val bytes = ByteArray(0x10000)
+        repeat(UNSIZED_ACTIVE_COUNT) { id ->
+            writeName(bytes, names + id * 11, "MON")
+            writeValidStats(bytes, stats + id * 36, id)
+        }
+        if (populateLastName) writeName(bytes, names + (UNSIZED_PROPOSED_COUNT - 1) * 11, "MON")
+        if (followingRegion) {
+            // struct LevelUpMove { u16 move; u16 level; } entries ending with LEVEL_UP_MOVE_END.
+            listOf(0x21, 1, 0x2D, 3, 0x49, 7, 0xFFFF, 0).forEachIndexed { index, value ->
+                writeU16(bytes, boundary + index * 2, value)
+            }
+        }
+        if (pointToBoundary) writePointer(bytes, 0xC000, boundary)
+        val inherited = ProfileTables(
+            speciesNames = TableLayout(names, UNSIZED_PROPOSED_COUNT, 11),
+            baseStats = TableLayout(stats, UNSIZED_PROPOSED_COUNT, 28),
+        )
+        return Gen3DynamicTableResolver.reconcileSpeciesExtent(
+            RomImage(bytes),
+            inherited,
+            UNSIZED_PROPOSED_COUNT,
+            GbaCompiledReferenceIndex(emptyMap()),
+            PokemonTextCodec.gbaEnglish,
+        )
+    }
+
+    @Test
     fun trimsDarkVioletAdjacentMoveNamesFromInferredSpeciesExtent() {
         val proposedCount = 420
         val expectedCount = 412
@@ -996,6 +1060,9 @@ class Gen3DynamicTableResolverTest {
     }
 
     private companion object {
+        const val UNSIZED_ACTIVE_COUNT = 330
+        const val UNSIZED_PROPOSED_COUNT = 420
+
         // Exact 8-record Dark Violet suffix: species-name inference crossed into gMoveNames.
         const val DARK_VIOLET_ADJACENT_MOVE_NAMES_BASE64 =
             "rv8AAAAAAAAAAAAAAMrj6eLY/wAAAAAAAADF1ebV6NkAvdzj5P8AvuPp1uDZ5+DV5P8AAL3j4dnoAMrp4tfc/wDH2dvVAMrp4tfc/wAAytXtAL7V7f8AAA=="
